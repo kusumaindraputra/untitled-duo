@@ -1,0 +1,1 @@
+- [Game State GDD AC Review](project_game-state-gdd-review.md) — post-revision review (2026-05-22 GDD); 3 BLOCKING ACs (06, 07, 08), 1 BLOCKING coverage gap (payload guard), 2 RECOMMENDED gaps, 3 ADVISORY gaps
