@@ -54,7 +54,7 @@ interactions, never a large shallow one.
 | 24 | Main Menu *(inferred)* | UI | MVP | Not Started | — | Game State & Scene Flow |
 | 25 | Pause Menu *(inferred)* | UI | Vertical Slice | Not Started | — | Game State & Scene Flow |
 | 26 | Meta-Progression UI *(inferred)* | UI | Vertical Slice | Not Started | — | Meta-Progression |
-| 27 | Game State & Scene Flow *(inferred)* | Core | MVP | Not Started | — | — |
+| 27 | Game State & Scene Flow *(inferred)* | Core | MVP | Approved | design/gdd/game-state-scene-flow.md | — |
 | 28 | Save / Load *(inferred)* | Persistence | Vertical Slice | Not Started | — | — |
 | 29 | Audio System | Audio | MVP | Not Started | — | — |
 | 30 | Game Feel / Juice | Gameplay | MVP | Not Started | — | Game State & Scene Flow, Audio System |
@@ -228,10 +228,10 @@ No **hard** circular dependencies found.
 | Metric | Count |
 |--------|-------|
 | Total systems identified | 31 |
-| Design docs started | 0 |
-| Design docs reviewed | 0 |
-| Design docs approved | 0 |
-| MVP systems designed | 0 / 21 |
+| Design docs started | 1 |
+| Design docs reviewed | 1 |
+| Design docs approved | 1 |
+| MVP systems designed | 1 / 21 |
 | Vertical Slice systems designed | 0 / 8 |
 
 ---
