@@ -17,16 +17,16 @@
 
 - **Target Platforms**: PC (Steam / itch.io)
 - **Input Methods**: Keyboard/Mouse, Gamepad
-- **Primary Input**: Keyboard/Mouse (drag-and-drop rune grid is mouse-optimized)
+- **Primary Input**: Keyboard/Mouse (drag-and-drop Prana grid is mouse-optimized)
 - **Gamepad Support**: Partial
 - **Touch Support**: None
-- **Platform Notes**: Drag-and-drop rune grid requires alternative input UX for gamepad (d-pad/joystick rune selection). All UI must be fully navigable via keyboard. No hover-only interactions.
+- **Platform Notes**: Drag-and-drop Prana grid requires alternative input UX for gamepad (d-pad/joystick Prana selection). All UI must be fully navigable via keyboard. No hover-only interactions.
 
 ## Naming Conventions
 
 - **Classes**: PascalCase (e.g., `PlayerController`)
 - **Variables/Functions**: snake_case (e.g., `move_speed`, `take_damage()`)
-- **Signals**: snake_case past tense (e.g., `health_changed`, `rune_collected`)
+- **Signals**: snake_case past tense (e.g., `health_changed`, `prana_collected`)
 - **Files**: snake_case matching class (e.g., `player_controller.gd`)
 - **Scenes**: PascalCase matching root node (e.g., `PlayerController.tscn`)
 - **Constants**: UPPER_SNAKE_CASE (e.g., `MAX_HEALTH`, `BASE_DAMAGE`)
@@ -42,7 +42,7 @@
 
 - **Framework**: GUT (Godot Unit Test) — GDScript-native, integrated in Godot editor
 - **Minimum Coverage**: All gameplay formulas and state machines; visual systems excluded
-- **Required Tests**: Rune combination resolution, meta-progression currency math, dungeon generation sanity checks, enemy state machines
+- **Required Tests**: Prana combination resolution, meta-progression currency math, dungeon generation sanity checks, enemy state machines
 
 ## Forbidden Patterns
 

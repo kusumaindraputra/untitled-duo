@@ -15,7 +15,7 @@
 
 ## Recommended: present
 
-- [x] Concept prototype — `prototypes/rune-grid-concept/` with `REPORT.md`, verdict **PROCEED**. Validated the core rune-grid mechanic and corrected the design (pre-wave setup vs. mid-combat), already folded back into the concept.
+- [x] Concept prototype — `prototypes/rune-grid-concept/` with `REPORT.md`, verdict **PROCEED**. Validated the core Prana-grid mechanic and corrected the design (pre-wave setup vs. mid-combat), already folded back into the concept.
 
 ## Quality Checks: 3/4 passing
 
@@ -38,7 +38,7 @@ Engine choice sound and documented; post-cutoff Godot 4.6 knowledge risk acknowl
 Timeline contradiction in the concept ("3–6 months" vs "weeks timeline"). Cap Systems Design GDDs to MVP-tier systems only. Re-baseline the "1–2 week" MVP estimate to 3–5 weeks for a first-time Godot developer.
 
 **Art Director: CONCERNS**
-Visual anchor clears the bar but: rune-to-color mapping is undefined (needed before the first rune GDD); no minimum environment contrast value; grid legibility asserted, not specified (defer the last to `/art-bible`).
+Visual anchor clears the bar but: Prana-to-color mapping is undefined (needed before the first Prana GDD); no minimum environment contrast value; grid legibility asserted, not specified (defer the last to `/art-bible`).
 
 ---
 
@@ -46,7 +46,7 @@ Visual anchor clears the bar but: rune-to-color mapping is undefined (needed bef
 
 1. **`/design-review` not run on the game concept** — the only missing quality check. Run `/design-review design/gdd/game-concept.md` before `/map-systems`.
 2. **Timeline contradiction in `game-concept.md`** — Core Identity says "Medium–Large (3–6 months, solo)" while the Scope Risks section says full vision "exceeds weeks timeline." Reconcile and commit to a ship tier (recommend: MVP as ship target) before authoring GDDs.
-3. **Provisional rune-to-color mapping needed** — before the first rune-system GDD, document a draft rune-type → color table so color decisions don't calcify inconsistently.
+3. **Provisional Prana-to-color mapping needed** — before the first Prana-system GDD, document a draft Prana type → color table so color decisions don't calcify inconsistently.
 
 ---
 

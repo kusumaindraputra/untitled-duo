@@ -1,6 +1,6 @@
-# Rune Grid — Concept Prototype
+# Prana Grid — Concept Prototype
 
-**Hypothesis:** Player under combat pressure will spontaneously rearrange the rune grid
+**Hypothesis:** Player under combat pressure will spontaneously rearrange the Prana grid
 (not just mash cast) — proving it feels like a strategic mechanic, not an inventory screen.
 
 ## How to Run
@@ -13,13 +13,13 @@
 
 | Input | Action |
 |-------|--------|
-| **Drag runes** | Rearrange rune slots in the 3×3 grid |
+| **Drag Prana** | Rearrange Prana slots in the 3×3 grid |
 | **SPACE** | Cast the current combo |
 | **R** | Restart |
 
 ## Combos
 
-| Rune Combo | Effect |
+| Prana Combo | Effect |
 |------------|--------|
 | Fire × 3 | Mega Inferno — massive AoE |
 | Fire × 2 | Inferno — AoE fire burst |
@@ -39,6 +39,6 @@ After playing, report back:
 
 ## Notes
 
-- After each cast, 3 random grid slots get new runes (partial refresh)
+- After each cast, 3 random grid slots get new Prana types (partial refresh)
 - Enemies spawn every 3.5 seconds; speed increases with score
 - This is throwaway code — never merge into src/

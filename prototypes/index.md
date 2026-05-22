@@ -4,7 +4,7 @@
 
 | Concept | Date | Path | Verdict | Report |
 |---------|------|------|---------|--------|
-| Rune Grid | 2026-05-20 | Engine (Godot 4.6) | PROCEED | [REPORT.md](rune-grid-concept/REPORT.md) |
+| Prana Grid | 2026-05-20 | Engine (Godot 4.6) | PROCEED | [REPORT.md](rune-grid-concept/REPORT.md) |
 
 ## Graveyard
 
