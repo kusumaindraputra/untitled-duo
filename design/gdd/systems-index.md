@@ -31,12 +31,12 @@ interactions, never a large shallow one.
 | 1 | Prana Grid | Gameplay | MVP | Not Started | — | Prana Data, Game State & Scene Flow |
 | 2 | Combination Resolution | Gameplay | MVP | Not Started | — | Prana Grid, Prana Data |
 | 3 | Spell Casting & Effects | Gameplay | MVP | Not Started | — | Combination Resolution, Player Controller, Health & Damage, Status Effects |
-| 4 | Prana Data | Data | MVP | Not Started | — | — |
+| 4 | Prana Data | Data | MVP | Approved | design/gdd/prana-data.md | — |
 | 5 | Player Controller *(inferred)* | Core | MVP | Not Started | — | Game State & Scene Flow |
-| 6 | Health & Damage *(inferred)* | Gameplay | MVP | Not Started | — | Game State & Scene Flow |
+| 6 | Health & Damage *(inferred)* | Gameplay | MVP | Approved | design/gdd/health-damage.md | Game State & Scene Flow |
 | 7 | Status Effects | Gameplay | MVP | Not Started | — | Health & Damage |
 | 8 | Enemy AI *(inferred)* | Gameplay | MVP | Not Started | — | Enemy Data, Player Controller, Health & Damage |
-| 9 | Enemy Data *(inferred)* | Data | MVP | Not Started | — | — |
+| 9 | Enemy Data *(inferred)* | Data | MVP | Approved | design/gdd/enemy-data.md | — |
 | 10 | Elemental Affiliation & Weakness | Gameplay | MVP | Not Started | — | Enemy Data, Prana Data, Spell Casting & Effects, Health & Damage |
 | 11 | Boss Encounter | Gameplay | Vertical Slice | Not Started | — | Enemy AI, Spell Casting & Effects, Health & Damage, Wave / Encounter System |
 | 12 | Wave / Encounter System *(inferred)* | Gameplay | MVP | Not Started | — | Enemy AI, Enemy Data, Health & Damage, Game State & Scene Flow |
@@ -56,7 +56,7 @@ interactions, never a large shallow one.
 | 26 | Meta-Progression UI *(inferred)* | UI | Vertical Slice | Not Started | — | Meta-Progression |
 | 27 | Game State & Scene Flow *(inferred)* | Core | MVP | Approved | design/gdd/game-state-scene-flow.md | — |
 | 28 | Save / Load *(inferred)* | Persistence | Vertical Slice | Not Started | — | — |
-| 29 | Audio System | Audio | MVP | Not Started | — | — |
+| 29 | Audio System | Audio | MVP | Designed | design/gdd/audio-system.md | — |
 | 30 | Game Feel / Juice | Gameplay | MVP | Not Started | — | Game State & Scene Flow, Audio System |
 | 31 | Tutorial / Onboarding | Meta | Vertical Slice | Not Started | — | Prana Grid, Combination Resolution, Spell Casting & Effects, Wave / Encounter System, Wave Peek, Run Management |
 
@@ -228,10 +228,10 @@ No **hard** circular dependencies found.
 | Metric | Count |
 |--------|-------|
 | Total systems identified | 31 |
-| Design docs started | 1 |
-| Design docs reviewed | 1 |
-| Design docs approved | 1 |
-| MVP systems designed | 1 / 21 |
+| Design docs started | 5 |
+| Design docs reviewed | 4 |
+| Design docs approved | 4 |
+| MVP systems designed | 5 / 21 |
 | Vertical Slice systems designed | 0 / 8 |
 
 ---
