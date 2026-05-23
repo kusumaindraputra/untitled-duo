@@ -1,6 +1,6 @@
 # Game State & Scene Flow
 
-> **Status**: In Review (Post-Design-Review Revision 2026-05-22 — Rev 2)
+> **Status**: Approved (Design-Review passed 2026-05-22)
 > **Author**: Kusuma Putra + Claude Code Game Studios
 > **Last Updated**: 2026-05-22
 > **Implements Pillar**: Infrastructure for all pillars — owns the Prep→Combat transition that Pillars 1–3 depend on
@@ -114,9 +114,13 @@ tradeoffs have legible, permanent consequences for the rest of the run.*
    is not deferrable.
 7. Death in `COMBAT_PHASE` (including boss combat when `is_boss: true`) transitions
    immediately to `DEATH_SCREEN`. It does not pass through `RUN_SUMMARY`. "Immediately"
-   means no intermediate state — transition effects (fade, animation timing) are
-   delivered by Game Feel / Juice (System #30) via the `run_ended` signal. System #30
-   must treat the death-to-`DEATH_SCREEN` transition as a required treatment item.
+   means no intermediate **state** — but `death_started` is emitted as the **first**
+   signal in the transition handler, before the state changes and before `run_ended`.
+   This gives Audio System and Game Feel / Juice a signal to begin the death animation
+   and audio fade at the correct moment. Signal ordering within the transition handler:
+   (1) `death_started` emitted, (2) state updated to `DEATH_SCREEN`, (3) `run_ended(win:
+   false)` emitted. Transition effects (fade, animation timing) are delivered by Game
+   Feel / Juice (System #30), which must treat this as a required treatment item.
 8. The persistent HUD layer is loaded once at run start and remains active across all
    in-run states. It is not reloaded between waves or rooms. **Godot 4.6 implementation
    pattern:** The HUD must survive SceneManager-initiated scene changes. Recommended
@@ -186,7 +190,7 @@ signals as the universal coupling mechanism.
 | `PREPARATION_PHASE` | `COMBAT_PHASE` | Player confirms Prana loadout (grid non-empty); `combat_started(is_boss: false)` emitted |
 | `COMBAT_PHASE` | `PREPARATION_PHASE` | Wave cleared, more regular waves remain (Wave/Encounter emits `wave_cleared`) |
 | `COMBAT_PHASE` | `COMBAT_PHASE` | All regular waves cleared (Wave/Encounter emits `all_waves_cleared`); `combat_started(is_boss: true)` emitted — boss combat begins. This is a self-transition that reloads the state with new parameters. |
-| `COMBAT_PHASE` | `DEATH_SCREEN` | Fayde's health reaches 0 (in regular or boss combat) |
+| `COMBAT_PHASE` | `DEATH_SCREEN` | Fayde's health reaches 0 (in regular or boss combat); `death_started` emitted first, then state changes, then `run_ended(win: false)` |
 | `COMBAT_PHASE` | `RUN_SUMMARY` | Boss defeated while `is_boss: true` (Wave/Encounter emits `boss_defeated`) |
 | `PREPARATION_PHASE` | `PAUSED` | Player triggers pause |
 | `COMBAT_PHASE` | `PAUSED` | Player triggers pause |
@@ -255,6 +259,7 @@ system emits these events.
 | `game_paused` | — | Entry to `PAUSED` | MVP |
 | `game_resumed` | — | Exit from `PAUSED`; `_previous_state` restored | MVP |
 | `room_cleared` | — | `COMBAT_PHASE` → `RUN_SUMMARY` when boss defeated (`is_boss: true`) — MVP, fires once per run; `COMBAT_PHASE` → `PATH_SELECTION` (VS) | MVP |
+| `death_started` | — | Emitted as the **first** signal in the `COMBAT_PHASE → DEATH_SCREEN` transition handler, before state changes and before `run_ended`. Marks the moment Fayde's death animation begins. | MVP |
 | `run_ended` | `win: bool` | Entry to `RUN_SUMMARY` (`win: true`); entry to `DEATH_SCREEN` or `PAUSED → MAIN_MENU` quit (`win: false`) | MVP |
 | `shop_entered` | — | Entry to `SHOP_PHASE` | [VS] |
 | `rest_entered` | — | Entry to `REST_PHASE` | [VS] |
@@ -293,6 +298,7 @@ apply when PATH_SELECTION exists.
 - **Pause Menu (#25)** — renders MVP pause overlay (Resume + Quit to Menu) on
   `game_paused`; dismisses on `game_resumed`; Quit to Menu triggers `run_ended(win:
   false)` then transitions to `MAIN_MENU`
+- **Audio System** — enters DYING audio state (music fades to near-silence) on `death_started`; transitions to END_DEFEAT music state on `run_ended(win: false)`; transitions music state on `run_started`, `preparation_started`, `combat_started`, `run_ended(win: true)`
 - **Lore Fragments / Memo** — uses the sanctioned CanvasLayer overlay pattern (Core Rule 3,
   Exception 2); overlay Control nodes configured with `mouse_filter = MOUSE_FILTER_IGNORE`
   to pass input through; trigger logic owned entirely by the Lore Fragments GDD

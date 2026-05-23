@@ -56,7 +56,7 @@ interactions, never a large shallow one.
 | 26 | Meta-Progression UI *(inferred)* | UI | Vertical Slice | Not Started | — | Meta-Progression |
 | 27 | Game State & Scene Flow *(inferred)* | Core | MVP | Approved | design/gdd/game-state-scene-flow.md | — |
 | 28 | Save / Load *(inferred)* | Persistence | Vertical Slice | Not Started | — | — |
-| 29 | Audio System | Audio | MVP | Designed | design/gdd/audio-system.md | — |
+| 29 | Audio System | Audio | MVP | In Review | design/gdd/audio-system.md | — |
 | 30 | Game Feel / Juice | Gameplay | MVP | Not Started | — | Game State & Scene Flow, Audio System |
 | 31 | Tutorial / Onboarding | Meta | Vertical Slice | Not Started | — | Prana Grid, Combination Resolution, Spell Casting & Effects, Wave / Encounter System, Wave Peek, Run Management |
 

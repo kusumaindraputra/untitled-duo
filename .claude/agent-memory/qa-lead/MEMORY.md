@@ -1,1 +1,3 @@
 - [Game State GDD AC Review](project_game-state-gdd-review.md) — post-revision review (2026-05-22 GDD); 3 BLOCKING ACs (06, 07, 08), 1 BLOCKING coverage gap (payload guard), 2 RECOMMENDED gaps, 3 ADVISORY gaps
+- [Prana Data GDD AC Review](project_prana-data-ac-review.md) — adversarial review (2026-05-23 GDD); 4 BLOCKING defects (AC-04 misclass, AC-05 wrong owner, AC-18 determinism, AC-25 wording), 2 RECOMMENDED gaps, 2 ADVISORY gaps
+- [Audio System GDD AC Review](project_audio-system-ac-review.md) — two-round review (2026-05-23); Round 2: 6 BLOCKING defects survive (playing==true in headless, Tween.custom_step nonexistent in Godot 4, signal not connected in AC-26, missing AMB guard AC)
