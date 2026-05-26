@@ -131,7 +131,28 @@ performance_budgets: []
 # Register an API decision when the choice is non-obvious and other ADRs might
 # make a different choice for the same purpose without knowing this was decided.
 
-api_decisions: []
+api_decisions:
+  - purpose: isometric_tilemap
+    status: active
+    api: TileMapLayer with TileSet.tile_shape = TileSet.TILE_SHAPE_ISOMETRIC
+    not: TileMap (deprecated in 4.x); 3D environment nodes for isometric visual
+    adr: docs/architecture/adr-0001-isometric-view.md
+    reason: "TileMapLayer is the current API in Godot 4.x; isometric mode provides native tile sorting and rendering without Forward+ renderer"
+    referenced_by:
+      - docs/architecture/adr-0001-isometric-view.md
+    added: 2026-05-26
+    revised: ""
+
+  - purpose: depth_sorting
+    status: active
+    api: Node2D.y_sort_enabled = true on room root node
+    not: manual z_index management per sprite
+    adr: docs/architecture/adr-0001-isometric-view.md
+    reason: "Engine-native Y-sort handles draw order automatically for all children; manual z_index is error-prone in isometric scenes"
+    referenced_by:
+      - docs/architecture/adr-0001-isometric-view.md
+    added: 2026-05-26
+    revised: ""
 
 # Example:
 #
@@ -157,7 +178,13 @@ api_decisions: []
 # Register a pattern when an ADR explicitly bans it AND other ADRs might
 # unknowingly use it (i.e., it's a tempting but wrong approach for this project).
 
-forbidden_patterns: []
+forbidden_patterns:
+  - pattern: forward_plus_for_isometric
+    status: active
+    description: "Do not switch to Forward+ or Mobile renderer solely to achieve isometric visuals. Compatibility renderer (OpenGL 3.3) fully supports TileMapLayer isometric mode and Y-sort."
+    why: "Forward+ adds significant complexity and reduces hardware compatibility with no benefit for this 2D pixel art game. The isometric effect is a 2D rendering concern, not a 3D one."
+    adr: docs/architecture/adr-0001-isometric-view.md
+    added: 2026-05-26
 
 # Example:
 #
