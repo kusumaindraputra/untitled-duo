@@ -7,7 +7,7 @@
 
 ## Elevator Pitch
 
-> A 2D top-down roguelike where you play as Fayde — an amnesiac child who can
+> A 2D isometric roguelike where you play as Fayde — an amnesiac child who can
 > use Prana, an ability believed lost with humanity. Trapped in an underground
 > scrap yard in a world ruled by AI, you fight your way to the surface, gradually
 > recovering memories that reveal you are not who you think you are.
@@ -360,7 +360,7 @@ for memory and loss.
 | Consideration | Assessment |
 |---------------|------------|
 | **Engine** | Godot 4.6 — 2D-first, GDScript accessible for first game |
-| **Art Style** | Pixel art, 2D top-down. Environment desaturated/calm, Prana effects jewel-toned |
+| **Art Style** | Pixel art, 2D isometric (dimetric). Environment desaturated/calm, Prana effects jewel-toned |
 | **Key Technical Challenges** | Prana combination resolution system; procedural dungeon with atmospheric coherence; memory fragment trigger and delivery system |
 | **Audio Needs** | Distinct cast sound per Prana type; ambient scrap yard loop; escalating ambient as layers rise; Memo vocal cues |
 | **Networking** | None |
