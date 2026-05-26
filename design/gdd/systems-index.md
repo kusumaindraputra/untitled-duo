@@ -31,7 +31,7 @@ interactions, never a large shallow one.
 | 1 | Prana Grid | Gameplay | MVP | Not Started | — | Prana Data, Game State & Scene Flow |
 | 2 | Combination Resolution | Gameplay | MVP | Not Started | — | Prana Grid, Prana Data |
 | 3 | Spell Casting & Effects | Gameplay | MVP | Not Started | — | Combination Resolution, Player Controller, Health & Damage, Status Effects |
-| 4 | Prana Data | Data | MVP | Approved | design/gdd/prana-data.md | — |
+| 4 | Prana Data | Data | MVP | Needs Revision | design/gdd/prana-data.md | — |
 | 5 | Player Controller *(inferred)* | Core | MVP | Not Started | — | Game State & Scene Flow |
 | 6 | Health & Damage *(inferred)* | Gameplay | MVP | Approved | design/gdd/health-damage.md | Game State & Scene Flow |
 | 7 | Status Effects | Gameplay | MVP | Not Started | — | Health & Damage |
@@ -229,8 +229,8 @@ No **hard** circular dependencies found.
 |--------|-------|
 | Total systems identified | 31 |
 | Design docs started | 5 |
-| Design docs reviewed | 4 |
-| Design docs approved | 4 |
+| Design docs reviewed | 5 |
+| Design docs approved | 3 |
 | MVP systems designed | 5 / 21 |
 | Vertical Slice systems designed | 0 / 8 |
 

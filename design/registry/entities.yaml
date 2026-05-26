@@ -407,10 +407,10 @@ constants:
     source: design/gdd/prana-data.md
     referenced_by:
       - design/gdd/prana-data.md
-    value: 0.5
+    value: 0.8
     unit: seconds
     added: 2026-05-23
-    revised: ""
+    revised: "2026-05-26"
 
   - name: freeze_duration
     status: active
