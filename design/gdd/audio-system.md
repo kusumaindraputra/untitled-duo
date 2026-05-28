@@ -1,8 +1,8 @@
 # Audio System
 
-> **Status**: In Design (revised — pending re-review)
+> **Status**: Approved
 > **Author**: Kusuma Putra + Claude Code Game Studios
-> **Last Updated**: 2026-05-23 (revision 3)
+> **Last Updated**: 2026-05-26 (revision 4 — scope-down pass; 6 blockers fixed, 6 deferred as Open Questions)
 > **Implements Pillar**: Infrastructure (enables Pillar 1, 3 — sonic feedback reinforces run variety and consequence)
 
 ## Overview
@@ -234,12 +234,13 @@ The following table defines canonical priority tiers for event categories. All d
 | `MAIN_MENU` | `PREPARATION` | `run_started` signal | Crossfade (`CROSSFADE_MENU_TO_PREPARATION`) |
 | `PREPARATION` | `COMBAT` | `combat_started` signal | Crossfade (`CROSSFADE_TO_COMBAT`) |
 | `COMBAT` | `PREPARATION` | `preparation_started` signal | Crossfade (`CROSSFADE_COMBAT_TO_PREPARATION`) |
+| `PREPARATION` | `DYING` | `death_started` signal | Fast fade to silence (`CROSSFADE_TO_DYING`) |
 | `COMBAT` | `DYING` | `death_started` signal | Fast fade to silence (`CROSSFADE_TO_DYING`) |
 | `DYING` | `END_DEFEAT` | `run_ended(win: false)` signal | Crossfade from silence (`CROSSFADE_TO_END`) |
 | `PREPARATION` | `END_VICTORY` | `run_ended(win: true)` signal | Crossfade (`CROSSFADE_TO_END`) |
 | `PREPARATION` | `END_DEFEAT` | `run_ended(win: false)` signal | Crossfade (`CROSSFADE_TO_END`) |
 | `COMBAT` | `END_VICTORY` | `run_ended(win: true)` signal | Crossfade (`CROSSFADE_TO_END`) |
-| `COMBAT` | `END_DEFEAT` | `run_ended(win: false)` signal | Crossfade (`CROSSFADE_TO_END`) |
+| `COMBAT` | `END_DEFEAT` | `run_ended(win: false)` signal | Crossfade (`CROSSFADE_TO_END`) — *defensive fallback only; by Game State contract, Fayde's death always emits `death_started` before `run_ended(win: false)`, so this path must not be reached during normal play* |
 | `END_VICTORY` | `MAIN_MENU` | END_VICTORY cue `finished` signal (auto) | Crossfade (`CROSSFADE_TO_MAIN_MENU`) |
 | `END_DEFEAT` | `MAIN_MENU` | END_DEFEAT cue `finished` signal (auto) | Crossfade (`CROSSFADE_TO_MAIN_MENU`) |
 
@@ -300,7 +301,7 @@ The crossfade uses **simultaneous** fades: both tweens run at the same time over
 
 **Note:** −80 dB is Godot's effective silence floor for `AudioStreamPlayer.volume_db`. The Tween built-in handles the interpolation — this formula describes the intent, not a custom calculation.
 
-**~3 dB midpoint dip (applies to all simultaneous linear crossfades):** A simultaneous linear crossfade produces a perceivable loudness dip at the midpoint (t = fade_duration / 2). At midpoint, outgoing is at ~50% of its start level and incoming is at 50% of target — the combined perceived amplitude briefly drops ~3 dB below the nominal level. This is accepted behavior for all crossfades in this system. For long, emotionally significant fades (e.g., the 2.0s `CROSSFADE_DURATION_TO_END`), the audio-director should compose cues that cooperate with this dip (e.g., end-state cues with a strong entry attack that covers the midpoint dip). If the dip is unacceptable for a specific transition, reduce `fade_duration` toward 0.1s (where the dip is imperceptible) or request a GDD revision to implement a constant-power crossfade curve for that transition.
+**~3 dB midpoint dip (applies to all simultaneous linear crossfades except `CROSSFADE_TO_END`):** A simultaneous linear crossfade produces a perceivable loudness dip at the midpoint (t = fade_duration / 2). At midpoint, outgoing is at ~50% of its start level and incoming is at 50% of target — the combined perceived amplitude briefly drops ~3 dB below the nominal level. This is accepted behavior for all short crossfades in this system. **Exception: `CROSSFADE_DURATION_TO_END` (2.0s)** — the 2.0s duration makes the midpoint dip physically perceptible and cannot be masked by composer technique (the incoming cue starts at −80 dB, so a "strong entry attack" is inaudible until the fade is nearly complete). For this transition only, use `Tween.TRANS_SINE` (constant-power sinusoidal curve), which maintains constant perceived energy through the midpoint: `_active_tween.set_trans(Tween.TRANS_SINE)`. All other crossfade tweens use the default linear curve.
 
 ---
 
@@ -403,7 +404,7 @@ The valid priority values are `0` (LOW), `1` (NORMAL), `2` (HIGH). If an `AudioE
 
 Priority policy applies first (see Core Rule 12). If the new stinger is blocked by priority (COMBAT trying to interrupt NARRATIVE), it is silently discarded — no duck, no stream change.
 
-If the new stinger is allowed to proceed: the prior `finished` connection is explicitly disconnected before the new one is connected (see Core Rule 12 connection guard). Then the new stinger interrupts the in-progress one immediately (no fadeout). The Music bus duck tween is restarted from the current ducked volume using the new event's `duck_depth_db`. The Music bus restore on completion uses the new event's `restore_duration_sec` and the current pre-duck baseline (re-captured at this call's duck moment, not the interrupted stinger's baseline).
+If the new stinger is allowed to proceed: the prior `finished` connection is explicitly disconnected before the new one is connected (see Core Rule 12 connection guard). Then the new stinger interrupts the in-progress one immediately (no fadeout). The Music bus duck tween is restarted from the current ducked volume using the new event's `duck_depth_db`. The Music bus restore on completion uses the new event's `restore_duration_sec` and the **original `_music_pre_stinger_volume`** captured at the first `play_stinger()` call — this value is **retained, not re-captured**. Re-capturing the current Music bus volume at interrupt time would read the already-ducked value, causing the restore target to drift permanently lower with each subsequent interrupt (compounding −6 dB per interrupt). The original pre-stinger baseline is always the correct restore target.
 
 ## Dependencies
 
@@ -446,7 +447,14 @@ for key: StringName in _registry.events:
     if not _registry.events[key] is AudioEventData:
         push_error("AudioSystem: Registry entry '%s' is not an AudioEventData — skipped." % key)
         continue
-    _validated_events[key] = _registry.events[key]
+    var entry := _registry.events[key] as AudioEventData
+    if entry.priority not in [0, 1, 2]:
+        push_error("AudioSystem: Registry entry '%s' has invalid priority %d — clamped to NORMAL." % [key, entry.priority])
+        entry.priority = 1
+    if entry.stinger_priority not in [0, 1]:
+        push_error("AudioSystem: Registry entry '%s' has invalid stinger_priority %d — clamped to COMBAT." % [key, entry.stinger_priority])
+        entry.stinger_priority = 0
+    _validated_events[key] = entry
 ```
 Audio System routes all `play_event()` / `play_stinger()` calls through `_validated_events` (not the raw loaded dictionary). Type errors surface at startup in both debug and release builds, not silently at call time in production.
 
@@ -496,7 +504,7 @@ Audio System is the audio framework — it has no visual output of its own. Audi
   - **END cue format constraint (non-negotiable):** END_VICTORY and END_DEFEAT must be delivered as non-looping `AudioStream` files. Loop must be disabled at the asset level. The auto-transition to `MAIN_MENU` depends on the `finished` signal — Godot does not emit `finished` for looping streams. A looping END cue will silently prevent the music flow from ever recovering.
 - **Ambient event catalog**: The audio-director and sound-designer define the full ambient catalog. Each event must have a canonical string key following `"amb_[location]_[descriptor]"` convention (e.g., `"amb_arena_hum"`, `"amb_dungeon_electric"`). These are registered in `AudioEventRegistry` with `bus = &"AMB"`.
 - **SFX event catalog**: Naming convention: `"sfx_[category]_[identifier]"` for SFX bus events (e.g., `"sfx_prana_cast_ashfire"`, `"sfx_enemy_hit"`), `"ui_[identifier]"` for UI bus events (e.g., `"ui_menu_confirm"`). The `bus` field in `AudioEventData` determines routing — the naming prefix is a convention for readability only.
-- **Asset delivery standard**: All audio assets must be delivered at a target integrated loudness of **−18 LUFS** (true peak −1 dBTP). Measurement guidance by category: music and ambient tracks (long-form, looping) are measured at integrated LUFS; short transient SFX (Prana casts, hit sounds) are measured at true peak dBTP rather than integrated LUFS, as integrated measurement is not meaningful for sub-2-second events. Bus volume offsets defined in Tuning Knobs assume this delivery standard. Assets exceeding −1 dBTP true peak must be redelivered before integration.
+- **Asset delivery standard**: All audio assets must be delivered at a target integrated loudness of **−18 LUFS** (true peak −1 dBTP). Measurement guidance by category: music and ambient tracks (long-form, looping) are measured at integrated LUFS; short transient SFX (Prana casts, hit sounds) are measured at true peak dBTP rather than integrated LUFS, as integrated measurement is not meaningful for sub-2-second events. Bus volume offsets defined in Tuning Knobs assume this delivery standard. Assets exceeding −1 dBTP true peak must be redelivered before integration. **Prana cast and hit SFX minimum floor: −6 dBTP true peak.** Assets below this floor are too quiet to cut through music at any supported Music bus volume setting and must be redelivered.
 - **Sonic identity and mix contract**: *"The world breathes softly; magic screams."* AMB and Preparation cues should be understated and textural; Prana SFX should be loud, sharp, and elemental. Prana SFX (registered as NORMAL priority) must remain audible over music at all Music volume settings within the tuning knob safe range. **This is architecturally enforced two ways:** (1) the Music bus safe range maximum is −3.0 dB (see Tuning Knobs), and the SFX bus defaults to 0.0 dB, guaranteeing Prana SFX always has at least 3 dB of headroom over music within the supported range; (2) the AMB bus safe range maximum is −10.0 dB, keeping ambient below Prana SFX in all supported configurations. Prana SFX assets must additionally be mixed to a level that cuts through at −18 LUFS delivery standard.
 
 ## UI Requirements
@@ -629,3 +637,22 @@ Audio System has no player-facing UI of its own. Volume controls are exposed via
 *(Q4 — `death_started` signal — resolved: Game State & Scene Flow GDD updated 2026-05-23 to add `death_started` to its signal contract.)*
 
 5. **Memo's Resonance audio progression**: The game concept describes Memo undergoing gradual Resonance across the run, completing at the plot twist moment. The stinger API supports discrete one-shot moments. Does Memo's Resonance progression require a parameterized audio layer (e.g., an ambient sublayer that crossfades in as Resonance increases, or a Music bus filter that shifts timbre) — or does the `play_stinger("sfx_stinger_memo_peak")` API suffice? **Resolve when Lore Fragments GDD #21 is authored.** If a parameterized audio layer is required, this GDD must be revised before #21 can be designed — the framework does not currently expose a Resonance state parameter.
+
+6. **CRITICAL stinger priority tier for boss spawn** *(deferred — Boss Encounter GDD #11)*: The current two-tier stinger priority policy (NARRATIVE = 1, COMBAT = 0) causes `sfx_stinger_boss_spawn` to be silently ignored if a NARRATIVE stinger is in progress (e.g., a memory fragment plays in the room just before the boss arena). A CRITICAL tier (`stinger_priority = 2`, overrides all including NARRATIVE) would fix this. **Defer until Boss Encounter GDD (#11) is authored.** If that GDD requires a guaranteed boss spawn sting, this GDD must be revised to add: a `CRITICAL` constant to `stinger_priority` valid range `{0, 1, 2}`, updated priority policy in Core Rule 12 and Edge Case 15, and updated validate-on-register range check.
+
+7. **AMB bus ducking during NARRATIVE stingers** *(deferred — Vertical Slice implementation)*: `play_stinger()` currently ducks only the Music bus. At the plot twist moment (default AMB = −12 dB, Music ducked to −18 dB), the AMB layer is ~6 dB louder than the ducked Music, potentially undermining the narrative moment. Fix would require a new field `amb_duck_depth_db: float` in `AudioEventData` and a parallel AMB duck tween in `play_stinger()`. **Defer until stinger system is implemented at Vertical Slice.** Evaluate in audio QA playtest — if AMB/Music imbalance is perceptible at the plot twist, implement the field before shipping VS.
+
+8. **Volume slider perceptual curve** *(deferred — post-MVP UX polish)*: Formula 2 uses a linear dB mapping (`lerp(-80.0, 0.0, slider / 100.0)`), which produces a perceptual dead zone: approximately 0–30% of slider travel is inaudible (−80–−56 dB range). Meaningful volume control only exists in the upper ~30–40% of the slider. Proposed fix (ready to implement when prioritized): `volume_db = lerp(-60.0, 0.0, pow(float(slider_value) / 100.0, 0.5))`. This compresses the lower range into the audible region. **Defer to post-MVP.** The Settings / Pause Menu GDD must flag this formula replacement when that system is authored.
+
+9. **Stinger restore overwrites user mid-stinger volume change** *(deferred — Vertical Slice implementation)*: If the user adjusts the Music bus volume slider while a stinger is playing (and ducking the Music bus), the restore on stinger completion will overwrite the user's new setting with the pre-stinger baseline. Two fix options: (a) **delta restore** — restore by `+duck_depth_db` from current Music bus value rather than to the stored absolute baseline; (b) **tolerance check** — if current Music bus volume differs from the expected ducked value (`stored_baseline + duck_depth_db`) by more than 0.5 dB, assume user changed it and skip restore. **Defer to VS implementation.** Resolve during AC-AS-36 extension authoring; document the chosen strategy in Core Rule 12.
+
+---
+
+### Deferred Acceptance Criteria *(add at Vertical Slice implementation time)*
+
+The following ACs have no current entry in the AC section. Number them sequentially after the last existing AC when implementing the stinger system:
+
+- **Stinger priority policy — NARRATIVE blocks COMBAT**: Enter a NARRATIVE stinger; call `play_stinger()` with a COMBAT stinger. Assert: COMBAT call is silently ignored; NARRATIVE stinger continues; Music bus duck unchanged.
+- **Stinger priority policy — NARRATIVE interrupts COMBAT**: Enter a COMBAT stinger; call `play_stinger()` with a NARRATIVE stinger. Assert: NARRATIVE stinger immediately replaces COMBAT; duck tween restarts with new event's `duck_depth_db`; original `_music_pre_stinger_volume` baseline is retained.
+- **Stinger priority policy — same priority last-caller-wins**: Two COMBAT stingers in sequence; assert second caller interrupts first.
+- **DYING + stinger + finish → Music bus unchanged**: Trigger `death_started` → DYING → call `play_stinger()` → emit `_stinger_player.finished`. Assert Music bus volume remains at −80 dB (DYING duck suppression prevented any restore tween from being created).

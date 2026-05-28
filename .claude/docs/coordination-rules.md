@@ -25,11 +25,26 @@ Skills and agents are assigned to model tiers based on task complexity:
 Skills with `model: haiku`: `/help`, `/sprint-status`, `/story-readiness`, `/scope-check`,
 `/project-stage-detect`, `/changelog`, `/patch-notes`, `/onboard`
 
-Skills with `model: opus`: `/review-all-gdds`, `/architecture-review`, `/gate-check`
+Skills with `model: opus`: `/review-all-gdds`, `/architecture-review`
+
+Skills downgraded to Sonnet for this project: `/gate-check` — solo dev, pre-alpha,
+<10 GDDs; Sonnet verdict quality is sufficient at this scale.
 
 All other skills default to Sonnet. When creating new skills, assign Haiku if the
 skill only reads and formats; assign Opus if it must synthesize 5+ documents with
 high-stakes output; otherwise leave unset (Sonnet).
+
+## Solo Developer Context
+
+This project is maintained by a **single developer on Claude Pro**. All coordination
+rules apply, but the following constraints override defaults to conserve usage limits:
+
+- **`team-*` skills are disabled** — they spawn 4-9 specialist agents per run, designed
+  for team use. As a solo dev, review and judgment happen in a single session instead.
+- **Prefer `--depth lean`** for `/design-review` (already set as default).
+- **Use `/clear` between unrelated tasks** and after each GDD session completes.
+- **Opus-tier skills** (`/review-all-gdds`, `/architecture-review`) should be used
+  sparingly — only when a holistic cross-system view is genuinely needed, not routinely.
 
 ## Subagents vs Agent Teams
 

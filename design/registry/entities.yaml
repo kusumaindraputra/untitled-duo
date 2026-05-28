@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-05-23"  # updated: final_damage formula + fayde_max_hp/fayde_iframe_duration constants added (H&D GDD)
+last_updated: "2026-05-28"  # updated: BASE_SPELL_DAMAGE constant added (SC&E GDD); referenced_by updated for final_damage, fayde_max_hp, and all 5 prana types
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -55,6 +55,7 @@ entities:
     referenced_by:
       - design/gdd/prana-data.md
       - design/gdd/enemy-data.md  # Charger prana_affiliation + drop_prana_type
+      - design/gdd/spell-casting-effects.md  # base_damage_modifier used in Formula 3; dance melee identity
     prana_id: 0
     color: "#F24C1D"
     damage_class: Fire
@@ -69,6 +70,7 @@ entities:
     referenced_by:
       - design/gdd/prana-data.md
       - design/gdd/enemy-data.md  # Drifter prana_affiliation + drop_prana_type
+      - design/gdd/spell-casting-effects.md  # base_damage_modifier used in Formula 3
     prana_id: 1
     color: "#4A5EF5"
     damage_class: Shadow
@@ -83,6 +85,7 @@ entities:
     referenced_by:
       - design/gdd/prana-data.md
       - design/gdd/enemy-data.md  # Cluster prana_affiliation + drop_prana_type
+      - design/gdd/spell-casting-effects.md  # base_damage_modifier used in Formula 3
     prana_id: 2
     color: "#FFCC00"
     damage_class: Lightning
@@ -96,6 +99,7 @@ entities:
     source: design/gdd/prana-data.md
     referenced_by:
       - design/gdd/prana-data.md
+      - design/gdd/spell-casting-effects.md  # base_damage_modifier used in Formula 3
     prana_id: 3
     color: "#3DD9F0"
     damage_class: Ice
@@ -109,6 +113,7 @@ entities:
     source: design/gdd/prana-data.md
     referenced_by:
       - design/gdd/prana-data.md
+      - design/gdd/spell-casting-effects.md  # base_damage_modifier + barrier formula (Formula 8)
     prana_id: 4
     color: "#1AC953"
     damage_class: Nature
@@ -255,6 +260,7 @@ formulas:
     source: design/gdd/health-damage.md
     referenced_by:
       - design/gdd/health-damage.md
+      - design/gdd/spell-casting-effects.md  # SC&E feeds raw_damage as base_damage input via apply_damage()
     variables:
       - base_damage      # float 0.0–unbounded; from enemy base_damage or spell base
       - damage_multiplier  # float 0.0–unbounded; from Elemental Affiliation & Weakness (1.0 if no element)
@@ -347,6 +353,7 @@ constants:
     referenced_by:
       - design/gdd/health-damage.md
       - design/gdd/prana-data.md  # regen_total formula uses fayde_max_hp as base
+      - design/gdd/spell-casting-effects.md  # Verdant barrier HP formula (Formula 8)
     value: 100
     unit: hit points
     added: 2026-05-23
@@ -360,6 +367,18 @@ constants:
     value: 0.5
     unit: seconds
     added: 2026-05-23
+    revised: ""
+
+  - name: base_spell_damage
+    status: active
+    source: design/gdd/spell-casting-effects.md
+    referenced_by:
+      - design/gdd/spell-casting-effects.md
+      - design/gdd/health-damage.md  # worked examples use 20 as reference calibration anchor
+      - design/gdd/combination-resolution.md  # CR formulas use base_damage=20 in all worked examples
+    value: 20.0
+    unit: damage points
+    added: 2026-05-28
     revised: ""
 
   - name: burn_duration

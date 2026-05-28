@@ -137,11 +137,11 @@ api_decisions:
     api: TileMapLayer with TileSet.tile_shape = TileSet.TILE_SHAPE_ISOMETRIC
     not: TileMap (deprecated in 4.x); 3D environment nodes for isometric visual
     adr: docs/architecture/adr-0001-isometric-view.md
-    reason: "TileMapLayer is the current API in Godot 4.x; isometric mode provides native tile sorting and rendering without Forward+ renderer"
+    reason: "TileMapLayer is the current API in Godot 4.x; isometric mode provides native tile sorting and rendering without Forward+ renderer. Projection: dimetric 2:1 (~26.57°), tile size 64x32px, sprite target 32-48px."
     referenced_by:
       - docs/architecture/adr-0001-isometric-view.md
     added: 2026-05-26
-    revised: ""
+    revised: "2026-05-26"
 
   - purpose: depth_sorting
     status: active

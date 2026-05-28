@@ -1,7 +1,7 @@
 # ADR-0001: Isometric 2D View — Pengganti Top-Down 2D
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-05-26
@@ -40,7 +40,7 @@ Game Concept (`design/gdd/game-concept.md`) mendefinisikan The Last Cipher sebag
 
 ### Requirements
 - Perspektif baru harus tetap kompatibel dengan drag-and-drop Prana Grid (2D screen-space UI — tidak berubah)
-- Karakter dan musuh harus terbaca jelas dari perspektif baru pada ukuran sprite target (~16–24px native)
+- Karakter dan musuh harus terbaca jelas dari perspektif baru pada ukuran sprite target (~32–48px native)
 - Draw call budget tetap <200/frame
 - Gameplay logic (posisi, collision, pathfinding) harus tetap bisa diimplementasi di 2D space
 
@@ -52,7 +52,9 @@ Implementasi teknis:
 - **TileMapLayer** dengan `TileSet.tile_shape = TileSet.TILE_SHAPE_ISOMETRIC` untuk environment
 - **Y-sort** aktif (`Node2D.y_sort_enabled = true`) di setiap dungeon room agar sprite karakter/musuh ter-sort otomatis berdasarkan posisi Y
 - **Koordinat gameplay** tetap 2D cartesian di logika internal; konversi ke isometric screen-space dilakukan hanya di layer rendering
-- **Sprite angle**: dimetric projection (~26.57° — rasio 2:1 lebar:tinggi per tile)
+- **Sprite angle**: dimetric projection (~26.57° — rasio 2:1 lebar:tinggi per tile); tile size **64×32px**
+- **Sprite target**: karakter dan musuh **32–48px** tinggi — cukup untuk keterbacaan wajah, siluet, dan animasi ekspresif (referensi: FFT ~32px, Disgaea ~48px)
+- **Movement**: screen-space (WASD = atas/bawah/kiri/kanan relatif layar) — tidak ada remapping diagonal; isometric adalah perspektif visual saja, bukan input coordinate space
 - **Renderer**: Compatibility (OpenGL 3.3) — dipertahankan, isometric mode tidak butuh Forward+
 
 ### Architecture Diagram
@@ -100,6 +102,12 @@ Implementasi teknis:
 - **Cons**: Tidak memberikan kedalaman visual isometric yang sesungguhnya; ambiguous secara visual
 - **Rejection Reason**: Tidak memberikan manfaat visual yang cukup untuk justifikasi perubahan
 
+### Alternative D: Middle Ground 4:3 (~36.9°, tile 64×48px)
+- **Description**: Proporsi tile lebih tinggi dari 2:1; tile 64×48px memberi sudut ~36.9°, lebih dekat ke feel Hades
+- **Pros**: Lebih sinematik; depth lebih terasa; karakter punya ruang vertikal lebih besar
+- **Cons**: Hampir tidak ada pixel art game terkenal yang menggunakannya; tooling, tutorial, dan referensi pixel art sangat terbatas
+- **Rejection Reason**: Dievaluasi secara eksplisit sebelum ADR ini Accepted. Feel yang diinginkan (FFT/Disgaea-like) dapat dicapai dengan 2:1 dimetric + sprite 32–48px, yang memiliki jauh lebih banyak referensi, tool support, dan tutorial pixel art tersedia
+
 ## Consequences
 
 ### Positive
@@ -118,14 +126,14 @@ Implementasi teknis:
 ### Risks
 - **Y-sort edge case**: Sprite besar (boss 48×48px) mungkin memiliki pivot point yang salah → render order glitch. *Mitigasi*: definisikan aturan pivot point di art spec; uji dengan boss sprite awal
 - **TileMapLayer isometric di Godot 4.6 belum diverifikasi**: LLM tidak memiliki data post-cutoff tentang perubahan API spesifik. *Mitigasi*: wajib verifikasi dengan Godot editor sebelum implementasi room pertama
-- **Silhouette readability berkurang**: Karakter kecil (16px) dari sudut isometric lebih sulit dibaca. *Mitigasi*: test readability dini dengan grey-box sprite sebelum art produksi
+- **Silhouette readability**: Sprite 32–48px di sudut dimetric harus diverifikasi sebelum art produksi penuh. *Mitigasi*: test readability dini dengan grey-box sprite; ukuran 32px+ sudah terbukti terbaca di referensi (FFT, Disgaea)
 
 ## GDD Requirements Addressed
 
 | GDD System | Requirement | How This ADR Addresses It |
 |------------|-------------|--------------------------|
 | game-concept.md | "Art Style: Pixel art, 2D top-down" | Diubah ke "Pixel art, 2D isometric (dimetric)" — ADR ini adalah keputusan formal perubahan tersebut |
-| game-concept.md | "Karakter terbaca di ukuran 16–24px native" | Mensyaratkan verifikasi readability di isometric angle sebelum art spec final |
+| game-concept.md | "Karakter terbaca di ukuran 32–48px native" (direvisi dari 16–24px) | Sprite 32–48px terbukti terbaca di referensi dimetric (FFT, Disgaea); verifikasi grey-box wajib sebelum art produksi |
 | health-damage.md | Spatial positioning untuk combat | Gameplay logic 2D cartesian tetap valid; isometric hanya layer visual |
 
 ## Performance Implications
@@ -138,12 +146,12 @@ Implementasi teknis:
 1. Update `design/gdd/game-concept.md`: "top-down" → "isometric 2D (dimetric)" *(selesai bersamaan dengan ADR ini)*
 2. Update `design/art/art-bible.md`: tambah isometric spec (tile ratio, sprite angle, pivot rules, camera distance readability dari isometric view)
 3. Verifikasi TileMapLayer isometric di Godot 4.6 dengan quick test project sebelum implementasi room pertama
-4. Definisikan isometric tile size di art spec sebelum asset produksi dimulai
+4. Definisikan isometric tile size (64×32px) dan sprite target (32–48px) di art spec sebelum asset produksi dimulai
 
 ## Validation Criteria
 - TileMapLayer isometric mode berjalan di Compatibility renderer tanpa error
 - Y-sort mem-produce draw order yang benar untuk karakter yang berjalan di depan dan belakang walls
-- Grey-box sprite 16px terbaca dengan jelas dari isometric angle
+- Grey-box sprite 32px terbaca dengan jelas dari isometric angle — wajah, siluet, dan arah gerakan terbaca
 - Gameplay logic (collision, hitbox) berfungsi sama di isometric coordinate space
 
 ## Related Decisions

@@ -2,14 +2,14 @@
 
 > **Status**: Draft
 > **Created**: 2026-05-20
-> **Last Updated**: 2026-05-20
+> **Last Updated**: 2026-05-26
 > **Source Concept**: design/gdd/game-concept.md
 
 ---
 
 ## Overview
 
-The Last Cipher is a 2D top-down roguelike where Fayde composes spells by arranging
+The Last Cipher is a 2D isometric (dimetric) roguelike where Fayde composes spells by arranging
 Prana types in a 3×3 drag-and-drop grid. Mechanically the game is built from four bands of
 systems: a **Prana/spell spine** (grid placement → combination resolution → spell cast),
 a **combat layer** (player movement, health/damage, status effects, enemy AI), an
@@ -28,44 +28,46 @@ interactions, never a large shallow one.
 
 | # | System Name | Category | Priority | Status | Design Doc | Depends On |
 |---|-------------|----------|----------|--------|------------|------------|
-| 1 | Prana Grid | Gameplay | MVP | Not Started | — | Prana Data, Game State & Scene Flow |
-| 2 | Combination Resolution | Gameplay | MVP | Not Started | — | Prana Grid, Prana Data |
-| 3 | Spell Casting & Effects | Gameplay | MVP | Not Started | — | Combination Resolution, Player Controller, Health & Damage, Status Effects |
-| 4 | Prana Data | Data | MVP | Needs Revision | design/gdd/prana-data.md | — |
-| 5 | Player Controller *(inferred)* | Core | MVP | Not Started | — | Game State & Scene Flow |
-| 6 | Health & Damage *(inferred)* | Gameplay | MVP | Approved | design/gdd/health-damage.md | Game State & Scene Flow |
-| 7 | Status Effects | Gameplay | MVP | Not Started | — | Health & Damage |
-| 8 | Enemy AI *(inferred)* | Gameplay | MVP | Not Started | — | Enemy Data, Player Controller, Health & Damage |
-| 9 | Enemy Data *(inferred)* | Data | MVP | Approved | design/gdd/enemy-data.md | — |
-| 10 | Elemental Affiliation & Weakness | Gameplay | MVP | Not Started | — | Enemy Data, Prana Data, Spell Casting & Effects, Health & Damage |
+| 1 | Prana Grid | Gameplay | First Playable | Approved | design/gdd/prana-grid.md | Prana Data, Game State & Scene Flow |
+| 2 | Combination Resolution | Gameplay | First Playable | Approved | design/gdd/combination-resolution.md | Prana Grid, Prana Data |
+| 3 | Spell Casting & Effects *(simplified)* | Gameplay | First Playable | Designed | design/gdd/spell-casting-effects.md | Combination Resolution, Player Controller, Health & Damage |
+| 4 | Prana Data | Data | First Playable | Needs Revision | design/gdd/prana-data.md | — |
+| 5 | Player Controller | Core | First Playable | Approved | design/gdd/player-controller.md | Game State & Scene Flow |
+| 6 | Health & Damage | Gameplay | First Playable | Revised (pending re-review) | design/gdd/health-damage.md | Game State & Scene Flow |
+| 7 | Status Effects *(simplified)* | Gameplay | MVP | Not Started | — | Health & Damage |
+| 8 | Enemy AI *(simplified)* | Gameplay | First Playable | Not Started | — | Enemy Data, Player Controller, Health & Damage |
+| 9 | Enemy Data | Data | First Playable | Approved | design/gdd/enemy-data.md | — |
+| 10 | Elemental Affiliation & Weakness *(simplified)* | Gameplay | First Playable | Inlined | — (2× check inlined into SC&E at FP; extract to own GDD at MVP when resist/immune/UI needed) | Enemy Data, Prana Data, Spell Casting & Effects, Health & Damage |
 | 11 | Boss Encounter | Gameplay | Vertical Slice | Not Started | — | Enemy AI, Spell Casting & Effects, Health & Damage, Wave / Encounter System |
-| 12 | Wave / Encounter System *(inferred)* | Gameplay | MVP | Not Started | — | Enemy AI, Enemy Data, Health & Damage, Game State & Scene Flow |
-| 13 | Wave Peek | Gameplay | MVP | Not Started | — | Wave / Encounter System, Enemy Data, Elemental Affiliation & Weakness, Obstacle System |
-| 14 | Obstacle System | Gameplay | MVP | Not Started | — | Game State & Scene Flow, Spell Casting & Effects |
+| 12 | Wave / Encounter System *(simplified)* | Gameplay | First Playable | Not Started | — | Enemy AI, Enemy Data, Health & Damage, Game State & Scene Flow |
+| 13 | Wave Peek | Gameplay | Vertical Slice | Not Started | — | Wave / Encounter System, Enemy Data, Elemental Affiliation & Weakness, Obstacle System |
+| 14 | Obstacle System | Gameplay | Vertical Slice | Not Started | — | Game State & Scene Flow, Spell Casting & Effects |
 | 15 | Procedural Dungeon Generation | Gameplay | Vertical Slice | Not Started | — | Game State & Scene Flow, Obstacle System, Wave / Encounter System |
-| 16 | Prana Drop / Loot | Economy | MVP | Not Started | — | Prana Data, Wave / Encounter System, Procedural Dungeon Generation |
-| 17 | Run Management *(inferred)* | Progression | MVP | Not Started | — | Game State & Scene Flow, Wave / Encounter System, Boss Encounter, Procedural Dungeon Generation, Prana Drop / Loot |
+| 16 | Prana Drop / Loot | Economy | Vertical Slice | Not Started | — | Prana Data, Wave / Encounter System, Procedural Dungeon Generation |
+| 17 | Run Management *(simplified)* | Progression | MVP | Not Started | — | Game State & Scene Flow, Wave / Encounter System |
 | 18 | Loadout Slots | Progression | Vertical Slice | Not Started | — | Prana Grid, Combination Resolution |
 | 19 | Meta-Progression | Progression | Vertical Slice | Not Started | — | Save / Load, Prana Data, Run Management |
 | 20 | Difficulty Tiers | Progression | Alpha | Not Started | — | Run Management, Wave / Encounter System, Procedural Dungeon Generation |
 | 21 | Lore Fragments | Narrative | Alpha | Not Started | — | Boss Encounter, Save / Load, Run Management |
-| 22 | Combat HUD *(inferred)* | UI | MVP | Not Started | — | Health & Damage, Status Effects, Spell Casting & Effects, Combination Resolution |
-| 23 | Run Summary Screen | UI | MVP | Not Started | — | Run Management, Combination Resolution |
-| 24 | Main Menu *(inferred)* | UI | MVP | Not Started | — | Game State & Scene Flow |
-| 25 | Pause Menu *(inferred)* | UI | Vertical Slice | Not Started | — | Game State & Scene Flow |
-| 26 | Meta-Progression UI *(inferred)* | UI | Vertical Slice | Not Started | — | Meta-Progression |
-| 27 | Game State & Scene Flow *(inferred)* | Core | MVP | Approved | design/gdd/game-state-scene-flow.md | — |
-| 28 | Save / Load *(inferred)* | Persistence | Vertical Slice | Not Started | — | — |
-| 29 | Audio System | Audio | MVP | In Review | design/gdd/audio-system.md | — |
-| 30 | Game Feel / Juice | Gameplay | MVP | Not Started | — | Game State & Scene Flow, Audio System |
+| 22 | Combat HUD *(minimal)* | UI | First Playable | Not Started | — | Health & Damage, Spell Casting & Effects, Combination Resolution |
+| 23 | Run Summary Screen | UI | Vertical Slice | Not Started | — | Run Management, Combination Resolution |
+| 24 | Main Menu | UI | MVP | Not Started | — | Game State & Scene Flow |
+| 25 | Pause Menu | UI | Vertical Slice | Not Started | — | Game State & Scene Flow |
+| 26 | Meta-Progression UI | UI | Vertical Slice | Not Started | — | Meta-Progression |
+| 27 | Game State & Scene Flow | Core | First Playable | Approved | design/gdd/game-state-scene-flow.md | — |
+| 28 | Save / Load | Persistence | Vertical Slice | Not Started | — | — |
+| 29 | Audio System | Audio | Vertical Slice | Approved | design/gdd/audio-system.md | — |
+| 30 | Game Feel / Juice | Gameplay | Vertical Slice | Not Started | — | Game State & Scene Flow, Audio System |
 | 31 | Tutorial / Onboarding | Meta | Vertical Slice | Not Started | — | Prana Grid, Combination Resolution, Spell Casting & Effects, Wave / Encounter System, Wave Peek, Run Management |
 
-> **MVP reduced-scope note**: #16 Prana Drop / Loot and #17 Run Management remain MVP,
-> but their MVP versions are simplified because two of their dependencies were deferred
-> to Vertical Slice. MVP Prana Drop has no per-floor-theme drop tables (no #15). MVP Run
-> Management has no boss as the floor-end marker (no #11) — an MVP run is a sequence of
-> waves in a single arena ending in win (all waves cleared) or death. The full
-> dependencies are listed above for when those systems are designed at VS scope.
+> **Simplified scope notes**:
+> - **Spell Casting & Effects** (FP): hanya deal damage + efek visual minimal; status effects, VFX penuh, dan juice menyusul di MVP/VS
+> - **Enemy AI** (FP): move toward player + attack in range saja; pola kompleks dan ability menyusul di MVP
+> - **Elemental Affiliation** (FP): hanya 2× damage jika Prana match affiliation; resist/immune dan UI feedback lengkap menyusul di MVP
+> - **Wave / Encounter System** (FP): 1 arena hardcoded, 1–3 wave, 3–5 musuh per wave; tidak ada procedural, tidak ada loot
+> - **Status Effects** (MVP): 1–2 efek saja (misal: Freeze, Burn); tidak perlu full status matrix
+> - **Run Management** (MVP): mati = restart saja; tidak ada loot tracking, tidak ada meta-currency
+> - **Combat HUD** (FP): HP bar + Prana grid visible; tidak ada status effect icon, tidak ada wave counter lengkap
 
 ---
 
@@ -88,12 +90,13 @@ interactions, never a large shallow one.
 
 ## Priority Tiers
 
-| Tier | Definition | Target Milestone | Design Urgency |
-|------|------------|------------------|----------------|
-| **MVP** | Required to test the core hypothesis: the two-phase loop is fun and elemental affiliation drives meaningful decisions. 21 systems. | First playable | Design FIRST |
-| **Vertical Slice** | One complete, polished area — boss, dungeon generation, loadouts, meta-progression. 8 systems. | Vertical slice / demo | Design SECOND |
-| **Alpha** | All mechanical scope present in rough form — difficulty tiers, narrative. 2 systems. | Alpha milestone | Design THIRD |
-| **Full Vision** | Polish and content scale-up (5 layers, 20+ Prana types, full lore). No new systems. | Beta / Release | Design as needed |
+| Tier | Definition | Target Milestone | Systems | Design Urgency |
+|------|------------|------------------|---------|----------------|
+| **First Playable** | Minimum to test the core hypothesis in a single hardcoded arena: is the two-phase Preparation + Combat loop fun? Does elemental affiliation create meaningful decisions? | First internal playtest | 12 | Design NOW |
+| **MVP** | Shippable to players (itch.io / Steam demo): adds run lifecycle, main menu, and basic status effects above First Playable | Public demo / itch.io | 3 | Design AFTER FP |
+| **Vertical Slice** | One complete polished area — boss, dungeon generation, wave peek, audio, juice, loot, meta-progression | Demo / press build | 11 | Design THIRD |
+| **Alpha** | All mechanical scope present in rough form — difficulty tiers, narrative | Alpha milestone | 2 | Design as reached |
+| **Full Vision** | Polish and content scale-up (5 layers, 20+ Prana types, full lore) | Beta / Release | — | Design as needed |
 
 ---
 
@@ -105,7 +108,7 @@ Systems sorted by dependency order — design and build from top to bottom.
 
 1. Prana Data — defines the Prana catalog and Prana properties; the raw material of the entire Prana/spell spine
 2. Enemy Data — defines enemy types and their elemental-affiliation options
-3. Game State & Scene Flow — the scene/state framework (incl. top-down camera) every other system plugs into
+3. Game State & Scene Flow — the scene/state framework every other system plugs into
 4. Save / Load — serialization framework; no runtime dependencies
 5. Audio System — audio bus / manager framework
 
@@ -128,7 +131,7 @@ Systems sorted by dependency order — design and build from top to bottom.
 5. Wave Peek — depends on: Wave / Encounter System, Enemy Data, Elemental Affiliation & Weakness, Obstacle System
 6. Procedural Dungeon Generation — depends on: Game State & Scene Flow, Obstacle System, Wave / Encounter System
 7. Prana Drop / Loot — depends on: Prana Data, Wave / Encounter System, Procedural Dungeon Generation
-8. Run Management — depends on: Game State & Scene Flow, Wave / Encounter System, Boss Encounter, Procedural Dungeon Generation, Prana Drop / Loot
+8. Run Management — depends on: Game State & Scene Flow, Wave / Encounter System
 9. Loadout Slots — depends on: Prana Grid, Combination Resolution
 10. Meta-Progression — depends on: Save / Load, Prana Data, Run Management
 11. Difficulty Tiers — depends on: Run Management, Wave / Encounter System, Procedural Dungeon Generation
@@ -155,46 +158,60 @@ Encounter System, Run Management.
 
 ## Recommended Design Order
 
-Combining dependency sort and priority tiers. Effort: **S** = 1 session, **M** = 2-3
-sessions, **L** = 4+ sessions (one session = one focused design conversation producing
-a complete GDD).
+### Phase 1 — First Playable (design NOW)
 
-| Order | System | Priority | Layer | Agent(s) | Est. Effort |
-|-------|--------|----------|-------|----------|-------------|
-| 1 | Game State & Scene Flow | MVP | Foundation | game-designer | S |
-| 2 | Prana Data | MVP | Foundation | systems-designer | M |
-| 3 | Enemy Data | MVP | Foundation | systems-designer | S |
-| 4 | Audio System | MVP | Foundation | audio-director | S |
-| 5 | Health & Damage | MVP | Core | systems-designer | M |
-| 6 | Player Controller | MVP | Core | game-designer | M |
-| 7 | Prana Grid | MVP | Core | game-designer + ux-designer | L |
-| 8 | Combination Resolution | MVP | Core | systems-designer | L |
-| 9 | Status Effects | MVP | Core | systems-designer | M |
-| 10 | Spell Casting & Effects | MVP | Core | game-designer | L |
-| 11 | Enemy AI | MVP | Core | game-designer | M |
-| 12 | Wave / Encounter System | MVP | Feature | game-designer | M |
-| 13 | Elemental Affiliation & Weakness | MVP | Feature | systems-designer | M |
-| 14 | Obstacle System | MVP | Feature | game-designer | M |
-| 15 | Wave Peek | MVP | Feature | game-designer + ux-designer | M |
-| 16 | Prana Drop / Loot | MVP | Feature | economy-designer | M |
-| 17 | Run Management | MVP | Feature | game-designer | M |
-| 18 | Game Feel / Juice | MVP | Presentation | game-designer | M |
-| 19 | Combat HUD | MVP | Presentation | ux-designer | M |
-| 20 | Run Summary Screen | MVP | Presentation | ux-designer | S |
-| 21 | Main Menu | MVP | Presentation | ux-designer | S |
-| 22 | Boss Encounter | Vertical Slice | Feature | game-designer | L |
-| 23 | Procedural Dungeon Generation | Vertical Slice | Feature | level-designer | L |
-| 24 | Save / Load | Vertical Slice | Foundation | game-designer | S |
-| 25 | Loadout Slots | Vertical Slice | Feature | game-designer | M |
-| 26 | Meta-Progression | Vertical Slice | Feature | economy-designer | M |
-| 27 | Pause Menu | Vertical Slice | Presentation | ux-designer | S |
-| 28 | Meta-Progression UI | Vertical Slice | Presentation | ux-designer | M |
-| 29 | Tutorial / Onboarding | Vertical Slice | Polish | game-designer + ux-designer | M |
-| 30 | Difficulty Tiers | Alpha | Feature | systems-designer | M |
-| 31 | Lore Fragments | Alpha | Feature | narrative-director | M |
+| Order | System | Simplified Scope | Layer | Est. Effort |
+|-------|--------|-----------------|-------|-------------|
+| 1 | Game State & Scene Flow | ✓ Approved | Foundation | done |
+| 2 | Prana Data | ✓ Near-approved | Foundation | done |
+| 3 | Enemy Data | ✓ Approved | Foundation | done |
+| 4 | Health & Damage | ✓ Approved | Core | done |
+| 5 | Player Controller | Full spec | Core | M |
+| 6 | Prana Grid | Full spec | Core | L |
+| 7 | Combination Resolution | Full spec | Core | L |
+| 8 | Spell Casting & Effects | Damage only, no juice | Core | M |
+| 9 | Enemy AI | Move + attack only | Core | M |
+| 10 | Elemental Affiliation & Weakness | 2× damage only | Feature | S |
+| 11 | Wave / Encounter System | 1 arena, 1–3 waves | Feature | S |
+| 12 | Combat HUD | HP bar + grid only | Presentation | S |
 
-Total MVP effort estimate: 3 × S + 11 × M + 3 × L (≈ 30-40 design sessions across 21
-GDDs). Independent systems at the same layer may be designed in parallel.
+**First Playable total remaining**: 4 Approved + 4×M + 2×L + 3×S ≈ **12–16 design sessions**
+
+### Phase 2 — MVP (after First Playable validated)
+
+| Order | System | Simplified Scope | Layer | Est. Effort |
+|-------|--------|-----------------|-------|-------------|
+| 13 | Status Effects | 1–2 effects (Freeze, Burn) | Core | S |
+| 14 | Run Management | Die = restart only | Feature | S |
+| 15 | Main Menu | Press Start only | Presentation | S |
+
+**MVP total above FP**: 3×S ≈ **3–4 design sessions**
+
+### Phase 3 — Vertical Slice (after MVP shipped)
+
+| Order | System | Priority | Layer | Est. Effort |
+|-------|--------|----------|-------|-------------|
+| 16 | Audio System | Vertical Slice | Foundation | S |
+| 17 | Obstacle System | Vertical Slice | Feature | M |
+| 18 | Wave Peek | Vertical Slice | Feature | M |
+| 19 | Prana Drop / Loot | Vertical Slice | Economy | M |
+| 20 | Boss Encounter | Vertical Slice | Feature | L |
+| 21 | Procedural Dungeon Generation | Vertical Slice | Feature | L |
+| 22 | Save / Load | Vertical Slice | Foundation | S |
+| 23 | Loadout Slots | Vertical Slice | Feature | M |
+| 24 | Meta-Progression | Vertical Slice | Feature | M |
+| 25 | Game Feel / Juice | Vertical Slice | Presentation | M |
+| 26 | Run Summary Screen | Vertical Slice | Presentation | S |
+| 27 | Pause Menu | Vertical Slice | Presentation | S |
+| 28 | Meta-Progression UI | Vertical Slice | Presentation | M |
+| 29 | Tutorial / Onboarding | Vertical Slice | Polish | M |
+
+### Phase 4 — Alpha
+
+| Order | System | Priority | Layer | Est. Effort |
+|-------|--------|----------|-------|-------------|
+| 30 | Difficulty Tiers | Alpha | Feature | M |
+| 31 | Lore Fragments | Alpha | Feature | M |
 
 ---
 
@@ -218,8 +235,7 @@ No **hard** circular dependencies found.
 | Combination Resolution | Design | Exponential combination space — the concept calls this "the single decision that shapes the entire design" | Already prototyped (REPORT.md verdict PROCEED — center-slot + position-based combos); keep balance under constant playtest + `/balance-check` |
 | Prana Grid | Design / UX | Drag-and-drop is mouse-optimized; gamepad needs a fully different Prana-selection UX (flagged in technical-preferences.md) | GDD must specify a gamepad interaction model; pair with a `/ux-design` spec before implementation |
 | Procedural Dungeon Generation | Technical | Procedural rooms that feel hand-authored is a known-hard problem | Room-template approach; deferred to Vertical Slice tier to keep it out of MVP risk |
-| Combination Resolution / overall balance | Scope | Exponential states mean some combos will be degenerate or broken | Early and constant playtesting; run `/balance-check` after each Prana type is added |
-| Spell Casting ↔ Elemental Affiliation | Design | Soft coupling — each needs the other | Signal contract (see Circular Dependencies) |
+| Isometric rendering setup | Technical | TileMapLayer isometric di Godot 4.6 belum diverifikasi; Y-sort edge cases pada sprite besar | ADR-0001 Accepted; wajib verifikasi dengan test project sebelum implementasi room pertama (lihat ADR-0001 Validation Criteria) |
 
 ---
 
@@ -228,18 +244,24 @@ No **hard** circular dependencies found.
 | Metric | Count |
 |--------|-------|
 | Total systems identified | 31 |
-| Design docs started | 5 |
-| Design docs reviewed | 5 |
-| Design docs approved | 3 |
-| MVP systems designed | 5 / 21 |
-| Vertical Slice systems designed | 0 / 8 |
+| First Playable systems | 12 |
+| MVP systems (above FP) | 3 |
+| Vertical Slice systems | 14 |
+| Alpha systems | 2 |
+| Design docs approved | 4 (Game State & Scene Flow, Health & Damage, Enemy Data, Prana Data*) |
+| First Playable systems designed | 6 / 12 (SC&E designed; EA&W inlined into SC&E at FP scope) |
+
+*Prana Data: near-approved, pending fresh /design-review
 
 ---
 
 ## Next Steps
 
-- [ ] Design MVP-tier systems in design order, starting with Game State & Scene Flow (use `/design-system [system-name]` or `/map-systems next`)
-- [ ] Run `/design-review design/gdd/[system].md` on each completed GDD
-- [ ] Art bible (`design/art/art-bible.md`) — complete remaining sections (6–9) before the first Prana-facing GDD; establishes the Prana-to-color mapping
-- [ ] Run `/gate-check pre-production` when all MVP-tier GDDs are designed and reviewed
-- [ ] Validate the highest-risk systems with `/vertical-slice` before committing to Production
+- [ ] Close pending GDD reviews: Audio System (round 3), Prana Data (fresh session) — Sprint 1 tasks S1-01, S1-02
+- [ ] Design Player Controller GDD — Sprint 1 task S1-03
+- [ ] Design Prana Grid GDD — Sprint 1 task S1-04
+- [ ] Design Combination Resolution GDD — Sprint 1 task S1-05
+- [ ] Then: Spell Casting & Effects (simplified), Enemy AI (simplified), Elemental Affiliation (simplified), Wave/Encounter (simplified), Combat HUD (minimal)
+- [ ] Verify isometric TileMapLayer in Godot 4.6 with a test project (ADR-0001 prerequisite)
+- [ ] Run `/gate-check pre-production` when all First Playable GDDs are approved
+- [ ] First internal playtest after First Playable implementation complete

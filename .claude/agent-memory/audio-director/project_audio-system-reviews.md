@@ -5,7 +5,7 @@ metadata:
   type: project
 ---
 
-Audio System GDD (`design/gdd/audio-system.md`) has undergone three design-review passes as of 2026-05-23.
+Audio System GDD (`design/gdd/audio-system.md`) has undergone four design-review passes as of 2026-05-26.
 
 **Review 1 (2026-05-22):** 14 blockers found. All resolved in revision pass (pool raised to 24, DYING state added, A/B ambient added, Tween API patterns locked, etc.).
 
@@ -23,3 +23,20 @@ Advisory findings (non-blocking):
 9. A/B ambient supports one layer; Player Fantasy implies state-reactive ambient swaps that are unspecified as a system responsibility.
 
 **How to apply:** All 4 blockers must be resolved before GDD status advances from "In Design." Advisories are content spec gaps affecting sound design production, not framework implementation.
+
+**Review 3 (2026-05-26):** Adversarial audio-direction review across 10 mandated challenge areas. Round 2 blockers were confirmed resolved (AMB ceiling added, DYING duck documented, dip acknowledged globally, slider debounce added). New blockers found:
+1. BLOCKING — No minimum loudness floor for Prana SFX. "Magic screams" has no enforcement on the loud side — asset at −12 dBTP passes validation but fails the identity contract. Fix: add minimum true peak floor (e.g., −6 dBTP) for Prana cast / hit SFX in Visual/Audio Requirements.
+2. BLOCKING — TO_END crossfade midpoint dip mitigation is physically impossible. "Strong entry attack covers the dip" fails because the incoming cue is at −80 dB when the attack occurs. DYING→END_DEFEAT path is mischaracterized (no dip — outgoing already silent). Fix: either use constant-power curve for TO_END, or sequential fade for Victory/Defeat. Clarify DYING→END_DEFEAT path separately.
+3. BLOCKING — AMB bus not ducked during stinger. At memory_final duck (−14 dB), Music drops to −20 dB while AMB stays at −12 dB. AMB becomes louder than Music at the plot twist moment. Fix: add AMB duck path for NARRATIVE stingers in Core Rule 12.
+4. BLOCKING — 0.1s DYING fade is in click-artifact zone (not a perceptible fade, not a clean cut). Tuning Knob note says "too short: abrupt mute" but the default is 0.1s, which IS an abrupt mute. Fix: either set 0.0s (instant cut, use the fade_duration guard) or set 0.05s and document as de-click fade, not a perceptible transition.
+5. BLOCKING — COMBAT→END_DEFEAT 2.0s simultaneous crossfade produces a 2-second audio clash (high-energy combat music blends with defeat theme at equal volume at midpoint). No composer guidance for this specific pair. Fix: either route all END_DEFEAT through DYING silence, or reduce TO_END duration for direct COMBAT→END_DEFEAT path, or add explicit composer guidance.
+6. BLOCKING — NARRATIVE stinger priority blocks boss spawn stinger with no CRITICAL escape hatch. A memory fragment stinger playing when a boss spawns silently discards the boss spawn audio cue. Fix: add stinger_priority = 2 (CRITICAL) tier that preempts all stingers including NARRATIVE, and assign boss_spawn to CRITICAL.
+7. BLOCKING — Linear dB slider dead zone is a launch-visible player-facing defect. Bottom 25% of slider produces no audible change; players will report broken audio. Fix is 1–3 lines of code (square-root or logarithmic curve). Must not ship as post-MVP deferral.
+8. BLOCKING — User volume change during active stinger duck is overwritten by restore. Player adjusts Music volume during a 2s stinger; on stinger finish, restore resets to pre-duck value, discarding the user's manual change. Fix: check whether user-modified volume differs from stored pre-duck value before restoring; if changed, skip restore.
+9. BLOCKING — Music player node volume_db has no enforced upper bound. Bus ceiling at −3 dB does not prevent player node from being set to +6 dB (Godot allows positive volume_db on AudioStreamPlayer). Fix: GDD must explicitly require music player nodes target volume_db = 0.0 as maximum.
+
+Advisory findings (Round 3):
+10. RECOMMENDED — −3 dB Music-to-SFX headroom claim is scoped wrong. "Architecturally enforces at least 3 dB headroom" is false when user reduces SFX volume below default. Scope the claim to "within default bus configuration."
+11. RECOMMENDED — boss_kill stinger call site is unconfirmed and its interaction with a competing NARRATIVE stinger is undocumented. Note for Boss Encounter GDD #11.
+
+**How to apply:** All 9 Round-3 blockers must be resolved before GDD advances. Advisories 10–11 are documentation accuracy and content gaps.

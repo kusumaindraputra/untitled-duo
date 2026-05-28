@@ -9,7 +9,7 @@ model: sonnet
 
 ## Phase 0: Parse Arguments
 
-Extract `--depth [full|lean|solo]` if present. Default is `full` when no flag is given.
+Extract `--depth [full|lean|solo]` if present. Default is `lean` when no flag is given.
 
 **Note**: `--depth` controls the *analysis depth* of this skill (how many specialist agents are spawned). It is independent of the global review mode in `production/review-mode.txt`, which controls director gate spawning. These are two different concepts — `--depth` is about how thoroughly *this* skill analyses the document.
 
