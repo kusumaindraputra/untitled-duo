@@ -1,6 +1,6 @@
 # Combination Resolution
 
-> **Status**: Designed (pending /design-review)
+> **Status**: In Review — revised (ready for round-2 /design-review)
 > **Author**: Kusuma Putra + Claude Code Game Studios
 > **Last Updated**: 2026-05-28
 > **Implements Pillar**: Pillar 2 (Power is Earned Through Understanding), Pillar 3 (Chaos Has Consequences), Pillar 4 (Depth Over Breadth)
@@ -129,7 +129,7 @@ A fragment at a grid edge or corner cannot satisfy conditions whose required dir
 | `primary_tier` | `int` (1–3) | From effective primary count |
 | `base_damage_modifier` | `float` | From `PranaCatalog.get_type(primary_type).base_damage_modifier` |
 | `aggregate_stat_bonus` | `Dictionary[StringName, float]` | Summed stat_property values from all fragments + any triggered STAT_BONUS adjacency effects |
-| `fallback_status` | `GameEnums.BaseStatus` | Primary type's `base_status`; used when no non-primaries are active |
+| `primary_base_status` | `GameEnums.BaseStatus` | Primary type's `base_status`; **SC&E MUST apply this on every primary attack regardless of `non_primary_modifiers` content** |
 | `non_primary_modifiers` | `Array[NonPrimaryModifier]` | One entry per active non-primary type |
 | `active_adjacency_effects` | `Array[EffectModifier]` | All adjacency effects whose conditions were satisfied this wave |
 
@@ -474,7 +474,7 @@ Each `AdjacencyEffect` a fragment carries draws one `EffectModifier` from the po
 | `ADJ_DOUBLE_HIT` | Double Hit | None — always active when fragment is placed in any slot | First chain attack fires twice before advancing. Second firing deals `0.75×` first hit's damage. Status applies on both (refresh). |
 | `ADJ_PIERCE` | Pierce | Any 1 cardinal neighbor, any type | First chain attack passes through primary target and hits next enemy in targeting direction at `0.60×` damage. Status applies on pierce target. |
 | `ADJ_SPLASH` | Splash AoE | Any 2 cardinal neighbors, any types | First chain attack hits all enemies within `ADJ_SPLASH_RADIUS = 60px` of primary target at `0.50×` damage. No status on secondary splash targets. |
-| `ADJ_STATUS_EXTEND` | Status Extend | One vertical neighbor — randomly assigned as ABOVE or BELOW at fragment generation; direction is fixed per fragment instance and visible in UI — must match primary type | Primary type's applied status extended by `ADJ_STATUS_EXT = 1.0s` on primary target. Burn tick count recalculated: `floor((duration + 1.0) / tick_rate)`. |
+| `ADJ_STATUS_EXTEND` | Status Extend | One vertical neighbor — randomly assigned as ABOVE or BELOW at fragment generation; direction is fixed per fragment instance and visible in UI — must match **this fragment's own Prana type** (`required_type_id = fragment.type_id` at generation; not a dynamic sentinel for the primary type) | Primary type's applied status extended by `ADJ_STATUS_EXT = 1.0s` on primary target. Burn tick count recalculated: `floor((duration + 1.0) / tick_rate)`. |
 | `ADJ_COMBO_EXTEND` | Combo Window Extend | Any 1 cardinal neighbor (LEFT or RIGHT), any type | `combo_continuation_window` extended by `ADJ_COMBO_WIN = 0.5s`. Stacks additively with Stormgold non-primary window extension. |
 | `ADJ_EXTRA_HIT` | Extra Combo Hit | Any 1 cardinal neighbor must match primary type | Bonus attack appended to end of chain at `0.80×` of chain's final attack modifier. Applies primary status. Does not increase `primary_tier`. |
 | `ADJ_LIFESTEAL` | Lifesteal | Any 1 cardinal neighbor must be Verdant (type 4) | Fayde heals `ADJ_LIFESTEAL_PCT = 0.20` × `final_damage` per chain hit. At 25 damage: **5 HP** per hit. Applied via `apply_heal()`. |
@@ -484,7 +484,7 @@ Each `AdjacencyEffect` a fragment carries draws one `EffectModifier` from the po
 | `ADJ_BURN_INTENSIFY` | Burn Intensify | ABOVE = Ashfire (type 0) AND BELOW = Ashfire (type 0) | `burn_tick_magnitude` increased by `ADJ_BURN_INTENSIFY_BONUS = 0.04` for this cast. At base 0.08 → 0.12 per tick. Total Burn: `base_damage × 0.12 × 4`. At base_damage=20: **9.6** instead of 6.4. |
 | `ADJ_PHASE_SHIFT` | Phase Shift | LEFT = Voidblue (type 1) AND RIGHT = Voidblue (type 1) | Fayde becomes intangible for `ADJ_PHASE_DURATION = 0.6s` after cast resolves, negating any CONTACT damage. Does not stack with existing i-frame — longer window takes precedence. |
 | `ADJ_BARRIER_HIT` | Barrier on Kill | Any 1 cardinal neighbor, any type | First kill in the chain grants Fayde a one-hit absorb barrier (absorbs entire next hit) lasting `ADJ_BARRIER_DUR = 5.0s`. If no kill occurs, no barrier. |
-| `ADJ_ECHO` | Echo Strike | ABOVE = any type | After full chain resolves, an Echo Strike fires automatically after `ADJ_ECHO_DELAY = 0.8s` at `0.50×` first attack's modifier. Applies primary type's status. Does not consume combo input. |
+| `ADJ_ECHO` | Echo Strike | ABOVE = any type | After full chain resolves, an Echo Strike fires automatically after `ADJ_ECHO_DELAY = 0.8s` at `0.50×` first attack's modifier. Targets the nearest live enemy at fire time; if no enemies remain, Echo is suppressed. Applies primary type's status. Does not consume combo input. |
 
 **Condition notation:** "Any 1 cardinal neighbor must be X" means one specific direction (ABOVE, BELOW, LEFT, or RIGHT) is assigned randomly at fragment generation. The direction is fixed per fragment instance and visible to the player in the UI.
 
@@ -609,6 +609,10 @@ Each `PranaFragment` carries one `StatProperty` (always active when placed, rega
 - **If multiple combo window extensions are active simultaneously (Stormgold non-primary + `ADJ_COMBO_EXTEND` + `STORM_COMBO_SPD` stat):** All extend additively. No cap at First Playable scope. If playtest reveals excessive window tolerance, add `COMBO_WINDOW_MAX` tuning knob.
 
 - **If the Core Prana starter fragment is replaced during the run by a drop:** No special CR handling — it is simply a different fragment in slot 4. Core Prana selection has no persistent effect on CR after run start.
+
+- **If the primary target dies from the first chain attack before `ADJ_CHAIN_LIGHTNING`'s arc fires:** Arc re-targets to the nearest surviving enemy at the moment the second attack resolves. If no other enemies remain, the arc is suppressed. No error logged.
+
+- **If the primary target dies from the first firing of `ADJ_DOUBLE_HIT` (1.00× hit):** The second firing (0.75×) is suppressed — no primary target remains. Chain advances to the next attack normally. No error logged.
 
 ## Dependencies
 
@@ -785,7 +789,7 @@ Each `PranaFragment` carries one `StatProperty` (always active when placed, rega
 ### AC-CR-13: Base damage modifier and fallback status sourced from PranaCatalog *(Logic)*
 **Given** slot 4 = Verdant lv.1 (primary); `PranaCatalog.get_type(4)` returns `base_damage_modifier = 0.70` and `base_status = REGENERATE`
 **When** CR resolves
-**Then** `SpellEffect.base_damage_modifier == 0.70`; `SpellEffect.fallback_status == REGENERATE`
+**Then** `SpellEffect.base_damage_modifier == 0.70`; `SpellEffect.primary_base_status == REGENERATE`
 **Pass**: Assert both fields match PranaCatalog values. Use a test double for PranaCatalog returning known values.
 
 ---
@@ -910,7 +914,15 @@ Each `PranaFragment` carries one `StatProperty` (always active when placed, rega
 
 ---
 
-*Coverage map: AC-CR-01–12 = Section C core rules 1–12; AC-CR-02–06 = Formula 1–2 (primary count/tier); AC-CR-07–10 = Formula 3–4 (non-primary count/tier); AC-CR-13 = Formula 5/6 payload fields; AC-CR-14–15 = Formula 8 stat aggregation; AC-CR-16–23 = Formula 7 adjacency pool (no-condition, AND-satisfied, AND-partial, bounds, null, type mismatch, wildcard, multi-fragment); AC-CR-24–28 = signal contract + edge cases.*
+### AC-CR-29: `primary_base_status` populated alongside active non-primary modifiers *(Logic)*
+**Given** slot 4 = Ashfire lv.1 (primary); slot 0 = Deepfrost lv.1 (`effective_nonprimary_count(Deepfrost) = 1` → non-primary tier 1); all other slots null
+**When** CR resolves
+**Then** `SpellEffect.primary_base_status == GameEnums.BaseStatus.BURN`; `non_primary_modifiers` contains exactly one entry: Deepfrost with `tier == 1`
+**Pass**: Assert `primary_base_status == BURN`. Assert `non_primary_modifiers.size() == 1` with `type_id == 3` and `tier == 1`. Confirms the SC&E contract: `primary_base_status` is always populated regardless of `non_primary_modifiers` content.
+
+---
+
+*Coverage map: AC-CR-01–12 = Section C core rules 1–12; AC-CR-02–06 = Formula 1–2 (primary count/tier); AC-CR-07–10 = Formula 3–4 (non-primary count/tier); AC-CR-13 = Formula 5/6 payload fields; AC-CR-14–15 = Formula 8 stat aggregation; AC-CR-16–23 = Formula 7 adjacency pool (no-condition, AND-satisfied, AND-partial, bounds, null, type mismatch, wildcard, multi-fragment); AC-CR-24–28 = signal contract + edge cases; AC-CR-29 = primary_base_status / non-primary coexistence (SC&E contract).*
 
 ## Open Questions
 

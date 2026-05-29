@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-05-28"  # updated: BASE_SPELL_DAMAGE constant added (SC&E GDD); referenced_by updated for final_damage, fayde_max_hp, and all 5 prana types
+last_updated: "2026-05-29"  # updated: 3 new constants (burn_contagion_range, burn_contagion_duration, shatter_multiplier); referenced_by extended for 13 entries (Status Effects GDD); 3 new constants (nonprimary_freeze_duration, chill_slow_pct, chill_duration) from /consistency-check
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -56,6 +56,7 @@ entities:
       - design/gdd/prana-data.md
       - design/gdd/enemy-data.md  # Charger prana_affiliation + drop_prana_type
       - design/gdd/spell-casting-effects.md  # base_damage_modifier used in Formula 3; dance melee identity
+      - design/gdd/combat-hud.md  # color #F24C1D used for damage number and chain dot coloring
     prana_id: 0
     color: "#F24C1D"
     damage_class: Fire
@@ -71,6 +72,7 @@ entities:
       - design/gdd/prana-data.md
       - design/gdd/enemy-data.md  # Drifter prana_affiliation + drop_prana_type
       - design/gdd/spell-casting-effects.md  # base_damage_modifier used in Formula 3
+      - design/gdd/combat-hud.md  # color #4A5EF5 used for damage number and chain dot coloring
     prana_id: 1
     color: "#4A5EF5"
     damage_class: Shadow
@@ -86,6 +88,7 @@ entities:
       - design/gdd/prana-data.md
       - design/gdd/enemy-data.md  # Cluster prana_affiliation + drop_prana_type
       - design/gdd/spell-casting-effects.md  # base_damage_modifier used in Formula 3
+      - design/gdd/combat-hud.md  # color #FFCC00 used for damage number and chain dot coloring
     prana_id: 2
     color: "#FFCC00"
     damage_class: Lightning
@@ -100,6 +103,7 @@ entities:
     referenced_by:
       - design/gdd/prana-data.md
       - design/gdd/spell-casting-effects.md  # base_damage_modifier used in Formula 3
+      - design/gdd/combat-hud.md  # color #3DD9F0 used for damage number and chain dot coloring
     prana_id: 3
     color: "#3DD9F0"
     damage_class: Ice
@@ -114,6 +118,7 @@ entities:
     referenced_by:
       - design/gdd/prana-data.md
       - design/gdd/spell-casting-effects.md  # base_damage_modifier + barrier formula (Formula 8)
+      - design/gdd/combat-hud.md  # color #1AC953 used for damage number and chain dot coloring
     prana_id: 4
     color: "#1AC953"
     damage_class: Nature
@@ -127,6 +132,7 @@ entities:
     source: design/gdd/enemy-data.md
     referenced_by:
       - design/gdd/enemy-data.md
+      - design/gdd/enemy-ai.md  # archetype routing, base_damage, base_move_speed cached at spawn
     enemy_id: 0
     archetype: SEEKER
     prana_affiliation: Voidblue  # Shadow / damage_class=Shadow
@@ -146,6 +152,7 @@ entities:
     source: design/gdd/enemy-data.md
     referenced_by:
       - design/gdd/enemy-data.md
+      - design/gdd/enemy-ai.md  # archetype routing, base_damage, base_move_speed cached at spawn
     enemy_id: 1
     archetype: RUSHER
     prana_affiliation: Ashfire  # Fire / damage_class=Fire
@@ -165,6 +172,7 @@ entities:
     source: design/gdd/enemy-data.md
     referenced_by:
       - design/gdd/enemy-data.md
+      - design/gdd/enemy-ai.md  # archetype routing, base_damage, base_move_speed cached at spawn
     enemy_id: 2
     archetype: SWARMER
     prana_affiliation: Stormgold  # Lightning / damage_class=Lightning
@@ -261,6 +269,7 @@ formulas:
     referenced_by:
       - design/gdd/health-damage.md
       - design/gdd/spell-casting-effects.md  # SC&E feeds raw_damage as base_damage input via apply_damage()
+      - design/gdd/status-effects.md  # Burn/Regen ticks call apply_damage/apply_heal into this pipeline
     variables:
       - base_damage      # float 0.0–unbounded; from enemy base_damage or spell base
       - damage_multiplier  # float 0.0–unbounded; from Elemental Affiliation & Weakness (1.0 if no element)
@@ -276,6 +285,7 @@ formulas:
     source: design/gdd/prana-data.md
     referenced_by:
       - design/gdd/prana-data.md
+      - design/gdd/status-effects.md  # Formula 1 — Burn Tick Damage uses burn_tick_magnitude and burn_duration
     variables:
       - base_damage
       - burn_tick_magnitude
@@ -291,6 +301,7 @@ formulas:
     source: design/gdd/prana-data.md
     referenced_by:
       - design/gdd/prana-data.md
+      - design/gdd/status-effects.md  # Formula 2 — Regen Tick Heal uses regen_tick_magnitude and fayde_max_hp
     variables:
       - fayde_max_hp
       - regen_tick_magnitude
@@ -306,6 +317,8 @@ formulas:
     source: design/gdd/enemy-data.md  # defined here; implemented by Status Effects GDD
     referenced_by:
       - design/gdd/enemy-data.md
+      - design/gdd/enemy-ai.md  # MVP velocity expression; slow_pct = 0.0 at FP scope
+      - design/gdd/status-effects.md  # Formula 3 reference; FREEZE sets slow_percentage = 0.50
     variables:
       - base_move_speed  # float px/s; from Enemy Data catalog
       - slow_percentage  # float 0.0–1.0; from Status Effects (Freeze = 0.50 per Prana Data)
@@ -347,6 +360,17 @@ formulas:
 # Required fields: name, status, source, referenced_by, value, unit, added
 
 constants:
+  - name: enemy_min_contact_interval
+    status: active
+    source: design/gdd/enemy-ai.md
+    referenced_by:
+      - design/gdd/enemy-ai.md  # enforcer — contact timer period
+      - design/gdd/health-damage.md  # depends on this for i-frame protection (Dependency #5)
+    value: 0.3
+    unit: seconds
+    added: 2026-05-28
+    revised: ""
+
   - name: fayde_max_hp
     status: active
     source: design/gdd/health-damage.md
@@ -354,6 +378,8 @@ constants:
       - design/gdd/health-damage.md
       - design/gdd/prana-data.md  # regen_total formula uses fayde_max_hp as base
       - design/gdd/spell-casting-effects.md  # Verdant barrier HP formula (Formula 8)
+      - design/gdd/combat-hud.md  # HP bar max_value and Formula 1 (bar fill fraction)
+      - design/gdd/status-effects.md  # Formula 2 — regen_tick_heal = fayde_max_hp × REGEN_TICK_MAGNITUDE
     value: 100
     unit: hit points
     added: 2026-05-23
@@ -386,6 +412,7 @@ constants:
     source: design/gdd/prana-data.md
     referenced_by:
       - design/gdd/prana-data.md
+      - design/gdd/status-effects.md  # tick_interval = burn_duration / 4 = 0.5s
     value: 2.0
     unit: seconds
     added: 2026-05-23
@@ -396,6 +423,7 @@ constants:
     source: design/gdd/prana-data.md
     referenced_by:
       - design/gdd/prana-data.md
+      - design/gdd/status-effects.md  # Formula 1: burn_tick_damage = spell_base_damage × BURN_TICK_MAGNITUDE
     value: 0.08
     unit: fraction of base_damage per tick
     added: 2026-05-23
@@ -406,6 +434,7 @@ constants:
     source: design/gdd/prana-data.md
     referenced_by:
       - design/gdd/prana-data.md
+      - design/gdd/status-effects.md  # Blind stub: holds this value for VS implementation
     value: 0.50
     unit: probability (0.0–1.0)
     added: 2026-05-23
@@ -416,6 +445,7 @@ constants:
     source: design/gdd/prana-data.md
     referenced_by:
       - design/gdd/prana-data.md
+      - design/gdd/status-effects.md  # Blind stub duration
     value: 2.0
     unit: seconds
     added: 2026-05-23
@@ -426,6 +456,7 @@ constants:
     source: design/gdd/prana-data.md
     referenced_by:
       - design/gdd/prana-data.md
+      - design/gdd/status-effects.md  # Stun stub duration
     value: 0.8
     unit: seconds
     added: 2026-05-23
@@ -436,6 +467,7 @@ constants:
     source: design/gdd/prana-data.md
     referenced_by:
       - design/gdd/prana-data.md
+      - design/gdd/status-effects.md  # FREEZE StatusInstance duration
     value: 2.0
     unit: seconds
     added: 2026-05-23
@@ -446,6 +478,7 @@ constants:
     source: design/gdd/prana-data.md
     referenced_by:
       - design/gdd/prana-data.md
+      - design/gdd/status-effects.md  # Formula 3: slow_percentage = freeze_slow_pct when FREEZE active
     value: 0.50
     unit: movement speed multiplier reduction (0.0–1.0)
     added: 2026-05-23
@@ -456,6 +489,7 @@ constants:
     source: design/gdd/prana-data.md
     referenced_by:
       - design/gdd/prana-data.md
+      - design/gdd/status-effects.md  # Formula 2: regen_tick_heal = fayde_max_hp × REGEN_TICK_MAGNITUDE
     value: 0.02
     unit: fraction of fayde_max_hp per tick
     added: 2026-05-23
@@ -466,9 +500,76 @@ constants:
     source: design/gdd/prana-data.md
     referenced_by:
       - design/gdd/prana-data.md
+      - design/gdd/status-effects.md  # REGENERATE StatusInstance duration; tick_interval = regen_duration / 3 = 1.0s
     value: 3.0
     unit: seconds
     added: 2026-05-23
+    revised: ""
+
+  - name: burn_contagion_range
+    status: active
+    source: design/gdd/prana-data.md  # defined in Prana Data Rule 7 conditional depth behavior
+    referenced_by:
+      - design/gdd/prana-data.md
+      - design/gdd/status-effects.md  # Burn Contagion range check (Rule 10 + Formula 5)
+    value: 200
+    unit: pixels
+    added: 2026-05-29
+    revised: ""
+
+  - name: burn_contagion_duration
+    status: active
+    source: design/gdd/prana-data.md  # defined in Prana Data Rule 7; fixed, not tunable via burn_duration
+    referenced_by:
+      - design/gdd/prana-data.md
+      - design/gdd/status-effects.md  # Contagion transfer uses this fixed duration (not BURN_DURATION)
+    value: 2.0
+    unit: seconds
+    added: 2026-05-29
+    revised: ""
+
+  - name: shatter_multiplier
+    status: active
+    source: design/gdd/prana-data.md  # defined in Prana Data Rule 7 (Deepfrost +25% on Frozen targets)
+    referenced_by:
+      - design/gdd/prana-data.md
+      - design/gdd/status-effects.md  # Formula 4: shattered_base_damage = base_damage × SHATTER_MULTIPLIER
+    value: 1.25
+    unit: damage multiplier
+    added: 2026-05-29
+    revised: ""
+
+  - name: nonprimary_freeze_duration
+    status: active
+    source: design/gdd/combination-resolution.md  # Deepfrost T2 non-primary Freeze; shorter than primary freeze_duration (2.0s) by design
+    referenced_by:
+      - design/gdd/combination-resolution.md
+      - design/gdd/spell-casting-effects.md  # Deepfrost NP T2: first hit applies STATUS_FREEZE for this duration
+    value: 1.0
+    unit: seconds
+    added: 2026-05-29
+    revised: ""
+
+  - name: chill_slow_pct
+    status: active
+    source: design/gdd/combination-resolution.md  # Deepfrost non-primary slow fraction (Chill ≠ Freeze; no root, weaker slow)
+    referenced_by:
+      - design/gdd/combination-resolution.md
+      - design/gdd/spell-casting-effects.md  # Deepfrost NP T1/T2: Chill slow; hard cap CHILL_SLOW_PCT + FROST_CHILL_WIDE ≤ 0.40
+    value: 0.15
+    unit: movement speed multiplier reduction (0.0–1.0)
+    added: 2026-05-29
+    revised: ""
+
+  - name: chill_duration
+    status: active
+    source: design/gdd/combination-resolution.md  # Deepfrost non-primary Chill duration (all tiers)
+    referenced_by:
+      - design/gdd/combination-resolution.md
+      - design/gdd/spell-casting-effects.md  # Deepfrost NP T1: apply_status(target, STATUS_CHILL, CHILL_DURATION)
+    value: 2.0
+    unit: seconds
+    added: 2026-05-29
     revised: ""
 
 # Example:
