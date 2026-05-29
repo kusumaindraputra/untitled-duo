@@ -29,12 +29,12 @@ interactions, never a large shallow one.
 | # | System Name | Category | Priority | Status | Design Doc | Depends On |
 |---|-------------|----------|----------|--------|------------|------------|
 | 1 | Prana Grid | Gameplay | First Playable | Approved | design/gdd/prana-grid.md | Prana Data, Game State & Scene Flow |
-| 2 | Combination Resolution | Gameplay | First Playable | In Review | design/gdd/combination-resolution.md | Prana Grid, Prana Data |
-| 3 | Spell Casting & Effects *(simplified)* | Gameplay | First Playable | Designed | design/gdd/spell-casting-effects.md | Combination Resolution, Player Controller, Health & Damage |
+| 2 | Combination Resolution | Gameplay | First Playable | Approved | design/gdd/combination-resolution.md | Prana Grid, Prana Data |
+| 3 | Spell Casting & Effects *(simplified)* | Gameplay | First Playable | In Review | design/gdd/spell-casting-effects.md | Combination Resolution, Player Controller, Health & Damage |
 | 4 | Prana Data | Data | First Playable | Needs Revision | design/gdd/prana-data.md | — |
 | 5 | Player Controller | Core | First Playable | Approved | design/gdd/player-controller.md | Game State & Scene Flow |
 | 6 | Health & Damage | Gameplay | First Playable | Approved | design/gdd/health-damage.md | Game State & Scene Flow |
-| 7 | Status Effects *(simplified)* | Gameplay | MVP | Designed | design/gdd/status-effects.md | Health & Damage |
+| 7 | Status Effects *(simplified)* | Gameplay | MVP | In Review | design/gdd/status-effects.md | Health & Damage |
 | 8 | Enemy AI *(simplified)* | Gameplay | First Playable | Designed | design/gdd/enemy-ai.md | Enemy Data, Player Controller, Health & Damage |
 | 9 | Enemy Data | Data | First Playable | Approved | design/gdd/enemy-data.md | — |
 | 10 | Elemental Affiliation & Weakness *(simplified)* | Gameplay | First Playable | Inlined | — (2× check inlined into SC&E at FP; extract to own GDD at MVP when resist/immune/UI needed) | Enemy Data, Prana Data, Spell Casting & Effects, Health & Damage |

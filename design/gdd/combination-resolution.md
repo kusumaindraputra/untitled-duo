@@ -1,6 +1,6 @@
 # Combination Resolution
 
-> **Status**: In Review — revised (ready for round-2 /design-review)
+> **Status**: Approved (2026-05-29)
 > **Author**: Kusuma Putra + Claude Code Game Studios
 > **Last Updated**: 2026-05-28
 > **Implements Pillar**: Pillar 2 (Power is Earned Through Understanding), Pillar 3 (Chaos Has Consequences), Pillar 4 (Depth Over Breadth)
@@ -329,7 +329,7 @@ Thematic identity: shadow pressure, control escalation, attack suppression rathe
 | **T2** | 2 | First: Strike `1.00×`; Second: Shadow pull `1.10×` — draws nearest non-targeted enemy 60px closer to Fayde | Blind on first; Stagger (0.3s, interrupts movement transitions — does not cancel attack animations, does not open Follow-Through window) on second | First = **18**, Second = `round(20 × 0.90 × 1.10)` = **20**; total = **38** |
 | **T3** | 3 | First: Strike `1.00×`; Second: Pull `1.10×`; Third: Void collapse `1.30×` — applies Blind to ALL enemies currently on screen, not just primary target | Blind on first; Stagger on second; mass Blind on third | First = **18**, Second = **20**, Third = `round(20 × 0.90 × 1.30)` = **23**; total = **61** |
 
-Stagger is a new status exclusive to Voidblue — distinct from Stun. It is not registered in Prana Data; it is a Combination Resolution–owned mechanic.
+Stagger is a new status exclusive to Voidblue — distinct from Stun. It is not registered in Prana Data. Duration tracking is owned by `StatusEffectsManager` (stub at MVP — duration tracking + movement-interrupt via `apply_stun`); see Status Effects GDD.
 
 ---
 

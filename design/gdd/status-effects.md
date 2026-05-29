@@ -1,6 +1,6 @@
 # Status Effects
 
-> **Status**: Designed (pending /design-review)
+> **Status**: In Review (revised 2026-05-29)
 > **Author**: Kusuma Putra + Claude Code Game Studios
 > **Last Updated**: 2026-05-29
 > **Implements Pillar**: Pillar 2 (Power is Earned Through Understanding), Pillar 3 (Chaos Has Consequences)
@@ -63,6 +63,8 @@ The registry is a `Dictionary[int, Array[StatusInstance]]` keyed by `target.get_
 | Blind | Enemies only (stub) | Offensive debuff |
 | Stun | Enemies only (stub) | Offensive debuff |
 | Regenerate | Fayde only | The only MVP heal source (per H&D GDD Rule 4); enemies have no heal mechanic at MVP |
+| Chill | Enemies only (stub) | Deepfrost non-primary 15% movement slow; suppressed if FREEZE already active on same target |
+| Stagger | Enemies only (stub) | Voidblue T2 brief interrupt; same Enemy AI interface as Stun with 0.3s fixed duration |
 
 `apply_status` must validate target scope and log an error for invalid calls (e.g., trying to apply Burn to Fayde). No gameplay processing if the target is out of scope.
 
@@ -74,11 +76,26 @@ The registry is a `Dictionary[int, Array[StatusInstance]]` keyed by `target.get_
 
 Called by Spell Casting & Effects on every spell hit that carries a `base_status`. Steps:
 1. Validate target scope (Rule 3). Log error and return on mismatch.
+1a. **Check target is alive**: `if not target.is_alive(): push_error(...); return` — prevents StatusInstance creation when `enemy_killed` and a spell hit resolve in the same frame (see Edge Case 1 and Open Question 2). All valid target node types must expose `is_alive() -> bool`.
 2. Look up `_active_statuses[target.get_instance_id()]`. Search for an existing `StatusInstance` with matching `status_type`.
 3. **If found (re-apply):** Reset `duration_remaining = duration`. Reset `tick_timer = 0` (next tick fires at the next tick interval). Update `spell_base_damage`. Emit `status_applied(target, status_type, duration)`.
 4. **If not found (new application):** Create a `StatusInstance` with the provided values. Set `tick_timer = tick_interval` (first tick fires after one interval, not immediately). Append to `_active_statuses[target_id]`. Emit `status_applied(target, status_type, duration)`.
-5. For FREEZE: call `target.set_freeze_state(true)` on the target node (Enemy AI must expose this method — see Interactions).
-6. For STUN (stub): call `target.set_stun_state(true)` and trigger animation interrupt. Duration is tracked; expiry calls `target.set_stun_state(false)`.
+5. For FREEZE: call `target.apply_speed_modifier(1.0 - FREEZE_SLOW_PCT)` on the target node. Enemy AI must expose `apply_speed_modifier(multiplier: float)` — see Interactions.
+6. For STUN (stub): call `target.apply_stun(duration)` on the target node. Enemy AI must expose `apply_stun(duration: float)` — zeroes velocity and freezes direction tracking for the given duration. Self-terminating in Enemy AI; StatusEffectsManager tracks the instance for the expiry signal and wave-clear cleanup only.
+7. For CHILL (stub): if an active FREEZE StatusInstance exists for the same target (search `_active_statuses`), suppress — no StatusInstance created, no method call. FREEZE (50% slow) already exceeds CHILL's 15% slow effect. If FREEZE is not active, call `target.apply_speed_modifier(1.0 - CHILL_SLOW_PCT)` on new application. On expiry, call `target.apply_speed_modifier(1.0)`.
+8. For STAGGER (stub): call `target.apply_stun(STAGGER_DURATION)` — fixed 0.3s; uses the same Enemy AI `apply_stun` interface as STUN. No tick logic. Self-terminating in Enemy AI.
+
+---
+
+**4a. Public API: `has_status(target: Node, status_type: GameEnums.BaseStatus) -> bool`**
+
+Returns `true` if `_active_statuses[target.get_instance_id()]` contains a StatusInstance with matching `status_type`. Returns `false` if the target has no registered statuses or the `status_type` is not present.
+
+**At First Playable scope:** StatusEffectsManager is not yet wired to SC&E's FP status stub field-writes (`target.status_freeze_timer`, etc.) — it does not create StatusInstances for FP status applications. `has_status` returns `false` for all FP stubs. Shatter and other Freeze-conditional effects are inert at FP. This is intentional and expected. At MVP when StatusEffectsManager owns Freeze tracking, `has_status(target, FREEZE)` becomes reliable.
+
+*Additional public API: `check_and_apply_shatter(target, base_damage) -> float` is defined in Rule 10.*
+
+> ⚠ **SC&E cross-GDD update required:** SC&E Formula 3 Step 5 currently inlines `if target.has_status(STATUS_FREEZE):` as a method call on the enemy node. At MVP this must be replaced with `StatusEffectsManager.check_and_apply_shatter(target, raw_damage)` so that Status Effects is the sole Shatter authority.
 
 ---
 
@@ -91,6 +108,8 @@ For each `StatusInstance` in `_active_statuses` (iterating a copy of the array t
    b. If `instance.tick_timer <= 0.0`: fire tick (Rule 6), reset `instance.tick_timer = instance.tick_interval`
 3. If `instance.duration_remaining <= 0.0`: expire the status (Rule 7)
 
+> **Stun/Freeze pause (VS scope):** Prana Data (PD-28/PD-35) specifies that Stun should pause the Freeze timer. At MVP, Stun is a stub — `duration_remaining` decrements for all StatusInstances unconditionally, including FREEZE during a STUN window. This is a known simplification. At Vertical Slice when Stun is fully wired, the loop must be extended to skip `duration_remaining` decrement for non-Stun statuses while a STUN instance is active on the same target. See Open Question 1.
+
 ---
 
 **6. Tick execution per effect:**
@@ -99,9 +118,11 @@ For each `StatusInstance` in `_active_statuses` (iterating a copy of the array t
 |--------|--------------|-------------|
 | Burn | 0.5s | `HealthDamage.apply_damage(target, spell_base_damage × BURN_TICK_MAGNITUDE, null, DamageSource.DOT)` |
 | Regenerate | 1.0s | `HealthDamage.apply_heal(target, FAYDE_MAX_HP × REGEN_TICK_MAGNITUDE)` |
-| Freeze | — (no tick) | Duration only; Enemy AI reads `has_status(target, FREEZE)` for movement control |
+| Freeze | — (no tick) | Duration only; `apply_speed_modifier(0.50)` pushed to Enemy AI on apply; `apply_speed_modifier(1.0)` on expiry (Rule 4 steps 5 and 7) |
 | Blind (stub) | — | Duration only; miss-chance logic deferred to Vertical Slice |
-| Stun (stub) | — | Duration only; interrupt on apply, resume on expire |
+| Stun (stub) | — | Duration only; interrupt on apply via `target.apply_stun(duration)` (self-terminating in Enemy AI) |
+| Chill (stub) | — | Duration only; `target.apply_speed_modifier(1.0 - CHILL_SLOW_PCT)` on apply; `target.apply_speed_modifier(1.0)` on expiry. Suppressed if FREEZE active. |
+| Stagger (stub) | — | Duration only (0.3s fixed); interrupt on apply via `target.apply_stun(STAGGER_DURATION)` (self-terminating in Enemy AI) |
 
 *Burn tick damage uses `spell_base_damage` captured at application time — not recalculated from current combat state. A re-apply replaces `spell_base_damage` with the new value.*
 
@@ -113,11 +134,13 @@ When `duration_remaining <= 0`:
 1. Remove `StatusInstance` from `_active_statuses[target_id]`
 2. Emit `status_expired(target, status_type)`
 3. Cleanup per type:
-   - **Freeze**: call `target.set_freeze_state(false)`. Enemy AI resumes normal movement.
+   - **Freeze**: call `target.apply_speed_modifier(1.0)` to restore full speed. Enemy AI resumes normal movement.
    - **Burn**: no cleanup (ticks stop; last tick may have already fired on the same frame).
-   - **Stun (stub)**: call `target.set_stun_state(false)`.
+   - **Stun (stub)**: no cleanup call — `apply_stun(duration)` is self-terminating in Enemy AI. Emit `status_expired` signal for VFX overlay removal only.
    - **Blind (stub)**: no runtime cleanup at MVP; emit signal only for VFX overlay removal.
    - **Regenerate**: no cleanup (healing just stops).
+   - **Chill (stub)**: call `target.apply_speed_modifier(1.0)` to restore full speed. (Chill instances are only created when FREEZE was not active; no conflict on expiry.)
+   - **Stagger (stub)**: no cleanup call — self-terminating in Enemy AI. Emit `status_expired` signal only.
 
 ---
 
@@ -186,7 +209,7 @@ Re-apply (Rule 4 step 3) resets the instance's `duration_remaining` without chan
 |--------|-----------|-----------|-------|
 | **Spell Casting & Effects** | Calls `apply_status(target, status_type, duration, spell_base_damage)` after each spell hit; calls `check_and_apply_shatter(target, base_damage) -> float` before each DIRECT `apply_damage` call | SC&E → StatusEffects | SC&E drives all status application; Status Effects is passive until called |
 | **Health & Damage** | StatusEffects calls `apply_damage(target, tick_damage, null, DamageSource.DOT)` per Burn tick; calls `apply_heal(fayde, tick_heal)` per Regen tick; listens to `enemy_killed` for cleanup | StatusEffects ↔ H&D | H&D owns HP math; Status Effects owns tick timing. No circular dependency: H&D emits signals; Status Effects listens and calls H&D methods |
-| **Enemy AI** | Enemy AI nodes must expose `set_freeze_state(frozen: bool)` to lock/unlock movement; must expose `set_stun_state(stunned: bool)` (stub at MVP — animation interrupt only); Enemy AI reads `effective_move_speed` formula which consumes Freeze's `slow_percentage` via `StatusEffectsManager.has_status(target, FREEZE)` | StatusEffects → Enemy AI | Status Effects sets state; Enemy AI enforces the movement constraint |
+| **Enemy AI** | Enemy AI nodes must expose `apply_speed_modifier(multiplier: float)` — called by Status Effects on Freeze/Chill apply and expiry; Enemy AI stores `_speed_multiplier` and applies it each physics frame. Must also expose `apply_stun(duration: float)` — called on Stun and Stagger apply (self-terminating timer in Enemy AI); StatusEffectsManager tracks the instance for expiry signal and wave-clear cleanup only | StatusEffects → Enemy AI | Status Effects pushes speed and stun commands; Enemy AI enforces behavior |
 | **Game State & Scene Flow** | Listens to `preparation_started` → clear all statuses | GS&SF → StatusEffects | Phase transition cleanup |
 | **Prana Data** | Reads Burn/Freeze/Regen parameters at startup via constants (`BURN_TICK_MAGNITUDE`, `FREEZE_SLOW_PCT`, etc.) — all registered in entities.yaml | StatusEffects reads Prana Data constants | All parameter values locked by Prana Data GDD; Status Effects must not redefine them |
 | **VFX pipeline** | Emits `status_applied(target, type, duration)`, `status_expired(target, type)`, `burn_contagion_triggered(from_pos, to_target)`, `shatter_triggered(target)` | StatusEffects → VFX | Status Effects is a signal source; VFX pipeline listens and renders overlays |
@@ -222,6 +245,8 @@ Applied 4 times across the 2.0s duration (once per 0.5s tick interval). Total da
 
 **Registry reference:** `burn_total` formula (entities.yaml). `burn_tick_magnitude` constant = 0.08. `burn_duration` constant = 2.0s.
 
+> **Interface limitation (VS scope):** `ADJ_BURN_INTENSIFY` (+0.04) and `ASH_BURN_TICK` (+0.06) from Combination Resolution require raising `burn_tick_magnitude` per-application. The current `apply_status(target, status_type, duration, spell_base_damage)` interface has no parameter for a modified tick magnitude — at MVP all Burn ticks use the constant `BURN_TICK_MAGNITUDE = 0.08`. A fifth parameter or replacement call pattern is deferred to Vertical Slice.
+
 ---
 
 ### Formula 2 — Regen Tick Heal
@@ -253,9 +278,9 @@ Defined and owned by the Enemy Data GDD (entities.yaml). Referenced here:
 effective_move_speed = base_move_speed × max(0, 1 − slow_percentage)
 ```
 
-Status Effects sets `slow_percentage = FREEZE_SLOW_PCT` (0.50) when Freeze is active on an enemy. Enemy AI applies the formula to its movement velocity. When Freeze expires, Enemy AI clears `slow_percentage` to 0.0.
+Status Effects calls `target.apply_speed_modifier(1.0 - FREEZE_SLOW_PCT)` (= `apply_speed_modifier(0.50)`) when Freeze is applied, and `target.apply_speed_modifier(1.0)` when Freeze expires. Enemy AI stores the multiplier as `_speed_multiplier` and applies it in `_physics_process`. Enemy AI owns the formula evaluation; Status Effects owns the timing and the push call.
 
-**Output range:** 0.0 – `base_move_speed`. At FREEZE_SLOW_PCT=0.50 and base_move_speed=80 (Drifter): 40 px/s during Freeze.
+**Output range:** 0.0 – `base_move_speed`. At FREEZE_SLOW_PCT=0.50 and base_move_speed=80 (Drifter): Status Effects pushes `apply_speed_modifier(0.50)` → Enemy AI computes `80 × 0.50 = 40 px/s` during Freeze.
 
 **Registry reference:** `effective_move_speed` formula (entities.yaml, owned by enemy-data.md). `freeze_slow_pct` constant = 0.50.
 
@@ -331,7 +356,9 @@ No formula. The mechanic is a nearest-enemy range check:
 | 5 | **Game State & Scene Flow** | Listens to `preparation_started` → clears all active statuses | GS&SF → Status Effects | Phase transition is the authoritative clear signal |
 | 6 | **VFX pipeline** | Emits `status_applied(target, type, duration)`, `status_expired(target, type)`, `burn_contagion_triggered(from_pos: Vector2, to_target: Node)`, `shatter_triggered(target: Node)` | Status Effects → VFX | VFX owns visual specs; Status Effects owns signal timing |
 
-**Bidirectionality note:** Health & Damage (Dependency #3 in H&D GDD) lists Status Effects. SC&E must list Status Effects in its Dependencies section. Enemy AI must add Status Effects as a dependency for the `set_freeze_state` and `has_status` interface contract.
+**Bidirectionality note:** Health & Damage (Dependency #3 in H&D GDD) lists Status Effects. SC&E must list Status Effects in its Dependencies section and update Formula 3 Step 5 to call `StatusEffectsManager.check_and_apply_shatter(target, raw_damage)` (not `target.has_status`). Enemy AI must add Status Effects as a dependency and expose `apply_speed_modifier(float)` and `apply_stun(float)` methods.
+
+> ⚠ **GameEnums update required:** `STATUS_CHILL` and `STATUS_STAGGER` must be added to `GameEnums.BaseStatus` before any code using `apply_status` with these types is compiled. Owner: Prana Data GDD or GameEnums resource authoring.
 
 ## Tuning Knobs
 
@@ -375,9 +402,9 @@ No formula. The mechanic is a nearest-enemy range check:
 
 **Freeze — apply, movement lock, expiry:**
 
-- **AC-SE-05** — GIVEN a Drifter enemy with normal movement, WHEN `apply_status(drifter, FREEZE, 2.0, 0.0)` is called, THEN `drifter.set_freeze_state(true)` was called; `has_status(drifter, FREEZE)` returns `true`.
-- **AC-SE-06** — GIVEN a Drifter with active Freeze that expires naturally, WHEN `duration_remaining` reaches 0, THEN `drifter.set_freeze_state(false)` was called and `has_status(drifter, FREEZE)` returns `false`.
-- **AC-SE-07** — GIVEN a Frozen Drifter, WHEN Freeze is re-applied, THEN `set_freeze_state(true)` is NOT called a second time (no-op); `duration_remaining ≈ 2.0s`; exactly **one** Freeze StatusInstance exists.
+- **AC-SE-05** — GIVEN a Drifter enemy with normal movement, WHEN `apply_status(drifter, FREEZE, 2.0, 0.0)` is called, THEN `drifter.apply_speed_modifier(0.50)` was called exactly once; `has_status(drifter, FREEZE)` returns `true`.
+- **AC-SE-06** — GIVEN a Drifter with active Freeze that expires naturally, WHEN `duration_remaining` reaches 0, THEN `drifter.apply_speed_modifier(1.0)` was called and `has_status(drifter, FREEZE)` returns `false`.
+- **AC-SE-07** — GIVEN a Frozen Drifter, WHEN Freeze is re-applied, THEN `apply_speed_modifier` is NOT called a second time (no-op — multiplier already applied); `duration_remaining ≈ 2.0s`; exactly **one** Freeze StatusInstance exists.
 
 **Regen — apply and tick:**
 
@@ -410,7 +437,7 @@ No formula. The mechanic is a nearest-enemy range check:
 
 **Wave/phase clear:**
 
-- **AC-SE-19** — GIVEN enemies with active Burn and active Freeze, WHEN `preparation_started` fires, THEN `_active_statuses` is empty; `set_freeze_state(false)` was called on the Frozen enemy; no tick fires after the clear.
+- **AC-SE-19** — GIVEN enemies with active Burn and active Freeze, WHEN `preparation_started` fires, THEN `_active_statuses` is empty; `apply_speed_modifier(1.0)` was called on the Frozen enemy (restoring full speed); no tick fires after the clear.
 
 **Zero-duration guard:**
 
@@ -423,8 +450,24 @@ No formula. The mechanic is a nearest-enemy range check:
 **Stub effects (Blind and Stun at MVP):**
 
 - **AC-SE-22** — GIVEN `apply_status(enemy, BLIND, 2.0, 0.0)` is called, THEN a Blind StatusInstance is created; `status_applied(enemy, BLIND, 2.0)` is emitted; no tick logic fires; after 2.0s `status_expired(enemy, BLIND)` is emitted and the instance is removed.
-- **AC-SE-23** — GIVEN `apply_status(enemy, STUN, 0.8, 0.0)` is called, THEN `enemy.set_stun_state(true)` is called at application; after 0.8s `enemy.set_stun_state(false)` is called; `status_expired(enemy, STUN)` is emitted.
+- **AC-SE-23** — GIVEN `apply_status(enemy, STUN, 0.8, 0.0)` is called, THEN `enemy.apply_stun(0.8)` is called exactly once at application (self-terminating in Enemy AI); after 0.8s `status_expired(enemy, STUN)` is emitted when the StatusInstance's `duration_remaining` reaches 0. No second method call on expiry.
+
+**Chill — suppression and apply:**
+
+- **AC-SE-24** — GIVEN an enemy with an active FREEZE StatusInstance, WHEN `apply_status(enemy, CHILL, 2.0, 0.0)` is called, THEN no CHILL StatusInstance is created; `apply_speed_modifier` is NOT called a second time; `status_applied` is NOT emitted for CHILL.
+- **AC-SE-25** — GIVEN an enemy with no active Freeze, WHEN `apply_status(enemy, CHILL, 2.0, 0.0)` is called, THEN a CHILL StatusInstance is created; `enemy.apply_speed_modifier(0.85)` was called once (1.0 − 0.15 = 0.85); `status_applied(enemy, CHILL, 2.0)` is emitted.
+- **AC-SE-26** — GIVEN an enemy with an active Chill (no Freeze), WHEN the Chill StatusInstance expires, THEN `enemy.apply_speed_modifier(1.0)` is called and `has_status(enemy, CHILL)` returns `false`.
+
+**Stagger — apply and self-terminate:**
+
+- **AC-SE-27** — GIVEN `apply_status(enemy, STAGGER, 0.3, 0.0)` is called, THEN `enemy.apply_stun(0.3)` is called once at application; `status_applied(enemy, STAGGER, 0.3)` is emitted; after 0.3s `status_expired(enemy, STAGGER)` is emitted. No second method call on expiry.
 
 ## Open Questions
 
-[To be designed]
+1. **Stun/Freeze timer pause (VS scope)** — Prana Data (PD-28/PD-35) specifies that applying Stun to a Frozen enemy pauses the Freeze timer. At MVP, Stun is a stub and `duration_remaining` decrements for all StatusInstances unconditionally — Freeze timer counts down during Stun. At Vertical Slice when Stun is fully implemented, the tick loop (Rule 5) must be extended: skip `duration_remaining` decrement for non-Stun statuses while a STUN instance is active on the same target. *Owner: Status Effects VS implementation.*
+
+2. **Target alive-check mechanism** — Rule 4 step 1a requires `target.is_alive() -> bool`. All target node types (Enemy AI instances, Fayde) must expose this method returning `current_hp > 0`. Confirm this contract is included in Enemy AI and Player Controller GDDs before implementation. *Owner: Enemy AI GDD and Player Controller GDD cross-reference.*
+
+3. **Shatter at FP scope (resolved — inert)** — At FP, StatusEffectsManager does not track status instances for SC&E's stub field-writes. `has_status(target, FREEZE)` returns `false` at FP. Shatter is inert. At MVP when StatusEffectsManager owns Freeze tracking, Shatter becomes active. No design action needed.
+
+4. **GameEnums BaseStatus update** — `STATUS_CHILL` and `STATUS_STAGGER` must be added to `GameEnums.BaseStatus` before any code using `apply_status` with these types compiles. *Owner: Prana Data GDD or GameEnums resource — cross-GDD flag in Dependencies section.*

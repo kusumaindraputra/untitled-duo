@@ -1,6 +1,6 @@
 # Spell Casting & Effects
 
-> **Status**: Designed (pending /design-review)
+> **Status**: In Review (revised 2026-05-29)
 > **Author**: Kusuma Putra + Claude Code Game Studios
 > **Last Updated**: 2026-05-28
 > **Implements Pillar**: Pillar 2 (Power is Earned Through Understanding), Pillar 3 (Chaos Has Consequences)
@@ -112,13 +112,16 @@ Step 10 health_and_damage.apply_damage(target, raw_damage, null, DamageSource.DI
 
 **8. Status effect application.** After each hit, SC&E calls `apply_status(target, status_id, effective_duration)` for the primary type's `base_status` and any active non-primary status effects. At FP scope:
 
+> **FP scope note:** At FP, all status rows below are **field-write stubs only** — no Enemy AI behavior reads these fields at FP scope, and StatusEffectsManager is not wired to them. Status effects have no visible in-game effect at FP. The field writes exist to reserve the interface for MVP wiring. Shatter (Step 5) and Blind bonus (Step 7) are inert at FP — `StatusEffectsManager` returns unchanged values.
+
 | Status | FP behavior |
 |--------|-------------|
-| `STATUS_FREEZE` | Sets `target.status_freeze_timer = effective_duration`. Enemy AI reads this to freeze movement. Enables Shatter check (Step 5) for subsequent hits. |
-| `STATUS_STUN` | Sets `target.status_stun_timer = effective_duration`. Enemy AI reads this to pause movement and attacks. Starts SC&E's `_followthrough_window = 1.5s` for Stormgold Follow-Through (Step 6). |
+| `STATUS_FREEZE` | Sets `target.status_freeze_timer = effective_duration`. At FP: stub only — Enemy AI does not read this field; Shatter (Step 5) is inert. At MVP: `apply_status(target, STATUS_FREEZE, effective_duration)` via StatusEffectsManager; Shatter via `check_and_apply_shatter`. |
+| `STATUS_STUN` | Sets `target.status_stun_timer = effective_duration`. Enemy AI `_is_attacking` flag is not defined at FP — qualifying interrupts never occur; Follow-Through window (Step 6) does not activate at FP. At MVP: `apply_status(target, STATUS_STUN, effective_duration)`. |
 | `STATUS_BURN` | Sets `target.status_burned = true`. No tick damage at FP — stub only. Status Effects GDD implements ticks at MVP. |
-| `STATUS_BLIND` | Sets `target.status_blinded_timer = effective_duration`. Enemy AI miss chance not enforced at FP — stub only. |
+| `STATUS_BLIND` | Sets `target.status_blinded_timer = effective_duration`. Enemy AI miss chance not enforced at FP — stub only. Blind bonus (Step 7) is inert at FP. |
 | `STATUS_REGEN` | Sets `fayde.status_regen_timer = effective_duration`. No tick healing at FP — stub only. |
+| `STATUS_STAGGER` | Voidblue T2 only. At FP: Sets `target.status_stagger_timer = STAGGER_DURATION`. At MVP: `apply_status(target, STATUS_STAGGER, effective_duration)` via StatusEffectsManager (stub — duration tracking + movement interrupt via `apply_stun`). |
 
 Effective durations: Freeze = `2.0 + aggregate_stat_bonus.get("FROST_FREEZE_DUR", 0.0)`. Non-primary Deepfrost Freeze = `1.0 + FROST_FREEZE_DUR` (capped at 2.0). Stun = `0.8 + aggregate_stat_bonus.get("STORM_STUN_DUR", 0.0)`.
 
@@ -170,14 +173,14 @@ Effective durations: Freeze = `2.0 + aggregate_stat_bonus.get("FROST_FREEZE_DUR"
 | **Health & Damage** | Calls `apply_damage(target, raw_damage, null, DamageSource.DIRECT)` per hit; calls `apply_heal(fayde, amplified_amount)` for Verdant effects | SC&E → H&D |
 | **Enemy instances** | Reads `global_position` and `prana_affiliation` for targeting and affiliation check; writes `status_*` fields for FP status stubs | SC&E reads/writes enemy nodes |
 | **Audio System** | Calls `play_event(&"sfx_cast_[type_name]")` on each hit; `play_event(&"sfx_cast_miss")` on no-target cast | SC&E → Audio System |
-| **Combat HUD** | Exposes `get_cached_spell_effect() → SpellEffect` (read-only); emits `chain_index_changed(combo_index, combo_attack_count)` | Combat HUD → SC&E (read) |
+| **Combat HUD** | Exposes `get_cached_spell_effect() → SpellEffect` (read-only); emits `chain_index_changed(combo_index, combo_attack_count)` and `spell_hit_element(target: Node, prana_type_id: int)` after each `apply_damage` call (for damage-number coloring per Prana type) | SC&E → Combat HUD (emit); Combat HUD → SC&E (read) |
 | **Status Effects (MVP)** | Calls `SpellCastingEffects.get_stat_bonus(stat_id)` to query stat bonuses during tick application | Status Effects → SC&E (query) |
 | **Elemental Affiliation & Weakness (MVP)** | At MVP: SC&E passes `element` to H&D; H&D queries EA&W. At FP: SC&E applies 2× inline (Step 9 in damage chain) | SC&E → EA&W (at MVP) |
 
 > **⚠ Cross-GDD change flags:**
 > 1. **Player Controller GDD** must add: `cast_hit_started(duration: float)` signal listener + CAST_LOCKED movement sub-state
 > 2. **Health & Damage GDD** must add: SC&E stat broker reference in Interactions table (`VER_HEAL_FLAT` and status-duration stat bonuses brokered through `SC&E.get_stat_bonus()`)
-> 3. **Combination Resolution GDD — Ashfire attack identity revision required**: current attack descriptions ("thrust," "overhead smash," "explosive eruption at target position") must be updated to match the melee dance identity — T1: spinning fire strike; T2: fire palm → sweeping fire kick; T3: fire palm → fire kick → **spinning 360° eruption from Fayde's position** (`AREA_AROUND_FAYDE`, not `AREA_AT_TARGET`)
+> 3. ~~Combination Resolution GDD — Ashfire attack identity revision required~~ **RESOLVED** — CR Approved 2026-05-29 with melee dance / `AREA_AROUND_FAYDE` identity.
 > 4. **Elemental Affiliation & Weakness** is removed from the FP design order; SC&E owns the 2× check at FP scope
 
 ## Formulas
@@ -223,8 +226,6 @@ SC&E resolves each chain attack via `ATTACK_DATA[primary_type][primary_tier][att
 | 3 | 0 | 1.00 | DIRECTIONAL_FACING | Fire palm strike |
 | 3 | 1 | 1.25 | DIRECTIONAL_FACING | Sweeping fire kick |
 | 3 | 2 | 1.50 | AREA_AROUND_FAYDE (`ASHFIRE_T3_AOE_RADIUS = 80px`) | Spinning 360° eruption; Burn on all hit |
-
-> ⚠ **CR GDD update required**: Ashfire attack descriptions in CR Formulas (thrust/smash/eruption-at-target) must be revised to match this table. T3 eruption is `AREA_AROUND_FAYDE`, not `AREA_AT_TARGET`.
 
 **Worked examples (BASE_SPELL_DAMAGE = 20):**
 - T1 neutral: `round(20 × 1.25 × 1.00)` = **25**
@@ -309,15 +310,17 @@ effective_modifier = clamp(base_damage_modifier + burn_bonus, 0.0, 1.40)
 raw_damage = effective_base * effective_modifier * tier_attack_modifier
 
 # Step 5 — Shatter (Frozen target)
-if target.has_status(STATUS_FREEZE):
-    raw_damage *= (1.25 + aggregate_stat_bonus.get(&"FROST_SHATTER_BONUS", 0.0))
+# Delegates to StatusEffectsManager — returns raw_damage × 1.25 if FREEZE active, else unchanged.
+# At FP: has_status returns false (StatusEffectsManager not wired to FP stubs) — Shatter inert at FP.
+raw_damage = StatusEffectsManager.check_and_apply_shatter(target, raw_damage)
 
 # Step 6 — Stormgold Follow-Through
 if _followthrough_window > 0.0:
     raw_damage *= (1.30 + aggregate_stat_bonus.get(&"STORM_FOLLOW_DMG", 0.0))
 
 # Step 7 — Blind bonus
-if target.has_status(STATUS_BLIND):
+# At MVP: StatusEffectsManager.has_status tracks BLIND. At FP: always false — bonus inert at FP.
+if StatusEffectsManager.has_status(target, STATUS_BLIND):
     raw_damage *= (1.0 + aggregate_stat_bonus.get(&"VOID_DMG_VS_BLIND", 0.0))
 
 # Step 8 — ASH_CRIT (first chain attack only; any primary type)
@@ -333,6 +336,7 @@ if spell_element != DamageClass.NONE and target.prana_affiliation == spell_eleme
 
 # Step 10
 health_and_damage.apply_damage(target, raw_damage, null, DamageSource.DIRECT)
+spell_hit_element.emit(target, primary_type)  # Combat HUD damage-number coloring (B-1)
 ```
 
 | Variable | Type | Range | Description |
@@ -696,6 +700,11 @@ THEN `target.status_freeze_timer == 2.5`.
 GIVEN same bonuses and Stormgold T1 SpellEffect,
 WHEN cast fires,
 THEN `target.status_stun_timer == 1.2`.
+
+**[U] AC-SC-26** — `spell_hit_element` emitted once per hit with correct prana_type_id
+GIVEN an Ashfire T1 SpellEffect (`primary_type = 0`), a valid enemy target in range, a signal spy on `spell_hit_element`,
+WHEN cast fires (one hit),
+THEN spy receives exactly one call with `(target, 0)` — `prana_type_id` matches `primary_type`. No call emitted on a miss (no target in range).
 
 ---
 
