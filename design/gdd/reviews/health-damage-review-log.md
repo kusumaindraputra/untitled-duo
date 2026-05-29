@@ -2,6 +2,15 @@
 
 ---
 
+## Review — 2026-05-29 — Verdict: APPROVED (round 4)
+Scope signal: S
+Specialists: lean mode (single-session analysis)
+Blocking items: 3 | Recommended: 2
+Summary: Round-4 lean re-review. B1 and B2 from round 3 confirmed not applied in the prior in-session revision; both resolved now. B3 is a new blocker from the /review-all-gdds cross-review: Rule 5 same-frame death ordering named the policy but not the implementation mechanism. Fixed by adding a cross-reference to Game State & Scene Flow Signal Ordering: Same-Frame Death Priority (call_deferred on boss_defeated). B1: Rule 4 inline code migrated from `int(round(...))` to `roundi(...)`, matching the Formulas section. B2: Rule 1 updated to state that enemy `max_hp` is also initialized to `base_hp` at spawn. R1: Open Q5 resolved note updated to reference the call_deferred mechanism. GDD is fully consistent and implementable.
+Prior verdict resolved: Yes (round-3 NEEDS REVISION — B1/B2 resolved; B3 is new from cross-review errata)
+
+---
+
 ## Review — 2026-05-28 — Verdict: NEEDS REVISION (round 3)
 Scope signal: M
 Specialists: lean mode (single-session analysis)

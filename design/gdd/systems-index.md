@@ -33,7 +33,7 @@ interactions, never a large shallow one.
 | 3 | Spell Casting & Effects *(simplified)* | Gameplay | First Playable | Designed | design/gdd/spell-casting-effects.md | Combination Resolution, Player Controller, Health & Damage |
 | 4 | Prana Data | Data | First Playable | Needs Revision | design/gdd/prana-data.md | — |
 | 5 | Player Controller | Core | First Playable | Approved | design/gdd/player-controller.md | Game State & Scene Flow |
-| 6 | Health & Damage | Gameplay | First Playable | Revised (pending re-review) | design/gdd/health-damage.md | Game State & Scene Flow |
+| 6 | Health & Damage | Gameplay | First Playable | Approved | design/gdd/health-damage.md | Game State & Scene Flow |
 | 7 | Status Effects *(simplified)* | Gameplay | MVP | Designed | design/gdd/status-effects.md | Health & Damage |
 | 8 | Enemy AI *(simplified)* | Gameplay | First Playable | Designed | design/gdd/enemy-ai.md | Enemy Data, Player Controller, Health & Damage |
 | 9 | Enemy Data | Data | First Playable | Approved | design/gdd/enemy-data.md | — |

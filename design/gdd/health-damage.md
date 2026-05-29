@@ -1,8 +1,8 @@
 # Health & Damage
 
-> **Status**: In Review
+> **Status**: Approved
 > **Author**: Kusuma Putra + Claude Code Game Studios
-> **Last Updated**: 2026-05-28 (revised after design-review round 3 — 16 blockers resolved)
+> **Last Updated**: 2026-05-29 (round-4 review — 3 blockers resolved: Rule 4 `roundi()` consistency, enemy `max_hp` initialization, Rule 5 `call_deferred` cross-reference)
 > **Implements Pillar**: Pillar 3 (Chaos Has Consequences), Pillar 2 (Power is Earned Through Understanding)
 
 ## Overview
@@ -27,7 +27,7 @@ On the enemy side, the fantasy is *feedback legibility*: the Charger should feel
 
 ### Core Rules
 
-1. **Two HP pools, different owners**: Fayde has one shared HP pool for the entire run (`fayde_current_hp`, max = `FAYDE_MAX_HP` = 100). Each spawned enemy has its own per-instance `current_hp`, initialized from its Enemy Data `base_hp` at spawn. Health & Damage tracks both; no other system stores HP state.
+1. **Two HP pools, different owners**: Fayde has one shared HP pool for the entire run (`fayde_current_hp`, max = `FAYDE_MAX_HP` = 100). Each spawned enemy has its own per-instance `current_hp` and `max_hp`, both initialized from its Enemy Data `base_hp` at spawn (`enemy.current_hp = base_hp; enemy.max_hp = base_hp`). Health & Damage tracks both; no other system stores HP state.
 
 2. **Damage application pipeline** (applies to both Fayde and enemy instances):
    1. Receive damage event: `apply_damage(target, base_damage: float, element: DamageClass | null, source: DamageSource)`
@@ -51,7 +51,7 @@ On the enemy side, the fantasy is *feedback legibility*: the Charger should feel
 
 4. **Heal application**: `apply_heal(target, heal_amount: float)`
    - **Precondition guard**: If `heal_amount <= 0`, log an error and return immediately — callers must use `apply_damage` for damage. Negative values passed to `apply_heal` would silently reduce HP with no death signal (Fayde zombie state).
-   - `target.current_hp = int(round(clamp(target.current_hp + heal_amount, 0, target.max_hp)))` — `round()` is used before `int()` cast to avoid silent truncation: `int(0.8) = 0` would silently deliver zero healing at low magnitudes; `round(0.8) = 1` preserves small-but-nonzero heals. The outer `int()` cast is required because GDScript widens `int + float = float`.
+   - `target.current_hp = roundi(clamp(target.current_hp + heal_amount, 0, target.max_hp))` — `roundi()` is used to avoid silent truncation at low magnitudes: `int(0.8) = 0` would silently deliver zero healing; `roundi(0.8) = 1` preserves small-but-nonzero heals. `roundi()` returns `int` directly in GDScript 4, making an outer `int()` cast unnecessary.
    - Cannot overheal — HP is capped at max.
    - If the effective heal (`new_current_hp - old_current_hp`) is 0 (target was already at max HP), emit no signal.
    - Otherwise emit `health_restored(target, healed_amount: int, target.current_hp: int)` where `healed_amount = new_current_hp - old_current_hp`.
@@ -60,7 +60,7 @@ On the enemy side, the fantasy is *feedback legibility*: the Charger should feel
 5. **Death events**:
    - **Enemy death**: When enemy `current_hp <= 0` → emit `enemy_killed(enemy_instance_id, enemy_type_id, prana_affiliation: DamageClass)`. The `prana_affiliation` value is the enemy's elemental affiliation from Enemy Data, using the **same `DamageClass` enum as the damage system**. Neutral (unaffiliated) enemies use `DamageClass.NONE` (value = −1) as the sentinel — do NOT pass `null`; GDScript typed signals do not support union types. Enemy node is not freed here — Enemy AI and Wave / Encounter System handle the death sequence (animation, cleanup). Health & Damage only emits the signal. **Node-lifetime guarantee**: Enemy AI must not free the enemy node until at least one frame after `enemy_killed` is emitted — this ensures Prana Drop / Loot can resolve position via `instance_from_id()` in the same frame. **Caller guard**: Despite this guarantee, the contract applies to `queue_free()` only — immediate `free()` or a deferred signal connection can violate it. Prana Drop / Loot MUST guard with `is_instance_valid(instance_from_id(enemy_instance_id))` before accessing any property on the resolved node. This guard is required defensive code, not optional.
    - **Fayde death**: When Fayde `current_hp <= 0` → emit `player_died`. Game State & Scene Flow transitions to `DEATH_SCREEN`. This signal fires exactly once per run — not re-emitted if HP stays at 0.
-   - **Same-frame death ordering**: If both an enemy and Fayde reach `current_hp <= 0` in the same frame (e.g., a DoT tick kills Fayde while the last wave enemy is simultaneously killed), `enemy_killed` is emitted before `player_died`. Game State & Scene Flow must treat `player_died` as taking priority over any in-flight win condition — a run ending in simultaneous kill-and-death resolves as a player death.
+   - **Same-frame death ordering**: If both an enemy and Fayde reach `current_hp <= 0` in the same frame (e.g., a DoT tick kills Fayde while the last wave enemy is simultaneously killed), `enemy_killed` is emitted before `player_died`. Game State & Scene Flow must treat `player_died` as taking priority over any in-flight win condition — a run ending in simultaneous kill-and-death resolves as a player death. (Implementation mechanism: Game State & Scene Flow executes `boss_defeated → RUN_SUMMARY` via `call_deferred`, guaranteeing the immediate `_on_player_died()` handler always wins before the deferred WIN fires. See GS&SF — Signal Ordering: Same-Frame Death Priority.)
 
 6. **DoT/HoT delegation**: Health & Damage does NOT own tick timing. Status Effects owns the timer for Burn, Regen, and other timed effects. For each tick, Status Effects calls:
    - `apply_damage(target, tick_damage, null, DamageSource.DOT)` — `source = DOT` bypasses the i-frame check; no elemental multiplier on ticks (damage already calculated by Status Effects using `burn_total` formula from Prana Data)
@@ -396,6 +396,6 @@ Cannot overheal. `heal_amount` is always a positive float (from Prana Data regen
 
 4. ~~**HP restore threshold decision**~~ — **Resolved**: Verdant at 0.02 magnitude (6 HP) is intentional. Verdant derives value from Combination Resolution combo bonuses, not raw heal. See Known Design Tension note.
 
-5. ~~**Simultaneous death events**~~ — **Resolved**: `enemy_killed` fires before `player_died` in same-frame resolution. Game State & Scene Flow must treat `player_died` as taking priority over any in-flight win condition. See Rule 5.
+5. ~~**Simultaneous death events**~~ — **Resolved**: `enemy_killed` fires before `player_died` in same-frame resolution. Game State & Scene Flow must treat `player_died` as taking priority over any in-flight win condition. Implementation: GS&SF uses `call_deferred` on `boss_defeated → RUN_SUMMARY`; the immediate `_on_player_died()` always wins. See Rule 5 and GS&SF — Signal Ordering: Same-Frame Death Priority.
 
 6. **Tutorial/Onboarding scope for first-run mercy** — `FIRST_RUN_DAMAGE_MULTIPLIER` (default 0.5) is defined here. The Tutorial/Onboarding GDD must own the `first_run_active` flag lifecycle and define exactly what conditions constitute "first run" (first session ever, or first death-free run, or first N waves cleared). *Deferred to Tutorial/Onboarding GDD.*
