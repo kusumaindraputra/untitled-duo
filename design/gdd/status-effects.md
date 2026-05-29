@@ -352,13 +352,15 @@ No formula. The mechanic is a nearest-enemy range check:
 | 1 | **Health & Damage** | StatusEffects calls `apply_damage(target, tick_damage, null, DamageSource.DOT)` per Burn tick and `apply_heal(fayde, tick_heal)` per Regen tick; listens to `enemy_killed` for cleanup; H&D's dead-target guard blocks ticks on dead targets | Status Effects → H&D (calls) + H&D → Status Effects (signal) | H&D is the HP authority; Status Effects is the tick-timer authority. No circular dependency. |
 | 2 | **Spell Casting & Effects** | Calls `apply_status(target, status_type, duration, spell_base_damage)` for every hit with a `base_status`; calls `check_and_apply_shatter(target, base_damage) -> float` before every DIRECT `apply_damage` call | SC&E → Status Effects | SC&E is the sole caller of `apply_status` at MVP scope |
 | 3 | **Prana Data** | Reads all status-effect constants at startup: `BURN_TICK_MAGNITUDE` (0.08), `BURN_DURATION` (2.0s), `BLIND_MISS_CHANCE` (0.50), `BLIND_DURATION` (2.0s), `STUN_DURATION` (0.8s), `FREEZE_DURATION` (2.0s), `FREEZE_SLOW_PCT` (0.50), `REGEN_TICK_MAGNITUDE` (0.02), `REGEN_DURATION` (3.0s) | Prana Data → Status Effects (read-only) | Prana Data owns all values; Status Effects must not redefine them |
-| 4 | **Enemy AI** | Enemy AI nodes must expose `set_freeze_state(frozen: bool)` and `set_stun_state(stunned: bool)` (stub at MVP); Enemy AI reads `StatusEffectsManager.has_status(target, FREEZE)` to apply `FREEZE_SLOW_PCT` via the `effective_move_speed` formula | Status Effects ↔ Enemy AI | Status Effects sets state; Enemy AI enforces movement constraint |
+| 4 | **Enemy AI** | Enemy AI nodes must expose `apply_speed_modifier(multiplier: float)` — called on Freeze/Chill apply and expiry (push-multiplier pattern); Enemy AI stores `_speed_multiplier` and applies it in `_physics_process`. Must also expose `apply_stun(duration: float)` — called on Stun and Stagger apply (self-terminating in Enemy AI); StatusEffectsManager tracks the instance for expiry signal and wave-clear cleanup | Status Effects → Enemy AI | Status Effects pushes speed/stun commands; Enemy AI enforces movement constraint. ⚠ **Cross-GDD flag**: Enemy AI GDD must formally define `apply_speed_modifier(float)` and `apply_stun(float)` method signatures before Status Effects MVP implementation begins |
 | 5 | **Game State & Scene Flow** | Listens to `preparation_started` → clears all active statuses | GS&SF → Status Effects | Phase transition is the authoritative clear signal |
 | 6 | **VFX pipeline** | Emits `status_applied(target, type, duration)`, `status_expired(target, type)`, `burn_contagion_triggered(from_pos: Vector2, to_target: Node)`, `shatter_triggered(target: Node)` | Status Effects → VFX | VFX owns visual specs; Status Effects owns signal timing |
 
 **Bidirectionality note:** Health & Damage (Dependency #3 in H&D GDD) lists Status Effects. SC&E must list Status Effects in its Dependencies section and update Formula 3 Step 5 to call `StatusEffectsManager.check_and_apply_shatter(target, raw_damage)` (not `target.has_status`). Enemy AI must add Status Effects as a dependency and expose `apply_speed_modifier(float)` and `apply_stun(float)` methods.
 
 > ⚠ **GameEnums update required:** `STATUS_CHILL` and `STATUS_STAGGER` must be added to `GameEnums.BaseStatus` before any code using `apply_status` with these types is compiled. Owner: Prana Data GDD or GameEnums resource authoring.
+
+> ⚠ **SC&E cross-GDD update required (Burn interface gap):** SC&E Rule 8 describes `apply_status` calls with 3 arguments only (`target, status_id, effective_duration`). The 4th parameter `spell_base_damage` defaults to `0.0` — Burn ticks would deal `0.0 × BURN_TICK_MAGNITUDE = 0` damage. SC&E Rule 8 must be updated to pass `effective_base` (= `BASE_SPELL_DAMAGE + flat_stat_bonus`, from SC&E Formula 3 Steps 1–2) as the 4th argument for Burn applications: `apply_status(target, BURN, effective_duration, effective_base)`. Required before any Burn implementation begins.
 
 ## Tuning Knobs
 
@@ -421,7 +423,7 @@ No formula. The mechanic is a nearest-enemy range check:
 
 **Target death cleanup:**
 
-- **AC-SE-12** — GIVEN an enemy with active Burn AND active Freeze, WHEN `HealthDamage.enemy_killed` fires for that enemy, THEN both StatusInstances are removed from `_active_statuses`; `set_freeze_state(false)` is called on the enemy node; no further tick calls are made for that enemy.
+- **AC-SE-12** — GIVEN an enemy with active Burn AND active Freeze, WHEN `HealthDamage.enemy_killed` fires for that enemy, THEN both StatusInstances are removed from `_active_statuses`; `apply_speed_modifier(1.0)` was called on the enemy node (Freeze cleanup restores full speed); no further tick calls are made for that enemy.
 
 **Burn Contagion:**
 

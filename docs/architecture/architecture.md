@@ -6,7 +6,7 @@
 - **Last Updated:** 2026-05-29
 - **Engine:** Godot 4.6 (Compatibility renderer, OpenGL 3.3 / D3D12 Windows)
 - **GDDs Covered:** game-state-scene-flow, health-damage, prana-data, enemy-data, player-controller, prana-grid, combination-resolution, spell-casting-effects, enemy-ai, wave-encounter-system, combat-hud, status-effects, run-management, audio-system (14 of 15 First-Playable/MVP systems)
-- **ADRs Referenced:** ADR-0001 (Isometric View — Accepted)
+- **ADRs Referenced:** ADR-0001 (Accepted), ADR-0002 (Accepted), ADR-0003 (Accepted), ADR-0004 (Accepted), ADR-0005 (Accepted), ADR-0006 (Accepted), ADR-0007 (Accepted), ADR-0008 (Accepted); ADR-0009–0010 Proposed (defer to sprint start)
 - **Technical Director Sign-Off:** 2026-05-29 — APPROVED WITH CONDITIONS (ADR-0002–0006 required before coding; H&D registration contract in ADR-0007; ADR-0001 verification test before IsometricRoom sprint)
 - **Lead Programmer Feasibility:** N/A (Lean mode — skipped)
 
@@ -416,15 +416,22 @@ signal boss_defeated()
 | ADR | Engine Compat | Version | GDD Linkage | Conflicts | Valid |
 |-----|--------------|---------|-------------|-----------|-------|
 | ADR-0001: Isometric View | ✅ | ✅ Godot 4.6 | ✅ game-concept, health-damage | None | ✅ |
+| ADR-0002: Autoload Architecture | ✅ | ✅ Godot 4.6 | ✅ GSF, PD, ED, RM, SC, SE | None | ✅ |
+| ADR-0003: Signal-Driven Architecture | ✅ | ✅ Godot 4.6 | ✅ GSF, PG, CH, RM | None | ✅ |
+| ADR-0004: Float Accumulator Timer | ✅ | ✅ Godot 4.6 | ✅ PD, SC, PC, EA | None | ✅ |
+| ADR-0005: Persistent HUD Sub-Scene Swap | ✅ | ✅ Godot 4.6 | ✅ GSF, CH | None | ✅ |
+| ADR-0006: GameEnums Pure Container | ⚠️ VERIFY: .tres int serialization | ✅ Godot 4.6 | ✅ PD, HD, GSF | None | ✅ |
+| ADR-0007: HealthAndDamage Singleton | ✅ | ✅ Godot 4.6 | ✅ HD, SE, EA, WE | None | ✅ |
+| ADR-0008: PranaCatalog Immutability | ⚠️ VERIFY: duplicate_deep() isolation | ✅ Godot 4.6 | ✅ PD | None | ✅ |
 
-ADR-0001 passes all quality gates. No conflicts with any decision made in this architecture session.
+ADRs 0001–0008 all pass quality gates. Two verification tests remain (ADR-0006: .tres int serialization; ADR-0008: duplicate_deep() isolation).
 
 ### Traceability Coverage
 
-- **Covered:** TR-ISO-001 through TR-ISO-004 by ADR-0001 (4 requirements)
-- **Gaps:** 75 requirements from this architecture session have no corresponding ADR yet
+- **Covered:** TR-ISO-001 through TR-ISO-004 (ADR-0001); TR-ENG-002, TR-GSF-008, TR-PD-001, TR-ED-001, TR-RM-001, TR-SC-001, TR-SE-001 (ADR-0002); TR-GSF-002, TR-PG-004, TR-CH-002, TR-RM-004 (ADR-0003); TR-ENG-003, TR-PC-005, TR-SC-002, TR-SE-002 (ADR-0004); TR-GSF-007, TR-GSF-009, TR-CH-001 (ADR-0005); TR-PD-003/004, TR-ENG-001 (ADR-0006); TR-HD-001–014 (ADR-0007); TR-PD-002/005 (ADR-0008)
+- **Remaining gaps:** TR-SC-005 (stat broker), TR-PC-006/TR-EA-009 (group convention) — covered by ADR-0009/0010 when authored
 
-All gaps are expected — this is the first architecture session. See Required ADRs below.
+All Foundation and Core ADRs are now written. See Required ADRs below for remaining deferred items.
 
 ---
 
@@ -432,29 +439,29 @@ All gaps are expected — this is the first architecture session. See Required A
 
 <!-- WRITTEN: 2026-05-29 — approved by user -->
 
-### Foundation Layer (must create before any coding)
+### Foundation Layer — COMPLETE (all Accepted)
 
-| # | Run | Covers TRs | What it unblocks |
-|---|-----|-----------|-----------------|
-| ADR-0002 | `/architecture-decision "Autoload Architecture and Registration Order"` | TR-ENG-002, TR-GSF-008, TR-PD-001, TR-ED-001, TR-RM-001, TR-SC-001, TR-SE-001 | Prevents startup null crashes; establishes which systems are Autoloads and their order |
-| ADR-0003 | `/architecture-decision "Signal-Driven Architecture — No Direct Polling"` | TR-GSF-002, TR-PG-004, TR-CH-002, TR-RM-004 | Core coupling pattern; validates every GDD's "Interactions" section |
-| ADR-0004 | `/architecture-decision "Float Accumulator Timer Pattern"` | TR-ENG-003, TR-PC-005, TR-SC-002, TR-SE-002, TR-PC-009 | All timing code follows one pattern; survives PROCESS_MODE_PAUSABLE |
-| ADR-0005 | `/architecture-decision "Persistent HUD via Sub-Scene Swap"` | TR-GSF-007, TR-GSF-009 | SceneManager can load/unload rooms without destroying CombatHUD |
-| ADR-0006 | `/architecture-decision "GameEnums as Pure Enum Container"` | TR-PD-003, TR-PD-004, TR-ENG-001 | .tres serialization stability; no circular imports |
+| # | ADR File | Status | Covers TRs |
+|---|----------|--------|-----------|
+| ADR-0002 | `adr-0002-autoload-architecture.md` | ✅ Accepted | TR-ENG-002, TR-GSF-008, TR-PD-001, TR-ED-001, TR-RM-001, TR-SC-001, TR-SE-001 |
+| ADR-0003 | `adr-0003-signal-driven-architecture.md` | ✅ Accepted | TR-GSF-002, TR-PG-004, TR-CH-002, TR-RM-004 |
+| ADR-0004 | `adr-0004-float-accumulator-timer-pattern.md` | ✅ Accepted | TR-ENG-003, TR-PC-005, TR-SC-002, TR-SE-002 |
+| ADR-0005 | `adr-0005-persistent-hud-sub-scene-swap.md` | ✅ Accepted | TR-GSF-007, TR-GSF-009, TR-CH-001 |
+| ADR-0006 | `adr-0006-game-enums-pure-container.md` | ✅ Accepted | TR-PD-003, TR-PD-004, TR-ENG-001 |
 
-### Core Layer (create before relevant implementation sprint)
+### Core Layer — COMPLETE (all Accepted)
 
-| # | Run | Covers TRs | What it unblocks |
-|---|-----|-----------|-----------------|
-| ADR-0007 | `/architecture-decision "HealthAndDamage as Autoload Singleton"` | TR-HD-001 through TR-HD-014 | Enemy HP in central dict; `apply_damage()` callable without per-frame group lookup |
-| ADR-0008 | `/architecture-decision "PranaCatalog Immutability via duplicate_deep()"` | TR-PD-002, TR-PD-005 | Immutable catalog pattern; prevents consumer corruption |
+| # | ADR File | Status | Covers TRs |
+|---|----------|--------|-----------|
+| ADR-0007 | `adr-0007-health-damage-autoload-singleton.md` | ✅ Accepted | TR-HD-001 through TR-HD-014 |
+| ADR-0008 | `adr-0008-prana-catalog-immutability.md` | ✅ Accepted | TR-PD-002, TR-PD-005 |
 
-### Defer to Implementation Sprint
+### Deferred to Implementation Sprint
 
 | # | Run | Note |
 |---|-----|------|
-| ADR-0009 | `/architecture-decision "SpellCastingEffects Wave-Scoped Stat Broker"` | Covers `get_stat_bonus()` (TR-SC-005); needed before CR + Status Effects implementation |
-| ADR-0010 | `/architecture-decision "Player Group Convention and Target Discrimination"` | Covers TR-PC-006, TR-EA-009; needed before first enemy or H&D implementation |
+| ADR-0009 | `/architecture-decision "SpellCastingEffects Wave-Scoped Stat Broker"` | Covers `get_stat_bonus()` (TR-SC-005); needed before CR + Status Effects implementation sprint |
+| ADR-0010 | `/architecture-decision "Player Group Convention and Target Discrimination"` | Covers TR-PC-006, TR-EA-009; needed before first enemy or H&D implementation sprint |
 
 ---
 

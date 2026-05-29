@@ -2,7 +2,7 @@
 
 > **Status**: In Review (revised 2026-05-29)
 > **Author**: Kusuma Putra + Claude Code Game Studios
-> **Last Updated**: 2026-05-28
+> **Last Updated**: 2026-05-29 (round-3 revision — B-1/B-2 + R-1..R-6 resolved)
 > **Implements Pillar**: Pillar 2 (Power is Earned Through Understanding), Pillar 3 (Chaos Has Consequences)
 
 ## Overview
@@ -35,6 +35,15 @@ The edge case worth naming: the first-discovery moment, when a player triggers a
 - `GameStateManager.combat_started` → `_on_combat_started()`
 - `GameStateManager.preparation_started` → `_on_preparation_started()`
 - `CombinationResolution.combo_resolved` → `_on_combo_resolved(spell_effect)`
+- `HealthAndDamage.enemy_killed` → `_on_enemy_killed(id, type_id, affiliation)` — **dynamic only**: connected at chain start if `ADJ_BARRIER_HIT ∈ active_adjacency_effects`, using `CONNECT_ONE_SHOT` flag (auto-disconnects after first fire); explicitly disconnected on `preparation_started` if not yet fired
+
+**Signals declared on this node:**
+
+```gdscript
+signal spell_hit_element(target: Node, prana_type_id: int)
+signal cast_hit_started(duration: float)
+signal chain_index_changed(combo_index: int, combo_attack_count: int)
+```
 
 `process_mode = PROCESS_MODE_PAUSABLE`. Cast input is checked in `_process(delta)`; timing accumulators (combo window, cast lock, echo delay) use the float accumulator pattern in `_process(delta)` — not `SceneTree.create_timer()` or `Timer` nodes.
 
@@ -52,10 +61,10 @@ Cast input (`Input.is_action_just_pressed(&"cast")`) is only processed when `_st
 **3. SpellEffect cache.** SC&E caches `_current_spell_effect: SpellEffect` for the full wave after receiving `combo_resolved`. Cache is cleared to `null` on `preparation_started`. SC&E is the wave-scoped stat broker — exposes `get_stat_bonus(stat_id: StringName) → float` returning `_current_spell_effect.aggregate_stat_bonus.get(stat_id, 0.0)` (returns 0.0 if cache is null). Status Effects (MVP) and Health & Damage query SC&E via this method rather than accessing `SpellEffect` directly.
 
 **4. Cast action.** `cast` InputMap action: keyboard `Space`, gamepad `A`/cross. When the player presses `cast` in a valid state:
-- If `_combo_index == 0` and `_state == READY`: fire chain attack 1, set `_combo_index = 1`, enter CAST_LOCKED, start combo window timer
-- If `_combo_index > 0` and `_state == CHAINING` and window is active: fire the next attack, advance `_combo_index`, enter CAST_LOCKED, restart combo window timer
-- If all chain attacks fired (index reached `combo_attack_count`): reset chain (`_combo_index = 0`), enter READY — SpellEffect is NOT cleared
-- Chain resets to `_combo_index = 0` and READY when the combo window expires
+- If `_combo_index == 0` and `_state == READY`: fire chain attack 1, set `_combo_index = 1`, emit `chain_index_changed(1, combo_attack_count)`, enter CAST_LOCKED, start combo window timer
+- If `_combo_index > 0` and `_state == CHAINING` and window is active: fire the next attack, advance `_combo_index`, emit `chain_index_changed(_combo_index, combo_attack_count)`, enter CAST_LOCKED, restart combo window timer
+- If all chain attacks fired (index reached `combo_attack_count`): reset chain (`_combo_index = 0`), emit `chain_index_changed(0, combo_attack_count)`, enter READY — SpellEffect is NOT cleared
+- Chain resets to `_combo_index = 0` and READY when the combo window expires; emit `chain_index_changed(0, combo_attack_count)`
 
 **5. Target selection.** On each cast press, SC&E selects a primary target using the `TargetingModel` for the current attack. The **default targeting model is `DIRECTIONAL_FACING`** — fires a ray from Fayde in `PlayerController.get_facing_direction()` and hits the first enemy whose collision shape intersects the ray within `CAST_MAX_RANGE`. Implemented via `PhysicsDirectSpaceState2D.intersect_ray(origin, origin + facing * range, exclude_list, ENEMY_COLLISION_LAYER)`.
 
@@ -129,8 +138,8 @@ Effective durations: Freeze = `2.0 + aggregate_stat_bonus.get("FROST_FREEZE_DUR"
 - **Ashfire NP**: `burn_bonus` carried in `NonPrimaryModifier` → applied in Step 3 per hit
 - **Stormgold NP T1**: `_combo_continuation_window += non_primary.window_extension` (0.3s, once at chain start)
 - **Stormgold NP T2**: `_final_attack_applies_stun = true` — Stun applied after final chain attack
-- **Deepfrost NP T1**: after each chain hit, `apply_status(target, STATUS_CHILL, CHILL_DURATION)` — 15% movement slow for 2.0s; Enemy AI reads to reduce speed
-- **Deepfrost NP T2**: first hit applies `STATUS_FREEZE` for `NONPRIMARY_FREEZE_DURATION = 1.0s`; remaining hits apply Chill
+- **Deepfrost NP T1**: after each chain hit, `apply_status(target, STATUS_CHILL, CHILL_DURATION)` — 15% movement slow for 2.0s; Enemy AI reads to reduce speed. At FP: field-write stub only (`target.status_chill_timer = CHILL_DURATION`); Enemy AI does not read this field at FP — slow has no visible effect; inert at FP.
+- **Deepfrost NP T2**: first hit applies `STATUS_FREEZE` for `NONPRIMARY_FREEZE_DURATION = 1.0s`; remaining hits apply Chill. At FP: Chill entries are field-write stubs only (same as NP T1 note above); Freeze stub per Rule 8 table.
 - **Verdant NP T1**: on first cast press, `apply_heal(fayde, REGEN_TOTAL)` immediately (6 HP); refreshes if active
 - **Verdant NP T2**: as T1 heal; plus `_heal_amplifier = VERDANT_NP_HEAL_AMP (1.25)` — SC&E amplifies all `apply_heal` calls to Fayde during the wave
 - **Voidblue NP T1**: on first hit, `if randf() < 0.30: apply_status(target, STATUS_BLIND, 2.0s)`
@@ -138,7 +147,7 @@ Effective durations: Freeze = `2.0 + aggregate_stat_bonus.get("FROST_FREEZE_DUR"
 
 **10. Adjacency effect application.** SC&E processes each active adjacency effect from `active_adjacency_effects` once per chain. Three effects require per-frame timers (float accumulator):
 - `ADJ_ECHO`: fires a delayed echo strike after `ADJ_ECHO_DELAY = 0.8s`; cancelled on `preparation_started` or any run-ending signal
-- `ADJ_BARRIER_HIT`: grants a one-hit absorb barrier on first kill during the chain; listens for `enemy_killed` signal during chain execution
+- `ADJ_BARRIER_HIT`: on the first `enemy_killed` signal during the chain, calls `health_and_damage.grant_barrier(fayde, barrier_hp)` where `barrier_hp` is computed from Formula 8; `enemy_killed` connection is dynamic (connected at chain start using `CONNECT_ONE_SHOT` — auto-disconnects after firing; explicitly disconnected on `preparation_started` if not yet fired)
 - `ADJ_PHASE_SHIFT`: sets `_cast_invincible = true` for `ADJ_PHASE_DURATION = 0.6s` after cast resolves; H&D queries `SpellCastingEffects.is_cast_invincible() → bool`
 
 **11. Heal amplification (Verdant NP T2).** When `_heal_amplifier > 1.0`: `apply_heal(fayde, (heal_amount + VER_HEAL_FLAT_bonus) × _heal_amplifier)`. Amplifier cleared on `preparation_started`.
@@ -170,7 +179,7 @@ Effective durations: Freeze = `2.0 + aggregate_stat_bonus.get("FROST_FREEZE_DUR"
 | **Combination Resolution** | Listens for `combo_resolved(spell_effect)` to receive the wave payload | CR → SC&E |
 | **Game State & Scene Flow** | Listens for `combat_started` and `preparation_started` | Game State → SC&E |
 | **Player Controller** | Reads `get_world_position()` and `get_facing_direction()` as cast origin/direction; emits `cast_hit_started(duration)` for brief movement lock | SC&E reads + emits → PC |
-| **Health & Damage** | Calls `apply_damage(target, raw_damage, null, DamageSource.DIRECT)` per hit; calls `apply_heal(fayde, amplified_amount)` for Verdant effects | SC&E → H&D |
+| **Health & Damage** | Calls `apply_damage(target, raw_damage, null, DamageSource.DIRECT)` per hit; calls `apply_heal(fayde, amplified_amount)` for Verdant effects; calls `grant_barrier(fayde, barrier_hp)` for Verdant T2 SELF shield pulse and ADJ_BARRIER_HIT; listens for `enemy_killed` signal (dynamic — ADJ_BARRIER_HIT only) | SC&E → H&D (calls + conditional listen) |
 | **Enemy instances** | Reads `global_position` and `prana_affiliation` for targeting and affiliation check; writes `status_*` fields for FP status stubs | SC&E reads/writes enemy nodes |
 | **Audio System** | Calls `play_event(&"sfx_cast_[type_name]")` on each hit; `play_event(&"sfx_cast_miss")` on no-target cast | SC&E → Audio System |
 | **Combat HUD** | Exposes `get_cached_spell_effect() → SpellEffect` (read-only); emits `chain_index_changed(combo_index, combo_attack_count)` and `spell_hit_element(target: Node, prana_type_id: int)` after each `apply_damage` call (for damage-number coloring per Prana type) | SC&E → Combat HUD (emit); Combat HUD → SC&E (read) |
@@ -182,6 +191,7 @@ Effective durations: Freeze = `2.0 + aggregate_stat_bonus.get("FROST_FREEZE_DUR"
 > 2. **Health & Damage GDD** must add: SC&E stat broker reference in Interactions table (`VER_HEAL_FLAT` and status-duration stat bonuses brokered through `SC&E.get_stat_bonus()`)
 > 3. ~~Combination Resolution GDD — Ashfire attack identity revision required~~ **RESOLVED** — CR Approved 2026-05-29 with melee dance / `AREA_AROUND_FAYDE` identity.
 > 4. **Elemental Affiliation & Weakness** is removed from the FP design order; SC&E owns the 2× check at FP scope
+> 5. **Health & Damage GDD** must add: `grant_barrier(target: Node, barrier_hp: int) → void` method — called by SC&E for Verdant T2 SELF shield pulse and ADJ_BARRIER_HIT adjacency effect (barrier_hp = Formula 8). H&D owns the barrier state and the per-hit absorption logic.
 
 ## Formulas
 
@@ -259,7 +269,7 @@ SC&E resolves each chain attack via `ATTACK_DATA[primary_type][primary_tier][att
 | 3 | 1 | 1.20 | DIRECTIONAL_FACING | Follow |
 | 3 | 2 | 1.00 | DIRECTIONAL_FACING | Chain strike (primary); *secondary*: fork to nearest enemy ≠ primary (Formula 4) |
 
-**Qualifying interrupt**: Stun was applied while the enemy's attack animation was active (`enemy._is_attacking == true` at moment of Stun). Idle or moving enemies do not qualify. Enemy AI GDD owns the `_is_attacking` flag.
+**Qualifying interrupt**: Stun was applied while the enemy's attack animation was active (`enemy._is_attacking == true` at moment of Stun). Idle or moving enemies do not qualify. Enemy AI GDD owns the `_is_attacking` flag. [FP note: `_is_attacking` is undefined at FP — qualifying interrupts never occur; `_followthrough_window` never becomes non-zero; Step 6 is inert at FP.]
 
 ---
 
@@ -282,7 +292,7 @@ SC&E resolves each chain attack via `ATTACK_DATA[primary_type][primary_tier][att
 |------|-------|----------------------|-------------------|-------|
 | 1 | 0 | 1.00 | DIRECTIONAL_FACING | Bloom strike; Regen applied to Fayde on hit |
 | 2 | 0 | 1.00 | DIRECTIONAL_FACING | Bloom strike |
-| 2 | 1 | 0.00 | SELF | Shield pulse; **0 damage**; grants one-hit absorb barrier to Fayde (Formula 8) |
+| 2 | 1 | 0.00 | SELF | Shield pulse; **0 damage**; calls `health_and_damage.grant_barrier(fayde, barrier_hp)` where `barrier_hp` = Formula 8; barrier absorbed on next hit to Fayde |
 | 3 | 0 | 1.00 | DIRECTIONAL_FACING | Bloom strike |
 | 3 | 1 | 0.00 | SELF | Shield pulse (barrier) |
 | 3 | 2 | 1.20 | DIRECTIONAL_FACING | Rejuvenating strike; Regen resets to 3.0s + immediate 2 HP tick on hit |
@@ -481,7 +491,7 @@ SC&E computes these before each `apply_status()` call:
 |---|--------|----------------|----------------|
 | 1 | **Combination Resolution (#2)** | `combo_resolved(spell_effect)` signal — the wave payload | Hard |
 | 2 | **Player Controller (#5)** | `get_world_position()`, `get_facing_direction()` as cast origin/direction | Hard |
-| 3 | **Health & Damage (#6)** | `apply_damage(target, raw_damage, null, DamageSource.DIRECT)` and `apply_heal(fayde, amount)` | Hard |
+| 3 | **Health & Damage (#6)** | `apply_damage(target, raw_damage, null, DamageSource.DIRECT)`, `apply_heal(fayde, amount)`, `grant_barrier(fayde, barrier_hp)` (Verdant T2 + ADJ_BARRIER_HIT); H&D also emits `enemy_killed` which SC&E subscribes to dynamically when ADJ_BARRIER_HIT is active | Hard |
 | 4 | **Game State & Scene Flow (#27)** | `combat_started`, `preparation_started` signals | Hard |
 | 5 | **Prana Data (#4)** | `PranaCatalog.get_type(id).damage_class` for elemental affiliation inline check | Hard (FP) |
 | 6 | **Enemy instances** | `global_position`, `prana_affiliation`, `status_*` fields, `_is_attacking` flag | Hard |
@@ -655,7 +665,7 @@ GIVEN ADJ_ECHO active, Ashfire T1 SpellEffect (base_damage_modifier = 1.25, no s
 WHEN `_process(delta)` called with cumulative delta = 0.8s after chain end,
 THEN `apply_damage` is called on the echo target with `raw_damage = round(20 × 1.25 × 0.50) = 13`; no Steps 5–9 multipliers applied.
 
-**[U] AC-SC-19** — Formula 7: status durations at default (no stat bonuses)
+**[U][FP] AC-SC-19** — Formula 7: status durations at default (no stat bonuses)
 GIVEN Deepfrost T1 SpellEffect with `aggregate_stat_bonus` empty,
 WHEN cast fires on a valid target,
 THEN `target.status_freeze_timer == 2.0`.
@@ -693,7 +703,7 @@ GIVEN SC&E in IDLE,
 WHEN `_on_combo_resolved(spell_effect)` is called with `spell_effect.primary_type == -1`,
 THEN `_state == IDLE`, `push_error` was called, and any subsequent cast press produces no attack.
 
-**[U] AC-SC-25** — Formula 7 with stat bonuses: Freeze = 2.0 + bonus; Stun = 0.8 + bonus
+**[U][FP] AC-SC-25** — Formula 7 with stat bonuses: Freeze = 2.0 + bonus; Stun = 0.8 + bonus
 GIVEN `aggregate_stat_bonus = {"FROST_FREEZE_DUR": 0.5, "STORM_STUN_DUR": 0.4}` and a Deepfrost T1 SpellEffect,
 WHEN cast fires,
 THEN `target.status_freeze_timer == 2.5`.
@@ -708,8 +718,10 @@ THEN spy receives exactly one call with `(target, 0)` — `prana_type_id` matche
 
 ---
 
-*Coverage: AC-SC-01–06 = Core Rules 1–6 (state machine); AC-SC-07–09 = Rule 6–9 (targeting); AC-SC-10 = Rule 8 (cast lock); AC-SC-11 = Rule 10 (Follow-Through gate); AC-SC-12 = Formula 1; AC-SC-13 = Formula 3 Step 1 type branch; AC-SC-14 = Formula 3 Step 5 (Shatter); AC-SC-15 = Formula 3 Step 9 (affiliation); AC-SC-16 = Formula 4 (fork); AC-SC-17 = Formula 5 (ADJ_DOUBLE_HIT); AC-SC-18 = Formula 6 (ADJ_ECHO); AC-SC-19, AC-SC-25 = Formula 7 (status durations); AC-SC-20–22 = tier_modifier==0 + echo cancellation edge cases; AC-SC-23 = Rule 11 (ASH_CRIT gate); AC-SC-24 = Rule 12 (no-op SpellEffect).*
+*Coverage: AC-SC-01–06 = Core Rules 1–6 (state machine); AC-SC-07–09 = Rule 6–9 (targeting); AC-SC-10 = Rule 8 (cast lock); AC-SC-11 = Rule 10 (Follow-Through gate); AC-SC-12 = Formula 1; AC-SC-13 = Formula 3 Step 1 type branch; AC-SC-14 = Formula 3 Step 5 (Shatter); AC-SC-15 = Formula 3 Step 9 (affiliation); AC-SC-16 = Formula 4 (fork); AC-SC-17 = Formula 5 (ADJ_DOUBLE_HIT); AC-SC-18 = Formula 6 (ADJ_ECHO); [FP] AC-SC-19, AC-SC-25 = Formula 7 (status durations — FP field-write stubs; remove from MVP test suite when StatusEffectsManager is wired); AC-SC-20–22 = tier_modifier==0 + echo cancellation edge cases; AC-SC-23 = Rule 11 (ASH_CRIT gate); AC-SC-24 = Rule 12 (no-op SpellEffect).*
 
 ## Open Questions
 
-[To be designed]
+1. **W-7 VER_HEAL_FLAT delivery path**: Rule 11 references `VER_HEAL_FLAT_bonus` in `apply_heal(fayde, (heal_amount + VER_HEAL_FLAT_bonus) × _heal_amplifier)`. Is `VER_HEAL_FLAT_bonus` queried per-call via `get_stat_bonus(&"VER_HEAL_FLAT")` at the moment of each `apply_heal`, or captured once at chain start alongside `_heal_amplifier`? The broker pattern (Rule 3) implies a per-call query — both yield the same value since `_current_spell_effect` is wave-stable, but the canonical pattern must be confirmed before Status Effects MVP implementation to ensure consistent stat-query behaviour across all SC&E callers.
+
+2. **FP stub migration plan**: At MVP, the `status_*` fields written by Rule 8 (FP stubs) are replaced by StatusEffectsManager calls. Fields affected: `status_freeze_timer`, `status_stun_timer`, `status_burned`, `status_blinded_timer`, `status_stagger_timer` (Voidblue T2), and `status_chill_timer` (Deepfrost NP). Since Enemy AI does not read any of these at FP, no Enemy AI behaviour is broken on removal. Decision required: must the Enemy AI GDD (or Enemy Data node schema) declare all these fields for the FP field-write pattern to be valid at runtime? Or are they SC&E-private temporaries written to arbitrary node properties with no reader? Confirm ownership before FP implementation begins.

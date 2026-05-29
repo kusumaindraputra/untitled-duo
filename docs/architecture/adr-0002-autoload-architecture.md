@@ -1,7 +1,7 @@
 # ADR-0002: Autoload Architecture and Registration Order
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-05-29

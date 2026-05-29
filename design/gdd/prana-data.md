@@ -1,8 +1,8 @@
 # Prana Data
 
-> **Status**: In Review
+> **Status**: Approved
 > **Author**: Kusuma Putra + Claude Code Game Studios
-> **Last Updated**: 2026-05-26
+> **Last Updated**: 2026-05-29
 > **Implements Pillar**: Pillar 2 (Power is Earned Through Understanding), Pillar 4 (Depth Over Breadth)
 
 ## Overview
@@ -85,7 +85,7 @@ Players do not engage with Prana Data as a system. They engage with Prana types 
    | **Ashfire** — *Burn Contagion* | When a target dies while afflicted with Burn, Burn transfers to the nearest enemy within `burn_contagion_range` (default 200px — see Tuning Knobs) at a fixed 2.0s duration (not the tunable `burn_duration`). *Rationale: Contagion spread is a deliberate chain-spread power cap — Burn cannot cascade at maximum configured duration.* | Player sees fire jump to a second enemy after a kill. |
    | **Voidblue** — *Deepening Doubt* | Each time an enemy with Blind misses an attack due to Blind, the Blind timer extends by `deepening_doubt_extension` (default 0.5s — see Tuning Knobs), capped at `deepening_doubt_cap = 2.0 × blind_duration` (at canonical `blind_duration=2.0s`, cap = 4.0s). Cap is computed at load time from the tunable `blind_duration` value — never hardcoded. Fast-attacking enemies stay confused longer. | Player notices Blind lasting longer against high-frequency attackers. |
    | **Stormgold** — *Lightning Follow-Through* | A Stormgold cast made within 1.5s of a successful Stun interrupt (one that cancelled an in-progress enemy attack animation — not applied to an idle enemy) deals +30% direct damage. Formula: `follow_through_damage = base_damage × base_damage_modifier × 1.30` — multiplicative, not additive to the modifier. Example: `base_damage=20, stormgold_modifier=1.15 → 20 × 1.15 × 1.30 = 29.9 → round to 30`. | Player casts Stormgold to interrupt, rapidly casts again, sees a larger damage number. |
-   | **Deepfrost** — *Shatter* | A Frozen enemy (during the root window) that takes `DamageSource.DIRECT` or `DamageSource.CONTACT` damage receives +25% bonus damage on that hit. `DamageSource.DOT` ticks do not trigger Shatter — impact only. | Player hits a Frozen enemy with another spell and sees a bonus damage value. |
+   | **Deepfrost** — *Shatter* | A Frozen enemy (during the root window) that takes `DamageSource.DIRECT` or `DamageSource.CONTACT` damage receives +25% bonus damage on that hit. Formula: `shatter_damage = base_damage × base_damage_modifier × 1.25` — multiplicative, not additive to the modifier; applied before `elemental_multiplier`. Example: `base_damage=20, deepfrost_modifier=0.80 → round(20 × 0.80 × 1.25) = 20` (Shatter exactly compensates for Deepfrost's low modifier on impact hits). `DamageSource.DOT` ticks do not trigger Shatter — impact only. | Player hits a Frozen enemy with another spell and sees a bonus damage value. |
    | **Verdant** — *Injury Bloom* | If Regen is active on Fayde when she takes `DamageSource.CONTACT` damage, an additional immediate Regen tick fires at the moment of impact (`regen_tick_magnitude × fayde_max_hp` HP — uses the same tunable value as a normal Regen tick). | Player takes a hit while regenerating and notices an extra green tick. |
 
    *Shatter (Deepfrost) creates the most powerful inter-type synergy: Deepfrost root → any offensive type for +25% bonus. Combination Resolution GDD should acknowledge this pairing explicitly.*
@@ -111,6 +111,7 @@ Players do not engage with Prana Data as a system. They engage with Prana types 
    | Stun | Enemy animation freeze-frame for full duration; distinct full-body flash | 0.8s minimum — must be perceptible at the tuning floor |
    | Freeze | Ice crystal overlay; enemy fully stops (root) then shows slowed movement | Deterministic root is self-confirming; overlay reinforces |
    | Regenerate | Persistent green particle aura on Fayde for full duration | 6 HP / 100 HP = 6% bar movement — imperceptible without aura |
+   | Stun — re-application rejected | A brief desaturated pulse on the enemy's existing freeze-frame (distinct from the initial full-body flash) when a second Stun application is ignored. Must be visually distinguishable from a fresh Stun application. *(Consuming GDDs: Status Effects, Combat HUD)* | Without a rejection signal, players conflate "Stun refreshed" with "Stun ignored" — either misconception breaks the mastery arc for Stun timing. |
 
 ---
 
@@ -272,6 +273,8 @@ These statuses have no formula — their effect is binary or a fixed value:
 
 - **Shatter — DoT ticks do not trigger the bonus**: `DamageSource.DOT` ticks (Burn ticks) applied to a Frozen enemy do NOT trigger Shatter. Only `DamageSource.DIRECT` or `DamageSource.CONTACT` hits apply the +25% bonus. Shatter is an impact mechanic — DoT is not impact.
 
+- **Shatter — Deepfrost's own cast does not self-proc on first application**: When Deepfrost casts, it applies Freeze and delivers a `DamageSource.DIRECT` hit to the target simultaneously. Shatter does NOT proc on this hit — Shatter requires the Freeze root window to be *already active* when the hit is processed. On Deepfrost's first cast against a target, Freeze is not yet active at hit-processing time. On a *second* Deepfrost cast against the same Frozen enemy, the existing Freeze root window IS active (Freeze refreshes via the re-application rule), so Shatter DOES proc and the Freeze timer resets to 2.0s in the same frame. This prevents Deepfrost from gaining a passive self-Shatter bonus on every first cast while preserving the inter-cast Shatter synergy (a reward for sustained Deepfrost use or Deepfrost follow-ups). The `DamageSource.DIRECT` vs. Freeze-active ordering is owned by Spell Casting & Effects GDD.
+
 - **Deepening Doubt — extension cap enforcement**: The Blind timer cap is `deepening_doubt_cap = 2.0 × blind_duration` — computed at load time from the tunable `blind_duration` value, never hardcoded. At canonical `blind_duration=2.0s`, cap = 4.0s. A very fast-attacking enemy that misses 10 times cannot push Blind beyond the cap. Cap is enforced per-tick: `new_timer = min(current_timer + deepening_doubt_extension, deepening_doubt_cap)`.
 
 - **Injury Bloom — i-frame interaction**: If Fayde takes `DamageSource.CONTACT` damage during an active i-frame window (`fayde_iframe_duration = 0.5s`), the i-frame absorbs the hit and Fayde's HP does not change. In this case, **Injury Bloom does NOT fire** — Bloom triggers only when real CONTACT damage is applied (i.e., when `final_damage > 0` is applied to Fayde's HP). An i-framed hit is not a damage event for Bloom purposes. This prevents swarm scenarios (multiple simultaneous hits during one i-frame) from generating multiple free healing ticks.
@@ -384,6 +387,7 @@ All values listed here should be designer-adjustable without code changes — st
 - **`burn_duration` must always be ≥ `burn_tick_rate`** (at least one tick must fire). If violated, Burn is visually active but deals zero damage. Same constraint: `regen_duration ≥ regen_tick_rate`.
 - **`burn_duration` must be an integer multiple of `burn_tick_rate`** (same for `regen_duration` / `regen_tick_rate`). Non-integer-multiple values cause `floor()` float-precision edge cases where GDScript may silently produce one fewer tick than expected.
 - **Burn cap — code enforcement required:** The 0.60 cap on `burn_tick_magnitude × floor(burn_duration / burn_tick_rate)` must be enforced with an assert in the Status Effects class at load time: `assert(burn_tick_magnitude * floor(burn_duration / burn_tick_rate) <= 0.60, "Burn cap exceeded — adjust burn_tick_magnitude, burn_duration, or burn_tick_rate")`. Prose documentation alone is insufficient under deadline pressure.
+- **`burn_contagion_range` and `burn_duration` interact:** Contagion always transfers Burn at a fixed 2.0s duration regardless of the current `burn_duration` setting. If `burn_duration` is tuned below 2.0s (e.g., 1.0s), Contagion spread applies a *longer* Burn than a direct Ashfire cast — Contagion becomes proportionally more powerful as `burn_duration` decreases. Adjust together; do not lower `burn_duration` without reviewing whether the 2.0s Contagion fixed duration is still appropriate.
 - `regen_tick_magnitude` is contingent on enemy damage values (defined in Health & Damage GDD). Finalize after that GDD is complete.
 
 ## Visual/Audio Requirements
@@ -505,10 +509,10 @@ GIVEN an enemy has Freeze applied at T=0, WHEN T=2.0s passes, THEN root is relea
 **AC-PD-23 — Invalid ID lookup returns null and logs an error**
 GIVEN the catalog is loaded with IDs 0–4, WHEN any system requests ID 5 (or any integer not in the catalog), THEN the return value is null AND an error is written to the engine log — no default/fallback type is silently returned.
 
-**AC-PD-24 — Burn refresh on re-application (no stack)**
+**AC-PD-24 — Burn refresh on re-application (no stack)** *(Integration — requires running SceneTree timer)*
 GIVEN an enemy has Burn active with 1.0s remaining, WHEN an Ashfire cast applies Burn again, THEN the Burn timer resets to 2.0s, `burn_tick_magnitude` remains 0.08, and the enemy does not receive more burn damage per tick than the single-stack value.
 
-**AC-PD-25 — Regen refresh on re-application (no stack)**
+**AC-PD-25 — Regen refresh on re-application (no stack)** *(Integration — requires running SceneTree timer)*
 GIVEN Fayde has Regen active with 1.0s remaining, WHEN a Verdant cast applies Regen again, THEN the Regen timer resets to 3.0s, the stored `regen_tick_magnitude` fraction remains **0.02** (the fraction of `fayde_max_hp` — not the computed absolute value `0.02 × fayde_max_hp`), and each tick continues to heal exactly `0.02 × fayde_max_hp` HP — Fayde does not receive more healing per tick than the single-stack value.
 
 **AC-PD-26 — Regen tick at max HP is a no-op**
@@ -523,7 +527,7 @@ GIVEN an enemy has Freeze active with 1.5s remaining, WHEN Stun is applied, THEN
 **AC-PD-29 — Stun mid-animation cancels attack immediately** *(RELOCATED — belongs in Enemy AI / Status Effects test suite. Tests animation cancellation behavior, not catalog data.)*
 GIVEN an enemy is at any frame of an attack animation that has not yet resolved damage, WHEN Stun is applied, THEN the animation stops on the current frame, no damage event fires from that attack, and the enemy is stunned for the configured Stun duration.
 
-**AC-PD-30 — Blind expires unused when no attack occurs**
+**AC-PD-30 — Blind expires unused when no attack occurs** *(Integration — requires running SceneTree timer)*
 GIVEN an enemy has Blind applied at T=0 and makes zero attacks between T=0 and T=2.0s, WHEN T=2.0s passes, THEN Blind is no longer active, no miss-check event was triggered, and the game state has no record of pending miss checks.
 
 **AC-PD-31 — burn_total is 0 when base_damage is 0**
@@ -569,7 +573,7 @@ GIVEN an enemy has Blind (1.5s remaining) and Freeze simultaneously active, WHEN
 
 **AC-PD-40 — Burn Contagion: Burn transfers to nearest in-range enemy on kill** *(Integration)*
 GIVEN Target A has Burn active with 1.5s remaining AND Target B is placed at distance ≤ `burn_contagion_range` (test fixture: 200px — update when Status Effects GDD defines the canonical value), WHEN Target A is killed, THEN Target B has Burn applied at full duration (2.0s ± 0.05s reset) — Burn transferred from the kill. If no enemy is within `burn_contagion_range`, Burn expires on Target A with no transfer and no error.
-*Note: this AC depends on the `burn_contagion_range` value defined in the Status Effects GDD. Test fixture distance (200px) is a provisional placeholder; update when Status Effects GDD is authored.*
+*Note: this AC uses `burn_contagion_range` as defined in Prana Data's Tuning Knobs table (canonical default: 200px). Update the test fixture if that tuning value changes, or if the Status Effects GDD overrides it after the ownership transfer.*
 
 **AC-PD-41 — Deepening Doubt: Blind timer extends by `deepening_doubt_extension` per miss, capped at `deepening_doubt_cap`** *(Integration)*
 GIVEN an enemy has Blind applied (timer = 2.0s), WHEN the enemy makes 5 attacks that each miss due to Blind, THEN the Blind timer equals `min(2.0 + 5 × deepening_doubt_extension, deepening_doubt_cap)`. At canonical values (extension=0.5s, cap=2.0 × blind_duration=4.0s): `min(2.0 + 2.5, 4.0) = 4.0s`. A 6th miss does not extend the timer beyond `deepening_doubt_cap`.
@@ -579,7 +583,7 @@ GIVEN Stormgold applied Stun that cancelled an in-progress enemy attack animatio
 *Blocked: this AC requires an observable system signal or state property that distinguishes "confirmed interrupt" from "idle Stun." This mechanism (e.g., a `stun_interrupt_confirmed` signal, or an enemy `ai_state` transition from `ATTACKING` → `STUNNED`) must be defined in the Enemy AI GDD. This AC cannot be written with confidence until that mechanism is specified. Remove from the Prana Data BLOCKING gate until Enemy AI GDD is authored.*
 
 **AC-PD-43 — Shatter: +25% bonus damage on direct hit to Frozen enemy; DoT excluded** *(Integration)*
-GIVEN an enemy has Freeze active (root window), WHEN a spell with `DamageSource.DIRECT` and `base_damage = 20`, `base_damage_modifier = 1.0` (test uses modifier=1.0 to isolate the Shatter bonus) hits the enemy, THEN applied damage = `round(20 × 1.0 × 1.25) = 25`. A subsequent `DamageSource.DOT` tick on the same Frozen enemy does NOT include the 25% bonus. *(Note: `base_damage_modifier` here refers to the Prana type's modifier from the catalog — `1.0` is used in the test fixture to isolate the Shatter multiplier from type-specific values.)*
+GIVEN an enemy has Freeze active (root window), WHEN a spell with `DamageSource.DIRECT` and `base_damage = 20`, `base_damage_modifier = 1.0` (test uses modifier=1.0 to isolate the Shatter bonus) hits the enemy, THEN applied damage = `round(20 × 1.0 × 1.25) = 25`. A subsequent `DamageSource.DOT` tick on the same Frozen enemy does NOT include the 25% bonus. Deepfrost-modifier case (modifier=0.80): `round(20 × 0.80 × 1.25) = 20` — Shatter exactly compensates for Deepfrost's low modifier on impact hits, confirming multiplicative application. *(Note: `base_damage_modifier` here refers to the Prana type's modifier from the catalog — `1.0` is used in the primary fixture to isolate the Shatter multiplier from type-specific values; the `0.80` case confirms the formula is `base_damage × base_damage_modifier × 1.25`, not `base_damage × (base_damage_modifier + 0.25)`.)*
 
 **AC-PD-44 — Injury Bloom: extra Regen tick fires immediately on contact damage during Regen** *(Integration)*
 GIVEN Fayde has Regen active with **T_remaining = 1.5s** remaining, WHEN Fayde takes `DamageSource.CONTACT` damage (real damage applied, not i-frame blocked), THEN: (1) exactly one additional Regen tick fires **in the same physics frame that `final_damage` is applied to Fayde's HP** — not deferred to the next frame; the tick heals `regen_tick_magnitude × fayde_max_hp` HP; (2) the Regen timer reads **1.5s ± 0.05s** after the extra tick fires — it was not reset to 3.0s.
@@ -591,6 +595,8 @@ GIVEN Fayde has Regen active AND Fayde is within the `fayde_iframe_duration` (0.
 GIVEN Fayde has Regen active, WHEN Fayde takes `DamageSource.DIRECT` damage (e.g., a ranged spell impact), THEN no extra Regen tick fires — Injury Bloom triggers only on `DamageSource.CONTACT`, not all incoming damage types.
 
 ---
+
+*Revision (round 4) 2026-05-29: B-A resolved (Shatter formula explicit in Rule 7 + AC-PD-43 Deepfrost modifier test case added); B-B resolved (Integration tags added to AC-PD-24/25/30); R-1 (Stun rejection visual added to Rule 8 table); R-2 (Contagion × burn_duration interaction warning added to Tuning Knobs); R-3 (Deepfrost self-Shatter edge case added); R-4 (AC-PD-40 ownership note corrected). Verdict upgraded to APPROVED.*
 
 *Full review (round 3): `game-designer`, `systems-designer`, `qa-lead`, `godot-gdscript-specialist`, `creative-director` consulted (2026-05-26). 49 criteria (AC-PD-04c added for reference-type isolation; AC-PD-27 numeric timer assertion added; AC-PD-33b T_remaining constrained; AC-PD-41 parameterized for deepening_doubt_extension/cap; AC-PD-43 type_modifier renamed to base_damage_modifier; AC-PD-44 frame-precision and regen_tick_magnitude parameter added). Prior round 2 items resolved: assert() → push_error() Autoload guard; integer-multiple enforcement assert spec added; Deepening Doubt cap formula derived from blind_duration; Follow-Through formula explicitly multiplicative; Burn cap safe-range labels clarified; Injury Bloom uses regen_tick_magnitude; Contagion fixed-2.0s rationale documented; deepening_doubt_extension added as tuning knob; entities.yaml stun_duration hotfixed to 0.8s; .tres enum serialization verification gate added.*
 

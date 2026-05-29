@@ -1,7 +1,7 @@
 # ADR-0003: Signal-Driven Architecture — No Direct Cross-System Polling
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-05-29

@@ -30,7 +30,7 @@
 #   Superseded entries:     Grep pattern="status: superseded"
 
 version: 1
-last_updated: ""
+last_updated: "2026-05-29"
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -43,7 +43,18 @@ last_updated: ""
 # interface: how other systems access this state (read-only property, method call,
 #   signal, shared resource, etc.) — this is the contract other ADRs depend on.
 
-state_ownership: []
+state_ownership:
+  - state: current_spell_effect
+    status: active
+    owner_system: SpellCastingEffects
+    adr: docs/architecture/adr-0009-spell-casting-effects-stat-broker.md
+    interface: "SpellCastingEffects.get_stat_bonus(stat_id: StringName) → float — read-only; returns 0.0 when no wave is active"
+    write_access: SpellCastingEffects-only   # set on combo_resolved; cleared on preparation_started
+    referenced_by:
+      - docs/architecture/adr-0009-spell-casting-effects-stat-broker.md
+      - docs/architecture/adr-0007-health-damage-autoload-singleton.md   # H&D calls get_stat_bonus at MVP
+    added: 2026-05-29
+    revised: ""
 
 # Example:
 #
@@ -71,7 +82,22 @@ state_ownership: []
 #
 # pattern options: signal | direct_call | event_bus | shared_resource | rpc | none
 
-interfaces: []
+interfaces:
+  - contract: stat_bonus_query
+    status: active
+    pattern: direct_call        # return-value required; signals are void-return (ADR-0003)
+    producer: SpellCastingEffects
+    consumers:
+      - HealthAndDamage          # queries VER_HEAL_FLAT for heal/barrier scaling (MVP)
+      - StatusEffectsManager     # queries duration and damage stat keys during DoT ticks (MVP)
+    adr: docs/architecture/adr-0009-spell-casting-effects-stat-broker.md
+    method_signature: "get_stat_bonus(stat_id: StringName) → float"
+    return_semantics: "0.0 when no SpellEffect is cached (between waves); otherwise aggregate_stat_bonus.get(stat_id, 0.0)"
+    referenced_by:
+      - docs/architecture/adr-0009-spell-casting-effects-stat-broker.md
+      - docs/architecture/adr-0007-health-damage-autoload-singleton.md
+    added: 2026-05-29
+    revised: ""
 
 # Example:
 #
@@ -165,6 +191,29 @@ api_decisions:
     added: 2026-05-29
     revised: ""
 
+  - purpose: player_node_lookup
+    status: active
+    api: SceneTree.get_first_node_in_group(&"player") — single-member lookup; short-circuits on first match
+    not: get_node() path strings; direct node reference injection via WaveManager; Autoload-mediated registry
+    adr: docs/architecture/adr-0010-player-group-convention.md
+    reason: "get_first_node_in_group() is O(1) for the single-member 'player' group and allocates no array. group-based lookup decouples consumers from the PlayerController scene path. Already established by 3+ GDDs before this ADR."
+    referenced_by:
+      - docs/architecture/adr-0010-player-group-convention.md
+      - docs/architecture/adr-0007-health-damage-autoload-singleton.md
+    added: 2026-05-29
+    revised: ""
+
+  - purpose: group_query_return_type
+    status: active
+    api: "var enemies: Array = get_tree().get_nodes_in_group(&\"enemy\")  # untyped Array"
+    not: "Array[Node] declaration — get_nodes_in_group() returns untyped Array in Godot 4.6; typed declaration causes runtime error"
+    adr: docs/architecture/adr-0010-player-group-convention.md
+    reason: "SceneTree.get_nodes_in_group() return type is Array (untyped) in Godot 4.x. Declaring the receiver as Array[Node] causes a runtime type error. Use untyped Array or explicit typed cast. All group-query consumers must also guard with is_instance_valid() — queue_free() nodes remain in groups until end-of-frame."
+    referenced_by:
+      - docs/architecture/adr-0010-player-group-convention.md
+    added: 2026-05-29
+    revised: ""
+
 # Example:
 #
 # api_decisions:
@@ -223,6 +272,13 @@ forbidden_patterns:
     description: "If Autoload A connects to a signal on Autoload B in _ready(), then Autoload B must NOT connect to any signal on Autoload A. Circular subscriptions between Autoloads are forbidden."
     why: "Circular Autoload signal subscriptions create initialization order ambiguity — one of the two connections will silently fail depending on which _ready() runs first. ADR-0002 registration order prevents most cases; this rule closes the remainder."
     adr: docs/architecture/adr-0003-signal-driven-architecture.md
+    added: 2026-05-29
+
+  - pattern: dual_group_membership
+    status: active
+    description: "No scene node may be a member of both the 'player' group and the 'enemy' group simultaneously. PlayerController is the sole permitted member of 'player'. EnemyInstance scripts are the sole permitted members of 'enemy'."
+    why: "H&D, SC&E, and EnemyAI all use is_in_group() to discriminate Fayde from enemies in signal handlers and Area2D callbacks. Dual membership would cause a node to trigger both code paths, resulting in self-damage or incorrect targeting."
+    adr: docs/architecture/adr-0010-player-group-convention.md
     added: 2026-05-29
 
 # Example:
