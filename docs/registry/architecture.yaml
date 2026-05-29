@@ -154,6 +154,17 @@ api_decisions:
     added: 2026-05-26
     revised: ""
 
+  - purpose: global_singleton_access
+    status: active
+    api: class_name lookup — e.g. PranaCatalog.get_type(), GameStateManager.get_active_state()
+    not: get_node() path strings (e.g. get_node("/root/PranaCatalog")) — fragile on rename
+    adr: docs/architecture/adr-0002-autoload-architecture.md
+    reason: "class_name provides type-safe, zero-cost global access to Autoload singletons; get_node() paths break on rename and have runtime lookup overhead"
+    referenced_by:
+      - docs/architecture/adr-0002-autoload-architecture.md
+    added: 2026-05-29
+    revised: ""
+
 # Example:
 #
 # api_decisions:
@@ -185,6 +196,34 @@ forbidden_patterns:
     why: "Forward+ adds significant complexity and reduces hardware compatibility with no benefit for this 2D pixel art game. The isometric effect is a 2D rendering concern, not a 3D one."
     adr: docs/architecture/adr-0001-isometric-view.md
     added: 2026-05-26
+
+  - pattern: autoload_access_in_init
+    status: active
+    description: "Do not access any Autoload singleton in _init(), in @export default value expressions, or in static initializers. Only access Autoloads from _ready(), signal handlers, or deferred calls."
+    why: "_init() fires during node construction before Autoloads are added to the scene tree. @export defaults evaluate at editor parse time. Static initializers run at parse time. All three contexts precede Autoload availability."
+    adr: docs/architecture/adr-0002-autoload-architecture.md
+    added: 2026-05-29
+
+  - pattern: extends_refcounted_for_autoloads
+    status: active
+    description: "Autoload scripts must extend Node (or a Node subclass), never RefCounted. Godot 4.6 rejects RefCounted-based scripts as AutoLoad registration targets."
+    why: "RefCounted objects are not scene tree nodes and cannot receive _ready(), _process(), or signal connections. The engine will produce a registration error at startup. GameEnums intentionally uses extends RefCounted and is NOT an AutoLoad — this is the documented exception."
+    adr: docs/architecture/adr-0002-autoload-architecture.md
+    added: 2026-05-29
+
+  - pattern: cross_system_state_polling
+    status: active
+    description: "No system may read state owned by another system inside _process() or _physics_process(). Reading another Autoload's properties on every frame is forbidden. React to signals instead."
+    why: "Polling creates stale-by-one-frame reads, couples the reader to the owner's internal representation, and makes display systems impossible to test without live gameplay systems running."
+    adr: docs/architecture/adr-0003-signal-driven-architecture.md
+    added: 2026-05-29
+
+  - pattern: circular_autoload_subscriptions
+    status: active
+    description: "If Autoload A connects to a signal on Autoload B in _ready(), then Autoload B must NOT connect to any signal on Autoload A. Circular subscriptions between Autoloads are forbidden."
+    why: "Circular Autoload signal subscriptions create initialization order ambiguity — one of the two connections will silently fail depending on which _ready() runs first. ADR-0002 registration order prevents most cases; this rule closes the remainder."
+    adr: docs/architecture/adr-0003-signal-driven-architecture.md
+    added: 2026-05-29
 
 # Example:
 #

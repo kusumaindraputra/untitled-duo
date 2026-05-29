@@ -1,8 +1,8 @@
 # Game State & Scene Flow
 
-> **Status**: Approved (Design-Review passed 2026-05-22)
+> **Status**: Approved (Design-Review passed 2026-05-22; revised 2026-05-29 — B-1/B-2 errata)
 > **Author**: Kusuma Putra + Claude Code Game Studios
-> **Last Updated**: 2026-05-22
+> **Last Updated**: 2026-05-29
 > **Implements Pillar**: Infrastructure for all pillars — owns the Prep→Combat transition that Pillars 1–3 depend on
 
 ## Overview
@@ -77,10 +77,11 @@ tradeoffs have legible, permanent consequences for the rest of the run.*
 2. Only this system initiates state transitions. No other system changes the active
    state directly; they request or react via signals. **Exception:** other systems
    may emit internal events to which this system responds by initiating a transition
-   (e.g., Wave/Encounter System emits `wave_cleared`, `all_waves_cleared`, or
-   `boss_defeated`; Health & Damage emits a death event). These are input events to
-   this system, not state changes made by those systems. Each such internal event must
-   be named explicitly in the emitting system's own GDD.
+   (e.g., Prana Grid emits `arrangement_confirmed`; Wave/Encounter System emits
+   `wave_cleared`, `all_waves_cleared`, or `boss_defeated`; Health & Damage emits
+   `player_died`). These are input events to this system, not state changes made by
+   those systems. Each such internal event must be named explicitly in the emitting
+   system's own GDD and listed in the Consumed Input Events table in Section C.
 3. Other systems respond to state changes through signals — they do not poll the
    current state. **Exception 1:** a system may read the state once at initialization
    to determine its starting configuration. **Exception 2 (Overlay pattern):**
@@ -174,6 +175,17 @@ Controller enables movement — no one-frame window where both are active.
 `run_started` fires first, then `preparation_started`. This guarantees Run Management
 (#17) can initialize run data before the Prana Grid activates on `preparation_started`.
 
+**Signal ordering: Same-Frame Death Priority (MVP):** The `boss_defeated → RUN_SUMMARY`
+transition is executed via `call_deferred("_request_transition", RUN_SUMMARY)` rather
+than immediately. This guarantees that if `player_died` fires in the same frame (e.g.,
+Fayde at critically low HP kills the boss while a DoT tick resolves simultaneously),
+`_on_player_died()` runs immediately and transitions to `DEATH_SCREEN` before the
+deferred WIN fires. When the deferred `_request_transition(RUN_SUMMARY)` executes on
+the next frame, the state is already `DEATH_SCREEN` and the transition is rejected by
+the valid-transition table — loss is preserved. This is the **only deferred transition**
+in the system; all other transitions are immediate. Rationale: aligns with Health &
+Damage Rule 5 (death takes priority over simultaneous win conditions).
+
 **Re-entrancy guard:** The signal-driven architecture creates a real re-entrancy hazard:
 a `state_changed` handler in any downstream system can call back into
 `_request_transition()` synchronously before the first transition handler returns (e.g.,
@@ -187,11 +199,11 @@ signals as the universal coupling mechanism.
 | From | To | Trigger |
 |------|----|---------|
 | `MAIN_MENU` | `PREPARATION_PHASE` | Player starts a new run |
-| `PREPARATION_PHASE` | `COMBAT_PHASE` | Player confirms Prana loadout (grid non-empty); `combat_started(is_boss: false)` emitted |
+| `PREPARATION_PHASE` | `COMBAT_PHASE` | Prana Grid emits `arrangement_confirmed`; loadout must be valid per Prana Grid Rule 6 (slot 4 non-null required); `combat_started(is_boss: false)` emitted |
 | `COMBAT_PHASE` | `PREPARATION_PHASE` | Wave cleared, more regular waves remain (Wave/Encounter emits `wave_cleared`) |
 | `COMBAT_PHASE` | `COMBAT_PHASE` | All regular waves cleared (Wave/Encounter emits `all_waves_cleared`); `combat_started(is_boss: true)` emitted — boss combat begins. This is a self-transition that reloads the state with new parameters. |
 | `COMBAT_PHASE` | `DEATH_SCREEN` | Fayde's health reaches 0 (in regular or boss combat); `death_started` emitted first, then state changes, then `run_ended(win: false)` |
-| `COMBAT_PHASE` | `RUN_SUMMARY` | Boss defeated while `is_boss: true` (Wave/Encounter emits `boss_defeated`) |
+| `COMBAT_PHASE` | `RUN_SUMMARY` | Boss defeated while `is_boss: true` (Wave/Encounter emits `boss_defeated`); transition executed via `call_deferred` — see Signal Ordering: Same-Frame Death Priority |
 | `PREPARATION_PHASE` | `PAUSED` | Player triggers pause |
 | `COMBAT_PHASE` | `PAUSED` | Player triggers pause |
 | `PAUSED` | *(previous state)* | Player resumes; restores `_previous_state` |
@@ -216,7 +228,7 @@ signals as the universal coupling mechanism.
 | `CIPHERS_TRIAL` | `PATH_SELECTION` | Player makes a tradeoff choice, or pays skip cost and declines |
 
 **Forbidden transitions (always rejected):**
-- `PREPARATION_PHASE → COMBAT_PHASE` with empty Prana Grid — loadout must have ≥1 slot filled
+- `PREPARATION_PHASE → COMBAT_PHASE` with an invalid loadout — Prana Grid must report `is_loadout_valid() == true` (slot 4 non-null required, per Prana Grid GDD Rule 6). The "≥1 slot filled" heuristic is insufficient; the authoritative check is Prana Grid's `is_loadout_valid()`.
 - `COMBAT_PHASE → PREPARATION_PHASE` via any path other than Wave/Encounter `wave_cleared`
   signal — mid-wave re-arrangement is not permitted; only wave-end transitions are valid
 - Any state → any state that skips an intermediate state
@@ -265,6 +277,16 @@ system emits these events.
 | `rest_entered` | — | Entry to `REST_PHASE` | [VS] |
 | `ciphers_trial_entered` | `option_count: int` | Entry to `CIPHERS_TRIAL` | [VS] |
 | `ciphers_trial_resolved` | `choice_accepted: bool` | Exit from `CIPHERS_TRIAL` | [VS] |
+
+**Consumed Input Events (signals this system connects to):**
+
+| Emitting System | Signal | This System's Response | Scope |
+|----------------|--------|----------------------|-------|
+| Prana Grid (#1) | `arrangement_confirmed` | `_on_arrangement_confirmed()` → validates loadout via Prana Grid `is_loadout_valid()`, then `_request_transition(COMBAT_PHASE)` | MVP |
+| Wave/Encounter System (#12) | `wave_cleared` | `_on_wave_cleared()` → `_request_transition(PREPARATION_PHASE)` | MVP |
+| Wave/Encounter System (#12) | `all_waves_cleared` | `_on_all_waves_cleared()` → `_request_transition(COMBAT_PHASE)` self-transition with `is_boss: true` | MVP |
+| Wave/Encounter System (#12) | `boss_defeated` | `_on_boss_defeated()` → `call_deferred("_request_transition", RUN_SUMMARY)` — deferred to allow same-frame `player_died` to take priority | MVP |
+| Health & Damage (#6) | `player_died` | `_on_player_died()` → `_request_transition(DEATH_SCREEN)` immediately — wins over any in-flight deferred WIN | MVP |
 
 **`room_cleared` naming note (MVP):** In MVP there is one arena, not rooms. `room_cleared`
 fires exactly once per MVP run — when the boss is defeated (`is_boss: true` combat ends
@@ -432,8 +454,12 @@ This is the intended behavior for a final-node Trial.
   `option_count` defaults to 1. A fatal error is logged. Division by zero is
   never attempted.
 
-- **If `run_ended` triggers from both win and loss simultaneously** (a bug): First
-  transition wins; second is logged as an error. By design these are mutually exclusive.
+- **If `boss_defeated` and Fayde death occur in the same frame**: Loss takes priority.
+  The `boss_defeated → RUN_SUMMARY` transition is deferred via `call_deferred`; the
+  same-frame `player_died` is handled immediately and transitions to `DEATH_SCREEN`
+  first. The deferred WIN fires on the next frame, sees `DEATH_SCREEN` (not
+  `COMBAT_PHASE`), and is rejected as an invalid transition. *See Signal Ordering:
+  Same-Frame Death Priority.* This is designed behavior — not a bug guard.
 
 ## Dependencies
 
@@ -565,8 +591,17 @@ and `combat_started` is emitted with `is_boss: true` before the handler returns 
 *(Boss combat is a self-transition on `COMBAT_PHASE`, not a new state.)*
 
 **[U] AC-01b** — GIVEN the active state is `COMBAT_PHASE` and `is_boss: true` is the
-current combat mode, WHEN `_on_boss_defeated()` is called, THEN `get_active_state()`
+current combat mode, WHEN `_on_boss_defeated()` is called and no `player_died` fires
+in the same frame, THEN after `await get_tree().process_frame`, `get_active_state()`
 returns `RUN_SUMMARY` and `run_ended(win: true)` is emitted exactly once.
+*(Boss victory happy path. Deferred transition — must await one frame before asserting.)*
+
+**[U] AC-01c** — GIVEN the active state is `COMBAT_PHASE` with `is_boss: true`, WHEN
+`_on_boss_defeated()` is called immediately followed by `_on_player_died()` in the
+same test step (no intervening frame), THEN after `await get_tree().process_frame`,
+`get_active_state()` returns `DEATH_SCREEN` — not `RUN_SUMMARY`.
+*(Same-frame death priority: deferred WIN fires after immediate LOSS, sees
+`DEATH_SCREEN`, and is rejected. Validates Signal Ordering: Same-Frame Death Priority.)*
 
 **[I] AC-02** — GIVEN Fayde's health reaches 0 during `COMBAT_PHASE` (regardless of
 `is_boss` value), WHEN the death event fires from the Health & Damage system, THEN the
@@ -593,9 +628,11 @@ while `COMBAT_PHASE` is active. Enforced via Grep-based CI check on every push t
 *(Complements AC-04a: CI check catches callers the unit test cannot enumerate.)*
 
 **[U] AC-05** — GIVEN the active state is `PREPARATION_PHASE` and the Prana Grid
-reports zero filled slots, WHEN `_request_transition(COMBAT_PHASE)` is called, THEN
-the state remains `PREPARATION_PHASE` and the transition is rejected.
-*(Requires Prana Grid stub that reports empty state.)*
+stub reports an invalid loadout (`is_loadout_valid()` returns `false` — e.g., slot 4
+is empty), WHEN `_on_arrangement_confirmed()` is called, THEN the state remains
+`PREPARATION_PHASE` and the transition is rejected.
+*(Requires Prana Grid stub implementing `is_loadout_valid() -> bool`. Covers both
+the fully-empty grid case and the center-slot-empty case per Prana Grid GDD Rule 6.)*
 
 **[CI] AC-06** — No GDScript file outside `src/core/game_state_manager.gd` shall write
 to `_active_state` directly or call `_request_transition()` or `set_active_state()`.
@@ -767,4 +804,6 @@ requirement is met before implementation proceeds.)*
 
 ## Open Questions
 
-[None — all design decisions resolved as of 2026-05-22 post-design-review revision.]
+[None — all design decisions resolved. Cross-review errata resolved 2026-05-29: B-1
+(arrangement_confirmed consumed-signal contract), B-2 (same-frame death priority via
+call_deferred), R-1 (transition guard aligned to Prana Grid Rule 6).]
