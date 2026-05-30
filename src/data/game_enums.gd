@@ -58,6 +58,11 @@ enum EnemyState   { IDLE = 0, PURSUING = 1, ATTACKING = 2, STUNNED = 3, DEAD = 4
 ## State of the current combat wave.
 enum WaveState    { IDLE = 0, WAVE_ACTIVE = 1, WAVE_COMPLETE = 2 }
 
+# ── Enemy catalog status ───────────────────────────────────────────────────────
+## Lifecycle status of an EnemyType catalog entry.
+## VS_SCOPE = defined but not spawnable at MVP; INACTIVE = deprecated (ID stability only).
+enum EnemyStatus { ACTIVE = 0, VS_SCOPE = 1, INACTIVE = 2 }
+
 # ── Visual and audio routing ──────────────────────────────────────────────────
 ## Animation variant played on the caster when a spell fires.
 enum CastAnimation { CAST_THRUST = 0, CAST_REACH = 1, CAST_SNAP = 2,
