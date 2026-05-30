@@ -1,0 +1,7 @@
+# Unit tests go here — one subdirectory per system
+# Examples:
+#   tests/unit/combination_resolution/
+#   tests/unit/health_damage/
+#   tests/unit/status_effects/
+#   tests/unit/prana_grid/
+#   tests/unit/run_management/
