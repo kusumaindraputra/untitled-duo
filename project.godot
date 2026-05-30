@@ -13,11 +13,14 @@ config_version=5
 config/name="The Last Cipher"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
+run/main_scene="res://src/scenes/main.tscn"
 
 [autoload]
 
 PranaCatalog="*res://src/data/prana_catalog.gd"
 EnemyCatalog="*res://src/data/enemy_catalog.gd"
+GameStateManager="*res://src/core/game_state_manager.gd"
+SceneManager="*res://src/core/scene_manager.gd"
 
 [editor_plugins]
 

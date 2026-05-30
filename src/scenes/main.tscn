@@ -1,0 +1,9 @@
+[gd_scene load_steps=1 format=3 uid="uid://b_main_scene"]
+
+[node name="main" type="Node"]
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+layer = 10
+process_mode = 3
+
+[node name="SubSceneRoot" type="Node2D" parent="."]

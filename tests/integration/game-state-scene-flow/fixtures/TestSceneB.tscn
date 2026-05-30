@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://test_scene_b"]
+
+[ext_resource type="Script" path="res://tests/integration/game-state-scene-flow/fixtures/TestSceneB.gd" id="1_TestSceneB"]
+
+[node name="TestSceneB" type="Node2D"]
+script = ExtResource("1_TestSceneB")
