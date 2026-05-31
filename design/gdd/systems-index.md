@@ -35,11 +35,11 @@ interactions, never a large shallow one.
 | 5 | Player Controller | Core | First Playable | Approved | design/gdd/player-controller.md | Game State & Scene Flow |
 | 6 | Health & Damage | Gameplay | First Playable | Approved | design/gdd/health-damage.md | Game State & Scene Flow |
 | 7 | Status Effects *(simplified)* | Gameplay | MVP | Approved | design/gdd/status-effects.md | Health & Damage |
-| 8 | Enemy AI *(simplified)* | Gameplay | First Playable | Designed | design/gdd/enemy-ai.md | Enemy Data, Player Controller, Health & Damage |
+| 8 | Enemy AI *(simplified)* | Gameplay | First Playable | Approved | design/gdd/enemy-ai.md | Enemy Data, Player Controller, Health & Damage |
 | 9 | Enemy Data | Data | First Playable | Approved | design/gdd/enemy-data.md | — |
 | 10 | Elemental Affiliation & Weakness *(simplified)* | Gameplay | First Playable | Inlined | — (2× check inlined into SC&E at FP; extract to own GDD at MVP when resist/immune/UI needed) | Enemy Data, Prana Data, Spell Casting & Effects, Health & Damage |
 | 11 | Boss Encounter | Gameplay | Vertical Slice | Not Started | — | Enemy AI, Spell Casting & Effects, Health & Damage, Wave / Encounter System |
-| 12 | Wave / Encounter System *(simplified)* | Gameplay | First Playable | Designed | design/gdd/wave-encounter-system.md | Enemy AI, Enemy Data, Health & Damage, Game State & Scene Flow |
+| 12 | Wave / Encounter System *(simplified)* | Gameplay | First Playable | Approved | design/gdd/wave-encounter-system.md | Enemy AI, Enemy Data, Health & Damage, Game State & Scene Flow |
 | 13 | Wave Peek | Gameplay | Vertical Slice | Not Started | — | Wave / Encounter System, Enemy Data, Elemental Affiliation & Weakness, Obstacle System |
 | 14 | Obstacle System | Gameplay | Vertical Slice | Not Started | — | Game State & Scene Flow, Spell Casting & Effects |
 | 15 | Procedural Dungeon Generation | Gameplay | Vertical Slice | Not Started | — | Game State & Scene Flow, Obstacle System, Wave / Encounter System |
@@ -49,7 +49,7 @@ interactions, never a large shallow one.
 | 19 | Meta-Progression | Progression | Vertical Slice | Not Started | — | Save / Load, Prana Data, Run Management |
 | 20 | Difficulty Tiers | Progression | Alpha | Not Started | — | Run Management, Wave / Encounter System, Procedural Dungeon Generation |
 | 21 | Lore Fragments | Narrative | Alpha | Not Started | — | Boss Encounter, Save / Load, Run Management |
-| 22 | Combat HUD *(minimal)* | UI | First Playable | Designed | design/gdd/combat-hud.md | Health & Damage, Spell Casting & Effects, Combination Resolution |
+| 22 | Combat HUD *(minimal)* | UI | First Playable | Approved | design/gdd/combat-hud.md | Health & Damage, Spell Casting & Effects, Combination Resolution |
 | 23 | Run Summary Screen | UI | Vertical Slice | Not Started | — | Run Management, Combination Resolution |
 | 24 | Main Menu | UI | MVP | Not Started | — | Game State & Scene Flow |
 | 25 | Pause Menu | UI | Vertical Slice | Not Started | — | Game State & Scene Flow |

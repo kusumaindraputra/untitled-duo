@@ -9,17 +9,17 @@
 #   done           ↔  Complete
 #   blocked        ↔  Blocked
 
-sprint: 1
-goal: "Close all outstanding Foundation-layer reviews and design the first two Core-layer systems (Player Controller and Prana Grid) to establish the Prana/spell spine foundation."
-start: "2026-05-26"
-end: "2026-06-05"
-generated: "2026-05-26"
-updated: "2026-05-26"
+sprint: 2
+goal: "Implement Health & Damage pipeline, Player Controller, and Enemy Instance — the three Core systems needed for a playable (if scripted) combat encounter"
+start: "2026-06-01"
+end: "2026-06-14"
+generated: "2026-05-31"
+updated: "2026-05-31"
 
 stories:
-  - id: "S1-01"
-    name: "Close Audio System design-review (round 2 re-review)"
-    file: "production/stories/s1-01-audio-system-review.md"
+  - id: "S2-01"
+    name: "Create stories: Health & Damage"
+    file: "production/epics/health-damage/EPIC.md"
     priority: must-have
     status: ready-for-dev
     owner: ""
@@ -27,49 +27,79 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "S1-02"
-    name: "Run design-review on Prana Data GDD (fresh session)"
-    file: "production/stories/s1-02-prana-data-review.md"
+  - id: "S2-02"
+    name: "Implement Health & Damage"
+    file: "production/epics/health-damage/story-*.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
-    estimate_days: 0.5
-    blocker: ""
-    completed: ""
-
-  - id: "S1-03"
-    name: "Design Player Controller GDD"
-    file: "production/stories/s1-03-player-controller-gdd.md"
-    priority: must-have
-    status: ready-for-dev
-    owner: ""
-    estimate_days: 2.0
-    blocker: ""
-    completed: ""
-
-  - id: "S1-04"
-    name: "Design Prana Grid GDD"
-    file: "production/stories/s1-04-prana-grid-gdd.md"
-    priority: must-have
-    status: backlog
+    status: blocked
     owner: ""
     estimate_days: 3.0
-    blocker: "S1-03"
+    blocker: "S2-01 must complete first — story files do not exist yet"
     completed: ""
 
-  - id: "S1-05"
-    name: "Design Combination Resolution GDD"
-    file: "production/stories/s1-05-combination-resolution-gdd.md"
+  - id: "S2-03"
+    name: "Create stories: Player Controller"
+    file: "production/epics/player-controller/EPIC.md"
+    priority: must-have
+    status: ready-for-dev
+    owner: ""
+    estimate_days: 0.5
+    blocker: ""
+    completed: ""
+
+  - id: "S2-04"
+    name: "Implement Player Controller"
+    file: "production/epics/player-controller/story-*.md"
+    priority: must-have
+    status: blocked
+    owner: ""
+    estimate_days: 2.5
+    blocker: "S2-01 (H&D is_invincible API) and S2-03 must complete first"
+    completed: ""
+
+  - id: "S2-05"
+    name: "Create stories: Enemy Instance"
+    file: "production/epics/enemy-instance/EPIC.md"
+    priority: must-have
+    status: ready-for-dev
+    owner: ""
+    estimate_days: 0.5
+    blocker: ""
+    completed: ""
+
+  - id: "S2-06"
+    name: "Implement Enemy Instance"
+    file: "production/epics/enemy-instance/story-*.md"
+    priority: must-have
+    status: blocked
+    owner: ""
+    estimate_days: 3.0
+    blocker: "S2-02 (apply_damage), S2-04 (player group lookup), S2-05 must complete first"
+    completed: ""
+
+  - id: "S2-07"
+    name: "Create stories: Status Effects"
+    file: "production/epics/status-effects/EPIC.md"
+    priority: should-have
+    status: backlog
+    owner: ""
+    estimate_days: 0.5
+    blocker: ""
+    completed: ""
+
+  - id: "S2-08"
+    name: "Implement Status Effects"
+    file: "production/epics/status-effects/story-*.md"
     priority: should-have
     status: backlog
     owner: ""
     estimate_days: 2.0
-    blocker: "S1-04"
+    blocker: "S2-02 (apply_damage/heal for DoT/Regen), S2-07 must complete first"
     completed: ""
 
-  - id: "S1-06"
-    name: "Run consistency-check across approved GDDs"
-    file: "production/stories/s1-06-consistency-check.md"
+  - id: "S2-09"
+    name: "Create stories: Combination Resolution"
+    file: "production/epics/combination-resolution/EPIC.md"
     priority: nice-to-have
     status: backlog
     owner: ""
@@ -77,12 +107,12 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "S1-07"
-    name: "Create production/milestones/mvp.md milestone document"
-    file: "production/stories/s1-07-milestone-doc.md"
+  - id: "S2-10"
+    name: "Implement Combination Resolution"
+    file: "production/epics/combination-resolution/story-*.md"
     priority: nice-to-have
     status: backlog
     owner: ""
-    estimate_days: 0.5
-    blocker: ""
+    estimate_days: 2.0
+    blocker: "S2-02, S2-09 must complete first"
     completed: ""

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="PranaType" load_steps=4 format=3]
+
+[ext_resource type="Script" uid="uid://ck4rpqu6u0n07" path="res://src/data/prana_type.gd" id="1_fire"]
+
+[sub_resource type="ImageTexture" id="ImageTexture_fire"]
+
+[sub_resource type="AudioStreamWAV" id="AudioStreamWAV_fire"]
+
+[resource]
+script = ExtResource("1_fire")
+id = 0
+name = "Ashfire"
+element = "flame"
+semantic_identity = "The raw heat of living fire, always hungry, never still."
+color = Color(0.94902, 0.29804, 0.11373, 1)
+icon = SubResource("ImageTexture_fire")
+vfx_burst_shape = 0
+audio_signature = SubResource("AudioStreamWAV_fire")
+cast_animation = 0
+damage_class = 0
+base_status = 0
+base_damage_modifier = 1.25

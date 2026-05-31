@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="PranaType" load_steps=4 format=3]
+
+[ext_resource type="Script" uid="uid://ck4rpqu6u0n07" path="res://src/data/prana_type.gd" id="1_shadow"]
+
+[sub_resource type="ImageTexture" id="ImageTexture_shadow"]
+
+[sub_resource type="AudioStreamWAV" id="AudioStreamWAV_shadow"]
+
+[resource]
+script = ExtResource("1_shadow")
+id = 1
+name = "Voidblue"
+element = "void"
+semantic_identity = "Silence made manifest — it swallows light and leaves only absence."
+color = Color(0.29020, 0.36863, 0.96078, 1)
+icon = SubResource("ImageTexture_shadow")
+vfx_burst_shape = 1
+audio_signature = SubResource("AudioStreamWAV_shadow")
+cast_animation = 1
+damage_class = 1
+base_status = 1
+base_damage_modifier = 0.9

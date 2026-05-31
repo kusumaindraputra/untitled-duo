@@ -1,0 +1,4 @@
+# Manual test evidence goes here
+# Screenshots, sign-off notes, and manual walkthrough docs
+# Named: [story-id]_[feature]_[date].md or .png
+# Required for: Visual/Feel stories, UI stories (see tests/README.md)

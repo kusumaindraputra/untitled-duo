@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="PranaType" load_steps=4 format=3]
+
+[ext_resource type="Script" uid="uid://ck4rpqu6u0n07" path="res://src/data/prana_type.gd" id="1_ice"]
+
+[sub_resource type="ImageTexture" id="ImageTexture_ice"]
+
+[sub_resource type="AudioStreamWAV" id="AudioStreamWAV_ice"]
+
+[resource]
+script = ExtResource("1_ice")
+id = 3
+name = "Deepfrost"
+element = "ice"
+semantic_identity = "Cold that remembers — patient, crystalline, and absolute."
+color = Color(0.23922, 0.85098, 0.94118, 1)
+icon = SubResource("ImageTexture_ice")
+vfx_burst_shape = 3
+audio_signature = SubResource("AudioStreamWAV_ice")
+cast_animation = 3
+damage_class = 3
+base_status = 3
+base_damage_modifier = 0.8

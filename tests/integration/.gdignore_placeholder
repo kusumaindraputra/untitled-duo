@@ -1,0 +1,6 @@
+# Integration tests go here — one subdirectory per system boundary
+# Examples:
+#   tests/integration/prana_to_combination/   — PranaGrid → CombinationResolution
+#   tests/integration/combination_to_spell/   — CombinationResolution → SC&E
+#   tests/integration/status_effects_chain/  — StatusEffectsManager ↔ HealthAndDamage
+#   tests/integration/save_load/             — save/load round-trip for all Autoload state

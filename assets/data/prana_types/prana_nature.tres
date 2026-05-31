@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="PranaType" load_steps=4 format=3]
+
+[ext_resource type="Script" uid="uid://ck4rpqu6u0n07" path="res://src/data/prana_type.gd" id="1_nature"]
+
+[sub_resource type="ImageTexture" id="ImageTexture_nature"]
+
+[sub_resource type="AudioStreamWAV" id="AudioStreamWAV_nature"]
+
+[resource]
+script = ExtResource("1_nature")
+id = 4
+name = "Verdant"
+element = "nature"
+semantic_identity = "Life reaching for light — slow to act, impossible to stop."
+color = Color(0.10196, 0.78824, 0.32549, 1)
+icon = SubResource("ImageTexture_nature")
+vfx_burst_shape = 4
+audio_signature = SubResource("AudioStreamWAV_nature")
+cast_animation = 4
+damage_class = 4
+base_status = 4
+base_damage_modifier = 0.7

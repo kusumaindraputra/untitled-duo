@@ -1,6 +1,6 @@
 # UX Spec: Main Menu
 
-> **Status**: In Review
+> **Status**: Approved — /ux-review 2026-05-31 (0 blocking, 4 advisory)
 > **Author**: Kusuma Putra + Claude Code Game Studios
 > **Last Updated**: 2026-05-31
 > **Journey Phase(s)**: Unknown — no player journey map

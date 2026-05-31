@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EnemyType" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_type.gd" id="1_enemy_type"]
+
+[resource]
+script = ExtResource("1_enemy_type")
+id = 1
+name = "Charger"
+archetype = 1
+prana_affiliation = 0
+base_hp = 35
+base_damage = 20.0
+base_move_speed = 50.0
+drop_prana_type = 0
+drop_rate = 0.4
+wave_threat_value = 2
+sprite_size = Vector2i(12, 20)
+status = 0
