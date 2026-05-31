@@ -1,12 +1,12 @@
 # Story 003: Four EnemyType .tres Data Files
 
 > **Epic**: Enemy Data
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Config/Data
 > **Estimate**: S (1–2 hours)
 > **Manifest Version**: 2026-05-30
-> **Last Updated**: —
+> **Last Updated**: 2026-05-30
 
 ## Context
 
@@ -127,11 +127,20 @@ Author each file in the Godot Inspector (FileSystem → right-click → New Reso
 **Story Type**: Config/Data
 **Required evidence**: Smoke check pass — `production/qa/smoke-[date].md` documenting EnemyCatalog startup with zero `push_error()` calls
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — `production/qa/smoke-enemy-data-2026-05-30.md` — PASS
 
 ---
 
 ## Dependencies
 
-- Depends on: Story 002 (EnemyCatalog must be implemented and functional before `.tres` files are verified at runtime); ADR-0006 `.tres` enum verification gate must be documented before authoring `.tres` files
+- Depends on: Story 001 (EnemyType schema must exist before Godot Inspector can display EnemyType fields); Story 002 (EnemyCatalog must be implemented and functional before `.tres` files are verified at runtime); ADR-0006 `.tres` enum verification gate — already satisfied, documented in `production/qa/smoke-2026-05-30.md` (CONFIRMED, reuse from Prana Data Story 004)
 - Unlocks: Epic complete — Enemy Data foundation is functional; downstream epics (Enemy AI, Wave/Encounter System) can consume EnemyCatalog
+
+---
+
+## Completion Notes
+**Completed**: 2026-05-30
+**Criteria**: 11/11 passing
+**Deviations**: None
+**Test Evidence**: Config/Data — smoke check at `production/qa/smoke-enemy-data-2026-05-30.md` — PASS
+**Code Review**: Complete — `/code-review` APPROVED (godot-specialist, 2026-05-30)

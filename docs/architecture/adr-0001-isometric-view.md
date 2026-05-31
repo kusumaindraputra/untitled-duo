@@ -154,6 +154,33 @@ Implementasi teknis:
 - Grey-box sprite 32px terbaca dengan jelas dari isometric angle — wajah, siluet, dan arah gerakan terbaca
 - Gameplay logic (collision, hitbox) berfungsi sama di isometric coordinate space
 
+## Validation Results — 2026-05-30
+
+### API Verification: PASSED
+
+**Run**: `godot --headless --path . -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a res://tests/integration/game-state-scene-flow/adr_0001_api_test.gd --ignoreHeadlessMode`
+**Engine**: Godot 4.6.2.stable | **Renderer**: Compatibility (project default)
+**Test file**: `tests/integration/game-state-scene-flow/adr_0001_api_test.gd`
+**Result**: 9/9 tests PASSED — 0 failures, 0 errors
+
+Verified:
+- `TileMapLayer` instantiates without error in Godot 4.6.2 ✓
+- `TileSet.TILE_SHAPE_ISOMETRIC == 1` (correct constant, not zero/default) ✓
+- `TileSet.tile_shape = TileSet.TILE_SHAPE_ISOMETRIC` readable/writable ✓
+- `TileSet.tile_size = Vector2i(64, 32)` readable/writable ✓
+- `TileMapLayer.tile_set` accepts an isometric TileSet assignment ✓
+- `Node2D.y_sort_enabled` property is readable/writable; default is `false` ✓
+- `TileMapLayer.get_class()` returns `"TileMapLayer"` (not deprecated `TileMap`) ✓
+
+### Visual Y-Sort Verification: DEFERRED
+
+Visual draw-order correctness (criterion 2) requires rendered output and is deferred
+to Story 003 (IsometricRoom) AC-4 — Advisory manual check.
+Evidence will be captured at `production/qa/evidence/isometric-room-ysort-evidence.md`
+when Story 003 is implemented.
+
+**QQ-01 status**: RESOLVED — API verification complete. Story 003 unblocked.
+
 ## Related Decisions
 - `design/gdd/game-concept.md` — sumber keputusan perspektif asli (diupdate bersamaan)
 - `design/art/art-bible.md` — art spec perlu direvisi dengan isometric constraints (Migration Plan step 2)

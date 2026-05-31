@@ -1,7 +1,7 @@
 # ADR-0009: SpellCastingEffects Wave-Scoped Stat Broker
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-05-29

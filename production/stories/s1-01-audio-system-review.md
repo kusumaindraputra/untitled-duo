@@ -7,6 +7,8 @@
 **Owner**: (unassigned)
 **Estimate**: 0.5 days
 **GDD**: `design/gdd/audio-system.md`
+**ADR**: N/A — design review activity; no implementation code, no architectural pattern to govern
+**Control Manifest Rules**: N/A — this story produces a GDD approval verdict, not implementation code
 
 ## Description
 
@@ -24,6 +26,13 @@ Run `/design-review design/gdd/audio-system.md` in a **fresh Claude Code session
 2. Run: `/design-review design/gdd/audio-system.md`
 3. Address any new BLOCKING findings before marking DONE
 4. Commit the result
+
+## Out of Scope
+
+- Implementing any audio system code (belongs to the Audio System implementation epic)
+- Writing new ADRs based on review findings (separate story if required)
+- Modifying the GDD after an APPROVED verdict (review closes at approval)
+- Fixing audio-system.md design issues found during the review (address findings in the review session itself, before marking DONE)
 
 ## QA Test Cases
 

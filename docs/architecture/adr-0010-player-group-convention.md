@@ -1,7 +1,7 @@
 # ADR-0010: Player and Enemy Group Convention
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-05-29

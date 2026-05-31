@@ -59,7 +59,8 @@ enum DamageClass  { NONE = -1, FIRE = 0, SHADOW = 1, LIGHTNING = 2, ICE = 3, NAT
 enum DamageSource { DIRECT = 0, DOT = 1, CONTACT = 2 }
 
 # ── Status effects ────────────────────────────────────────────────────────────
-enum BaseStatus   { BURN = 0, BLIND = 1, STUN = 2, FREEZE = 3, REGENERATE = 4 }
+enum BaseStatus   { BURN = 0, BLIND = 1, STUN = 2, FREEZE = 3, REGENERATE = 4,
+                    CHILL = 5, STAGGER = 6 }
 
 # ── HP state zones (for audio/visual danger feedback) ─────────────────────────
 enum HPZone       { FULL = 0, CAREFUL = 1, DESPERATE = 2 }
@@ -186,6 +187,8 @@ New enums must be appended to the file — existing values must never be reorder
   **Mitigation**: Explicit integer assignments on all constants; the `.tres` verification gate must be run before any `.tres` file is authored.
 - **Risk**: Enum value needed by a system that isn't listed here is added to a different file.
   **Mitigation**: Code review checklist — "does this introduce a new cross-system enum? If yes, add to `game_enums.gd`."
+- **Risk**: `match` statements with exhaustive arms on `BaseStatus` won't produce a warning when CHILL or STAGGER are appended — new values fall through silently.
+  **Mitigation**: Add an exhaustive-match check to the code review checklist. Search for `match.*BaseStatus` on every `game_enums.gd` change and verify all arms are handled.
 
 ## GDD Requirements Addressed
 
@@ -196,6 +199,7 @@ New enums must be appended to the file — existing values must never be reorder
 | prana-data.md | No `extends`, no `preload`, no `load`, no `@onready` in game_enums.gd | Forbidden patterns section of this ADR |
 | health-damage.md | `DamageSource.DIRECT`, `DamageSource.DOT`, `DamageSource.CONTACT` used across H&D, SEM, and SC&E | Single definition in GameEnums ensures consistent integer values |
 | game-state-scene-flow.md | `GameState` enum used by GameStateManager and consumed by all signal handlers | `GameState` defined here; all consumers use `GameEnums.GameState.COMBAT_PHASE` |
+| status-effects.md | `CHILL` and `STAGGER` must exist in `BaseStatus` before any `apply_status()` call using these types compiles | Added as `CHILL = 5, STAGGER = 6`; explicit assignments prevent .tres instability on future appends |
 
 ## Performance Implications
 

@@ -6,7 +6,7 @@
 - **Last Updated:** 2026-05-29
 - **Engine:** Godot 4.6 (Compatibility renderer, OpenGL 3.3 / D3D12 Windows)
 - **GDDs Covered:** game-state-scene-flow, health-damage, prana-data, enemy-data, player-controller, prana-grid, combination-resolution, spell-casting-effects, enemy-ai, wave-encounter-system, combat-hud, status-effects, run-management, audio-system (14 of 15 First-Playable/MVP systems)
-- **ADRs Referenced:** ADR-0001 (Accepted), ADR-0002 (Accepted), ADR-0003 (Accepted), ADR-0004 (Accepted), ADR-0005 (Accepted), ADR-0006 (Accepted), ADR-0007 (Accepted), ADR-0008 (Accepted); ADR-0009–0010 Proposed (defer to sprint start)
+- **ADRs Referenced:** ADR-0001 through ADR-0013 — all Accepted
 - **Technical Director Sign-Off:** 2026-05-29 — APPROVED WITH CONDITIONS (ADR-0002–0006 required before coding; H&D registration contract in ADR-0007; ADR-0001 verification test before IsometricRoom sprint)
 - **Lead Programmer Feasibility:** N/A (Lean mode — skipped)
 
@@ -378,9 +378,16 @@ signal spell_hit_element(target: Node, prana_type_id: int)
 signal cast_hit_started(lock_duration: float)
 
 # ── StatusEffectsManager ─────────────────────────────────────────────────────
-func apply_status(target: Node, status_type: GameEnums.BaseStatus, duration: float) -> void
-func is_frozen(target: Node) -> bool
-func is_blinded(target: Node) -> bool
+# Updated by ADR-0011 (2026-05-29) — supersedes 3-arg apply_status + is_frozen/is_blinded
+func apply_status(target: Node, status_type: GameEnums.BaseStatus, duration: float, spell_base_damage: float = 0.0) -> void
+func has_status(target: Node, status_type: GameEnums.BaseStatus) -> bool
+func check_and_apply_shatter(target: Node, base_damage: float) -> float
+signal status_applied(target: Node, status_type: GameEnums.BaseStatus, duration: float)
+signal status_expired(target: Node, status_type: GameEnums.BaseStatus)
+signal burn_contagion_triggered(dying_enemy_position: Vector2, to_target: Node)
+signal shatter_triggered(target: Node)
+# EnemyInstance MUST expose: apply_speed_modifier(multiplier: float), apply_stun(duration: float)
+# All target node types MUST expose: is_alive() -> bool
 
 # ── EnemyInstance ─────────────────────────────────────────────────────────────
 func init(enemy_type_id: int) -> void
@@ -429,7 +436,8 @@ ADRs 0001–0008 all pass quality gates. Two verification tests remain (ADR-0006
 ### Traceability Coverage
 
 - **Covered:** TR-ISO-001 through TR-ISO-004 (ADR-0001); TR-ENG-002, TR-GSF-008, TR-PD-001, TR-ED-001, TR-RM-001, TR-SC-001, TR-SE-001 (ADR-0002); TR-GSF-002, TR-PG-004, TR-CH-002, TR-RM-004 (ADR-0003); TR-ENG-003, TR-PC-005, TR-SC-002, TR-SE-002 (ADR-0004); TR-GSF-007, TR-GSF-009, TR-CH-001 (ADR-0005); TR-PD-003/004, TR-ENG-001 (ADR-0006); TR-HD-001–014 (ADR-0007); TR-PD-002/005 (ADR-0008)
-- **Remaining gaps:** TR-SC-005 (stat broker), TR-PC-006/TR-EA-009 (group convention) — covered by ADR-0009/0010 when authored
+- **Also covered:** TR-SC-005 (ADR-0009), TR-PC-006/TR-EA-009 (ADR-0010), SEM public API + enemy interface (ADR-0011), TR-AS-001–012 (ADR-0012), TR-PG-001 (ADR-0013)
+- **Remaining gaps:** 39 gaps from /architecture-review 2026-05-29 — see tr-registry.yaml for full list; priority items tracked in production/session-state/active.md
 
 All Foundation and Core ADRs are now written. See Required ADRs below for remaining deferred items.
 
@@ -455,13 +463,20 @@ All Foundation and Core ADRs are now written. See Required ADRs below for remain
 |---|----------|--------|-----------|
 | ADR-0007 | `adr-0007-health-damage-autoload-singleton.md` | ✅ Accepted | TR-HD-001 through TR-HD-014 |
 | ADR-0008 | `adr-0008-prana-catalog-immutability.md` | ✅ Accepted | TR-PD-002, TR-PD-005 |
+| ADR-0009 | `adr-0009-spell-casting-effects-stat-broker.md` | ✅ Accepted | TR-SC-005 |
+| ADR-0010 | `adr-0010-player-group-convention.md` | ✅ Accepted | TR-PC-006, TR-EA-009 |
+| ADR-0011 | `adr-0011-status-effects-manager-api-contract.md` | ✅ Accepted | SEM public API, enemy interface contract |
+| ADR-0013 | `adr-0013-prana-grid-dual-input-focus-model.md` | ✅ Accepted | TR-PG-001 |
+
+### Foundation Layer Additions
+
+| # | ADR File | Status | Covers TRs |
+|---|----------|--------|-----------|
+| ADR-0012 | `adr-0012-audio-system-implementation-contract.md` | ✅ Accepted | TR-AS-001 through TR-AS-012 |
 
 ### Deferred to Implementation Sprint
 
-| # | Run | Note |
-|---|-----|------|
-| ADR-0009 | `/architecture-decision "SpellCastingEffects Wave-Scoped Stat Broker"` | Covers `get_stat_bonus()` (TR-SC-005); needed before CR + Status Effects implementation sprint |
-| ADR-0010 | `/architecture-decision "Player Group Convention and Target Discrimination"` | Covers TR-PC-006, TR-EA-009; needed before first enemy or H&D implementation sprint |
+None — all pre-production ADRs are Accepted.
 
 ---
 

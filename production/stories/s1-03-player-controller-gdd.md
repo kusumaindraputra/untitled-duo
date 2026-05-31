@@ -1,33 +1,44 @@
-# Story S1-03: Design Player Controller GDD
+# Story S1-03: Close Player Controller Design-Review (Round 3)
 
 **Sprint**: 1
 **Priority**: Must Have
 **Status**: Ready
 **Type**: Config/Data
 **Owner**: (unassigned)
-**Estimate**: 2.0 days
-**GDD**: `design/gdd/player-controller.md` (to be created)
+**Estimate**: 0.5 days
+**GDD**: `design/gdd/player-controller.md` (In Revision — post-design-review round 2)
+**ADR**: N/A — design review activity; no implementation code, no architectural pattern to govern
+**Control Manifest Rules**: N/A — this story produces a GDD approval verdict, not implementation code
 
 ## Description
 
-Author the Player Controller GDD using `/design-system player-controller`. This system owns Fayde's movement, dash mechanic, input handling, i-frame logic, and hitbox detection. It is a Core-layer system with no upstream game system dependencies (only Game State & Scene Flow, which is Approved).
+Run `/design-review design/gdd/player-controller.md` in a **fresh Claude Code session**. The GDD was authored and has completed two review rounds; round-2 blockers were addressed and it is currently `In Revision`. This story confirms all round-2 blockers are resolved and promotes Player Controller to Approved.
 
-**Key constraint:** `technical-preferences.md` flags gamepad as a known-hard requirement — the GDD must specify a concrete gamepad interaction model, not defer it.
+**Key constraint for review:** `technical-preferences.md` flags gamepad as a known-hard requirement — the reviewer must confirm a concrete gamepad interaction model is specified, not deferred.
 
 ## Acceptance Criteria
 
-- [ ] GDD file created at `design/gdd/player-controller.md`
-- [ ] All 8 required sections present: Overview, Player Fantasy, Detailed Rules, Formulas, Edge Cases, Dependencies, Tuning Knobs, Acceptance Criteria
-- [ ] Movement speed formula defined with variables, ranges, and example calculation
-- [ ] Dash mechanic specified: i-frame duration (`fayde_iframe_duration`), cooldown, distance, cancellability
-- [ ] Input handling defined for keyboard/mouse AND gamepad (analog stick directional movement)
-- [ ] Footstep audio ownership resolved (does Player Controller call `AudioSystem.play_event()` directly, or emit a signal?)
-- [ ] `fayde_iframe_duration` value specified — must be consistent with Prana Data's Injury Bloom rule (AC-PD-44b uses `fayde_iframe_duration = 0.5s`)
-- [ ] `DamageSource.CONTACT` vs `DamageSource.DIRECT` distinction addressed or cross-referenced to Health & Damage GDD
-- [ ] Dependencies section lists Game State & Scene Flow (Approved) as upstream
-- [ ] Acceptance criteria are in testable format (GIVEN/WHEN/THEN or equivalent)
-- [ ] `/design-review` returns APPROVED
-- [ ] `systems-index.md` Player Controller: status → Approved, doc link added
+- [ ] Round-2 revision blockers confirmed resolved in GDD text (all 8 sections substantive, no "TBD")
+- [ ] `/design-review` verdict is APPROVED (no BLOCKING findings)
+- [ ] Gamepad interaction model is concrete and implementable — not "to be determined"
+- [ ] `fayde_iframe_duration` value specified and consistent with Prana Data AC-PD-44b (`0.5s`)
+- [ ] Footstep audio ownership resolved (Player Controller calls `AudioSystem.play_event()` directly OR emits a signal — one or the other, documented)
+- [ ] `systems-index.md` Player Controller status confirmed as `Approved`, doc link present
+- [ ] Session committed to git with `docs:` prefix
+
+## Instructions
+
+1. Open a **fresh** Claude Code session
+2. Run: `/design-review design/gdd/player-controller.md`
+3. Address any BLOCKING findings before marking DONE
+4. Commit the result
+
+## Out of Scope
+
+- Authoring the GDD from scratch (already completed in a prior session)
+- Implementing any Player Controller code (belongs to a future implementation epic)
+- Writing new ADRs based on review findings (separate story if required)
+- Modifying the GDD after an APPROVED verdict
 
 ## QA Test Cases
 

@@ -30,7 +30,7 @@
 #   Superseded entries:     Grep pattern="status: superseded"
 
 version: 1
-last_updated: "2026-05-29"
+last_updated: "2026-05-30"  # ADR-0013 added 2 stances
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -54,6 +54,40 @@ state_ownership:
       - docs/architecture/adr-0009-spell-casting-effects-stat-broker.md
       - docs/architecture/adr-0007-health-damage-autoload-singleton.md   # H&D calls get_stat_bonus at MVP
     added: 2026-05-29
+    revised: ""
+
+  - state: active_status_instances
+    status: active
+    owner_system: StatusEffectsManager
+    adr: docs/architecture/adr-0011-status-effects-manager-api-contract.md
+    interface: "apply_status() / has_status() / check_and_apply_shatter() — all write access internal to StatusEffectsManager"
+    write_access: StatusEffectsManager-only   # set on apply_status; cleared on preparation_started and enemy_killed
+    referenced_by:
+      - docs/architecture/adr-0011-status-effects-manager-api-contract.md
+      - docs/architecture/adr-0009-spell-casting-effects-stat-broker.md   # SC&E is sole apply_status and check_and_apply_shatter caller
+    added: 2026-05-29
+    revised: ""
+
+  - state: music_state
+    status: active
+    owner_system: AudioSystem
+    adr: docs/architecture/adr-0012-audio-system-implementation-contract.md
+    interface: "Internal to AudioSystem — transitions driven by GameStateManager signals; no external read or write API exposed"
+    write_access: AudioSystem-only   # transitions on run_started, combat_started, preparation_started, death_started, run_ended
+    referenced_by:
+      - docs/architecture/adr-0012-audio-system-implementation-contract.md
+    added: 2026-05-30
+    revised: ""
+
+  - state: audio_event_registry
+    status: active
+    owner_system: AudioSystem
+    adr: docs/architecture/adr-0012-audio-system-implementation-contract.md
+    interface: "Loaded from res://assets/data/audio_event_registry.tres at startup; all play_event() / play_stinger() calls route through _validated_events (not the raw loaded dictionary)"
+    write_access: AudioSystem-only   # populated by audio-director via .tres file; validated at startup
+    referenced_by:
+      - docs/architecture/adr-0012-audio-system-implementation-contract.md
+    added: 2026-05-30
     revised: ""
 
 # Example:
@@ -97,6 +131,123 @@ interfaces:
       - docs/architecture/adr-0009-spell-casting-effects-stat-broker.md
       - docs/architecture/adr-0007-health-damage-autoload-singleton.md
     added: 2026-05-29
+    revised: ""
+
+  - contract: status_application
+    status: active
+    pattern: direct_call
+    producer: StatusEffectsManager
+    consumers:
+      - SpellCastingEffects     # sole caller of apply_status() at MVP scope
+    adr: docs/architecture/adr-0011-status-effects-manager-api-contract.md
+    method_signature: "apply_status(target: Node, status_type: GameEnums.BaseStatus, duration: float, spell_base_damage: float = 0.0) → void"
+    return_semantics: "void; emits status_applied signal on successful application"
+    referenced_by:
+      - docs/architecture/adr-0011-status-effects-manager-api-contract.md
+    added: 2026-05-29
+    revised: ""
+
+  - contract: shatter_query
+    status: active
+    pattern: direct_call        # return-value required; signals are void-return (ADR-0003)
+    producer: StatusEffectsManager
+    consumers:
+      - SpellCastingEffects     # calls before every DIRECT apply_damage(); must not call has_status(FREEZE) directly
+    adr: docs/architecture/adr-0011-status-effects-manager-api-contract.md
+    method_signature: "check_and_apply_shatter(target: Node, base_damage: float) → float"
+    return_semantics: "base_damage × 1.25 if FREEZE active; base_damage unchanged otherwise; Freeze not consumed"
+    referenced_by:
+      - docs/architecture/adr-0011-status-effects-manager-api-contract.md
+    added: 2026-05-29
+    revised: ""
+
+  - contract: enemy_speed_control
+    status: active
+    pattern: direct_call
+    producer: StatusEffectsManager
+    consumers:
+      - EnemyInstance           # MUST expose apply_speed_modifier(float) — called on Freeze/Chill apply and expiry
+    adr: docs/architecture/adr-0011-status-effects-manager-api-contract.md
+    method_signature: "apply_speed_modifier(multiplier: float) → void"
+    return_semantics: "void; EnemyInstance stores _speed_multiplier and applies it in _physics_process()"
+    referenced_by:
+      - docs/architecture/adr-0011-status-effects-manager-api-contract.md
+    added: 2026-05-29
+    revised: ""
+
+  - contract: enemy_stun_control
+    status: active
+    pattern: direct_call
+    producer: StatusEffectsManager
+    consumers:
+      - EnemyInstance           # MUST expose apply_stun(float) — called on Stun and Stagger apply; self-terminating
+    adr: docs/architecture/adr-0011-status-effects-manager-api-contract.md
+    method_signature: "apply_stun(duration: float) → void"
+    return_semantics: "void; self-terminating in EnemyInstance; SEM tracks StatusInstance for expiry signal only"
+    referenced_by:
+      - docs/architecture/adr-0011-status-effects-manager-api-contract.md
+    added: 2026-05-29
+    revised: ""
+
+  - contract: sfx_dispatch
+    status: active
+    pattern: direct_call
+    producer: AudioSystem
+    consumers:
+      - HealthAndDamage         # damage received, death audio
+      - SpellCastingEffects     # Prana cast and impact audio; dynamic keys via StringName("sfx_prana_cast_" + name)
+      - StatusEffectsManager    # status effect audio (future — not yet in MVP scope)
+      - EnemyInstance           # enemy attack telegraphs
+      - AllUISystems            # menu navigation and UI feedback (bus = &"UI" entries)
+    adr: docs/architecture/adr-0012-audio-system-implementation-contract.md
+    method_signature: "play_event(event_name: StringName) → void"
+    return_semantics: "void; push_error() if event not registered or AMB-bus event; no-op with no crash"
+    referenced_by:
+      - docs/architecture/adr-0012-audio-system-implementation-contract.md
+    added: 2026-05-30
+    revised: ""
+
+  - contract: volume_control
+    status: active
+    pattern: direct_call
+    producer: AudioSystem
+    consumers:
+      - SaveLoad                # reads getters on save; calls setters on load for all 5 buses
+    adr: docs/architecture/adr-0012-audio-system-implementation-contract.md
+    method_signature: "set_*_volume(db: float) → void / get_*_volume() → float (Master, Music, SFX, UI, AMB)"
+    return_semantics: "Setters clamp to −80.0–0.0 dB; Music max −3.0 dB; AMB max −10.0 dB. Getters read from AudioServer directly."
+    referenced_by:
+      - docs/architecture/adr-0012-audio-system-implementation-contract.md
+    added: 2026-05-30
+    revised: ""
+
+  - contract: ambient_control
+    status: active
+    pattern: direct_call
+    producer: AudioSystem
+    consumers:
+      - RoomLevelSystems        # call play_ambient() on room enter; stop_ambient() on room exit
+    adr: docs/architecture/adr-0012-audio-system-implementation-contract.md
+    method_signature: "play_ambient(event_name: StringName) → void; stop_ambient() → void"
+    return_semantics: "void; A/B crossfade — no silence gap on play_ambient(); fade-out on stop_ambient()"
+    referenced_by:
+      - docs/architecture/adr-0012-audio-system-implementation-contract.md
+    added: 2026-05-30
+    revised: ""
+
+  - contract: stinger_control
+    status: active
+    pattern: direct_call
+    producer: AudioSystem
+    consumers:
+      - GameFeelJuice           # play_stinger("sfx_stinger_boss_spawn") on combat_started(is_boss:true)
+      - LoreFragments           # play_stinger("sfx_stinger_memory_fragment") on memory reveal
+    adr: docs/architecture/adr-0012-audio-system-implementation-contract.md
+    method_signature: "play_stinger(event_name: StringName) → void; stop_stinger() → void"
+    return_semantics: "void; ducks Music bus by AudioEventData.duck_depth_db for stinger duration; priority policy: NARRATIVE blocks COMBAT, NARRATIVE interrupted by NARRATIVE, same-priority last-caller-wins"
+    referenced_by:
+      - docs/architecture/adr-0012-audio-system-implementation-contract.md
+    added: 2026-05-30
     revised: ""
 
 # Example:
@@ -214,6 +365,28 @@ api_decisions:
     added: 2026-05-29
     revised: ""
 
+  - purpose: sfx_pool_implementation
+    status: active
+    api: "24 AudioStreamPlayer nodes pre-instantiated at _ready() in AudioSystem Autoload; pool slot timestamps via Time.get_ticks_msec()"
+    not: "Scene-local AudioStreamPlayer nodes; OS.get_ticks_msec() (deprecated); get_playback_position() for age tracking (wraps on looping audio)"
+    adr: docs/architecture/adr-0012-audio-system-implementation-contract.md
+    reason: "Centralised Autoload pool enables priority eviction across all simultaneous callers. Time.get_ticks_msec() provides monotonic ticks unaffected by loop-point wrapping. 24 slots chosen for worst-case peak (≈20 simultaneous events) with 4 slots headroom."
+    referenced_by:
+      - docs/architecture/adr-0012-audio-system-implementation-contract.md
+    added: 2026-05-30
+    revised: ""
+
+  - purpose: gamepad_cursor_implementation
+    status: active
+    api: "_selected_slot_index: int state variable + single repositioned Control overlay child (mouse_filter = MOUSE_FILTER_IGNORE); PranaGrid root must be plain Control (not Container subclass); initialize overlay position after await get_tree().process_frame"
+    not: "grab_focus() for gamepad cursor tracking; Container subclass (GridContainer, VBoxContainer, etc.) as the PranaGrid root — layout algorithm silently overrides global_position assignments"
+    adr: docs/architecture/adr-0013-prana-grid-dual-input-focus-model.md
+    reason: "Godot 4.6 dual-focus system separates mouse hover from keyboard/gamepad focus. grab_focus() affects only keyboard/gamepad focus — using it for gamepad cursor conflates gamepad selection with keyboard accessibility focus (same focus pool), making independent visual styling impossible."
+    referenced_by:
+      - docs/architecture/adr-0013-prana-grid-dual-input-focus-model.md
+    added: 2026-05-30
+    revised: ""
+
 # Example:
 #
 # api_decisions:
@@ -280,6 +453,27 @@ forbidden_patterns:
     why: "H&D, SC&E, and EnemyAI all use is_in_group() to discriminate Fayde from enemies in signal handlers and Area2D callbacks. Dual membership would cause a node to trigger both code paths, resulting in self-damage or incorrect targeting."
     adr: docs/architecture/adr-0010-player-group-convention.md
     added: 2026-05-29
+
+  - pattern: per_status_query_helpers
+    status: active
+    description: "Do not add per-status boolean helpers (is_frozen(), is_blinded(), is_stunned(), etc.) alongside or instead of has_status(). The unified has_status(target, status_type) is the sole status query interface."
+    why: "Per-status helpers duplicate the query surface and don't scale — each new status type requires a new helper method. has_status() covers all current types (BURN, FREEZE, BLIND, STUN, REGEN, CHILL, STAGGER) and future types without code changes. architecture.md's original is_frozen()/is_blinded() spec is superseded by this ADR."
+    adr: docs/architecture/adr-0011-status-effects-manager-api-contract.md
+    added: 2026-05-29
+
+  - pattern: direct_audiostreamplayer_instantiation
+    status: active
+    description: "No system outside AudioSystem may instantiate AudioStreamPlayer nodes directly (AudioStreamPlayer.new() or add_child(AudioStreamPlayer.new())). All audio must go through AudioSystem.play_event(), play_ambient(), or play_stinger()."
+    why: "Direct instantiation bypasses the 4-bus architecture — nodes created outside AudioSystem are not routed to Music/SFX/UI/AMB buses, so player-facing volume sliders have no effect on them. This is the most common audio anti-pattern in Godot projects."
+    adr: docs/architecture/adr-0012-audio-system-implementation-contract.md
+    added: 2026-05-30
+
+  - pattern: grab_focus_for_gamepad_cursor
+    status: active
+    description: "Do not use grab_focus() in any gamepad/joypad input handler to drive d-pad cursor selection. Any UI requiring a gamepad cursor must use _selected_slot_index: int + a repositioned overlay Control. grab_focus() may be called by the engine for keyboard Tab/arrow accessibility — that is intentional and permitted."
+    why: "Godot 4.6 dual-focus system: grab_focus() affects keyboard/gamepad focus only (not mouse hover). Using it for a gamepad cursor conflates gamepad slot selection with keyboard accessibility focus — both share the same focus pool, making independent visual styling of 'gamepad cursor' vs. 'keyboard accessibility indicator' impossible. Confirmed HIGH RISK in architecture review QQ-02."
+    adr: docs/architecture/adr-0013-prana-grid-dual-input-focus-model.md
+    added: 2026-05-30
 
 # Example:
 #

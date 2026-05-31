@@ -7,6 +7,8 @@
 **Owner**: (unassigned)
 **Estimate**: 0.5 days
 **GDD**: `design/gdd/prana-data.md`
+**ADR**: N/A — design review activity; no implementation code, no architectural pattern to govern
+**Control Manifest Rules**: N/A — this story produces a GDD approval verdict, not implementation code
 
 ## Description
 
@@ -27,6 +29,13 @@ Run `/design-review design/gdd/prana-data.md` in a **fresh Claude Code session**
 3. Run: `/design-review design/gdd/prana-data.md`
 4. Address any BLOCKING findings before marking DONE
 
+## Out of Scope
+
+- Implementing any Prana Data code (Story 003 complete; Story 004 depends on .tres verification gate)
+- Writing new ADRs based on review findings (separate story if required)
+- Modifying the GDD after an APPROVED verdict (review closes at approval)
+- Fixing prana-data.md design issues found during the review (address findings in the review session itself, before marking DONE)
+
 ## QA Test Cases
 
 > **Design sprint:** Verification is the `/design-review` verdict itself.
@@ -38,7 +47,7 @@ Verification checklist (from `production/qa/qa-plan-sprint-1-2026-05-26.md`):
 - [ ] `DamageSource` enum (`DIRECT`, `DOT`, `CONTACT`) defined in `src/data/game_enums.gd`
 - [ ] `duplicate_deep()` used (not deprecated `duplicate(true)`) in Implementation Notes
 - [ ] `@export var` used (not invalid `@export const`) for tuning knob properties
-- [ ] Autoload initialization guard (`_initialized` flag + `assert()` in `get_type()`) present
+- [ ] Autoload initialization guard uses `push_error()` (NOT `assert()`) — `assert()` is stripped from Godot 4.6 release exports (ADR-0008)
 - [ ] Injury Bloom i-frame exclusion rule in Edge Cases
 - [ ] Burn Contagion chain depth rule (Contagion-inert on transferred Burn) in Edge Cases
 - [ ] Lightning Follow-Through window replacement (reset, not stack) in Edge Cases

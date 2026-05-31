@@ -1,56 +1,869 @@
-# Technical Requirement ID Registry
-#
-# PURPOSE: Persistent, stable IDs for every GDD technical requirement.
-# Prevents TR-ID renumbering across /architecture-review runs, which would
-# break story references.
-#
-# RULES:
-#   - IDs are PERMANENT. Never renumber, never delete (use status: deprecated).
-#   - Add new entries only at the END of each system's list.
-#   - When a GDD requirement is reworded (same intent): update `requirement`
-#     text and add a `revised` date. The ID stays the same.
-#   - When a requirement is removed from the GDD: set status: deprecated.
-#   - When a requirement is split or replaced: set status: superseded-by with
-#     the new TR-ID(s).
-#
-# WRITTEN BY: /architecture-review (appends new entries, never overwrites)
-# READ BY:    /create-stories (embed IDs in stories)
-#             /story-done (look up current requirement text at review time)
-#             /story-readiness (validate TR-ID exists and is active)
-#
-# ID FORMAT: TR-[system-slug]-[NNN]
-#   system-slug = short slug matching the GDD system name
-#   NNN = three-digit zero-padded sequence per system, starting at 001
-#
-# STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
-
 version: 1
-last_updated: ""
+last_updated: "2026-05-29"
 
-requirements: []
+# Written by: /architecture-review 2026-05-29 (full mode)
+# 105 requirements extracted from 14 GDDs
 
-# --- EXAMPLE ENTRIES (remove when first real entries are added) ---
-#
-# - id: TR-combat-001
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Player takes damage from enemies based on attack power minus defence"
-#   created: 2026-03-10
-#   revised: ""
-#   status: active
-#
-# - id: TR-combat-002
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Combo window timing is 0.4 seconds between hits"
-#   created: 2026-03-10
-#   revised: "2026-04-01"
-#   status: active
-#
-# - id: TR-combat-003
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Old damage formula using raw stats"
-#   created: 2026-03-10
-#   revised: ""
-#   status: superseded-by: TR-combat-001
+requirements:
+
+  # ── Game State & Scene Flow ──────────────────────────────────────────────────
+  - id: TR-GSF-001
+    system: gsf
+    gdd: design/gdd/game-state-scene-flow.md
+    requirement: "GameStateManager is a Godot Autoload singleton — single active state machine, position 3 in AutoLoad order"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-GSF-002
+    system: gsf
+    gdd: design/gdd/game-state-scene-flow.md
+    requirement: "Pause via get_tree().paused = true — gameplay nodes PROCESS_MODE_PAUSABLE, Autoloads PROCESS_MODE_ALWAYS (GSM, AudioSystem, CombatHUD)"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-GSF-003
+    system: gsf
+    gdd: design/gdd/game-state-scene-flow.md
+    requirement: "await get_tree().process_frame between queue_free() and add_child() in SceneManager.change_room() — ensures freed scene is removed before new scene _ready() fires"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-GSF-004
+    system: gsf
+    gdd: design/gdd/game-state-scene-flow.md
+    requirement: "Persistent HUD via CanvasLayer (layer 10) on permanent main.tscn root — never freed during room transitions"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-GSF-005
+    system: gsf
+    gdd: design/gdd/game-state-scene-flow.md
+    requirement: "Re-entrancy guard on _request_transition() — second call during active transition rejected with push_error(); no recursive state changes"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-GSF-006
+    system: gsf
+    gdd: design/gdd/game-state-scene-flow.md
+    requirement: "call_deferred() for boss_defeated → RUN_SUMMARY transition — allows same-frame player_died to take priority (death wins over simultaneous win)"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-GSF-007
+    system: gsf
+    gdd: design/gdd/game-state-scene-flow.md
+    requirement: "preparation_started signal carries payload: wave_index: int, waves_remaining: int — consumed by WaveManager, CombatHUD"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-GSF-008
+    system: gsf
+    gdd: design/gdd/game-state-scene-flow.md
+    requirement: "death_started is the first signal emitted in the COMBAT_PHASE → DEATH_SCREEN transition handler — before state change and run_ended"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-GSF-009
+    system: gsf
+    gdd: design/gdd/game-state-scene-flow.md
+    requirement: "IsometricRoom: root Node2D with y_sort_enabled=true; TileMapLayer child with TILE_SHAPE_ISOMETRIC + tile_size Vector2i(64,32); EntityLayer Node2D with y_sort_enabled=true; get_spawn_markers() returns Array[Vector2] with >= 3 non-zero positions for WaveManager enemy placement; NOT an Autoload"
+    created: "2026-05-31"
+    revised: ""
+    status: active
+
+  # ── Prana Data ───────────────────────────────────────────────────────────────
+  - id: TR-PD-001
+    system: pd
+    gdd: design/gdd/prana-data.md
+    requirement: "PranaCatalog accessible from all consumer systems at _ready() time — requires Autoload registration at position 1 (first)"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-PD-002
+    system: pd
+    gdd: design/gdd/prana-data.md
+    requirement: "PranaCatalog.get_type() returns duplicate_deep() copy — consumer property mutations are isolated from the catalog"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-PD-003
+    system: pd
+    gdd: design/gdd/prana-data.md
+    requirement: "All GameEnums constants use explicit integer assignments — .tres Resource files serialize @export enum as integer, not string name"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-PD-004
+    system: pd
+    gdd: design/gdd/prana-data.md
+    requirement: "GameEnums uses class_name GameEnums extends RefCounted — NOT an Autoload; no @onready, no preload/load, no @export"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-PD-005
+    system: pd
+    gdd: design/gdd/prana-data.md
+    requirement: "push_error() not assert() for PranaCatalog _initialized guard — assert() is stripped from Godot 4.6 release exports"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-PD-006
+    system: pd
+    gdd: design/gdd/prana-data.md
+    requirement: "Burn tick constraint enforced by startup assert: burn_tick_magnitude × floor(burn_duration / burn_tick_rate) <= 0.60"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-PD-007
+    system: pd
+    gdd: design/gdd/prana-data.md
+    requirement: "PranaType properties must be @export var (not const) — inspector-editable .tres files required for data-driven workflow"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  # ── Enemy Data ───────────────────────────────────────────────────────────────
+  - id: TR-ED-001
+    system: ed
+    gdd: design/gdd/enemy-data.md
+    requirement: "EnemyCatalog accessible from EnemyInstance.init() and WaveManager spawn — Autoload registration at position 2"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-ED-002
+    system: ed
+    gdd: design/gdd/enemy-data.md
+    requirement: "EnemyCatalog immutability via duplicate_deep() — same pattern as PranaCatalog; consumer mutations isolated"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-ED-003
+    system: ed
+    gdd: design/gdd/enemy-data.md
+    requirement: "EnemyType Resource has scene: PackedScene field — WaveManager spawns via EnemyType.scene.instantiate()"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-ED-004
+    system: ed
+    gdd: design/gdd/enemy-data.md
+    requirement: "prana_affiliation uses GameEnums.DamageClass.NONE = -1 as sentinel for unaffiliated enemies — never null in enemy_killed signal"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  # ── Health & Damage ──────────────────────────────────────────────────────────
+  - id: TR-HD-001
+    system: hd
+    gdd: design/gdd/health-damage.md
+    requirement: "Single apply_damage(target, base_damage, element, source) entry point for all damage sources (DIRECT, DOT, CONTACT)"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-HD-002
+    system: hd
+    gdd: design/gdd/health-damage.md
+    requirement: "Single apply_heal(target, heal_amount) entry point — negative heal_amount logs push_error() and returns without modifying HP"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-HD-003
+    system: hd
+    gdd: design/gdd/health-damage.md
+    requirement: "roundi() for final_damage rounding (round-half-away-from-zero) — not round() or int()"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-HD-004
+    system: hd
+    gdd: design/gdd/health-damage.md
+    requirement: "I-frame window (FAYDE_IFRAME_DURATION = 0.5s) via float accumulator in _process(delta) — per ADR-0004"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-HD-005
+    system: hd
+    gdd: design/gdd/health-damage.md
+    requirement: "enemy_killed(instance_id: int, type_id: int, prana_affiliation: GameEnums.DamageClass) signal — sole authoritative source"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-HD-006
+    system: hd
+    gdd: design/gdd/health-damage.md
+    requirement: "player_hp_zone_changed(zone: GameEnums.HPZone) signal on zone boundary crossing in either direction"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-HD-007
+    system: hd
+    gdd: design/gdd/health-damage.md
+    requirement: "heavy_hit(target, final_damage) signal when final_damage >= HEAVY_HIT_THRESHOLD (default 15)"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-HD-008
+    system: hd
+    gdd: design/gdd/health-damage.md
+    requirement: "force_end_iframe_window() test seam method — immediately cancels i-frame timer; never call from gameplay code"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-HD-009
+    system: hd
+    gdd: design/gdd/health-damage.md
+    requirement: "instance_from_id() for post-death enemy node validation; all callers must guard with is_instance_valid()"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-HD-010
+    system: hd
+    gdd: design/gdd/health-damage.md
+    requirement: "Step 1a in apply_damage pipeline: player i-frame check via target.is_in_group(&'player') + PlayerController.is_invincible()"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-HD-011
+    system: hd
+    gdd: design/gdd/health-damage.md
+    requirement: "PlayerController referenced in H&D via get_tree().get_first_node_in_group(&'player') — not a typed direct reference"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-HD-012
+    system: hd
+    gdd: design/gdd/health-damage.md
+    requirement: "run_started signal triggers: Fayde HP reset to FAYDE_MAX_HP, zone reset to FULL, player_hp_zone_changed(FULL) emitted"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  # ── Player Controller ────────────────────────────────────────────────────────
+  - id: TR-PC-001
+    system: pc
+    gdd: design/gdd/player-controller.md
+    requirement: "CharacterBody2D.move_and_slide() for movement — screen-space cartesian (WASD = screen axes, not isometric world axes)"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-PC-002
+    system: pc
+    gdd: design/gdd/player-controller.md
+    requirement: "Float accumulators for dash cooldown, i-frame window, and footstep timer — per ADR-0004 float accumulator pattern"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-PC-003
+    system: pc
+    gdd: design/gdd/player-controller.md
+    requirement: "PROCESS_MODE_PAUSABLE — movement, dash, and footstep timer halt on get_tree().paused = true"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-PC-004
+    system: pc
+    gdd: design/gdd/player-controller.md
+    requirement: "Dash i-frame via _is_invincible: bool flag; exposed via is_invincible() -> bool; queried by H&D pipeline step 1a"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-PC-005
+    system: pc
+    gdd: design/gdd/player-controller.md
+    requirement: "Footstep shuffle-bag: 3 variants (sfx_fayde_footstep_a/b/c), anti-consecutive-repeat guarantee, pop-from-bag pattern"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-PC-006
+    system: pc
+    gdd: design/gdd/player-controller.md
+    requirement: "PlayerController must be in 'player' SceneTree group — sole member; single-player assertion in _ready()"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-PC-007
+    system: pc
+    gdd: design/gdd/player-controller.md
+    requirement: "Listens to SpellCastingEffects.cast_hit_started(duration) signal → enters CAST_LOCKED movement sub-state for duration"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-PC-008
+    system: pc
+    gdd: design/gdd/player-controller.md
+    requirement: "get_facing_direction() returns post-snap 8-directional unit vector via atan2/round(angle / PI*4) snap algorithm"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-PC-009
+    system: pc
+    gdd: design/gdd/player-controller.md
+    requirement: "class_name PlayerController declared — required for GUT test access to enum values without raw integer literals"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  # ── Prana Grid ───────────────────────────────────────────────────────────────
+  - id: TR-PG-001
+    system: pg
+    gdd: design/gdd/prana-grid.md
+    requirement: "Dual-input support: mouse drag (primary) + gamepad d-pad cursor (secondary); no hover-only interactions; Godot 4.6 dual-focus requires custom _selected_slot_index + Sprite2D cursor, NOT grab_focus()"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-PG-002
+    system: pg
+    gdd: design/gdd/prana-grid.md
+    requirement: "committed_fragments: Array[PranaFragment] length 9 (null = empty slot) — sole public data interface for CombinationResolution and SpellCastingEffects"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-PG-003
+    system: pg
+    gdd: design/gdd/prana-grid.md
+    requirement: "Phase-gate states (ARRANGEMENT/LOCKED/HIDDEN) driven by GSM signals: preparation_started, grid_locked, grid_hidden"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-PG-004
+    system: pg
+    gdd: design/gdd/prana-grid.md
+    requirement: "Confirmation requires slot 4 (centre) non-null; arrangement_confirmed signal emitted; is_loadout_valid() returns false if slot 4 empty"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-PG-005
+    system: pg
+    gdd: design/gdd/prana-grid.md
+    requirement: "PROCESS_MODE_PAUSABLE — grid preserves state (ARRANGEMENT or LOCKED) during pause; no state change on game_paused"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-PG-006
+    system: pg
+    gdd: design/gdd/prana-grid.md
+    requirement: "is_loadout_valid() -> bool method — queried by GameStateManager before PREPARATION → COMBAT transition"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  # ── Combination Resolution ───────────────────────────────────────────────────
+  - id: TR-CR-001
+    system: cr
+    gdd: design/gdd/combination-resolution.md
+    requirement: "All resolution data (tier effects, non-primary effects, adjacency pool, stat property tables) in external Resource files — never hardcoded"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-CR-002
+    system: cr
+    gdd: design/gdd/combination-resolution.md
+    requirement: "combo_resolved(spell_effect: SpellEffect) signal emitted exactly once per wave on combat_started"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-CR-003
+    system: cr
+    gdd: design/gdd/combination-resolution.md
+    requirement: "SpellEffect typed payload: primary_type, primary_tier, base_damage_modifier, aggregate_stat_bonus, primary_base_status, non_primary_modifiers, active_adjacency_effects"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-CR-004
+    system: cr
+    gdd: design/gdd/combination-resolution.md
+    requirement: "SpellEffect cache cleared on preparation_started signal; CombinationResolution is stateless between waves"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-CR-005
+    system: cr
+    gdd: design/gdd/combination-resolution.md
+    requirement: "Cardinal neighbor lookup with bounds checking: direction valid only if within grid (0-2 row, 0-2 col); out-of-bounds = condition unsatisfied, not error"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-CR-006
+    system: cr
+    gdd: design/gdd/combination-resolution.md
+    requirement: "No system reads aggregate_stat_bonus directly from SpellEffect outside SpellCastingEffects — SC&E is the sole wave-scoped stat broker"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  # ── Spell Casting & Effects ──────────────────────────────────────────────────
+  - id: TR-SC-001
+    system: sc
+    gdd: design/gdd/spell-casting-effects.md
+    requirement: "SpellCastingEffects Autoload #9 — four operative states: IDLE, READY, CHAINING, CAST_LOCKED"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-SC-002
+    system: sc
+    gdd: design/gdd/spell-casting-effects.md
+    requirement: "All SC&E timing (cast lock, combo window, follow-through window, echo delay, phase shift) via float accumulators in _process(delta)"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-SC-003
+    system: sc
+    gdd: design/gdd/spell-casting-effects.md
+    requirement: "Spell targeting via get_world_2d().direct_space_state + PhysicsDirectSpaceState2D.intersect_ray() + PhysicsRayQueryParameters2D.create() — correct Godot 4.6 2D ray API"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-SC-004
+    system: sc
+    gdd: design/gdd/spell-casting-effects.md
+    requirement: "_rng: RandomNumberGenerator injected via @export — seeded in test before_each() for deterministic crit/miss rolls"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-SC-005
+    system: sc
+    gdd: design/gdd/spell-casting-effects.md
+    requirement: "get_stat_bonus(stat_id: StringName) -> float — wave-scoped stat broker; returns 0.0 when cache null; sole interface for H&D and SEM stat queries"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-SC-006
+    system: sc
+    gdd: design/gdd/spell-casting-effects.md
+    requirement: "cast_hit_started(lock_duration: float) signal emitted after each hit — PlayerController listens and enters CAST_LOCKED movement sub-state"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-SC-007
+    system: sc
+    gdd: design/gdd/spell-casting-effects.md
+    requirement: "spell_hit_element(target: Node, prana_type_id: int) signal emitted per hit — CombatHUD uses for per-frame damage number color correlation"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-SC-008
+    system: sc
+    gdd: design/gdd/spell-casting-effects.md
+    requirement: "chain_index_changed(combo_index: int, combo_attack_count: int) signal — CombatHUD chain dot indicator"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  # ── Status Effects ───────────────────────────────────────────────────────────
+  - id: TR-SE-001
+    system: se
+    gdd: design/gdd/status-effects.md
+    requirement: "StatusEffectsManager Autoload #7 — sole tick-timing authority for all Prana-triggered combat conditions"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-SE-002
+    system: se
+    gdd: design/gdd/status-effects.md
+    requirement: "All tick timers and duration counters via float accumulators in _process(delta) — no Timer nodes or SceneTree.create_timer()"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-SE-003
+    system: se
+    gdd: design/gdd/status-effects.md
+    requirement: "apply_status(target: Node, status_type: GameEnums.BaseStatus, duration: float, spell_base_damage: float = 0.0) — 4-argument public API; spell_base_damage required for Burn DoT calculation"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-SE-004
+    system: se
+    gdd: design/gdd/status-effects.md
+    requirement: "check_and_apply_shatter(target: Node, base_damage: float) -> float — returns base_damage × 1.25 if target has active FREEZE; emits shatter_triggered(target)"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-SE-005
+    system: se
+    gdd: design/gdd/status-effects.md
+    requirement: "has_status(target: Node, status_type: GameEnums.BaseStatus) -> bool — queries active StatusInstance registry"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-SE-006
+    system: se
+    gdd: design/gdd/status-effects.md
+    requirement: "Enemy AI nodes must expose apply_speed_modifier(multiplier: float) — called by SEM on Freeze/Chill apply and expiry"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-SE-007
+    system: se
+    gdd: design/gdd/status-effects.md
+    requirement: "Enemy AI nodes must expose apply_stun(duration: float) — called by SEM on Stun/Stagger apply (self-terminating in Enemy AI)"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-SE-008
+    system: se
+    gdd: design/gdd/status-effects.md
+    requirement: "Burn Contagion on enemy death: nearest-enemy distance scan (BURN_CONTAGION_RANGE = 200px) before StatusInstance cleanup"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-SE-009
+    system: se
+    gdd: design/gdd/status-effects.md
+    requirement: "Wave/phase clear on preparation_started: clear all StatusInstances + expiry cleanup per type (Freeze/Chill: apply_speed_modifier(1.0)); no signals emitted"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  # ── Enemy AI ─────────────────────────────────────────────────────────────────
+  - id: TR-EAI-001
+    system: eai
+    gdd: design/gdd/enemy-ai.md
+    requirement: "CharacterBody2D.move_and_slide() for movement — direct screen-space vector toward Fayde position each physics frame"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-EAI-002
+    system: eai
+    gdd: design/gdd/enemy-ai.md
+    requirement: "Area2D + CollisionShape2D as dedicated contact hitbox — separate from root CollisionShape2D used for movement collision"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-EAI-003
+    system: eai
+    gdd: design/gdd/enemy-ai.md
+    requirement: "ENEMY_MIN_CONTACT_INTERVAL >= 0.3s — co-tuned with H&D FAYDE_IFRAME_DURATION (0.5s); safety_ratio = iframe/contact > 1.0"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-EAI-004
+    system: eai
+    gdd: design/gdd/enemy-ai.md
+    requirement: "Death sequence: AnimationPlayer.play('death') → on animation_finished → queue_free() only (never free()); guarantees one-frame node lifetime after enemy_killed"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-EAI-005
+    system: eai
+    gdd: design/gdd/enemy-ai.md
+    requirement: "Enemy instances in 'enemy' SceneTree group at _ready(); must NOT be in 'player' group"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-EAI-006
+    system: eai
+    gdd: design/gdd/enemy-ai.md
+    requirement: "Degenerate direction guard: if dir.length() < 0.01, use _dir_last_valid — prevents Vector2.ZERO.normalized() NaN crash"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-EAI-007
+    system: eai
+    gdd: design/gdd/enemy-ai.md
+    requirement: "Enemy exposes apply_speed_modifier(multiplier: float) and apply_stun(duration: float) for StatusEffectsManager MVP"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-EAI-008
+    system: eai
+    gdd: design/gdd/enemy-ai.md
+    requirement: "get_tree().get_first_node_in_group(&'player') for Fayde reference — cached at _ready(), re-resolved when null"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-EAI-009
+    system: eai
+    gdd: design/gdd/enemy-ai.md
+    requirement: "PROCESS_MODE_PAUSABLE — all enemy behavior (movement, contact timer, state machine) halts on tree pause"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  # ── Wave / Encounter System ──────────────────────────────────────────────────
+  - id: TR-WES-001
+    system: wes
+    gdd: design/gdd/wave-encounter-system.md
+    requirement: "WaveManager is the sole emitter of wave_cleared, all_waves_cleared, and boss_defeated signals — no other system emits these"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-WES-002
+    system: wes
+    gdd: design/gdd/wave-encounter-system.md
+    requirement: "All enemies spawned via add_child() in single loop iteration — all in same frame; _enemies_alive = _enemies_total set atomically"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-WES-003
+    system: wes
+    gdd: design/gdd/wave-encounter-system.md
+    requirement: "Kill tracking: HealthAndDamage.enemy_killed signal → _enemies_alive -= 1; _enemies_alive <= 0 guard triggers wave completion"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-WES-004
+    system: wes
+    gdd: design/gdd/wave-encounter-system.md
+    requirement: "Spawn markers are Node2D children of arena scene (SpawnPoints container); WaveManager reads global_position at spawn time"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-WES-005
+    system: wes
+    gdd: design/gdd/wave-encounter-system.md
+    requirement: "FP scope: all_waves_cleared and boss_defeated fire sequentially in same handler after last enemy death"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  # ── Combat HUD ───────────────────────────────────────────────────────────────
+  - id: TR-CH-001
+    system: ch
+    gdd: design/gdd/combat-hud.md
+    requirement: "CombatHUD is CanvasLayer (layer 10) with PROCESS_MODE_ALWAYS — survives scene transitions on permanent main.tscn root"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-CH-002
+    system: ch
+    gdd: design/gdd/combat-hud.md
+    requirement: "All HP and chain indicator updates via signals from H&D and SC&E — no polling of game state"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-CH-003
+    system: ch
+    gdd: design/gdd/combat-hud.md
+    requirement: "Floating damage numbers: get_viewport().get_canvas_transform() for world-space → viewport coordinate conversion"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-CH-004
+    system: ch
+    gdd: design/gdd/combat-hud.md
+    requirement: "Chain dot colors from PranaCatalog.get_type(id).color — not hardcoded hex values"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-CH-005
+    system: ch
+    gdd: design/gdd/combat-hud.md
+    requirement: "spell_hit_element and damage_taken signals correlated per-frame for damage number Prana-type color assignment"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-CH-006
+    system: ch
+    gdd: design/gdd/combat-hud.md
+    requirement: "Floating label pool cap (12 nodes); oldest-first eviction when cap reached to prevent proliferation during Cluster swarms"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  # ── Run Management ───────────────────────────────────────────────────────────
+  - id: TR-RM-001
+    system: rm
+    gdd: design/gdd/run-management.md
+    requirement: "RunManager Autoload #10 — persists run state (run_active, run_outcome, waves_completed) across scene transitions"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-RM-002
+    system: rm
+    gdd: design/gdd/run-management.md
+    requirement: "get_run_data() -> Dictionary returns a copy — callers cannot mutate RunManager internal state"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-RM-003
+    system: rm
+    gdd: design/gdd/run-management.md
+    requirement: "RunManager registered after GameStateManager in AutoLoad order — connects to GSM signals in _ready()"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-RM-004
+    system: rm
+    gdd: design/gdd/run-management.md
+    requirement: "No _process() loop — all state updates via GSM signal connections (run_started, wave_ended, room_cleared, run_ended)"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  # ── Audio System ─────────────────────────────────────────────────────────────
+  - id: TR-AS-001
+    system: as
+    gdd: design/gdd/audio-system.md
+    requirement: "4-bus architecture: Master, Music, SFX, UI, AMB — bus names as StringName constants; no other system may define these names independently"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-AS-002
+    system: as
+    gdd: design/gdd/audio-system.md
+    requirement: "SFX pool: 24 pre-instantiated AudioStreamPlayer nodes; priority-based eviction: oldest LOW first, then oldest NORMAL; HIGH never evicted unless all slots are HIGH"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-AS-003
+    system: as
+    gdd: design/gdd/audio-system.md
+    requirement: "Music A/B crossfade via Tween.set_parallel(true) — simultaneous fade-out and fade-in; no silence gap; kill prior tween before creating new one"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-AS-004
+    system: as
+    gdd: design/gdd/audio-system.md
+    requirement: "play_event() routes by AudioEventData.bus field: &'UI' -> dedicated ALWAYS player; &'SFX' -> pool (PAUSABLE); &'AMB' -> error (use play_ambient() instead)"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-AS-005
+    system: as
+    gdd: design/gdd/audio-system.md
+    requirement: "Process modes: Music A/B ALWAYS; Ambient A/B ALWAYS; UI player ALWAYS; Stinger player ALWAYS; SFX pool 24 nodes PAUSABLE"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-AS-006
+    system: as
+    gdd: design/gdd/audio-system.md
+    requirement: "set_music_volume() clamped to max -3.0 dB — architectural invariant ensuring Prana SFX headroom over music"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-AS-007
+    system: as
+    gdd: design/gdd/audio-system.md
+    requirement: "set_amb_volume() clamped to max -10.0 dB — 'world breathes softly' sonic identity invariant"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-AS-008
+    system: as
+    gdd: design/gdd/audio-system.md
+    requirement: "END_VICTORY and END_DEFEAT cues must be non-looping AudioStream assets — auto-transition to MAIN_MENU depends on AudioStreamPlayer.finished signal (not emitted for looping streams)"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-AS-009
+    system: as
+    gdd: design/gdd/audio-system.md
+    requirement: "DYING state minimum hold: DYING_MIN_HOLD_SEC = 1.5s before transitioning to END_DEFEAT — queues run_ended(win:false) if it fires before minimum elapses"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-AS-010
+    system: as
+    gdd: design/gdd/audio-system.md
+    requirement: "AudioSystem registered after GameStateManager in AutoLoad order (#5) — connects to GSM signals in _ready()"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-AS-011
+    system: as
+    gdd: design/gdd/audio-system.md
+    requirement: "Stinger player is non-pooled, PROCESS_MODE_ALWAYS — plays in any game state including PAUSED and END states; separate from SFX pool"
+    created: "2026-05-29"
+    revised: ""
+    status: active
+
+  - id: TR-AS-012
+    system: as
+    gdd: design/gdd/audio-system.md
+    requirement: "Pool timestamp oldest-first eviction: _timestamps[i] = 0 at startup; evict slot with smallest Time.get_ticks_msec() timestamp = least recently played"
+    created: "2026-05-29"
+    revised: ""
+    status: active
