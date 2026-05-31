@@ -1,8 +1,8 @@
 # Wave / Encounter System (Simplified)
 
-> **Status**: Designed (pending /design-review)
+> **Status**: Approved — /design-review 2026-05-31 (0 blocking, 7 advisory)
 > **Author**: Kusuma Putra + Claude Code Game Studios
-> **Last Updated**: 2026-05-29
+> **Last Updated**: 2026-05-31
 > **Implements Pillar**: Pillar 1 (Every Run Tells a Different Story), Pillar 2 (Power is Earned Through Understanding), Pillar 3 (Chaos Has Consequences)
 
 ## Overview
@@ -38,10 +38,14 @@ This system succeeds when a player can describe what they did and why: *"The Clu
    - `_wave_state: WaveState` (enum: `IDLE` / `WAVE_ACTIVE` / `WAVE_COMPLETE`)
 
 2. **FP hardcoded wave composition**: At First Playable scope, the wave composition is a constant array defined in the Wave Manager script:
-   - 3 × Drifter (ID 0) — SEEKER archetype; threat value = 3
-   - 2 × Charger (ID 1) — RUSHER archetype; threat value = 4
-   - 5 × Cluster (ID 2) — SWARMER archetype; threat value = 5
+   - 3 × Drifter (ID 0) — SEEKER archetype; Shadow/Voidblue affiliation; threat value = 3
+   - 2 × Charger (ID 1) — RUSHER archetype; **Ice/Deepfrost affiliation**; threat value = 4
+   - 5 × Cluster (ID 2) — SWARMER archetype; Lightning/Stormgold affiliation; threat value = 5
    - **Total: 10 enemies | Threat budget: 12**
+
+   **Anti-Ashfire gate (prana-data.md) — RESOLVED 2026-05-31:** Charger affiliation changed from Fire/Ashfire → Ice/Deepfrost. The Charger (Rusher/gap-closer) is the highest-threat unit; Burn DoT is suboptimal against a gap-closer that reaches Fayde in <2s, while Deepfrost Freeze lockdown and Stormgold Stun are strategically superior choices. All-Ashfire play is no longer optimal against the hardest unit. Deepfrost (Charger) and Stormgold (Cluster) cover the high-threat composition; Voidblue (Drifter) rewards precision. Verdant remains without a FP target enemy (1 of 5 Prana types with no 2× target at FP — accepted gap; Verdant sustain is still playable). Status Effects implementation sprint is now unblocked per prana-data.md gate.
+
+   **Shatter risk note:** Shatter (+25% bonus on Frozen target) requires Freeze (Deepfrost status effect). Freeze is targeted for sprint-2 Should Have. If Status Effects slips to sprint-3, Shatter does not fire at the first playtest — the 2× affiliation bonus against Charger will still demonstrate strategic depth. Ensure Freeze is implemented before the first playtest (2026-06-14).
 
    At MVP/VS, this constant is replaced by a budget-driven composition generator. The constant form is intentional for FP — changing it is a one-line edit per iteration.
 

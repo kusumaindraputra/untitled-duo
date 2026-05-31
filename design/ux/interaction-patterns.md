@@ -52,7 +52,7 @@ This library catalogues the reusable interaction patterns for *The Last Cipher*.
 | HP bar fill | 0.20s | TRANS_LINEAR | — | Codified from IP-01; slightly slower for deliberate feel |
 | Floating label | 0.8s | TRANS_LINEAR (pos) / TRANS_CUBIC (alpha) | EASE_IN (alpha only) | Codified from IP-02; fade starts at 0.5s mark |
 | HUD overlay fade | 0.1s | TRANS_LINEAR | — | Enter and exit; for phase overlays (IP-09) |
-| Phase lock dim | 0.15s | TRANS_LINEAR | — | Opacity 100%→70%; codified from IP-09 |
+| Phase lock dim | 0.3s | TRANS_LINEAR | — | Opacity 100%→70%; Prana Grid specifically — synchronised with ambient dim (art bible §7.5); codified from IP-09 |
 | Notification enter | 0.2s | TRANS_CUBIC | EASE_OUT | Slide in from screen edge (IP-12) |
 | Notification exit | 0.15s | TRANS_CUBIC | EASE_IN | Fade out only — no slide-out (IP-12) |
 | Stack reposition | 0.1s | TRANS_LINEAR | — | Notification stack adjusts when an item is removed (IP-12) |

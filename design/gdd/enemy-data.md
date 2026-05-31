@@ -76,7 +76,7 @@ Players do not engage with Enemy Data as a system. They engage with enemy types 
 | ID | Name | Archetype | Prana Affiliation | `base_hp` | `base_damage` | `base_move_speed` | `drop_prana_type` | `drop_rate` | `wave_threat_value` | Sprite Size | Status |
 |----|------|-----------|-------------------|-----------|---------------|-------------------|-------------------|-------------|---------------------|-------------|--------|
 | 0 | **Drifter** | Seeker | Shadow (Voidblue) | *20* | *8.0* | *80 px/s* | Voidblue (ID 1) | *0.50* | 1 | 16×16 px | active |
-| 1 | **Charger** | Rusher | Fire (Ashfire) | *35* | *20.0* | *50 px/s (base)* | Ashfire (ID 0) | *0.40* | 2 | 12×20 px | active |
+| 1 | **Charger** | Rusher | Ice (Deepfrost) | *35* | *20.0* | *50 px/s (base)* | Deepfrost (ID 3) | *0.40* | 2 | 12×20 px | active |
 | 2 | **Cluster** | Swarmer | Lightning (Stormgold) | *12* | *4.0* | *70 px/s* | Stormgold (ID 2) | *0.60* | 1 | 24×24 px | active |
 | 3 | **Warped Warden** | Boss | null | *500* | *25.0* | *40 px/s* | null | null | null | 48×48 px | vs_scope |
 
@@ -217,7 +217,7 @@ All numeric values in Enemy Data are data-driven — they live in the catalog an
 | `wave_threat_value` — Charger | 2 | 1–4 | Charger frequency relative to budget; Charger is the high-danger unit | If too low, Chargers flood waves and overwhelm; if too high, players rarely face the read-and-dodge challenge |
 | `wave_threat_value` — Cluster | 1 | 1–2 | Cluster frequency; shares budget weight with Drifter | If equal to Charger, swarms become rare; keep ≤ Charger value |
 | `drop_rate` — Drifter | 0.50 | 0.30–0.70 | Voidblue Prana economy; Drifters are the most common enemy | If too high, Voidblue floods; if too low, players can't build around it |
-| `drop_rate` — Charger | 0.40 | 0.25–0.60 | Ashfire Prana economy; Charger is rarer, so drop rate compensates | If too low, Ashfire becomes inaccessible without dedicated Charger targeting |
+| `drop_rate` — Charger | 0.40 | 0.25–0.60 | Deepfrost Prana economy; Charger is rarer, so drop rate compensates | If too low, Deepfrost becomes inaccessible without dedicated Charger targeting |
 | `drop_rate` — Cluster | 0.60 | 0.40–0.75 | Stormgold Prana economy; high drop rate compensates for low per-unit threat | Stormgold abundance is intentional — Cluster waves are hard to farm |
 
 ### Secondary Tuning Levers (provisional — defer to Health & Damage GDD)
@@ -263,7 +263,7 @@ Enemy Data is not directly rendered. UI requirements belong to consuming systems
 
 **AC-ED-04** — Each entry's `name` matches the canonical name from this GDD: ID 0 = "Drifter", ID 1 = "Charger", ID 2 = "Cluster", ID 3 = "Warped Warden". A unit test verifies all four exact string values.
 
-**AC-ED-05** — Each active entry's `prana_affiliation` matches: Drifter = Shadow/Voidblue, Charger = Fire/Ashfire, Cluster = Lightning/Stormgold. The Warped Warden's `prana_affiliation` is `null`. Unit test verifies all four.
+**AC-ED-05** — Each active entry's `prana_affiliation` matches: Drifter = Shadow/Voidblue, Charger = Ice/Deepfrost, Cluster = Lightning/Stormgold. The Warped Warden's `prana_affiliation` is `null`. Unit test verifies all four.
 
 **AC-ED-06** — Each active entry's `archetype` matches: Drifter = `SEEKER`, Charger = `RUSHER`, Cluster = `SWARMER`, Warped Warden = `BOSS`. Unit test verifies all four.
 
@@ -299,9 +299,9 @@ Enemy Data is not directly rendered. UI requirements belong to consuming systems
 
 ## Open Questions
 
-1. **Deepfrost enemy (MVP gap):** No active enemy has a Deepfrost affiliation. Players never encounter a Deepfrost-affiliated enemy at MVP — which is fine (Deepfrost is about applying Freeze, not being frozen), but worth flagging. If a Deepfrost-affiliated enemy is needed for MVP, it would be ID 4 appended to the catalog. Defer to Wave / Encounter System design.
+1. **Deepfrost enemy (FP gap — RESOLVED 2026-05-31):** Charger's affiliation changed from Fire/Ashfire → Ice/Deepfrost to satisfy the anti-Ashfire gate in prana-data.md (≥30% of wave compositions must disincentivize all-Ashfire play). Charger is a gap-closer (Rusher) — Freeze lockdown and Deepfrost 2× bonus are now strategically optimal against the highest-threat FP enemy, rewarding "Power is Earned Through Understanding."
 
-2. **Verdant enemy (MVP gap):** No active enemy has a Verdant affiliation. Verdant enemies would presumably be healed by Verdant Prana instead of damaged — an interesting future mechanic but explicitly out of MVP scope.
+2. **Verdant enemy (FP gap):** No active FP enemy has a Verdant affiliation. Verdant Prana has no 2× target at FP. Verdant's sustain identity (Regen) is still playable but lacks a natural encounter archetype. Encounter design must define an attrition archetype at MVP scope (see prana-data.md open question re: Verdant viability). Verdant is the 1 remaining "trap pick" at FP scope (down from 2 of 5 before this change).
 
 3. **Cluster minimum spawn enforcement:** Edge Case 5 recommends Wave / Encounter System prefer budget overage over underspawning Clusters. This is a heuristic, not a rule. Wave / Encounter System GDD must decide whether this is a hard rule or advisory.
 

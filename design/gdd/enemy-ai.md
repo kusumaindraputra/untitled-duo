@@ -1,8 +1,8 @@
 # Enemy AI (Simplified)
 
-> **Status**: Designed (pending /design-review)
+> **Status**: Approved — /design-review 2026-05-31 (0 blocking, 4 advisory)
 > **Author**: Kusuma Putra + Claude Code Game Studios
-> **Last Updated**: 2026-05-28
+> **Last Updated**: 2026-05-31
 > **Implements Pillar**: Pillar 2 (Power is Earned Through Understanding), Pillar 3 (Chaos Has Consequences)
 
 ## Overview

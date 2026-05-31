@@ -1,8 +1,8 @@
 # Combat HUD (Minimal)
 
-> **Status**: In Design
+> **Status**: Approved — /design-review 2026-05-31 (0 blocking, 6 advisory)
 > **Author**: Kusuma Putra + Claude Code Game Studios
-> **Last Updated**: 2026-05-29
+> **Last Updated**: 2026-05-31
 > **Implements Pillar**: Pillar 3 (Chaos Has Consequences), Pillar 2 (Power is Earned Through Understanding)
 
 ## Overview
