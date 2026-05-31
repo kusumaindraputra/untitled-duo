@@ -117,8 +117,7 @@ H&D does not need notification of wave reset — its `_enemy_registry` is emptie
 
 | TR-ID | Requirement | Source GDD |
 |-------|-------------|------------|
-| TR-HD-003 | `register_enemy()` called by WaveManager before `add_child()` | health-damage.md |
-| TR-HD-004 | `enemy_killed` signal carries `instance_id`, `type_id`, `prana_affiliation` | health-damage.md |
-| TR-WES-005 | WaveManager tracks `_enemies_alive` via `enemy_killed` signal only (no HP polling) | wave-encounter-system.md |
-| TR-WES-006 | Wave reset on `preparation_started` clears all WaveManager counters | wave-encounter-system.md |
-| TR-WES-007 | `boss_defeated` fires immediately after `all_waves_cleared` at FP scope | wave-encounter-system.md |
+| TR-HD-006 | `register_enemy(enemy, type_id)` called by WaveManager before `add_child()` — registration ordering contract | health-damage.md |
+| TR-HD-007 | `enemy_killed(instance_id, type_id, prana_affiliation)` signal — sole emitter, carries kill metadata | health-damage.md |
+| TR-WES-003 | Kill tracking: H&D `enemy_killed` signal → WaveManager `_enemies_alive -= 1`; `<= 0` guard triggers completion | wave-encounter-system.md |
+| TR-WES-005 | FP scope: `all_waves_cleared` and `boss_defeated` fire sequentially in same handler after last enemy death | wave-encounter-system.md |

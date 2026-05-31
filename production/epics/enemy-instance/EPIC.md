@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/enemy-ai.md
 > **Architecture Module**: `src/enemies/enemy_instance.gd`
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories enemy-instance`
+> **Stories**: 6 stories created 2026-05-31
 
 ## Overview
 
@@ -40,6 +40,17 @@ This epic is complete when:
 - All Logic and Integration stories have passing test files in `tests/`
 - Visual/Feel stories (death animation, hit flash) have evidence docs in `production/qa/evidence/`
 
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | [Skeleton, Group, init(), Phase Gating](story-001-skeleton-phase-gating.md) | Integration | Ready | ADR-0003 |
+| 002 | [FP Movement and Degenerate Direction Guard](story-002-fp-movement.md) | Logic | Ready | ADR-0010 |
+| 003 | [Contact Attack and Repeat-Damage Timer](story-003-contact-attack.md) | Logic | Ready | ADR-0007 |
+| 004 | [Death Sequencing and Instance ID Guard](story-004-death-sequencing.md) | Integration | Ready | ADR-0007 |
+| 005 | [Integration Tests and Status Effects API Stubs](story-005-integration-status-stubs.md) | Integration | Ready | ADR-0011 |
+| 006 | [Death Animation Timing](story-006-death-animation-timing.md) | Visual/Feel | Ready *(ADVISORY)* | ADR-0003 |
+
 ## Next Step
 
-Run `/create-stories enemy-instance` to break this epic into implementable stories.
+Run `/story-readiness production/epics/enemy-instance/story-001-skeleton-phase-gating.md` then `/dev-story` to begin implementation.

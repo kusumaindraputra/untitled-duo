@@ -1,8 +1,8 @@
 # Player Controller
 
-> **Status**: In Revision (post-design-review round 2 — pending re-review)
+> **Status**: Approved
 > **Author**: Kusuma Putra + Claude Code Game Studios
-> **Last Updated**: 2026-05-28
+> **Last Updated**: 2026-05-31
 > **Implements Pillar**: Pillar 3 (Chaos Has Consequences) — movement and positioning determine which Prana hits land and which enemy hits are taken
 
 ## Overview

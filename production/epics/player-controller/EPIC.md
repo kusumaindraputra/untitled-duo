@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/player-controller.md
 > **Architecture Module**: `src/gameplay/player_controller.gd`
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories player-controller`
+> **Stories**: 4 stories created 2026-05-31
 
 ## Overview
 
@@ -42,6 +42,15 @@ This epic is complete when:
 - All Logic and Integration stories have passing test files in `tests/`
 - Visual/Feel stories have evidence docs in `production/qa/evidence/`
 
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | [Skeleton, Group Registration, State Machine](story-001-skeleton-state-machine.md) | Integration | Ready | ADR-0003 |
+| 002 | [WASD Movement and Friction Deceleration](story-002-movement-friction.md) | Logic | Ready | ADR-0001 ⚠️ HIGH |
+| 003 | [Dash System, I-Frame, Interface Getters](story-003-dash-system.md) | Logic | Ready | ADR-0004 |
+| 004 | [Footstep Shuffle-Bag and Audio Events](story-004-footstep-audio.md) | Logic | Ready | ADR-0003 |
+
 ## Next Step
 
-Run `/create-stories player-controller` to break this epic into implementable stories.
+Run `/story-readiness production/epics/player-controller/story-001-skeleton-state-machine.md` then `/dev-story` to begin implementation.

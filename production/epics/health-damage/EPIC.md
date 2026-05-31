@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/health-damage.md
 > **Architecture Module**: `src/systems/health_and_damage.gd` (Autoload #6)
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories health-damage`
+> **Stories**: 5 stories created 2026-05-31
 
 ## Overview
 
@@ -43,6 +43,16 @@ This epic is complete when:
 - All acceptance criteria from `design/gdd/health-damage.md` are verified
 - All Logic and Integration stories have passing test files in `tests/`
 
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | [Autoload Skeleton, Enemy HP Registry, Run Reset](story-001-autoload-skeleton.md) | Logic | Ready | ADR-0007 |
+| 002 | [apply_damage() — Core Formula and Dead-Target Guard](story-002-apply-damage-pipeline.md) | Logic | Ready | ADR-0007 |
+| 003 | [I-Frame Window (Float Accumulator)](story-003-iframe-window.md) | Logic | Ready | ADR-0004 |
+| 004 | [apply_heal() and HP Zone Signals](story-004-heal-and-zones.md) | Logic | Ready | ADR-0007 |
+| 005 | [Death Signals, Heavy Hit, and First-Run Mercy](story-005-death-and-heavy-hit.md) | Logic | Ready | ADR-0007 |
+
 ## Next Step
 
-Run `/create-stories health-damage` to break this epic into implementable stories.
+Run `/story-readiness production/epics/health-damage/story-001-autoload-skeleton.md` then `/dev-story` to begin implementation.
