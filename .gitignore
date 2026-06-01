@@ -1,3 +1,14 @@
 # Godot 4+ specific ignores
 .godot/
 /android/
+
+# Test reports (generated output)
+reports/
+
+# Session state and logs (ephemeral — per context-management.md)
+production/session-state/
+production/session-logs/
+
+# Local tool config
+.claude/settings.local.json
+.rtk/
