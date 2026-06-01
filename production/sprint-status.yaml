@@ -31,10 +31,10 @@ stories:
     name: "Implement Health & Damage"
     file: "production/epics/health-damage/story-*.md"
     priority: must-have
-    status: blocked
+    status: in-progress
     owner: ""
     estimate_days: 3.0
-    blocker: "S2-01 must complete first — story files do not exist yet"
+    blocker: ""
     completed: ""
 
   - id: "S2-03"

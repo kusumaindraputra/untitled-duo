@@ -7,6 +7,7 @@
 > **Estimate**: ~2h
 > **Manifest Version**: 2026-05-30
 > **Last Updated**: 2026-05-31
+> **Status**: In Progress
 
 ## Context
 
@@ -36,6 +37,7 @@
 *From GDD `design/gdd/health-damage.md`, scoped to this story:*
 
 - [ ] **AC-HD-17** — On `run_started` signal: `_fayde_current_hp` equals `FAYDE_MAX_HP` (100) regardless of previous HP value. (Run-reset path reachable without a full scene.)
+- [ ] **AC-HD-17b** — After `_on_run_started()`: `_enemy_registry.is_empty() == true`; `_fayde_dead == false`; `_iframe_active == false`. All three verified in one call, independent of HP check in AC-HD-17.
 - [ ] **AC-HD-18** — A newly registered enemy has `current_hp` equal to `EnemyCatalog.get_type(type_id).base_hp`. Verify for Drifter (20), Charger (35), Cluster (12).
 
 ---
@@ -134,6 +136,12 @@ func _on_run_started() -> void:
 - When: `_on_run_started()` is called (or `run_started` signal is emitted)
 - Then: `_fayde_current_hp` equals `FAYDE_MAX_HP` (100.0)
 - Edge cases: HP already at max (100) → still passes; HP below 0 edge case cannot occur (dead-target guard in Story 002)
+
+**AC-HD-17b — run_started clears all state flags**
+- Given: `_enemy_registry` contains one entry; `_fayde_dead = true`; `_iframe_active = true`
+- When: `_on_run_started()` called
+- Then: `_enemy_registry.is_empty() == true`; `_fayde_dead == false`; `_iframe_active == false`
+- Edge cases: Called multiple times in a row → idempotent (same result)
 
 **AC-HD-18 — registered enemy HP matches catalog**
 - Given: `EnemyCatalog` autoload available; three enemy IDs (0=Drifter, 1=Charger, 2=Cluster)
