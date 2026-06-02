@@ -183,10 +183,8 @@ func apply_damage(
 
 	# Step 1a — Dash invincibility guard (Fayde + CONTACT only)
 	if is_player and source == GameEnums.DamageSource.CONTACT:
-		var player_node: Node = get_tree().get_first_node_in_group(&"player")
-		if is_instance_valid(player_node) and player_node.has_method(&"is_invincible"):
-			if player_node.is_invincible():
-				return
+		if target.has_method(&"is_invincible") and target.is_invincible():
+			return
 
 	# Step 2 — Dead-target guard
 	if is_player:

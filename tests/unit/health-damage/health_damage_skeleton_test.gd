@@ -1,7 +1,7 @@
 ## health_damage_skeleton_test.gd — Unit tests for HealthAndDamage (Autoload #5).
 ##
 ## Coverage: AC-HD-01, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 17,
-##           17b, 18, 19, 23, 24, 28, 29, 30, 31, 32, 33
+##           17b, 18, 19, 20, 21, 22, 23, 24, 26, 27, 28, 29, 30, 31, 32, 33
 ##
 ## Signal assertions use Array[int] counters — GDScript 4 lambdas capture
 ## primitives by value; arrays are captured by reference.
@@ -157,7 +157,7 @@ func test_health_damage_neutral_hit_reduces_hp_and_emits_damage_taken() -> void:
 	hd.damage_taken.connect(func(_t, _d, _h): cnt[0] += 1)
 	hd.apply_damage(fayde, 20.0, GameEnums.DamageClass.NONE, GameEnums.DamageSource.CONTACT)
 	assert_int(hd._fayde_current_hp).is_equal(80)
-	assert_int(cnt[0]).is_greater(0)
+	assert_int(cnt[0]).is_equal(1)
 
 
 # ── AC-HD-04: Overkill clamps to 0 ───────────────────────────────────────────
@@ -286,10 +286,14 @@ func test_health_damage_partial_heal_emits_health_restored() -> void:
 	add_child(hd); add_child(fayde)
 	_set_fayde_hp_and_zone(hd, 10)
 	var cnt: Array[int] = [0]
-	hd.health_restored.connect(func(_t, _a, _h): cnt[0] += 1)
+	var healed: Array[int] = [0]
+	var hp_after: Array[int] = [0]
+	hd.health_restored.connect(func(_t, amount: int, current: int): cnt[0] += 1; healed[0] = amount; hp_after[0] = current)
 	hd.apply_heal(fayde, 6.0)
 	assert_int(hd._fayde_current_hp).is_equal(16)
-	assert_int(cnt[0]).is_greater(0)
+	assert_int(cnt[0]).is_equal(1)
+	assert_int(healed[0]).is_equal(6)
+	assert_int(hp_after[0]).is_equal(16)
 
 
 # ── AC-HD-13: Enemy killed → enemy_killed emitted, registry erased ───────────
@@ -345,8 +349,71 @@ func test_health_damage_crossing_careful_threshold_emits_zone_signal() -> void:
 	var cnt: Array[int] = [0]
 	hd.player_hp_zone_changed.connect(func(_z): cnt[0] += 1)
 	hd.apply_damage(fayde, 6.0, GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
-	assert_int(cnt[0]).is_greater(0)
+	assert_int(cnt[0]).is_equal(1)
 	assert_int(hd._current_zone).is_equal(GameEnums.HPZone.CAREFUL)
+
+
+# ── AC-HD-20: Second hit within CAREFUL — zone signal NOT re-emitted ─────────
+
+func test_health_damage_second_hit_within_careful_no_zone_signal() -> void:
+	var hd: Node = _make_hd()
+	var fayde: Node = _make_fayde()
+	add_child(hd); add_child(fayde)
+	_set_fayde_hp_and_zone(hd, 35)
+	var cnt: Array[int] = [0]
+	hd.player_hp_zone_changed.connect(func(_z): cnt[0] += 1)
+	hd.apply_damage(fayde, 5.0, GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
+	assert_int(hd._fayde_current_hp).is_equal(30)
+	assert_int(hd._current_zone).is_equal(GameEnums.HPZone.CAREFUL)
+	assert_int(cnt[0]).is_equal(0)
+
+
+# ── AC-HD-21: CAREFUL → DESPERATE emits DESPERATE only ───────────────────────
+
+func test_health_damage_careful_to_desperate_emits_desperate_only() -> void:
+	var hd: Node = _make_hd()
+	var fayde: Node = _make_fayde()
+	add_child(hd); add_child(fayde)
+	_set_fayde_hp_and_zone(hd, 25)
+	var zones: Array = []
+	hd.player_hp_zone_changed.connect(func(z): zones.append(z))
+	hd.apply_damage(fayde, 10.0, GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
+	assert_int(hd._fayde_current_hp).is_equal(15)
+	assert_int(hd._current_zone).is_equal(GameEnums.HPZone.DESPERATE)
+	assert_int(zones.size()).is_equal(1)
+	assert_int(zones[0]).is_equal(GameEnums.HPZone.DESPERATE)
+
+
+# ── AC-HD-22: Large heal from DESPERATE skips CAREFUL, emits FULL only ────────
+
+func test_health_damage_desperate_to_full_heal_emits_full_only() -> void:
+	var hd: Node = _make_hd()
+	var fayde: Node = _make_fayde()
+	add_child(hd); add_child(fayde)
+	_set_fayde_hp_and_zone(hd, 10)
+	var zones: Array = []
+	hd.player_hp_zone_changed.connect(func(z): zones.append(z))
+	hd.apply_heal(fayde, 95.0)
+	assert_int(hd._fayde_current_hp).is_equal(hd.FAYDE_MAX_HP)
+	assert_int(hd._current_zone).is_equal(GameEnums.HPZone.FULL)
+	assert_int(zones.size()).is_equal(1)
+	assert_int(zones[0]).is_equal(GameEnums.HPZone.FULL)
+
+
+# ── AC-HD-26: Partial heal DESPERATE → CAREFUL emits CAREFUL not FULL ─────────
+
+func test_health_damage_partial_heal_desperate_to_careful_emits_careful() -> void:
+	var hd: Node = _make_hd()
+	var fayde: Node = _make_fayde()
+	add_child(hd); add_child(fayde)
+	_set_fayde_hp_and_zone(hd, 10)
+	var zones: Array = []
+	hd.player_hp_zone_changed.connect(func(z): zones.append(z))
+	hd.apply_heal(fayde, 15.0)
+	assert_int(hd._fayde_current_hp).is_equal(25)
+	assert_int(hd._current_zone).is_equal(GameEnums.HPZone.CAREFUL)
+	assert_int(zones.size()).is_equal(1)
+	assert_int(zones[0]).is_equal(GameEnums.HPZone.CAREFUL)
 
 
 # ── AC-HD-23: Dead-target guard — no signal for dead Fayde ───────────────────
@@ -393,8 +460,8 @@ func test_health_damage_heavy_hit_emitted_above_threshold() -> void:
 	hd.damage_taken.connect(func(_t, _d, _h): dt_cnt[0] += 1)
 	hd.heavy_hit.connect(func(_t, _d): hh_cnt[0] += 1)
 	hd.apply_damage(fayde, 20.0, GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
-	assert_int(dt_cnt[0]).is_greater(0)
-	assert_int(hh_cnt[0]).is_greater(0)
+	assert_int(dt_cnt[0]).is_equal(1)
+	assert_int(hh_cnt[0]).is_equal(1)
 
 
 # ── AC-HD-29: heavy_hit NOT emitted below threshold ──────────────────────────
