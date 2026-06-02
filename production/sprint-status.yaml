@@ -14,7 +14,7 @@ goal: "Implement Health & Damage pipeline, Player Controller, and Enemy Instance
 start: "2026-06-01"
 end: "2026-06-14"
 generated: "2026-05-31"
-updated: "2026-05-31"
+updated: "2026-06-02"
 
 stories:
   - id: "S2-01"
@@ -51,10 +51,10 @@ stories:
     name: "Implement Player Controller"
     file: "production/epics/player-controller/story-*.md"
     priority: must-have
-    status: blocked
+    status: in-progress
     owner: ""
     estimate_days: 2.5
-    blocker: "S2-01 (H&D is_invincible API) and S2-03 must complete first"
+    blocker: ""
     completed: ""
 
   - id: "S2-05"

@@ -6,7 +6,7 @@
 > **Type**: Integration
 > **Estimate**: ~2h
 > **Manifest Version**: 2026-05-30
-> **Last Updated**: 2026-05-31
+> **Last Updated**: 2026-06-02
 
 ## Context
 
