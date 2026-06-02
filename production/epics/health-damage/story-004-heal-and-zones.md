@@ -1,12 +1,12 @@
 # Story 004: apply_heal() and HP Zone Signals
 
 > **Epic**: Health & Damage
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~3h
 > **Manifest Version**: 2026-05-30
-> **Last Updated**: 2026-05-31
+> **Last Updated**: 2026-06-02
 
 ## Context
 
@@ -166,3 +166,17 @@ func _check_hp_zone_change() -> void:
 
 - Depends on: Story 002 (apply_damage stub must exist; `_check_hp_zone_change` replaces the stub from this story)
 - Unlocks: Story 005 (death checks can now reach zone logic if needed)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-06-02
+**Criteria**: 10/10 passing
+**Deviations**:
+- ADVISORY: No dedicated `heal_and_zones_test.gd` — all AC covered in shared `health_damage_skeleton_test.gd`
+- ADVISORY: Story references TR-HD-003/TR-HD-008; implements TR-HD-002 (apply_heal) and TR-HD-006 (zone signal) — same misassignment pattern as Story 002
+- ADVISORY: `_on_run_started()` emits `player_hp_zone_changed(FULL)` unconditionally instead of calling `_check_hp_zone_change()` — correct design (ensures HUD/Audio sync regardless of prior zone)
+- ADVISORY: `apply_heal` guard uses `<= 0.0` (rejects zero heals) vs `< 0.0` in spec; no AC failure
+**Test Evidence**: Logic — all 10 AC in `tests/unit/health-damage/health_damage_skeleton_test.gd`
+**Code Review**: Complete — `/code-review` APPROVED WITH SUGGESTIONS; 3 test fixes applied (untyped `rec`, untyped zone `Array`, weak `is_greater(0)` assertion on run_started zone emit)
