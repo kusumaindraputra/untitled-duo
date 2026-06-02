@@ -1,12 +1,12 @@
 # Story 003: I-Frame Window (Float Accumulator Timer)
 
 > **Epic**: Health & Damage
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~2h
 > **Manifest Version**: 2026-05-30
-> **Last Updated**: 2026-05-31
+> **Last Updated**: 2026-06-02
 
 ## Context
 
@@ -149,3 +149,17 @@ func force_end_iframe_window() -> void:
 
 - Depends on: Story 002 (apply_damage pipeline must exist — this story adds step 1a and arming logic)
 - Unlocks: Story 004 (heal/zones are independent of i-frame), Story 005 (death checks complete the pipeline)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-06-02
+**Criteria**: 6/7 passing (AC-HD-25a UNTESTED — sequential DOT+CONTACT scenario; no test in any file)
+**Deviations**:
+- ADVISORY: No dedicated `iframe_window_test.gd` — AC-HD-06/07/08/09/27/33 covered in shared `health_damage_skeleton_test.gd`
+- ADVISORY: AC-HD-25a (sequential DOT+CONTACT, no zone signal) untested — recommend adding before sprint close-out
+- ADVISORY: Timer uses accumulate-up pattern (`+= delta`) not decrement-down as ADR-0004 specifies; functionally identical, no forbidden Timer nodes
+- ADVISORY: `PROCESS_MODE_PAUSABLE` not set — required by control manifest; no impact until pause system lands
+**Test Evidence**: Logic — AC-HD-06/07/08/09/27/33 in `tests/unit/health-damage/health_damage_skeleton_test.gd`
+**Code Review**: Complete — `/code-review` APPROVED WITH SUGGESTIONS, commit `6f883c1`

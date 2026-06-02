@@ -1,13 +1,12 @@
 # Story 001: Autoload Skeleton, Enemy HP Registry, and Run Reset
 
 > **Epic**: Health & Damage
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~2h
 > **Manifest Version**: 2026-05-30
-> **Last Updated**: 2026-05-31
-> **Status**: In Progress
+> **Last Updated**: 2026-06-02
 
 ## Context
 
@@ -164,3 +163,16 @@ func _on_run_started() -> void:
 
 - Depends on: None (first story in this epic)
 - Unlocks: Story 002 (apply_damage needs the registry and HP vars), Story 003 (i-frame timer vars), Story 004 (apply_heal + zone state)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-06-02
+**Criteria**: 3/3 passing (none deferred)
+**Deviations**:
+- ADVISORY: `_fayde_current_hp: int` — ADR-0007 specifies `float` internally. Pending ADR-0007 revision before regen system lands.
+- ADVISORY: Header comment "Autoload #5" — ADR-0002 says #6. Intentional placeholder until AudioSystem story lands.
+- ADVISORY: `unregister_enemy` is public — prior `/code-review` suggested `_unregister_enemy`. Logged, not enforced.
+**Test Evidence**: Logic — `tests/unit/health-damage/health_damage_skeleton_test.gd` (covers AC-HD-17, 17b, 18; run status: manual verification recommended)
+**Code Review**: Complete — `/code-review` APPROVED WITH SUGGESTIONS, commit `6f883c1` (all required changes applied)

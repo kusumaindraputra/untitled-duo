@@ -1,12 +1,12 @@
 # Story 002: apply_damage() — Core Formula and Dead-Target Guard
 
 > **Epic**: Health & Damage
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~3h
 > **Manifest Version**: 2026-05-30
-> **Last Updated**: 2026-05-31
+> **Last Updated**: 2026-06-02
 
 ## Context
 
@@ -161,3 +161,17 @@ func _get_current_hp(target: Node) -> float:
 
 - Depends on: Story 001 (DONE — registry and HP vars must exist)
 - Unlocks: Story 003 (i-frame needs apply_damage to arm it), Story 004 (heal/zones use same HP vars), Story 005 (death checks build on this pipeline)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-06-02
+**Criteria**: 4/6 passing (AC-HD-02, AC-HD-03 DEFERRED — elemental multiplier is 1.0 stub, testable after EA&W epic)
+**Deviations**:
+- ADVISORY: No dedicated `apply_damage_pipeline_test.gd` — AC-HD-01/04/05/23 covered in shared `health_damage_skeleton_test.gd` (single-epic test pattern)
+- ADVISORY: AC-HD-02/03 deferred — multiplier stub has no test seam; deferred to EA&W epic
+- ADVISORY: Story header references TR-HD-002 (apply_heal) and TR-HD-005 (enemy_killed) — likely misassignment; these belong to Stories 004/005
+- ADVISORY: TR-HD-011 deviation — `is_in_group(&"player")` used instead of `get_first_node_in_group` (code-review-approved, ADR-0010 compliant)
+**Test Evidence**: Logic — AC-HD-01/04/05/23 in `tests/unit/health-damage/health_damage_skeleton_test.gd`
+**Code Review**: Complete — `/code-review` APPROVED WITH SUGGESTIONS, commit `6f883c1`
