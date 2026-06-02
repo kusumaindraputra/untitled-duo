@@ -50,8 +50,10 @@ func test_pc_preparation_started_signal_disables_via_tree_integration() -> void:
 	assert_int(pc.get_controller_state()).is_equal(PlayerController.ControllerState.DISABLED)
 	assert_vector(pc.global_position).is_equal(initial_pos)
 
-	# Cleanup
-	pc.queue_free()
+	# Cleanup — use free() to prevent GdUnit4 orphan monitor crash (same fix as
+	# scene_manager_test: monitor runs synchronously before queue_free processes).
+	remove_child(pc)
+	pc.free()
 
 
 # ── AC-PC-10: _on_preparation_started disables and zeroes velocity ────────────
