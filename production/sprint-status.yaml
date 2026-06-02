@@ -14,7 +14,7 @@ goal: "Implement Health & Damage pipeline, Player Controller, and Enemy Instance
 start: "2026-06-01"
 end: "2026-06-14"
 generated: "2026-05-31"
-updated: "2026-06-02"
+updated: "2026-06-02"  # PC Story 001+002 complete; H&D 5/5 stories complete; S2-02/S2-04 in-progress
 
 stories:
   - id: "S2-01"

@@ -1,7 +1,7 @@
 # Story 003: Dash System, I-Frame, and Interface Getters
 
 > **Epic**: Player Controller
-> **Status**: Ready
+> **Status**: In Progress
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~3h

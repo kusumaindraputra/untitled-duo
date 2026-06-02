@@ -1,12 +1,12 @@
 # Story 002: WASD Movement and Friction Deceleration
 
 > **Epic**: Player Controller
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~2h
 > **Manifest Version**: 2026-05-30
-> **Last Updated**: 2026-05-31
+> **Last Updated**: 2026-06-02
 
 ## Context
 
@@ -31,9 +31,9 @@
 
 ## Acceptance Criteria
 
-- [ ] **AC-PC-01** — GIVEN `get_controller_state() == ENABLED` and `move_right` held, WHEN `_physics_process` runs one frame, THEN `velocity.x > 0` and `velocity.length() ≤ MOVE_SPEED`.
-- [ ] **AC-PC-02** — GIVEN `MOVE_FRICTION < 1.0` AND Fayde was moving at `MOVE_SPEED` and all input released, WHEN `_physics_process` runs at 60 fps, THEN `velocity` becomes `Vector2.ZERO` within `ceil(log(VELOCITY_SNAP_THRESHOLD / MOVE_SPEED) / log(1.0 - MOVE_FRICTION))` frames. *(With defaults: MOVE_SPEED=120, MOVE_FRICTION=0.25, VELOCITY_SNAP_THRESHOLD=8 → bound is ≤ 10 frames.)*
-- [ ] **AC-PC-19** — GIVEN last movement input was pure rightward `Vector2(1, 0)`, WHEN `get_facing_direction()` called, THEN result is `Vector2(1, 0)` (normalized, post-snap).
+- [x] **AC-PC-01** — GIVEN `get_controller_state() == ENABLED` and `move_right` held, WHEN `_physics_process` runs one frame, THEN `velocity.x > 0` and `velocity.length() ≤ MOVE_SPEED`.
+- [x] **AC-PC-02** — GIVEN `MOVE_FRICTION < 1.0` AND Fayde was moving at `MOVE_SPEED` and all input released, WHEN `_physics_process` runs at 60 fps, THEN `velocity` becomes `Vector2.ZERO` within `ceil(log(VELOCITY_SNAP_THRESHOLD / MOVE_SPEED) / log(1.0 - MOVE_FRICTION))` frames. *(With defaults: MOVE_SPEED=120, MOVE_FRICTION=0.25, VELOCITY_SNAP_THRESHOLD=8 → bound is ≤ 10 frames.)*
+- [x] **AC-PC-19** — GIVEN last movement input was pure rightward `Vector2(1, 0)`, WHEN `get_facing_direction()` called, THEN result is `Vector2(1, 0)` (normalized, post-snap).
 
 ---
 
@@ -116,7 +116,7 @@ func get_cast_position() -> Vector2:
 **Story Type**: Logic
 **Required evidence**: `tests/unit/player-controller/movement_test.gd` — must pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] PASSED — 9/9 tests, 0 orphans, 0 errors (GdUnit4 v6.1.3, Godot 4.6.2, 2026-06-02)
 
 ---
 
@@ -124,3 +124,15 @@ func get_cast_position() -> Vector2:
 
 - Depends on: Story 001 (skeleton + state machine must exist)
 - Unlocks: Story 003 (dash uses `_last_facing_dir` and `_snap_to_8dir` from this story)
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-02
+**Criteria**: 3/3 passing
+**Deviations**:
+- ADVISORY: Gameplay constants (`MOVE_SPEED`, `MOVE_ACCELERATION`, `MOVE_FRICTION`, `VELOCITY_SNAP_THRESHOLD`, plus future-story constants) are hardcoded `const` — violates data-driven rule. Tech-debt logged; migrate to `PlayerStats` resource before epic closes.
+- ADVISORY: `input_dir` computed outside `ENABLED` block — structural debt for Story 003 to resolve. Tech-debt logged.
+**Test Evidence**: Logic — `tests/unit/player-controller/movement_test.gd` PASSED (9/9 headless, Godot 4.6.2)
+**Code Review**: Complete — `/code-review` APPROVED WITH SUGGESTIONS (2026-06-02). AC-PC-01/AC-PC-19 test coverage gap fixed; remaining suggestions are advisory.
+**Notes**: AC-PC-01/AC-PC-19 tests use `Input.action_press()` with programmatic InputMap registration (actions not yet in project.godot). Tests are self-contained and correctly exercise the real `_physics_process` code path.

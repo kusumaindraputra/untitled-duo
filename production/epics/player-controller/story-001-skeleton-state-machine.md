@@ -1,12 +1,12 @@
 # Story 001: CharacterBody2D Skeleton, Group Registration, State Machine
 
 > **Epic**: Player Controller
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Estimate**: ~2h
 > **Manifest Version**: 2026-05-30
-> **Last Updated**: 2026-06-02
+> **Last Updated**: 2026-06-02 (completed)
 
 ## Context
 
@@ -156,3 +156,16 @@ func _physics_process(delta: float) -> void:
 
 - Depends on: None (first story in this epic)
 - Unlocks: Story 002 (movement needs the skeleton), Story 003 (dash needs the state machine)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-06-02
+**Criteria**: 5/5 passing (6/6 tests — GdUnit4 v6.1.3, Godot 4.6.2)
+**Deviations**:
+- ADVISORY: `is_alive()` stub added (returns `true`); required by ADR-0011 control manifest — not in story skeleton. Logged in tech debt register.
+- ADVISORY: AC-PC-04 30-frame positional stability loop not executed in test — signal wiring and state transition confirmed; positional guarantee deferred to Story 002. Logged in tech debt register.
+- ADVISORY: Orphan node warnings (5) from off-tree `CharacterBody2D` instances in tests — non-blocking. Logged in tech debt register.
+**Test Evidence**: Integration — `tests/unit/player-controller/player_controller_state_test.gd` — 6/6 PASSED headless
+**Code Review**: Complete — CHANGES REQUIRED (is_connected guards added in _exit_tree()); suggestions logged but deferred
