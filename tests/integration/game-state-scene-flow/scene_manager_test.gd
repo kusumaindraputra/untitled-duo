@@ -88,21 +88,23 @@ func before_test() -> void:
 ## recognise after_each(); that name is silently ignored.
 func after_test() -> void:
 	# Restore SceneManager to a clean state so the Autoload is not polluted.
-	# Free any scene that may have been added to _fake_sub_root.
-	if _sm._current_scene != null and is_instance_valid(_sm._current_scene):
-		_sm._current_scene.queue_free()
+	# Clear references before freeing nodes to avoid dangling pointers.
 	_sm._current_scene = null
 	_sm._sub_scene_root = null
 	_sm._is_swapping = false
 
-	# Free the fake nodes.
+	# Use free() (immediate) instead of queue_free() — GdUnit4's orphan monitor
+	# runs synchronously after after_test() and will crash trying to cast
+	# objects that are only queued for deletion (GdUnitOrphanNodesMonitor:202).
 	if is_instance_valid(_fake_sub_root):
-		_fake_sub_root.queue_free()
-	if is_instance_valid(_fake_canvas):
-		_fake_canvas.queue_free()
+		remove_child(_fake_sub_root)
+		_fake_sub_root.free()
+	_fake_sub_root = null
 
-	# Allow deferred frees to propagate before the next test.
-	await get_tree().process_frame
+	if is_instance_valid(_fake_canvas):
+		remove_child(_fake_canvas)
+		_fake_canvas.free()
+	_fake_canvas = null
 
 # ── AC-1: Autoload is present in the scene tree ───────────────────────────────
 
