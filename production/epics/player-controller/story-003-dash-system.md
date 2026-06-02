@@ -1,12 +1,12 @@
 # Story 003: Dash System, I-Frame, and Interface Getters
 
 > **Epic**: Player Controller
-> **Status**: In Progress
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~3h
 > **Manifest Version**: 2026-05-30
-> **Last Updated**: 2026-05-31
+> **Last Updated**: 2026-06-02
 
 ## Context
 
@@ -157,7 +157,7 @@ func is_alive() -> bool:
 - Automated: `tests/unit/player-controller/dash_system_test.gd` — must pass headless (BLOCKING)
 - Manual: `production/qa/evidence/dash-iframe-manual-check.md` (ADVISORY — requires EnemyInstance)
 
-**Status**: [ ] Not yet created
+**Status**: [x] PASSED — 11/11 (GdUnit4 v6.1.3, Godot 4.6.2 headless, 2026-06-02)
 
 ---
 
@@ -165,3 +165,14 @@ func is_alive() -> bool:
 
 - Depends on: Story 001 (state machine), Story 002 (`_last_facing_dir` and `_snap_to_8dir`)
 - Unlocks: Story 004 (audio events trigger during dash); H&D Story 002 (can wire `is_invincible()` call)
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-02
+**Criteria**: 6/7 passing (AC-PC-09 [Manual] deferred — requires EnemyInstance in scene; ADVISORY)
+**Deviations**:
+- ADVISORY: Gameplay constants (MOVE_SPEED, DASH_SPEED, DASH_DURATION, DASH_COOLDOWN) hardcoded in class — pre-existing tech debt from Story 002; tracked for PlayerStats resource migration
+- ADVISORY: `is_alive()` returns `true` unconditionally — intentional placeholder per ADR-0011; full implementation deferred to H&D death-signal story
+**Test Evidence**: Logic — `tests/unit/player-controller/dash_system_test.gd` — 11/11 PASSED
+**Code Review**: Complete — CHANGES REQUIRED → 3 test-file fixes applied → APPROVED WITH SUGGESTIONS

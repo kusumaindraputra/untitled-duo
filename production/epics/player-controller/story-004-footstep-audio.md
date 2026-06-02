@@ -1,12 +1,12 @@
 # Story 004: Footstep Shuffle-Bag and Audio Events
 
 > **Epic**: Player Controller
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~2h
 > **Manifest Version**: 2026-05-30
-> **Last Updated**: 2026-05-31
+> **Last Updated**: 2026-06-02
 
 ## Context
 
@@ -47,7 +47,7 @@ var audio_system: Node = null  # set in _ready(); overridable for tests
 
 func _ready() -> void:
     # ... existing _ready code from Story 001 ...
-    audio_system = AudioSystem  # Autoload reference
+    audio_system = get_node_or_null("/root/AudioSystem")  # safe: null if AudioSystem epic not yet registered
 ```
 
 **Footstep state vars (add to class):**
@@ -163,7 +163,7 @@ func _ready() -> void:
 **Story Type**: Logic
 **Required evidence**: `tests/unit/player-controller/footstep_audio_test.gd` — must pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] PASSED — 11/11 (GdUnit4 v6.1.3, Godot 4.6.2 headless, 2026-06-02)
 
 ---
 
@@ -171,3 +171,15 @@ func _ready() -> void:
 
 - Depends on: Story 003 (dash trigger block exists — dash audio is added here)
 - Unlocks: PlayerController epic COMPLETE. All TR-PC-001–009 covered across Stories 001–004.
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-02
+**Criteria**: 6/6 passing
+**Deviations**:
+- ADVISORY: `audio_system` typed as `Variant` (not `Node`) — required for mock injection; documented in code
+- ADVISORY: Footstep timer advances during DASHING — post-dash first step may fire early; documented in `_physics_process`; consistent with ADR-0004 "never reset" rule
+- ADVISORY: `FOOTSTEP_INTERVAL_SEC`, `FOOTSTEP_VELOCITY_THRESHOLD` hardcoded — pre-existing tech debt (PlayerStats resource)
+**Test Evidence**: Logic — `tests/unit/player-controller/footstep_audio_test.gd` — 11/11 PASSED
+**Code Review**: Complete — CHANGES REQUIRED → 4 test additions (anti-repeat invariant, DISABLED suppression, prep reset, AC-PC-16 comment) → APPROVED WITH SUGGESTIONS

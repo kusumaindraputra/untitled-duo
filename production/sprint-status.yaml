@@ -14,7 +14,7 @@ goal: "Implement Health & Damage pipeline, Player Controller, and Enemy Instance
 start: "2026-06-01"
 end: "2026-06-14"
 generated: "2026-05-31"
-updated: "2026-06-02"  # PC Story 001+002 complete; H&D 5/5 stories complete; S2-02/S2-04 in-progress
+updated: "2026-06-02"  # S2-02 done (H&D); S2-04 done (PC Stories 001-004); S2-06 still blocked on S2-05
 
 stories:
   - id: "S2-01"
@@ -51,11 +51,11 @@ stories:
     name: "Implement Player Controller"
     file: "production/epics/player-controller/story-*.md"
     priority: must-have
-    status: in-progress
+    status: done
     owner: ""
     estimate_days: 2.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-02"
 
   - id: "S2-05"
     name: "Create stories: Enemy Instance"

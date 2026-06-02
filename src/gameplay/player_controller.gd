@@ -1,6 +1,6 @@
 ## player_controller.gd — Fayde's CharacterBody2D controller.
-## Layer: Core | Stories: PC-001, PC-002, PC-003 — Skeleton, state machine, WASD movement,
-##   friction, dash system, I-frame, and interface getters.
+## Layer: Core | Stories: PC-001, PC-002, PC-003, PC-004 — Skeleton, state machine, WASD movement,
+##   friction, dash system, I-frame, interface getters, footstep shuffle-bag, and audio events.
 class_name PlayerController
 extends CharacterBody2D
 
@@ -28,6 +28,13 @@ var _last_facing_dir: Vector2 = Vector2.RIGHT
 var _dash_duration_timer: float = 0.0  # countdown; > 0.0 means currently dashing
 var _dash_cooldown_timer: float = 0.0  # countdown; > 0.0 means on cooldown
 
+## AudioSystem Autoload reference; null-safe — set in _ready(), overridable for tests.
+## Variant (not Node) intentional — allows MockAudioSystem injection without Node inheritance.
+var audio_system: Variant = null
+var _footstep_timer: float = 0.0
+var _footstep_bag: Array[StringName] = []
+var _last_footstep_played: StringName = &""
+
 # ── Built-in virtual methods ──────────────────────────────────────────────────
 
 func _ready() -> void:
@@ -37,6 +44,10 @@ func _ready() -> void:
 		"PlayerController: exactly one 'player' node expected")
 	GameStateManager.combat_started.connect(_on_combat_started)
 	GameStateManager.preparation_started.connect(_on_preparation_started)
+	audio_system = get_node_or_null("/root/AudioSystem")
+	if VELOCITY_SNAP_THRESHOLD >= FOOTSTEP_VELOCITY_THRESHOLD:
+		push_error("VELOCITY_SNAP_THRESHOLD (%f) must be < FOOTSTEP_VELOCITY_THRESHOLD (%f)" % [
+			VELOCITY_SNAP_THRESHOLD, FOOTSTEP_VELOCITY_THRESHOLD])
 
 
 func _exit_tree() -> void:
@@ -72,6 +83,8 @@ func _physics_process(delta: float) -> void:
 			_controller_state = ControllerState.DASHING
 			_dash_duration_timer = DASH_DURATION
 			_is_invincible = true
+			if audio_system != null:
+				audio_system.play_event(&"sfx_fayde_dash")
 
 	# ── DASHING: duration countdown ───────────────────────────────────────────
 	if _controller_state == ControllerState.DASHING:
@@ -86,6 +99,14 @@ func _physics_process(delta: float) -> void:
 		_dash_cooldown_timer -= delta
 		if _dash_cooldown_timer < 0.0:
 			_dash_cooldown_timer = 0.0
+
+	# ── Footstep accumulator (count-up; fires when >= interval) ─────────────────
+	# Timer advances during DASHING — post-dash first footstep may fire early (by design).
+	_footstep_timer += delta
+	if _footstep_timer >= FOOTSTEP_INTERVAL_SEC:
+		_footstep_timer -= FOOTSTEP_INTERVAL_SEC  # decrement not reset — ADR-0004
+		if _controller_state == ControllerState.ENABLED and velocity.length() > FOOTSTEP_VELOCITY_THRESHOLD:
+			_fire_footstep()
 
 	move_and_slide()
 
@@ -137,6 +158,28 @@ func _snap_to_8dir(input: Vector2) -> Vector2:
 func _compute_dash_distance() -> float:
 	return DASH_SPEED * DASH_DURATION
 
+
+## Pops the next footstep variant from the shuffle-bag and dispatches to AudioSystem.
+## Anti-consecutive-repeat: swaps first element if it matches last played.
+func _fire_footstep() -> void:
+	if _footstep_bag.is_empty():
+		_footstep_bag = [&"sfx_fayde_footstep_a", &"sfx_fayde_footstep_b", &"sfx_fayde_footstep_c"]
+		_footstep_bag.shuffle()
+		if _footstep_bag[0] == _last_footstep_played and _footstep_bag.size() > 1:
+			var swap_idx: int = randi_range(1, _footstep_bag.size() - 1)
+			var tmp: StringName = _footstep_bag[0]
+			_footstep_bag[0] = _footstep_bag[swap_idx]
+			_footstep_bag[swap_idx] = tmp
+	var variant: StringName = _footstep_bag.pop_front()
+	_last_footstep_played = variant
+	if audio_system != null:
+		audio_system.play_event(variant)
+
+
+## Returns steps per second at the configured footstep interval. AC-PC-14 verification helper.
+func _compute_steps_per_second() -> float:
+	return 1.0 / FOOTSTEP_INTERVAL_SEC
+
 # ── Signal callbacks ──────────────────────────────────────────────────────────
 
 func _on_combat_started(_is_boss: bool = false) -> void:
@@ -149,3 +192,10 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	_is_invincible = false
 	_dash_duration_timer = 0.0
 	_dash_cooldown_timer = 0.0
+	_footstep_timer = 0.0
+	_footstep_bag.clear()
+
+
+## TR-PC-007 stub: CAST_LOCKED movement sub-state. Full behaviour in SpellCastingEffects epic.
+func _on_cast_hit_started(_lock_duration: float = 0.0) -> void:
+	pass

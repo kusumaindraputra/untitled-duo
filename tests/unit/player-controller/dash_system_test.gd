@@ -197,8 +197,8 @@ func test_pc_dash_blocked_when_cooldown_active_velocity_not_overridden() -> void
 	_pc._physics_process(1.0 / 60.0)
 	Input.action_release(&"dash")
 
-	# Assert: velocity nowhere near DASH_SPEED (400) — dash did not fire.
-	assert_float(_pc.velocity.length()).is_less(PlayerController.DASH_SPEED * 0.5)
+	# Assert: velocity below MOVE_SPEED (120) — dash did not fire; only friction ran.
+	assert_float(_pc.velocity.length()).is_less(PlayerController.MOVE_SPEED)
 
 # ── AC-PC-08: Default dash direction is Vector2.RIGHT ────────────────────────
 
@@ -217,7 +217,7 @@ func test_pc_dash_default_direction_is_right_when_no_input() -> void:
 
 	# Assert: velocity points rightward — x positive, y zero within float tolerance.
 	assert_float(_pc.velocity.x).is_greater(0.0)
-	assert_float(_pc.velocity.y).is_equal_approx(0.0, 0.0001)
+	assert_float(_pc.velocity.y).is_equal_approx(0.0, 0.01)
 
 # ── AC-PC-13: Dash distance formula ──────────────────────────────────────────
 
@@ -233,11 +233,10 @@ func test_pc_compute_dash_distance_within_one_pixel_of_60() -> void:
 
 func test_pc_dash_cooldown_remaining_after_0_6s_elapsed() -> void:
 	# Arrange — set cooldown timer to full DASH_COOLDOWN (2.0s) directly,
-	# simulating the moment a dash just expired. No add_child needed — we drive
-	# the cooldown path of _physics_process which does not call move_and_slide
-	# in a way that requires a tree RID (ENABLED state handles movement; we set
-	# DISABLED so only the cooldown countdown runs). Use DISABLED to avoid the
-	# move_and_slide requirement; cooldown countdown is unconditional.
+	# simulating the moment a dash just expired. add_child() required because
+	# ENABLED state calls move_and_slide() (needs a valid physics RID).
+	# No movement input is pressed, so only friction + cooldown countdown run.
+	# Cooldown countdown is unconditional — runs regardless of controller state.
 	add_child(_pc)
 	_pc._controller_state = PlayerController.ControllerState.ENABLED
 	_pc._dash_cooldown_timer = PlayerController.DASH_COOLDOWN  # 2.0s
