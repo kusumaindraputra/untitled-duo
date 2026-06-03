@@ -8,22 +8,23 @@ A roguelike where Fayde composes spells by arranging Prana types in a 3×3 drag-
 
 ## Development Status
 
-**Stage**: Production · Sprint 2 · First Playable target: 2026-06-14
+**Stage**: Production · Sprint 3 · First Playable target: 2026-06-14
 
 | Layer | System | Status |
 |-------|--------|--------|
 | Foundation | Prana Data (GameEnums + PranaCatalog + 5 .tres) | ✅ Complete |
 | Foundation | Enemy Data (EnemyCatalog + 4 .tres) | ✅ Complete |
 | Foundation | Game State & Scene Flow (GSM + SceneManager + IsometricRoom) | ✅ Complete |
-| Core | Health & Damage (Autoload #5 — full pipeline) | ✅ Complete · 28 tests |
-| Core | Player Controller | 🔵 Story files ready — implementing |
-| Core | Enemy Instance (FP AI + contact + death) | 🔵 Story files ready |
-| Core | Status Effects (Freeze + Burn) | 🔵 Story files ready |
-| Core | Combination Resolution | 🔵 Story files ready |
-| Core | Prana Grid | ⚠️ Deferred — HIGH engine risk (ADR-0013 must verify first) |
-| Core | Spell Casting & Effects | 🔵 Story files ready |
+| Core | Health & Damage (Autoload #5 — full pipeline) | ✅ Complete · 32 tests |
+| Core | Player Controller (movement, dash, footsteps, audio) | ✅ Complete · 37 tests |
+| Core | Enemy Instance (FP AI + contact + death) | ✅ Complete · 37 tests |
+| Core | Status Effects (Freeze + Burn + Stun stub) | 🟡 Story files created — implementing (S3-05) |
+| Core | WaveManager (1 hardcoded wave, win condition) | 🔵 Story files pending (S3-06) |
+| Core | Spell Casting & Effects (basic cast → apply_damage) | 🔵 Story files pending (S3-08) |
+| Core | Combination Resolution | 🔵 Should Have (S3-15/16 — after Must Have complete) |
+| Core | Prana Grid | ⚠️ Deferred — ADR-0013 engine verification pending (S3-02) |
 
-**Test suite**: 100+ unit/integration tests, all passing headless (GdUnit4 v6.1.3 · Godot 4.6.2)
+**Test suite**: 288 unit/integration tests across 20 suites, all passing headless (GdUnit4 v6.1.3 · Godot 4.6.2)
 
 ---
 
@@ -121,7 +122,7 @@ Requires Godot 4.6.x in PATH. GdUnit4 addon is checked in at `addons/gdUnit4/`.
 
 Built with [Claude Code Game Studios](https://github.com/Donchitos/Claude-Code-Game-Studios) — a 49-agent AI studio framework for Claude Code. All design reviews, architecture decisions, sprint planning, and code implementation are coordinated through the framework's skill pipeline.
 
-Sprint tracking: `production/sprints/sprint-2.md`  
+Sprint tracking: `production/sprints/sprint-3.md`  
 Epic index: `production/epics/index.md`  
 Gate checks: `production/gate-checks/`
 
