@@ -1,17 +1,17 @@
 # Story 002: FP Movement and Degenerate Direction Guard
 
 > **Epic**: Enemy Instance
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~2h
 > **Manifest Version**: 2026-05-30
-> **Last Updated**: 2026-05-31
+> **Last Updated**: 2026-06-03
 
 ## Context
 
 **GDD**: `design/gdd/enemy-ai.md`
-**Requirement**: `TR-EAI-003`
+**Requirement**: `TR-EAI-001`
 
 **ADR Governing Implementation**: ADR-0010: Player Group Convention
 **ADR Decision Summary**: Player lookup via `get_tree().get_first_node_in_group(&"player")` cached at `_ready()`. Re-resolve only on null. Target discrimination via `is_in_group()`.
@@ -109,7 +109,7 @@ func _physics_process(delta: float) -> void:
 **Story Type**: Logic
 **Required evidence**: `tests/unit/enemy-instance/fp_movement_test.gd` — must pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] PASSED — 5/5 tests (GdUnit4 v6.1.3, Godot 4.6.2, 2026-06-03)
 
 ---
 
@@ -117,3 +117,12 @@ func _physics_process(delta: float) -> void:
 
 - Depends on: Story 001 (skeleton + phase guard must exist)
 - Unlocks: Story 003 (contact timer runs in same physics frame as movement)
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-03
+**Criteria**: 4/4 passing (all covered by automated tests)
+**Deviations**: `_fayde_ref` retyped `Node` → `Node2D` during code review (improvement, no design conflict); `delta` param not renamed to `_delta` (INFO suggestion, deferred)
+**Test Evidence**: Logic — `tests/unit/enemy-instance/fp_movement_test.gd` — 5/5 PASSED (exit 0, 0 orphans)
+**Code Review**: Complete — APPROVED post-fixes (6 required changes applied)

@@ -1,17 +1,17 @@
 # Story 003: Contact Attack and Repeat-Damage Timer
 
 > **Epic**: Enemy Instance
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~2h
 > **Manifest Version**: 2026-05-30
-> **Last Updated**: 2026-05-31
+> **Last Updated**: 2026-06-03
 
 ## Context
 
 **GDD**: `design/gdd/enemy-ai.md`
-**Requirement**: `TR-EAI-004`
+**Requirement**: `TR-EAI-002`, `TR-EAI-003`
 
 **ADR Governing Implementation**: ADR-0007: HealthAndDamage Singleton
 **ADR Decision Summary**: All damage through `HealthAndDamage.apply_damage(target, base_damage, element, source)`. Enemy contact uses `DamageSource.CONTACT`. Minimum inter-contact interval ≥ 0.3s (H&D Dependency #5 — i-frame protection depends on this).
@@ -30,7 +30,7 @@
 
 ## Acceptance Criteria
 
-- [ ] **AC-EAI-10** — GIVEN enemy alive in COMBAT_PHASE and Fayde not overlapping, WHEN Fayde's body enters `HitArea` (`body_entered` fires), THEN `apply_damage(fayde, _base_damage, null, DamageSource.CONTACT)` called exactly once before any timer elapses.
+- [ ] **AC-EAI-10** — GIVEN enemy alive in COMBAT_PHASE and Fayde not overlapping, WHEN Fayde's body enters `HitArea` (`body_entered` fires), THEN `apply_damage(fayde, _base_damage, GameEnums.DamageClass.NONE, DamageSource.CONTACT)` called exactly once before any timer elapses. Duplicate `body_entered` signals (no intervening `body_exited`) must not trigger a second hit.
 - [ ] **AC-EAI-11** — GIVEN Fayde overlapping and initial hit fired, WHEN `_contact_timer` expires (0.3s) and `_fayde_in_contact == true`, THEN `apply_damage` called again with same arguments.
 - [ ] **AC-EAI-12** — GIVEN Fayde overlapping and timer running, WHEN `body_exited` fires, THEN `_contact_timer` stops (`_contact_timer == 0`) and no further `apply_damage` calls occur after one full `ENEMY_MIN_CONTACT_INTERVAL`.
 - [ ] **AC-EAI-13** — GIVEN compiled `EnemyInstance`, WHEN `ENEMY_MIN_CONTACT_INTERVAL` read, THEN equals `0.3` (float).
@@ -76,6 +76,8 @@ if _fayde_in_contact and _contact_timer > 0.0:
         _contact_timer = ENEMY_MIN_CONTACT_INTERVAL  # re-arm
 ```
 
+**Performance**: float accumulator + Area2D signal callbacks — negligible cost per enemy, no per-frame allocations. No budget concern at FP enemy count (≤5 enemies per wave).
+
 **AC-EAI-14 assertion approach**: Read `HealthAndDamage.FAYDE_IFRAME_DURATION` (0.5) and `EnemyInstance.ENEMY_MIN_CONTACT_INTERVAL` (0.3). Assert `0.5 / 0.3 >= 1.0` → `1.67 >= 1.0` passes. This is a static constant check — not a runtime simulation.
 
 **Testing contact callbacks**: In GdUnit4, Area2D `body_entered` can be simulated by calling `_on_hitarea_body_entered(mock_fayde_node)` directly. The mock node must `is_in_group("player")` return true — use `mock_fayde.add_to_group(&"player")` before calling.
@@ -95,8 +97,8 @@ if _fayde_in_contact and _contact_timer > 0.0:
 **AC-EAI-10 — body_entered triggers immediate damage**
 - Given: `_combat_active = true`; `_state = CHASING`; H&D mock or spy; mock Fayde in "player" group
 - When: `_on_hitarea_body_entered(fayde_mock)` called
-- Then: `HealthAndDamage.apply_damage` called once with `(fayde_mock, _base_damage, null, CONTACT)`; `_contact_timer == ENEMY_MIN_CONTACT_INTERVAL` (0.3)
-- Edge cases: Call when DEAD → no damage call; call when `_combat_active = false` → no damage call
+- Then: `HealthAndDamage.apply_damage` called once with `(fayde_mock, _base_damage, GameEnums.DamageClass.NONE, CONTACT)`; `_contact_timer == ENEMY_MIN_CONTACT_INTERVAL` (0.3)
+- Edge cases: Call when DEAD → no damage call; call when `_combat_active = false` → no damage call; non-player body → no damage call; double fire (no intervening body_exited) → exactly one damage call
 
 **AC-EAI-11 — Timer expiry triggers repeat damage**
 - Given: `_fayde_in_contact = true`; `_contact_timer = ENEMY_MIN_CONTACT_INTERVAL` (0.3); `_combat_active = true`; H&D mock
@@ -133,3 +135,14 @@ if _fayde_in_contact and _contact_timer > 0.0:
 
 - Depends on: Story 001 (skeleton), Story 002 (movement runs in same `_physics_process`)
 - Unlocks: Story 004 (death stops contact timer), Story 005 (integration tests for full sequence)
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-03
+**Criteria**: 5/5 passing
+**Deviations**:
+- ADVISORY: Implementation Notes code snippets show original `body: Node` / `null` element sketches — final impl uses `Node2D` and `GameEnums.DamageClass.NONE`; story ACs updated to match.
+- ADVISORY: `ENEMY_MIN_CONTACT_INTERVAL = 0.3` hardcoded const — pre-existing tech debt, already tracked.
+**Test Evidence**: Logic — `tests/unit/enemy-instance/contact_attack_test.gd` — 11/11 PASSED (GdUnit4 v6.1.3, Godot 4.6.2)
+**Code Review**: Complete — CHANGES REQUIRED → all changes applied → re-ran 27/27 PASSED

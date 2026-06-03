@@ -1,7 +1,7 @@
 # Story 004: Death Sequencing and Instance ID Guard
 
 > **Epic**: Enemy Instance
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Estimate**: ~3h
@@ -11,7 +11,7 @@
 ## Context
 
 **GDD**: `design/gdd/enemy-ai.md`
-**Requirement**: `TR-EAI-006`
+**Requirement**: `TR-EAI-004`
 
 **ADR Governing Implementation**: ADR-0007: HealthAndDamage Singleton
 **ADR Decision Summary**: `enemy_killed(instance_id, type_id, prana_affiliation)` is the death trigger signal emitted by H&D. Enemy Instance listens and matches `instance_id` to self. Must use `queue_free()` ONLY (never `free()`) to preserve the one-frame node-lifetime guarantee for Prana Drop / Loot.
@@ -93,6 +93,8 @@ func _physics_process(delta: float) -> void:
 
 **Note on AC-EAI-17 test**: `queue_free()` defers node removal to end of frame. Within `_on_death_animation_finished`, the node is still valid. Assert `is_instance_valid(enemy)` returns `true` INSIDE a connected signal handler that fires synchronously. After `process_frame` yields, the node will be gone. This test requires `await get_tree().process_frame` + subsequent `is_instance_valid` check.
 
+**Performance**: fallback timer is a one-shot branch — active only for a single `BASE_DEATH_DURATION` window per enemy death, then `queue_free()`'d. Negligible ongoing cost; no per-frame allocations.
+
 **Note on AC-EAI-20**: The dead-target guard (apply_damage called on a DEAD enemy) is tested in **H&D Story 005**, not here. EnemyInstance does not need to retest H&D's internal guard — it only ensures `$HitArea.monitoring = false` prevents new body_entered signals (AC-EAI-15).
 
 ---
@@ -150,3 +152,12 @@ func _physics_process(delta: float) -> void:
 
 - Depends on: Story 001 (signal connections), Story 003 (contact timer var exists)
 - Unlocks: Story 005 (integration tests require full death lifecycle)
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-03
+**Criteria**: 5/5 passing
+**Deviations**: ADVISORY — `BASE_DEATH_DURATION = 0.7` hardcoded const; logged to docs/tech-debt-register.md (EnemyStats migration)
+**Test Evidence**: Integration — `tests/unit/enemy-instance/death_sequencing_test.gd` — 6/6 PASSED (GdUnit4 v6.1.3, Godot 4.6.2)
+**Code Review**: Complete — CHANGES REQUIRED → DEAD-state guard + FRAMES_TO_DIE fix + suggestions → 33/33 PASSED
