@@ -101,7 +101,9 @@ func _physics_process(delta: float) -> void:
 		return
 
 	# Re-resolve Fayde ref if lost between frames (AC-EAI-27).
-	if _fayde_ref == null:
+	# is_inside_tree() guard prevents get_tree() null crash in unit tests where
+	# the node is exercised without being added to the scene tree.
+	if _fayde_ref == null and is_inside_tree():
 		_fayde_ref = get_tree().get_first_node_in_group(&"player") as Node2D
 	if _fayde_ref == null:
 		velocity = Vector2.ZERO

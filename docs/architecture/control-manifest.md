@@ -1,9 +1,9 @@
 # Control Manifest
 
 > **Engine**: Godot 4.6 (Compatibility renderer, OpenGL 3.3 / D3D12 Windows)
-> **Last Updated**: 2026-05-30
-> **Manifest Version**: 2026-05-30
-> **ADRs Covered**: ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0008, ADR-0009, ADR-0010, ADR-0011, ADR-0012, ADR-0013
+> **Last Updated**: 2026-06-03
+> **Manifest Version**: 2026-06-03
+> **ADRs Covered**: ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005, ADR-0006, ADR-0007, ADR-0008, ADR-0009, ADR-0010, ADR-0011, ADR-0012, ADR-0013, ADR-0014
 > **Status**: Active — regenerate with `/create-control-manifest` when ADRs change
 
 `Manifest Version` is the date this manifest was generated. Story files embed this date when
@@ -153,13 +153,17 @@ input, spell stat broker, group/targeting convention*
 
 - **EnemyAI caches `_fayde_ref` at `_ready()` via `get_first_node_in_group(&"player")`. Re-resolve only when reference is null** — source: ADR-0010
 - **All feature-layer wave stat queries go through `SpellCastingEffects.get_stat_bonus(stat_id)`** — no independent SpellEffect caching — source: ADR-0009
-- **WaveManager calls `HealthAndDamage.register_enemy(enemy, type_id)` before `add_child(enemy)` on every spawn** — source: ADR-0007
+- **WaveManager calls `HealthAndDamage.register_enemy(enemy, type_id)` before `add_child(enemy)` on every spawn** — source: ADR-0007, ADR-0014
 - **EnemyType resource includes `scene: PackedScene` field — WaveManager spawns via this field** — source: ADR-0007
+- **WaveManager spawn order is fixed: `instantiate()` → `register_enemy()` → `add_child()` → `set global_position` → `init(type_id)`** — source: ADR-0014
+- **WaveManager tracks wave completion exclusively via `HealthAndDamage.enemy_killed` signal — never polls `_enemy_registry` directly** — source: ADR-0014
+- **`_enemies_alive <= 0` guard (not `== 0`) in WaveManager's `_on_enemy_killed` handler** — protects against duplicate-signal edge case — source: ADR-0014
 
 ### Forbidden Approaches
 
 - **Never subscribe to `CombinationResolution.combo_resolved` in feature-layer systems for stat caching** — source: ADR-0009
-- **Never call `HealthAndDamage.register_enemy()` from `EnemyInstance._ready()`** — WaveManager is the registration authority — source: ADR-0007
+- **Never call `HealthAndDamage.register_enemy()` from `EnemyInstance._ready()`** — WaveManager is the registration authority — source: ADR-0007, ADR-0014
+- **Never call `HealthAndDamage.unregister_enemy()` from WaveManager** — H&D owns unregistration internally; WaveManager is never the unregistration caller — source: ADR-0014
 
 ---
 

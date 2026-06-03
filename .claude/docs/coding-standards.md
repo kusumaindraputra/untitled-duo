@@ -61,6 +61,13 @@ All stories must have appropriate test evidence before they can be marked Done:
 - No merge if tests fail — tests are a blocking gate in CI
 - Never disable or skip failing tests to make CI pass — fix the underlying issue
 - Engine-specific CI commands:
-  - **Godot**: `godot --headless --script tests/gdunit4_runner.gd`
+  - **Godot**: CI uses `gdUnit4-action@v1` (see `.github/workflows/tests.yml`). Local headless run: `godot --headless --path . -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a res://tests/unit --ignoreHeadlessMode`. Do NOT use `--script tests/gdunit4_runner.gd` — that file is documentation-only and does not inherit from MainLoop.
   - **Unity**: `game-ci/unity-test-runner@v4` (GitHub Actions)
   - **Unreal**: headless runner with `-nullrhi` flag
+
+## Node Teardown in Headless Tests (Godot — GdUnit4)
+
+Use `node.free()` (not `node.queue_free()`) for nodes created with `.new()` that are **never added
+to the scene tree**. `queue_free()` requires a running SceneTree to process the deletion queue —
+orphaned nodes in headless tests never get freed, causing GdUnit4 to report orphan warnings and
+exit code 101. See `.claude/rules/test-standards.md` for the full rule and pattern.

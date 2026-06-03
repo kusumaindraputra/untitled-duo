@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/status-effects.md
 > **Architecture Module**: `src/systems/status_effects_manager.gd` (Autoload #7)
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories status-effects`
+> **Stories**: 5 stories created — 2026-06-04
 
 ## Overview
 
@@ -40,6 +40,16 @@ This epic is complete when:
 - All acceptance criteria from `design/gdd/status-effects.md` are verified
 - All Logic stories have passing unit tests in `tests/unit/`
 
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | [SEM Skeleton, StatusInstance, and Burn DoT](story-001-sem-skeleton-burn-dot.md) | Logic | Ready | ADR-0011 |
+| 002 | [Freeze and Regen Effects](story-002-sem-freeze-regen.md) | Logic | Ready | ADR-0011 |
+| 003 | [Stub Effects — Blind, Stun, Chill, Stagger](story-003-sem-stub-effects.md) | Logic | Ready | ADR-0011 |
+| 004 | [Kill Cleanup and Phase Clear](story-004-sem-kill-phase-cleanup.md) | Integration | Ready | ADR-0011, ADR-0003 |
+| 005 | [Burn Contagion and Shatter](story-005-sem-contagion-shatter.md) | Logic | Ready | ADR-0011 |
+
 ## Next Step
 
-Run `/create-stories status-effects` to break this epic into implementable stories.
+Run `/story-readiness production/epics/status-effects/story-001-sem-skeleton-burn-dot.md` then `/dev-story` to begin implementation.

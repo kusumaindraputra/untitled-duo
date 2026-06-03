@@ -15,7 +15,7 @@ Accepted
 | **Knowledge Risk** | HIGH — versi post-LLM-cutoff (May 2025) |
 | **References Consulted** | `docs/engine-reference/godot/modules/rendering.md`, `docs/engine-reference/godot/VERSION.md` |
 | **Post-Cutoff APIs Used** | `TileMapLayer` (pengganti `TileMap`, diperkenalkan 4.x); `Node2D.y_sort_enabled` |
-| **Verification Required** | Konfirmasi TileMapLayer isometric mode berfungsi di Compatibility renderer Godot 4.6; verifikasi Y-sort tidak menyebabkan z-fighting pada overlapping sprites |
+| **Verification Required** | ~~Konfirmasi TileMapLayer isometric mode berfungsi di Compatibility renderer Godot 4.6; verifikasi Y-sort tidak menyebabkan z-fighting pada overlapping sprites~~ **VERIFIED 2026-05-30 — QQ-01 RESOLVED. 9/9 API tests PASSED (GameStateScenesFlow story-001 verification suite). TileMapLayer isometric mode confirmed functional in Godot 4.6 Compatibility renderer. Y-sort visual validation deferred to Story 003 AC-4 (advisory, non-blocking).** |
 
 ## ADR Dependencies
 

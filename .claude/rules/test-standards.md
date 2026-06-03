@@ -14,6 +14,34 @@ paths:
 - Mock external dependencies — tests should be fast and deterministic
 - Every bug fix must have a regression test that would have caught the original bug
 
+## Node Teardown in Headless Tests (Godot — GdUnit4)
+
+**Rule**: Use `node.free()` (not `node.queue_free()`) to tear down nodes created in unit tests
+that are NOT added to the scene tree.
+
+`queue_free()` defers deletion to the end of the current frame via the SceneTree's deletion queue.
+In headless GdUnit4 tests, nodes created with `.new()` and never added to the scene tree have no
+SceneTree processing their deletion queue. This leaves the node alive as an **orphan**, which GdUnit4
+counts and reports as a test cleanup failure (exit code 101).
+
+**Pattern**:
+```gdscript
+func test_something() -> void:
+    var node := MyNode.new()          # not added to scene tree
+
+    # ... test code ...
+
+    node.free()                       # ✅ immediate — no SceneTree needed
+    # node.queue_free()              # ❌ deferred — orphan in headless tests
+```
+
+**Exception**: If the test adds the node to the tree via `add_child_autofree(node)`, GdUnit4 handles
+cleanup automatically — do not call `free()` or `queue_free()` manually in that case.
+
+**When `queue_free()` is correct**: In integration tests that run with a full scene tree, or when
+testing `queue_free()` behavior itself. The `add_child_autofree()` GdUnit4 helper uses `queue_free()`
+internally and is the right choice for tree-attached nodes.
+
 ## Examples
 
 **Correct** (proper naming + Arrange/Act/Assert):
