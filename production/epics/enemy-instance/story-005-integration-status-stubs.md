@@ -1,17 +1,17 @@
 # Story 005: Integration Tests and Status Effects API Stubs
 
 > **Epic**: Enemy Instance
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Estimate**: ~2h
 > **Manifest Version**: 2026-05-30
-> **Last Updated**: 2026-05-31
+> **Last Updated**: 2026-06-03
 
 ## Context
 
 **GDD**: `design/gdd/enemy-ai.md`
-**Requirement**: `TR-EAI-008`
+**Requirement**: `TR-EAI-007`
 
 **ADR Governing Implementation**: ADR-0011: StatusEffectsManager API Contract
 **ADR Decision Summary**: EnemyInstance must expose `apply_speed_modifier(multiplier: float)` and `apply_stun(duration: float)` for StatusEffectsManager (MVP). At FP scope these are stubs — no behavior, just the method signatures for forward compatibility. Also exposes `is_alive() -> bool`.
@@ -29,10 +29,10 @@
 
 ## Acceptance Criteria
 
-- [ ] **AC-EAI-24** — Full contact sequence: GIVEN alive enemy in COMBAT_PHASE, Fayde not overlapping: (1) Fayde enters → `apply_damage` called once immediately; (2) timer fires at 0.3s, Fayde still overlapping → second `apply_damage`; (3) Fayde exits → timer stops; (4) after one full interval post-exit → no third call. All 4 steps in one sequential test.
-- [ ] **AC-EAI-25** — Phase transition during contact: (1) Fayde overlapping, timer running in COMBAT_PHASE; (2) `preparation_started` fires → timer stops, velocity zeros, no damage during PREP; (3) `combat_started` fires → contact correctly re-arms with no leaked timer state.
-- [ ] **AC-EAI-26** — Kill during overlap: GIVEN Fayde overlapping and timer running, WHEN `enemy_killed` fires, THEN `$HitArea.monitoring == false` and no additional `apply_damage` after one full interval post-kill.
-- [ ] **TR-EAI-008 stub** — `apply_speed_modifier(multiplier: float)` and `apply_stun(duration: float)` methods exist on `EnemyInstance`; `is_alive() -> bool` returns `true` when `_state == CHASING`, `false` when `DEAD`.
+- [x] **AC-EAI-24** — Full contact sequence: GIVEN alive enemy in COMBAT_PHASE, Fayde not overlapping: (1) Fayde enters → `apply_damage` called once immediately; (2) timer fires at 0.3s, Fayde still overlapping → second `apply_damage`; (3) Fayde exits → timer stops; (4) after one full interval post-exit → no third call. All 4 steps in one sequential test.
+- [x] **AC-EAI-25** — Phase transition during contact: (1) Fayde overlapping, timer running in COMBAT_PHASE; (2) `preparation_started` fires → timer stops, velocity zeros, no damage during PREP; (3) `combat_started` fires → contact correctly re-arms with no leaked timer state.
+- [x] **AC-EAI-26** — Kill during overlap: GIVEN Fayde overlapping and timer running, WHEN `enemy_killed` fires, THEN `$HitArea.monitoring == false` and no additional `apply_damage` after one full interval post-kill.
+- [x] **TR-EAI-007 stub** — `apply_speed_modifier(multiplier: float)` and `apply_stun(duration: float)` methods exist on `EnemyInstance`; `is_alive() -> bool` returns `true` when `_state == CHASING`, `false` when `DEAD`.
 
 ---
 
@@ -111,7 +111,7 @@ Drive time via `_physics_process(1.0/60.0)` loops. To simulate 0.3s: call `_phys
 **Story Type**: Integration
 **Required evidence**: `tests/integration/enemy-instance/enemy_instance_integration_test.gd` — must pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] Exists and 4/4 PASSED (2026-06-03)
 
 ---
 
@@ -119,3 +119,15 @@ Drive time via `_physics_process(1.0/60.0)` loops. To simulate 0.3s: call `_phys
 
 - Depends on: Story 003 (contact callbacks), Story 004 (death handler for AC-EAI-26)
 - Unlocks: Enemy Instance epic COMPLETE for all blocking ACs. Story 006 is advisory Visual/Feel.
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-03
+**Criteria**: 4/4 passing
+**Deviations**:
+- ADVISORY: `is_alive()` uses `_state != EnemyState.DEAD` (not `== CHASING` as spec'd in Implementation Notes). Functionally identical at FP scope — diverges when a 3rd state is added. Logged in tech-debt-register.
+- ADVISORY: TR numbering inconsistency — AC block uses TR-EAI-007; QA Test Cases block uses TR-EAI-008. Logged in tech-debt-register.
+- ADVISORY: Test function names missing system prefix and/or expected-result suffix per test-standards.md convention. Logged in tech-debt-register.
+**Test Evidence**: Integration test at `tests/integration/enemy-instance/enemy_instance_integration_test.gd` — 4/4 PASSED
+**Code Review**: APPROVED WITH SUGGESTIONS (2026-06-03 — same session)
