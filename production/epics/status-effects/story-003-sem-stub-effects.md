@@ -1,12 +1,19 @@
 # Story 003: Stub Effects — Blind, Stun, Chill, Stagger
 
 > **Epic**: Status Effects
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~2 hours
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: —
+> **Last Updated**: 2026-06-05
+
+## Completion Notes
+**Completed**: 2026-06-05
+**Criteria**: 6/6 passing (AC-SE-26 `has_status` assertion deferred to Story 005 — stub returns false unconditionally)
+**Deviations**: ADVISORY — has_status(CHILL) assertion deferred to Story 005; STAGGER duration_remaining fix applied during code review (emitted 1.0 instead of 0.3 — caught and fixed)
+**Test Evidence**: Logic — `tests/unit/status-effects/sem_stub_effects_test.gd` — 9/9 PASSED, 31/31 full suite, 0 orphans
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS (all 5 required changes applied)
 
 ## Context
 
@@ -157,7 +164,7 @@ if instance.status_type == GameEnums.BaseStatus.FREEZE:
 **Story Type**: Logic
 **Required evidence**: `tests/unit/status-effects/sem_stub_effects_test.gd` — must exist and pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] Complete — `tests/unit/status-effects/sem_stub_effects_test.gd`, 9/9 PASS (GdUnit4 v6.1.3, Godot 4.6.2)
 
 ---
 

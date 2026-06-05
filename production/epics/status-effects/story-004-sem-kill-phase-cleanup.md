@@ -1,12 +1,12 @@
 # Story 004: Kill Cleanup and Phase Clear
 
 > **Epic**: Status Effects
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Estimate**: ~2 hours
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: —
+> **Last Updated**: 2026-06-05
 
 ## Context
 
@@ -33,8 +33,8 @@
 
 *From GDD `design/gdd/status-effects.md`, scoped to this story:*
 
-- [ ] **AC-SE-12** — GIVEN an enemy with active Burn AND active Freeze, WHEN `HealthDamage.enemy_killed` fires for that enemy, THEN both StatusInstances are removed from `_active_statuses`; `apply_speed_modifier(1.0)` called on the enemy node (Freeze cleanup restores full speed); no further tick calls for that enemy after cleanup
-- [ ] **AC-SE-19** — GIVEN enemies with active Burn and active Freeze, WHEN `preparation_started` fires, THEN `_active_statuses` is empty; `apply_speed_modifier(1.0)` called on the Frozen enemy (restoring full speed); no tick fires after the clear
+- [x] **AC-SE-12** — GIVEN an enemy with active Burn AND active Freeze, WHEN `HealthDamage.enemy_killed` fires for that enemy, THEN both StatusInstances are removed from `_active_statuses`; `apply_speed_modifier(1.0)` called on the enemy node (Freeze cleanup restores full speed); no further tick calls for that enemy after cleanup
+- [x] **AC-SE-19** — GIVEN enemies with active Burn and active Freeze, WHEN `preparation_started` fires, THEN `_active_statuses` is empty; `apply_speed_modifier(1.0)` called on the Frozen enemy (restoring full speed); no tick fires after the clear
 
 ---
 
@@ -119,7 +119,7 @@ func _ready() -> void:
 **Story Type**: Integration
 **Required evidence**: `tests/integration/status-effects/sem_cleanup_integration_test.gd` — must exist and pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — `tests/integration/status-effects/sem_cleanup_integration_test.gd` (10 tests)
 
 ---
 
@@ -127,3 +127,15 @@ func _ready() -> void:
 
 - Depends on: Stories 001, 002, and 003 must be Done (all StatusInstance types must exist before cleanup logic is meaningful)
 - Unlocks: Story 005 (Burn Contagion fires inside `_on_enemy_killed()` before the cleanup loop — Story 004's cleanup must exist first for Story 005 to insert Contagion before it)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-06-05
+**Criteria**: 2/2 passing
+**Deviations**:
+- ADVISORY: `_run_expiry_cleanup` signature uses `(target_id: int)` bulk-per-target form vs. story spec's `(instance: StatusInstance)` per-instance form. Functionally equivalent; refactoring is cleaner. Logged to tech-debt-register.
+- ADVISORY: Open code quality items (CHILL_SLOW_PCT naming asymmetry, `apply_status` 49-line length, per-frame `keys()` allocations). Non-correctness. Logged to tech-debt-register.
+**Test Evidence**: Integration test at `tests/integration/status-effects/sem_cleanup_integration_test.gd` — 10 tests covering all ACs including BURN+FREEZE kill combo and post-cleanup tick-stop assertions
+**Code Review**: Complete — `/code-review` run this session, verdict APPROVED WITH SUGGESTIONS; all 3 BLOCKING findings fixed before story-done

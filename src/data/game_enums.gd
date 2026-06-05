@@ -30,7 +30,7 @@ enum DamageSource { DIRECT = 0, DOT = 1, CONTACT = 2 }
 ## Every status effect that can be applied via apply_status().
 ## CHILL and STAGGER must exist before any apply_status() call referencing them compiles.
 enum BaseStatus   { BURN = 0, BLIND = 1, STUN = 2, FREEZE = 3, REGENERATE = 4,
-                    CHILL = 5, STAGGER = 6 }
+					CHILL = 5, STAGGER = 6 }
 
 # ── HP state zones (for audio/visual danger feedback) ─────────────────────────
 ## Danger zone of the player's current HP (used by audio and visual systems).
@@ -39,7 +39,7 @@ enum HPZone       { FULL = 0, CAREFUL = 1, DESPERATE = 2 }
 # ── Game state machine ────────────────────────────────────────────────────────
 ## Top-level game state. Driven by GameStateManager; consumed by all signal handlers.
 enum GameState    { MAIN_MENU = 0, PREPARATION_PHASE = 1, COMBAT_PHASE = 2,
-                    PAUSED = 3, RUN_SUMMARY = 4, DEATH_SCREEN = 5 }
+					PAUSED = 3, RUN_SUMMARY = 4, DEATH_SCREEN = 5 }
 
 # ── Run outcome ───────────────────────────────────────────────────────────────
 ## Result of a completed run. NONE = run still in progress.
@@ -66,8 +66,8 @@ enum EnemyStatus { ACTIVE = 0, VS_SCOPE = 1, INACTIVE = 2 }
 # ── Visual and audio routing ──────────────────────────────────────────────────
 ## Animation variant played on the caster when a spell fires.
 enum CastAnimation { CAST_THRUST = 0, CAST_REACH = 1, CAST_SNAP = 2,
-                     CAST_PUSH = 3, CAST_BLOOM = 4 }
+					 CAST_PUSH = 3, CAST_BLOOM = 4 }
 
 ## Shape of the on-hit VFX burst spawned at the target.
 enum VfxBurstShape { BURST_FLAME = 0, BURST_SPIRAL = 1, BURST_LIGHTNING = 2,
-                     BURST_CRYSTAL = 3, BURST_VINE = 4 }
+					 BURST_CRYSTAL = 3, BURST_VINE = 4 }

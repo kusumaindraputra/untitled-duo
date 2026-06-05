@@ -142,7 +142,7 @@ H&D's `apply_heal` applies `roundi(2.0) = 2`. The tick fires with the float valu
 **Story Type**: Logic
 **Required evidence**: `tests/unit/status-effects/sem_freeze_regen_test.gd` — must exist and pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] Complete — `tests/unit/status-effects/sem_freeze_regen_test.gd`, 9/9 PASS (GdUnit4 v6.1.3, Godot 4.6.2)
 
 ---
 
