@@ -14,7 +14,7 @@ goal: "Implement remaining First Playable systems and validate the fun hypothesi
 start: "2026-06-04"
 end: "2026-06-17"
 generated: "2026-06-03"
-updated: "2026-06-05"
+updated: "2026-06-05"  # S3-05 StatusEffects all done
 
 stories:
   - id: "S3-01"
@@ -61,12 +61,12 @@ stories:
     name: "Implement StatusEffects (Freeze + Burn, Stun stub)"
     file: "production/epics/status-effects/story-*.md"
     priority: must-have
-    status: in-progress
+    status: done
     owner: ""
     estimate_days: 2.0
     blocker: ""
-    completed: ""
-    note: "Stories 001 (Burn) + 002 (Freeze/Regen) Complete 2026-06-05. Stories 003-005 remaining."
+    completed: "2026-06-05"
+    note: "All 5 stories Complete 2026-06-05. StatusEffectsManager fully implemented at FP scope."
 
   - id: "S3-06"
     name: "Create stories: WaveManager"

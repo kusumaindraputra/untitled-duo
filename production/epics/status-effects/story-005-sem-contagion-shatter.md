@@ -1,12 +1,12 @@
 # Story 005: Burn Contagion and Shatter
 
 > **Epic**: Status Effects
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~2 hours
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: —
+> **Last Updated**: 2026-06-05
 
 ## Context
 
@@ -167,3 +167,10 @@ func _try_burn_contagion(dying_pos: Vector2, original_spell_base: float) -> void
 
 - Depends on: Story 004 must be Done (`_on_enemy_killed()` structure must exist for Contagion to insert before cleanup)
 - Unlocks: Epic complete — all 5 stories Done = StatusEffectsManager fully implemented at FP scope
+
+## Completion Notes
+**Completed**: 2026-06-05
+**Criteria**: 6/6 passing
+**Deviations**: ADVISORY — `_try_burn_contagion` adds `if not candidate.is_alive(): continue` (absent from story pseudocode). Required to prevent self-contagion onto the dying enemy. Functionally correct per GDD intent. Logged to tech-debt-register.md.
+**Test Evidence**: Logic — `tests/unit/status-effects/sem_contagion_shatter_test.gd` — 45/45 PASSED (GdUnit4 v6.1.3, Godot 4.6.2)
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS (all 4 suggestions applied: INF sentinel, dying_pos assertion, spell_base_damage assertion, empty-group edge case test)
