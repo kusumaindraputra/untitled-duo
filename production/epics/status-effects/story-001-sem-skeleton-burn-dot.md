@@ -1,12 +1,12 @@
 # Story 001: SEM Skeleton, StatusInstance, and Burn DoT
 
 > **Epic**: Status Effects
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~3 hours
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: —
+> **Last Updated**: 2026-06-05
 
 ## Context
 
@@ -162,7 +162,7 @@ where `BURN_TICK_MAGNITUDE = 0.08` (from Prana Data constants).
 **Story Type**: Logic
 **Required evidence**: `tests/unit/status-effects/sem_skeleton_burn_test.gd` — must exist and pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] Complete — `tests/unit/status-effects/sem_skeleton_burn_test.gd`, 10/10 PASS (GdUnit4 v6.1.3, Godot 4.6.2)
 
 ---
 
@@ -170,3 +170,18 @@ where `BURN_TICK_MAGNITUDE = 0.08` (from Prana Data constants).
 
 - Depends on: None — this is the foundation story
 - Unlocks: Story 002 (Freeze/Regen), Story 003 (Stubs), Story 004 (Cleanup), Story 005 (Contagion/Shatter)
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-05
+**Criteria**: 7/7 passing
+**Deviations**:
+- ADVISORY: Untyped for-loop iteration and `_fire_tick(instance)` param — GDScript 4.6 typed inner-class loops silently skip elements. Tech debt logged.
+- ADVISORY: Test uses `delta = 0.5` (exact BURN_TICK_INTERVAL) rather than `5 × 0.1`. IEEE 754 accumulated rounding leaves tick_timer slightly above 0 after 5 steps. Tech debt logged.
+- ADVISORY: `MockHD extends Node` + `set_process(false)` required — GdUnit4 is async; engine calls `_process` between test statements when node is in tree. Tech debt logged.
+**Test Evidence**: Logic — `tests/unit/status-effects/sem_skeleton_burn_test.gd`, 13/13 PASS headless
+**Code Review**: Complete — CHANGES REQUIRED → fixed → APPROVED WITH SUGGESTIONS
+  - Added ECG-01: zero spell_base_damage tick (AC-SE-02 edge, was BLOCKING)
+  - Added ECG-02: tick-then-expire same frame (AC-SE-03 edge, was BLOCKING)
+  - Added ECG-03: negative spell_base_damage clamped to 0.0 (ADVISORY)

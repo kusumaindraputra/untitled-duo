@@ -22,6 +22,7 @@ EnemyCatalog="*res://src/data/enemy_catalog.gd"
 GameStateManager="*res://src/core/game_state_manager.gd"
 SceneManager="*res://src/core/scene_manager.gd"
 HealthAndDamage="*res://src/systems/health_and_damage.gd"
+StatusEffectsManager="*res://src/systems/status_effects_manager.gd"
 
 [editor_plugins]
 
