@@ -83,6 +83,21 @@ target.apply_stun(STAGGER_DURATION)
 **`GameEnums.BaseStatus` additions required** (flagged in status-effects.md GDD):
 `STATUS_CHILL` and `STATUS_STAGGER` must be added to `GameEnums.BaseStatus` before this story compiles. Confirm these are present in `src/data/game_enums.gd` before implementing.
 
+**Pre-condition from Story 002 code review (2026-06-05):**
+`_expire_status` in Story 002 calls `apply_speed_modifier(1.0)` unconditionally when FREEZE expires. If a CHILL StatusInstance pre-dates the FREEZE (CHILL applied before FREEZE was applied — suppression is one-way), the Freeze expiry will restore to 1.0 and silently clobber the active Chill's 0.85 multiplier. Story 003 must make the speed-restore in `_expire_status` status-aware:
+```gdscript
+# When FREEZE expires, check if CHILL is still active on the same target.
+# If yes, restore to CHILL speed (0.85) not full speed (1.0).
+if instance.status_type == GameEnums.BaseStatus.FREEZE:
+    var has_chill: bool = false
+    var remaining := _active_statuses.get(target_id, [])
+    for s in remaining:
+        if s.status_type == GameEnums.BaseStatus.CHILL:
+            has_chill = true
+            break
+    instance.target.apply_speed_modifier(0.85 if has_chill else 1.0)
+```
+
 ---
 
 ## Out of Scope

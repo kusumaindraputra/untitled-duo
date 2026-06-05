@@ -66,7 +66,7 @@ stories:
     estimate_days: 2.0
     blocker: ""
     completed: ""
-    note: "Story 001 (Burn skeleton) Complete 2026-06-05. Stories 002-005 remaining."
+    note: "Stories 001 (Burn) + 002 (Freeze/Regen) Complete 2026-06-05. Stories 003-005 remaining."
 
   - id: "S3-06"
     name: "Create stories: WaveManager"

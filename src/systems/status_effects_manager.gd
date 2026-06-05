@@ -1,8 +1,8 @@
 ## StatusEffectsManager — Autoload #6. Tick-timing authority for all persistent
 ## Prana-triggered combat conditions (ADR-0011, ADR-0004).
 ##
-## Story 001 scope: SEM skeleton, StatusInstance, Burn DoT (apply/tick/expire/guards).
-## Stories 002–005 implement: Freeze, Regen, Blind/Stun stubs, cleanup callbacks,
+## Stories 001–002 scope: SEM skeleton, StatusInstance, Burn DoT, Freeze, Regen.
+## Stories 003–005 implement: Blind/Stun/Chill/Stagger stubs, kill/wave cleanup,
 ## has_status(), check_and_apply_shatter(), Burn Contagion.
 ##
 ## Registration: Autoload #6 in project.godot (ADR-0002).
@@ -40,6 +40,23 @@ const BURN_TICK_MAGNITUDE: float = 0.08
 
 ## Time in seconds between Burn damage ticks (4 ticks across BURN_DURATION = 2.0s).
 const BURN_TICK_INTERVAL: float = 0.5
+
+## Movement speed multiplier applied to the target when Freeze is active.
+## Speed is reduced to 50 % of base; restored to 1.0 on expiry or kill-cleanup (ADR-0011).
+const FREEZE_SLOW_PCT: float = 0.50
+
+## Reference only — SC&E must pass this value as [param duration]. Not read internally.
+const FREEZE_DURATION: float = 2.0
+
+## Time in seconds between Regen heal ticks (1 tick per second, 3 ticks over 3.0s default).
+const REGEN_TICK_INTERVAL: float = 1.0
+
+## Fraction of FAYDE_MAX_HP healed per Regen tick (status-effects.md Formula 2).
+const REGEN_TICK_MAGNITUDE: float = 0.02
+
+## Fayde's maximum HP used to compute the flat Regen tick heal amount (Formula 2).
+## Source: Prana Data constants. Must match PlayerController.MAX_HEALTH when that value lands.
+const FAYDE_MAX_HP: float = 100.0
 
 
 # ── Signals ───────────────────────────────────────────────────────────────────
@@ -139,6 +156,8 @@ func apply_status(
 	inst.spell_base_damage = spell_base_damage
 	_active_statuses[target_id].append(inst)
 	status_applied.emit(target, status_type, duration)
+	if status_type == GameEnums.BaseStatus.FREEZE:
+		target.apply_speed_modifier(1.0 - FREEZE_SLOW_PCT)
 
 
 ## Returns true if [param target] has an active StatusInstance of [param status_type].
@@ -193,6 +212,9 @@ func _fire_tick(instance) -> void:
 			_health_and_damage.apply_damage(
 				instance.target, tick_dmg, GameEnums.DamageClass.NONE, GameEnums.DamageSource.DOT
 			)
+		GameEnums.BaseStatus.REGENERATE:
+			var tick_heal: float = FAYDE_MAX_HP * REGEN_TICK_MAGNITUDE
+			_health_and_damage.apply_heal(instance.target, tick_heal)
 
 
 # ── Private — expiry ──────────────────────────────────────────────────────────
@@ -205,6 +227,8 @@ func _expire_status(instance) -> void:
 	if _active_statuses[target_id].is_empty():
 		_active_statuses.erase(target_id)
 	status_expired.emit(instance.target, instance.status_type)
+	if instance.status_type == GameEnums.BaseStatus.FREEZE:
+		instance.target.apply_speed_modifier(1.0)
 
 
 # ── Private — helpers ─────────────────────────────────────────────────────────
@@ -213,6 +237,8 @@ func _tick_interval_for(status_type: GameEnums.BaseStatus) -> float:
 	match status_type:
 		GameEnums.BaseStatus.BURN:
 			return BURN_TICK_INTERVAL
+		GameEnums.BaseStatus.REGENERATE:
+			return REGEN_TICK_INTERVAL
 		_:
 			return 0.0
 

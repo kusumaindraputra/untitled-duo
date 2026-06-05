@@ -1,12 +1,12 @@
 # Story 002: Freeze and Regen Effects
 
 > **Epic**: Status Effects
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~3 hours
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: —
+> **Last Updated**: 2026-06-05
 
 ## Context
 
@@ -150,3 +150,16 @@ H&D's `apply_heal` applies `roundi(2.0) = 2`. The tick fires with the float valu
 
 - Depends on: Story 001 must be Done (scope guard and tick loop infrastructure required)
 - Unlocks: Story 003 (Chill stub requires Freeze suppression logic from this story)
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-05
+**Criteria**: 6/6 passing
+**Deviations**:
+- ADVISORY (fixed): `_expire_status` ordering — speed restore was placed before `status_expired.emit()`. Fixed to match GDD Rule 7 sequence (erase → emit → cleanup). Applies to future Chill expiry as well.
+- ADVISORY: `FREEZE_DURATION = 2.0` constant unused internally — doc comment clarified ("Reference only — SC&E must pass as duration parameter").
+- ADVISORY: `FAYDE_MAX_HP = 100.0` hardcoded — known tech debt; must sync with PlayerController.MAX_HEALTH when that lands. Logged in tech-debt-register.md.
+- ADVISORY: Story 003 pre-condition logged — `_expire_status` speed-restore for Freeze must check for active Chill before restoring to 1.0 (see story-003 Implementation Notes).
+**Test Evidence**: Logic — `tests/unit/status-effects/sem_freeze_regen_test.gd`, 9/9 PASS headless (GdUnit4 v6.1.3, Godot 4.6.2)
+**Code Review**: Complete — CHANGES REQUIRED → all fixes applied → APPROVED WITH SUGGESTIONS
