@@ -14,7 +14,7 @@ goal: "Implement remaining First Playable systems and validate the fun hypothesi
 start: "2026-06-04"
 end: "2026-06-17"
 generated: "2026-06-03"
-updated: "2026-06-03"
+updated: "2026-06-05"
 
 stories:
   - id: "S3-01"
@@ -31,11 +31,11 @@ stories:
     name: "ADR-0013 engine verification — PranaGrid dual-input"
     file: "docs/architecture/adr-0013-prana-grid-dual-input-focus-model.md"
     priority: must-have
-    status: in-progress
+    status: done
     owner: ""
     estimate_days: 0.5
-    blocker: "Awaiting manual test run in Godot 4.6 — see prototypes/adr-0013-verification/"
-    completed: ""
+    blocker: ""
+    completed: "2026-06-05"
 
   - id: "S3-03"
     name: "Run /qa-plan sprint — Sprint 3 QA plan"
@@ -61,11 +61,12 @@ stories:
     name: "Implement StatusEffects (Freeze + Burn, Stun stub)"
     file: "production/epics/status-effects/story-*.md"
     priority: must-have
-    status: backlog
+    status: in-progress
     owner: ""
     estimate_days: 2.0
-    blocker: "S3-04 must complete first"
+    blocker: ""
     completed: ""
+    note: "Story 001 (Burn skeleton) Complete 2026-06-05. Stories 002-005 remaining."
 
   - id: "S3-06"
     name: "Create stories: WaveManager"
@@ -161,10 +162,10 @@ stories:
     name: "Create stories: CombinationResolution"
     file: "production/epics/combination-resolution/"
     priority: should-have
-    status: backlog
+    status: ready-for-dev
     owner: ""
     estimate_days: 0.5
-    blocker: "S3-02 (ADR-0013 result)"
+    blocker: ""
     completed: ""
 
   - id: "S3-16"
@@ -178,11 +179,11 @@ stories:
     completed: ""
 
   - id: "S3-17"
-    name: "Implement PranaGrid (only if ADR-0013 SAFE)"
+    name: "Implement PranaGrid (ADR-0013 SAFE — proceed)"
     file: "production/epics/prana-grid/story-*.md"
     priority: nice-to-have
     status: backlog
     owner: ""
     estimate_days: 2.5
-    blocker: "S3-02 must return SAFE verdict"
+    blocker: "Create PranaGrid epic + stories first"
     completed: ""

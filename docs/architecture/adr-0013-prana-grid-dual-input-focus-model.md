@@ -244,6 +244,33 @@ State owned by PranaGrid:
 4. **AC-0013-04**: `grep -n "grab_focus" prana_grid.gd` returns zero matches in any gamepad input handler (`_on_dpad_*`, `_navigate_gamepad`, `_on_joypad_*`). Keyboard accessibility `focus_entered` / `focus_exited` handlers may exist but must not call `grab_focus()` themselves.
 5. **AC-0013-05**: `_selected_slot_index` wraps correctly at boundaries: from slot 2 (top-right) → right → slot 0 (top-left); from slot 2 → down → slot 5 (middle-right). Unit test verifies both wrap cases.
 
+## Verification Result
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-06-05 |
+| **Verdict** | PASSED WITH CONCERN |
+| **Prototype** | `prototypes/adr-0013-verification/DualInputVerify.tscn` |
+
+### AC Results
+
+| AC | Description | Result |
+|----|-------------|--------|
+| AC-0013-01a | d-pad navigation moves overlay to correct slot | PASS |
+| AC-0013-01b | Mouse hover does NOT change `_selected_slot_index` | PASS |
+| AC-0013-01c | Tab key focus does NOT move the overlay | PASS |
+| AC-0013-01d | Gamepad→mouse switch hides overlay; mouse hover unaffected | PASS |
+
+### Concern: Keyboard Focus Ring Not Visible (Production Styling Task)
+
+The prototype's keyboard focus visual was text colour change only (cyan via `add_theme_color_override("font_color")`). No border ring appeared around the focused slot.
+
+**Root cause**: `Panel` nodes in Godot 4.6's default theme do not render a focus ring. The engine's focus ring is rendered by the `focus` `StyleBox` theme property — `Panel` has no default `StyleBox` for that state; only `Button` and similar interactive nodes do.
+
+**Production implication**: Slot `Control`/`Panel` nodes in `prana_grid.gd` must be given an explicit `StyleBox` for the `focus` theme state to produce the "thin accessibility border" required by the ADR. It will not appear automatically — must be configured explicitly via `add_theme_stylebox_override("focus", ...)` at node setup time or via a project theme.
+
+**Verdict impact**: Does NOT block PranaGrid implementation. The three-path input model is confirmed correct in Godot 4.6. The concern is a production styling task only.
+
 ## Related Decisions
 
 - [ADR-0002: Autoload Architecture](adr-0002-autoload-architecture.md) — PranaGrid is NOT an Autoload; it is a scene node instantiated within the Preparation Phase UI hierarchy

@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://dumm0dyede8f0"]
+
+[ext_resource type="Script" uid="uid://gfc84focxblf" path="res://prototypes/adr-0013-verification/dual_input_verify.gd" id="1_j75d5"]
+
+[node name="Node" type="Node" unique_id=1105160461]
+script = ExtResource("1_j75d5")

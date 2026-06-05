@@ -18,37 +18,37 @@
 ---
 
 ### T1 — Gamepad d-pad moves cursor; does NOT trigger engine focus ring
-- [ ] Gold border cursor moves when d-pad pressed
-- [ ] `_selected_slot_index` printed in Output changes correctly
-- [ ] d-pad wraps: right from col 2 → col 0 same row
-- [ ] Engine focus ring (blue outline) does NOT appear on slots during d-pad input
+- [OK] Gold border cursor moves when d-pad pressed
+- [OK] `_selected_slot_index` printed in Output changes correctly
+- [OK] d-pad wraps: right from col 2 → col 0 same row
+- [OK] Engine focus ring (blue outline) does NOT appear on slots during d-pad input
 
-**Notes**: _______________________________________________________________
+**Notes**: Tidak ada blue outline yang muncul saat menggunakan keyboard
 
 ---
 
 ### T2 — Mouse hover does NOT change `_selected_slot_index`
-- [ ] Status bar `_selected_slot_index` stays unchanged while hovering different slots
-- [ ] Gold cursor NOT visible
-- [ ] Output does NOT print index change lines during hover
+- [OK] Status bar `_selected_slot_index` stays unchanged while hovering different slots
+- [OK] Gold cursor NOT visible
+- [OK] Output does NOT print index change lines during hover
 
 **Notes**: _______________________________________________________________
 
 ---
 
 ### T3 — Tab key moves engine focus; does NOT move gold cursor
-- [ ] Tab/arrow cycles keyboard focus slot-to-slot (label turns cyan)
-- [ ] Gold cursor does NOT move
-- [ ] Status bar `_selected_slot_index` does NOT change
+- [OK] Tab/arrow cycles keyboard focus slot-to-slot (label turns cyan)
+- [OK] Gold cursor does NOT move
+- [OK] Status bar `_selected_slot_index` does NOT change
 
 **Notes**: _______________________________________________________________
 
 ---
 
 ### T4 — Switching gamepad → mouse hides cursor immediately
-- [ ] Start in gamepad mode (press d-pad once; cursor visible)
-- [ ] Move mouse → cursor disappears immediately
-- [ ] Status bar shows `Mode: MOUSE/KB`
+- [OK] Start in gamepad mode (press d-pad once; cursor visible)
+- [OK] Move mouse → cursor disappears immediately
+- [OK] Status bar shows `Mode: MOUSE/KB`
 
 **Notes**: _______________________________________________________________
 
@@ -56,12 +56,12 @@
 
 ### Overall Verdict
 
-- [ ] **SAFE** — all 4 tests passed → PranaGrid (S3-17) proceeds
+- [OK] **SAFE** — all 4 tests passed → PranaGrid (S3-17) proceeds
 - [ ] **UNSAFE** — one or more tests failed → PranaGrid deferred, keyboard fallback confirmed
 
 > ⚠ No gamepad? Remap a keyboard key in Project Settings → Input Map → add action `ui_accept_gamepad` mapped to a key, note it here.
 
-**Gamepad available**: [ ] Yes  [ ] No — used key: _______________
+**Gamepad available**: [OK] Yes  [ ] No — used key: _______________
 
 ---
 
@@ -77,8 +77,8 @@
 var _test: Dictionary[int, Array] = {}
 ```
 
-- [ ] No red underline / no "invalid syntax" in Godot script editor
-- [ ] Typed Dictionary syntax accepted by Godot 4.6 parser
+- [OK] No red underline / no "invalid syntax" in Godot script editor
+- [OK] Typed Dictionary syntax accepted by Godot 4.6 parser
 
 **Notes**: _______________________________________________________________
 
@@ -90,15 +90,16 @@ var _test: Dictionary[int, Array] = {}
 > **When to run**: Before implementing StatusEffects Story 003 (stubs)
 > **Blocks**: S3-05 Story 003
 
-**Setup**: Open `src/core/game_enums.gd`, find `enum BaseStatus`.
+**Setup**: Open `src/data/game_enums.gd`, find `enum BaseStatus`.
 
-- [ ] `CHILL` entry exists with explicit integer value (e.g. `CHILL = 5`)
-- [ ] `STAGGER` entry exists with explicit integer value (e.g. `STAGGER = 6`)
+- [OK] `CHILL` entry exists with explicit integer value (e.g. `CHILL = 5`)
+- [OK] `STAGGER` entry exists with explicit integer value (e.g. `STAGGER = 6`)
 
 If missing — add them before Story 003. Values must be appended (never renumber existing entries).
 
-**Current values found**: _______________________________________________________________
+**Current values found**: sesuai yang disebutkan di atas
 
+**Notes**: saya menemukan filenya di src/**data**/game_enums.gd bukan di src/core/game_enums.gd
 ---
 
 ---

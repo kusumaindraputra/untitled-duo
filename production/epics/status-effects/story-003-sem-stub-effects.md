@@ -81,7 +81,7 @@ target.apply_stun(STAGGER_DURATION)
 ```
 
 **`GameEnums.BaseStatus` additions required** (flagged in status-effects.md GDD):
-`STATUS_CHILL` and `STATUS_STAGGER` must be added to `GameEnums.BaseStatus` before this story compiles. Confirm these are present in `src/core/game_enums.gd` before implementing.
+`STATUS_CHILL` and `STATUS_STAGGER` must be added to `GameEnums.BaseStatus` before this story compiles. Confirm these are present in `src/data/game_enums.gd` before implementing.
 
 ---
 
