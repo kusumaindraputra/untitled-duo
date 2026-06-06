@@ -1,12 +1,12 @@
 # Story 001: CombatHUD Scene Skeleton, HP Bar, and Dead State
 
 > **Epic**: CombatHUD
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: UI
 > **Estimate**: ~2 hours
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: —
+> **Last Updated**: 2026-06-06 (Complete)
 
 ## Context
 
@@ -195,3 +195,14 @@ Unit tests in `tests/unit/combat-hud/combat_hud_test.gd` are strongly recommende
 
 - Depends on: HealthAndDamage epic DONE (signals live) ✅; GameStateManager epic DONE ✅; main.tscn exists ✅
 - Unlocks: Story 002 — HP Zone Colors and Heal Tween
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-06
+**Criteria**: 9/9 passing (all COVERED by unit tests; manual walkthrough evidence ADVISORY — deferred)
+**Deviations**:
+- ADVISORY: Float accumulator timers used instead of `create_tween()` from story implementation notes — better ADR-0004 alignment, fully testable headless
+- ADVISORY: `SpellCastingEffects.chain_index_changed` and `spell_hit_element` connected as stubs in Story 001 (Story 003/004 forward-compat)
+**Test Evidence**: UI story — 10/10 unit tests pass (`tests/unit/combat-hud/combat_hud_test.gd`); manual walkthrough evidence (`production/qa/evidence/combat-hud-skeleton-evidence.md`) deferred (ADVISORY)
+**Code Review**: APPROVED WITH SUGGESTIONS — all required changes (tint timer death cancel, RunManager state isolation) and all suggestions applied; re-run clean (10/10, 0 errors, 0 orphans, 0 push_errors)

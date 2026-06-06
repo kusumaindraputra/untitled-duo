@@ -1,9 +1,13 @@
-[gd_scene load_steps=1 format=3 uid="uid://b_main_scene"]
+[gd_scene load_steps=2 format=3 uid="uid://b_main_scene"]
+
+[ext_resource type="PackedScene" uid="uid://combat_hud_scene" path="res://src/scenes/CombatHUD.tscn" id="1_hud"]
 
 [node name="main" type="Node"]
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 layer = 10
 process_mode = 3
+
+[node name="CombatHUD" parent="CanvasLayer" instance=ExtResource("1_hud")]
 
 [node name="SubSceneRoot" type="Node2D" parent="."]
