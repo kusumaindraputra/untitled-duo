@@ -1,12 +1,12 @@
 # Story 004: Full FP Run Integration Test
 
 > **Epic**: WaveManager
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Integration
 > **Estimate**: ~2 hours
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: —
+> **Last Updated**: 2026-06-06
 
 ## Context
 
@@ -108,7 +108,7 @@
 **Required evidence**:
 - Integration: `tests/integration/wave-encounter-system/wave_manager_integration_test.gd` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — 5/5 PASSED (GdUnit4 v6.1.3, Godot 4.6.2, 0 orphans, 2026-06-06)
 
 ---
 
@@ -116,3 +116,12 @@
 
 - Depends on: Story 002 DONE (spawn sequence must work), Story 003 DONE (kill tracking must work)
 - Unlocks: None — this is the final WaveManager story. Epic complete when this story is Done.
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-06
+**Criteria**: 2/2 passing (AC-WES-14 and AC-WES-15 fully covered)
+**Deviations**: None
+**Test Evidence**: Integration — `tests/integration/wave-encounter-system/wave_manager_integration_test.gd` (5/5 PASSED, 35/35 full WES suite, 0 orphans)
+**Code Review**: Complete (lean mode — confirmed by developer)

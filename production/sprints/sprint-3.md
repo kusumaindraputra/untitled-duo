@@ -32,7 +32,7 @@ Implement the remaining First Playable systems (WaveManager, SpellCastingEffects
 | S3-04 | Create stories: StatusEffects | 0.5 | S3-01, S3-03 | Story files exist in `production/epics/status-effects/`; each passes `/story-readiness` |
 | S3-05 | Implement StatusEffects (Freeze + Burn, Stun stub) | 2.0 | S3-04; S2-02 (H&D apply_damage complete) | `apply_status()` 4-arg, `has_status()`, `check_and_apply_shatter()` pass headless; `preparation_started` clears all instances |
 | S3-06 | Create stories: WaveManager (1 hardcoded wave, 10 enemies, win condition) | 0.5 | S3-03 | Story files exist; pass `/story-readiness` |
-| S3-07 | Implement WaveManager | 2.0 | S3-06; S2-06 (EnemyInstance complete) | 10 enemies spawn on `combat_started`; `enemy_killed` decrements counter; `all_waves_cleared` fires at 0; unit/integration tests pass |
+| S3-07 ✓ | Implement WaveManager | 2.0 | S3-06; S2-06 (EnemyInstance complete) | 10 enemies spawn on `combat_started`; `enemy_killed` decrements counter; `all_waves_cleared` fires at 0; unit/integration tests pass | **DONE 2026-06-06** — 35/35 tests |
 | S3-08 | Create + Implement minimal SpellCastingEffects | 2.0 | S3-05; S2-02 (H&D) | Player input triggers `apply_damage`; elemental 2× affiliation bonus applies; `cast_hit_started` fires; tests pass |
 | S3-09 | Create + Implement minimal CombatHUD | 1.0 | S2-02 (H&D signals); S3-07 | HP bar updates on `damage_taken`/`health_restored`; wave-cleared message on `wave_ended`; no crash |
 | S3-10 | Create + Implement minimal RunManager | 0.5 | S3-07; S2-02 (player_died) | `run_ended(win)` shows result screen; no softlock; complete run (start → result screen) works |
