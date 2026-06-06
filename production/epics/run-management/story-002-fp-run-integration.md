@@ -1,12 +1,12 @@
 # Story 002: FP Run Integration Test
 
 > **Epic**: RunManagement
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Integration
 > **Estimate**: ~0.5 hours
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: —
+> **Last Updated**: 2026-06-06
 
 ## Context
 
@@ -32,8 +32,8 @@
 
 *From GDD `design/gdd/run-management.md`, scoped to this story:*
 
-- [ ] **AC-RM-13** — GIVEN RunManager and GameStateManager are registered as Autoloads with GameStateManager first, WHEN a full FP run completes (`run_started` → `combat_started` → all 10 enemies die → `run_ended(win: true)` fires via WaveManager chain), THEN `get_run_data()` returns `{ run_active: false, run_outcome: WIN, waves_completed: 0 }`
-- [ ] **AC-RM-14** — GIVEN RunManager is registered after GameStateManager in Project Settings → AutoLoad, WHEN the game starts, THEN RunManager is accessible globally and no signal-connection errors appear in the Godot output panel *(manual smoke check — AutoLoad wiring cannot be unit-tested in GUT)*
+- [x] **AC-RM-13** — GIVEN RunManager and GameStateManager are registered as Autoloads with GameStateManager first, WHEN a full FP run completes (`run_started` → `combat_started` → all 10 enemies die → `run_ended(win: true)` fires via WaveManager chain), THEN `get_run_data()` returns `{ run_active: false, run_outcome: WIN, waves_completed: 0 }`
+- [x] **AC-RM-14** — GIVEN RunManager is registered after GameStateManager in Project Settings → AutoLoad, WHEN the game starts, THEN RunManager is accessible globally and no signal-connection errors appear in the Godot output panel *(manual smoke check — AutoLoad wiring cannot be unit-tested in GUT)*
 
 ---
 
@@ -101,7 +101,7 @@ assert_int(data["waves_completed"]).is_equal(0)
 **Story Type**: Integration
 **Required evidence**: `tests/integration/run-management/run_manager_integration_test.gd` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] `tests/integration/run-management/run_manager_integration_test.gd` — 3/3 PASSED (GdUnit4 v6.1.3, Godot 4.6.2, 2026-06-06)
 
 ---
 
@@ -109,3 +109,12 @@ assert_int(data["waves_completed"]).is_equal(0)
 
 - Depends on: Story 001 DONE (RunManager Autoload implemented)
 - Unlocks: None — this is the final RunManagement story. Epic complete when this story is Done. S3-10 complete.
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-06
+**Criteria**: 2/2 passing (AC-RM-13 auto-verified; AC-RM-14 advisory manual smoke check)
+**Deviations**: None
+**Test Evidence**: Integration test at `tests/integration/run-management/run_manager_integration_test.gd` — 3/3 PASSED (3 scenarios: WIN path, LOSS path, consecutive runs reset)
+**Code Review**: Skipped — test-only story, no src/ changes

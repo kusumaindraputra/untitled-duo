@@ -14,7 +14,7 @@ goal: "Implement remaining First Playable systems and validate the fun hypothesi
 start: "2026-06-04"
 end: "2026-06-17"
 generated: "2026-06-03"
-updated: "2026-06-06"  # S3-07 done (35/35 tests); S3-08 done (all 4 SC&E stories, 36/36 tests)
+updated: "2026-06-06"  # S3-07 done; S3-08 done (36/36); S3-10 done (RunManager, 16 tests)
 
 stories:
   - id: "S3-01"
@@ -115,12 +115,12 @@ stories:
     name: "Create + Implement minimal RunManager"
     file: "production/epics/run-management/story-*.md"
     priority: must-have
-    status: in-progress
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
-    note: "2 stories created 2026-06-06 (lifecycle, integration test)"
+    completed: "2026-06-06"
+    note: "Both stories Complete 2026-06-06. 13 unit + 3 integration tests passing."
 
   - id: "S3-11"
     name: "First Playable internal playtest — validate fun hypothesis"
