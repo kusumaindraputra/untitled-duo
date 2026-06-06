@@ -1,12 +1,12 @@
 # Story 003: Kill Tracking and Wave Completion Signals
 
 > **Epic**: WaveManager
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: ~2 hours
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: —
+> **Last Updated**: 2026-06-06
 
 ## Context
 
@@ -129,3 +129,13 @@ func _on_enemy_killed(instance_id: int, type_id: int,
 
 - Depends on: Story 001 DONE (signal declarations and WaveState enum must exist)
 - Unlocks: Story 004 (integration test depends on both spawn and kill tracking working)
+
+## Completion Notes
+**Completed**: 2026-06-06
+**Criteria**: 5/5 passing
+**Deviations**:
+- ADVISORY: Story QA spec used non-existent `GameEnums.DamageClass.VOIDBLUE` — replaced with `DamageClass.FIRE` in test; functionally equivalent.
+- ADVISORY: `wave_cleared` signal declared but not emitted at FP scope — intentional deferral to multi-wave story; doc comment not updated (minor).
+- ADVISORY: `push_error()` in AC-WES-11 not directly asserted (GdUnit4 cannot intercept push_error); state assertions serve as observable contract.
+**Test Evidence**: Logic — `tests/unit/wave-encounter-system/wave_manager_kill_tracking_test.gd` (8/8 PASSED, 0 orphans)
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS (lean mode; stale TODO fixed pre-close)

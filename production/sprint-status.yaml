@@ -14,7 +14,7 @@ goal: "Implement remaining First Playable systems and validate the fun hypothesi
 start: "2026-06-04"
 end: "2026-06-17"
 generated: "2026-06-03"
-updated: "2026-06-06"  # S3-06 done; S3-07 in-progress (stories 001+002 Complete, 2 remaining)
+updated: "2026-06-06"  # S3-07 in-progress (stories 001+002+003 Complete, story-004 remaining)
 
 stories:
   - id: "S3-01"

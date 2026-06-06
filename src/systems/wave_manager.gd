@@ -3,6 +3,7 @@
 ## Implements: design/gdd/wave-encounter-system.md
 ## Story: WaveManager Story 001 — Skeleton, Signals, and Phase Gating
 ## Story: WaveManager Story 002 — FP Wave Composition and Spawn Sequence
+## Story: WaveManager Story 003 — Kill Tracking and Wave Completion Signals
 ## ADR: ADR-0003 (Signal-Driven Architecture), ADR-0014 (H&D ↔ WaveManager Contract)
 ##
 ## Responsibilities (Story 001 — skeleton):
@@ -19,8 +20,9 @@
 ##   - Implement _get_spawn_markers() via @export spawn_points_container
 ##   - Implement _spawn_wave() body: strict ADR-0014 spawn order
 ##
-## Out of scope (subsequent stories):
-##   - _on_enemy_killed() body: kill tracking and completion signals (Story 003)
+## Responsibilities (Story 003 — kill tracking):
+##   - Implement _on_enemy_killed() body: WAVE_ACTIVE guard → decrement → completion check
+##   - Emit all_waves_cleared and boss_defeated when _enemies_alive <= 0 (TR-WES-003, TR-WES-005)
 ##
 ## Architecture notes:
 ##   - WaveManager is a scene node (NOT an Autoload). It lives inside the arena scene
@@ -93,8 +95,7 @@ var _enemies_total: int = 0
 
 ## Ordered spawn composition entries for the current wave.
 ## Each entry: { scene: PackedScene, type_id: int }
-## Populated in _on_preparation_started() from FP constants (Story 002).
-## TODO Story 002: convert to Array[WaveEntry] once the entry resource is defined.
+## Populated in _on_preparation_started() from FP constants.
 var _wave_composition: Array[Dictionary] = []
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -141,10 +142,18 @@ func _on_combat_started(is_boss: bool) -> void:
 
 
 ## Tracks enemy deaths and emits wave completion signals when all enemies are defeated.
-## Implemented in Story 003 — stub here to avoid a null-reference when H&D fires the signal.
+## ADR-0014 Kill Signal Contract: guard on WAVE_ACTIVE first (before decrement) → decrement
+## → _enemies_alive <= 0 check → WAVE_COMPLETE → all_waves_cleared.emit() → boss_defeated.emit().
+## The <= 0 guard (not == 0) protects against duplicate-signal edge cases. (TR-WES-003, TR-WES-005)
 func _on_enemy_killed(_instance_id: int, _type_id: int,
 		_prana_affiliation: GameEnums.DamageClass) -> void:
-	pass  # Story 003 body: _enemies_alive -= 1; completion check; signal emission.
+	if _wave_state != WaveState.WAVE_ACTIVE:
+		return  # WAVE_COMPLETE guard: ignore late/duplicate signals (ADR-0014)
+	_enemies_alive -= 1
+	if _enemies_alive <= 0:
+		_wave_state = WaveState.WAVE_COMPLETE
+		all_waves_cleared.emit()
+		boss_defeated.emit()  # FP: no boss encounter; fires immediately after (TR-WES-005)
 
 # ── Internal ──────────────────────────────────────────────────────────────────
 
