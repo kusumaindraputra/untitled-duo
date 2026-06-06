@@ -104,21 +104,23 @@ stories:
     name: "Create + Implement minimal CombatHUD"
     file: "production/epics/combat-hud/story-*.md"
     priority: must-have
-    status: backlog
+    status: in-progress
     owner: ""
     estimate_days: 1.0
-    blocker: "S3-07 (WaveManager), S3-03 must complete first"
+    blocker: ""
     completed: ""
+    note: "4 stories created 2026-06-06 (skeleton+HP bar, zone colors, damage numbers, chain dots)"
 
   - id: "S3-10"
     name: "Create + Implement minimal RunManager"
     file: "production/epics/run-management/story-*.md"
     priority: must-have
-    status: backlog
+    status: in-progress
     owner: ""
     estimate_days: 0.5
-    blocker: "S3-07, S3-03 must complete first"
+    blocker: ""
     completed: ""
+    note: "2 stories created 2026-06-06 (lifecycle, integration test)"
 
   - id: "S3-11"
     name: "First Playable internal playtest — validate fun hypothesis"
