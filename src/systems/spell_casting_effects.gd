@@ -155,16 +155,13 @@ func _trigger_cast() -> void:
 	_combo_index += 1
 	chain_index_changed.emit(_combo_index, combo_count)
 
-	var lock_dur: float = ASHFIRE_CAST_LOCK_DURATION if _current_spell_effect.primary_type == 0 \
+	var lock_dur: float = ASHFIRE_CAST_LOCK_DURATION if _current_spell_effect.primary_type == GameEnums.DamageClass.FIRE \
 		else CAST_LOCK_DURATION
 	cast_hit_started.emit(lock_dur)
 	_cast_lock_timer = lock_dur
 	_state = SCEState.CAST_LOCKED
 	_combo_window_timer = COMBO_CONTINUATION_WINDOW
-
-	if _combo_index >= combo_count:
-		# Final attack in chain — Story 003 handles reset after lock expires
-		pass
+	# Final hit in chain — combo reset handled in Story 003
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -202,8 +199,8 @@ func _on_combo_resolved(spell_effect: SpellEffect) -> void:
 	if spell_effect == null:
 		push_error("SpellCastingEffects: combo_resolved received null SpellEffect. Staying IDLE.")
 		return
-	if spell_effect.primary_type == -1:
-		push_error("SpellCastingEffects: combo_resolved received invalid SpellEffect (primary_type == -1). Staying IDLE.")
+	if spell_effect.primary_type == GameEnums.DamageClass.NONE:
+		push_error("SpellCastingEffects: combo_resolved received invalid SpellEffect (primary_type == NONE). Staying IDLE.")
 		return
 	if not _in_combat:
 		return

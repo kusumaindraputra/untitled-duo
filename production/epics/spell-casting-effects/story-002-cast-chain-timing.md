@@ -1,12 +1,12 @@
 # Story 002: Cast Input, Float Accumulators, and Chain Timing
 
 > **Epic**: Spell Casting & Effects
-> **Status**: In Progress
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~2 hours
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: 2026-06-06
+> **Last Updated**: 2026-06-06 (Complete)
 
 ## Context
 
@@ -174,7 +174,7 @@ _combo_window_timer = 0.0
 **Story Type**: Logic
 **Required evidence**: `tests/unit/spell-casting-effects/cast_chain_test.gd` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] PASSED — 6/6 cast_chain_test.gd; 15/15 full SC&E suite (GdUnit4 v6.1.3, Godot 4.6.2, 0 orphans)
 
 ---
 
@@ -182,3 +182,15 @@ _combo_window_timer = 0.0
 
 - Depends on: Story 001 DONE (state machine skeleton, _state enum, _current_spell_effect)
 - Unlocks: Story 003 (needs _trigger_cast() hook to inject _fire_attack() into)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-06-06
+**Criteria**: 5/5 passing (AC-SC-02, 03, 04, 05, 10a, 10b — all COVERED by unit tests)
+**Deviations**:
+- ADVISORY: `primary_type == 0` was a magic number in `_trigger_cast()`. Fixed during code review to `GameEnums.DamageClass.FIRE`. Pre-existing instance (`primary_type == -1` → `GameEnums.DamageClass.NONE`) also fixed.
+- ADVISORY (pre-existing, Story 001): `_exit_tree()` disconnect guards present on Autoload. ADR-0003 Rule 4 states unnecessary for Autoload-to-Autoload connections. Defensive pattern; not harmful.
+**Test Evidence**: Logic — `tests/unit/spell-casting-effects/cast_chain_test.gd` — 6/6 PASSED; 15/15 full suite PASSED
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS (required changes R-1 enum ref + R-2 dead block applied; suggestions S-1 through S-4 deferred to Story 003)
