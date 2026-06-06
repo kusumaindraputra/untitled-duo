@@ -118,6 +118,9 @@ func _on_combat_started(_is_boss: bool) -> void:
 ## Caches the wave SpellEffect and transitions to READY (when in combat).
 ## Rejects payloads with primary_type == -1 via push_error — stays IDLE.
 func _on_combo_resolved(spell_effect: SpellEffect) -> void:
+	if spell_effect == null:
+		push_error("SpellCastingEffects: combo_resolved received null SpellEffect. Staying IDLE.")
+		return
 	if spell_effect.primary_type == -1:
 		push_error("SpellCastingEffects: combo_resolved received invalid SpellEffect (primary_type == -1). Staying IDLE.")
 		return

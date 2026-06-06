@@ -14,7 +14,7 @@ goal: "Implement remaining First Playable systems and validate the fun hypothesi
 start: "2026-06-04"
 end: "2026-06-17"
 generated: "2026-06-03"
-updated: "2026-06-06"  # S3-07 in-progress (stories 001+002+003 Complete, story-004 remaining)
+updated: "2026-06-06"  # S3-07 done (35/35 tests); S3-08 in-progress (story-001 Complete)
 
 stories:
   - id: "S3-01"
@@ -82,21 +82,23 @@ stories:
     name: "Implement WaveManager (1 hardcoded wave, 10 enemies, win condition)"
     file: "production/epics/wave-manager/story-*.md"
     priority: must-have
-    status: in-progress
+    status: done
     owner: ""
     estimate_days: 2.0
     blocker: ""
-    completed: ""
+    completed: "2026-06-06"
+    note: "All 4 stories Complete 2026-06-06. 35/35 tests passing."
 
   - id: "S3-08"
     name: "Create + Implement minimal SpellCastingEffects"
     file: "production/epics/spell-casting-effects/story-*.md"
     priority: must-have
-    status: backlog
+    status: in-progress
     owner: ""
     estimate_days: 2.0
-    blocker: "S3-05 (StatusEffects), S3-03 must complete first"
+    blocker: ""
     completed: ""
+    note: "Story 001 Complete 2026-06-06 (SpellEffect Resource, Stub CR, SC&E Skeleton). Stories 002+ remaining."
 
   - id: "S3-09"
     name: "Create + Implement minimal CombatHUD"

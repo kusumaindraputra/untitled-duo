@@ -43,7 +43,7 @@ func _on_preparation_started(_idx: int, _rem: int) -> void:
 
 
 ## FP stub: creates and emits a hardcoded Ashfire T1 SpellEffect.
-## Real CR resolution pipeline replaces this at MVP.
+## TODO(MVP): replace with real PranaGrid resolution pipeline.
 func _on_combat_started(_is_boss: bool) -> void:
 	var effect: SpellEffect = SpellEffect.new()
 	effect.primary_type = 0            # Ashfire

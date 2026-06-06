@@ -4,6 +4,7 @@
 ##   AC-SC-01: IDLE → READY on _on_combo_resolved with valid primary_type while in combat
 ##   AC-SC-06: preparation_started resets _state=IDLE, _combo_index=0, _current_spell_effect=null
 ##   AC-SC-24: _on_combo_resolved with primary_type == -1 stays IDLE, push_error called
+##             (push_error is unassertable via GdUnit4 v6.1.3 — state is the observable contract)
 ##   ADR-0009: get_stat_bonus returns 0.0 when cache null; returns cached value when set
 ##
 ## Setup pattern:
@@ -57,6 +58,7 @@ func test_sce_idle_to_ready_on_combo_resolved_with_valid_primary_type() -> void:
 
 	assert_int(sce._state).is_equal(sce.SCEState.READY)
 	assert_int(sce._combo_index).is_equal(0)
+	assert_bool(sce._current_spell_effect != null).is_true()
 
 	_teardown_sce(sce)
 
@@ -86,7 +88,7 @@ func test_sce_idle_to_ready_with_verdant_primary_type() -> void:
 	sce._on_combo_resolved(se)
 
 	assert_int(sce._state).is_equal(sce.SCEState.READY)
-	assert_bool(sce._current_spell_effect != null).is_true()
+	assert_object(sce._current_spell_effect).is_not_null()
 	assert_int(sce._current_spell_effect.primary_type).is_equal(4)
 
 	_teardown_sce(sce)
@@ -126,6 +128,8 @@ func test_sce_preparation_started_clears_in_combat_flag() -> void:
 
 	assert_bool(sce._in_combat).is_false()
 	assert_int(sce._state).is_equal(sce.SCEState.IDLE)
+	assert_int(sce._combo_index).is_equal(0)
+	assert_bool(sce._current_spell_effect == null).is_true()
 
 	_teardown_sce(sce)
 
@@ -177,5 +181,25 @@ func test_sce_get_stat_bonus_returns_value_from_cached_spell_effect() -> void:
 	assert_float(sce.get_stat_bonus(&"ASH_DMG")).is_equal_approx(5.0, 0.001)
 	assert_float(sce.get_stat_bonus(&"FROST_DMG")).is_equal_approx(3.0, 0.001)
 	assert_float(sce.get_stat_bonus(&"NONEXISTENT")).is_equal_approx(0.0, 0.001)
+
+	_teardown_sce(sce)
+
+
+# ── Re-resolution edge case ───────────────────────────────────────────────────
+
+## GIVEN SC&E already in READY with an Ashfire SpellEffect
+## WHEN _on_combo_resolved called again with a different SpellEffect (Verdant)
+## THEN cache is replaced, _state remains READY, _combo_index resets to 0
+func test_sce_combo_resolved_when_already_ready_replaces_cache() -> void:
+	var sce = _make_sce()
+	sce._on_combat_started(false)
+	sce._on_combo_resolved(_make_spell_effect(0))  # Ashfire — enters READY
+
+	var se2: SpellEffect = _make_spell_effect(4)   # Verdant — re-resolution
+	sce._on_combo_resolved(se2)
+
+	assert_int(sce._state).is_equal(sce.SCEState.READY)
+	assert_int(sce._combo_index).is_equal(0)
+	assert_int(sce._current_spell_effect.primary_type).is_equal(4)
 
 	_teardown_sce(sce)

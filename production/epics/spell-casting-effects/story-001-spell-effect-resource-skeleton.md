@@ -1,7 +1,7 @@
 # Story 001: SpellEffect Resource, Stub CR, and SC&E Autoload Skeleton
 
 > **Epic**: Spell Casting & Effects
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~2 hours
@@ -130,7 +130,7 @@
 **Story Type**: Logic
 **Required evidence**: `tests/unit/spell-casting-effects/sce_skeleton_test.gd` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] 9/9 PASSED — GdUnit4 v6.1.3, Godot 4.6.2, 0 orphans (2026-06-06)
 
 ---
 
@@ -138,3 +138,14 @@
 
 - Depends on: WaveManager S3-07 DONE (confirms Autoload chain up to #7 stable); GameStateManager Story 001 DONE (preparation_started, combat_started signals)
 - Unlocks: Story 002 (needs SC&E state machine + _in_combat flag to implement cast gating)
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-06
+**Criteria**: 3/3 passing (AC-SC-01, AC-SC-06, AC-SC-24)
+**Deviations**:
+- ADVISORY: `aggregate_stat_bonus` untyped `Dictionary` (not `Dictionary[StringName, float]`) — `@export` typed-dict serialization unreliable in Godot 4.x; untyped confirmed correct by GDScript specialist; `get_stat_bonus()` enforces float return at call site
+- ADVISORY: `_exit_tree()` disconnect guards present on Autoload-to-Autoload connections (not required by ADR-0003 Rule 4 but retained for editor hot-reload safety)
+**Test Evidence**: Logic — `tests/unit/spell-casting-effects/sce_skeleton_test.gd` — 9/9 PASSED (GdUnit4 v6.1.3, Godot 4.6.2, 0 orphans)
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS (R-1 null guard + 5 test improvements applied)
