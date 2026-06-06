@@ -35,11 +35,13 @@ func _teardown_sce(sce: Node) -> void:
 	sce.free()
 
 
-## Builds a minimal SpellEffect with the given primary_type and combo_attack_count.
-func _make_spell_effect(pt: int, combo_count: int = 1) -> SpellEffect:
+## Builds a minimal SpellEffect with the given primary_type, combo_attack_count, and tier.
+## [param tier] must have enough ATTACK_DATA entries to cover the combo_count.
+## Default tier=1 gives one entry; set tier=N for combo_count=N.
+func _make_spell_effect(pt: int, combo_count: int = 1, tier: int = 1) -> SpellEffect:
 	var se: SpellEffect = SpellEffect.new()
 	se.primary_type = pt
-	se.primary_tier = 1
+	se.primary_tier = tier
 	se.base_damage_modifier = 1.0
 	se.combo_attack_count = combo_count
 	se.aggregate_stat_bonus = {}
@@ -114,7 +116,7 @@ func test_sce_cast_rejected_when_cast_lock_timer_nonzero_combo_index_unchanged()
 ## contract (combo_index advances) without relying on headless input frames.
 func test_sce_combo_index_advances_on_successive_casts_within_window() -> void:
 	var sce = _make_sce()
-	_ready_sce_with_effect(sce, _make_spell_effect(3, 3))  # Deepfrost T3 — combo_attack_count=3
+	_ready_sce_with_effect(sce, _make_spell_effect(3, 3, 3))  # Deepfrost T3 — tier=3, combo_attack_count=3
 
 	# First cast (direct call bypasses headless is_action_just_pressed limitation)
 	sce._trigger_cast()

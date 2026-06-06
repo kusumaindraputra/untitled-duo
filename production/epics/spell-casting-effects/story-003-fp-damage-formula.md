@@ -1,12 +1,12 @@
 # Story 003: FP Damage Formula, Targeting, and Status Stubs
 
 > **Epic**: Spell Casting & Effects
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~3 hours
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: —
+> **Last Updated**: 2026-06-06
 
 ## Context
 
@@ -293,3 +293,17 @@ _fire_attack(current_index)
 
 - Depends on: Story 001 DONE (SpellEffect Resource, _current_spell_effect, state machine); Story 002 DONE (_trigger_cast() hook exists, float accumulators in place)
 - Unlocks: Story 004 (integration test requires full damage chain working end-to-end)
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-06
+**Criteria**: 11/11 automated passing; AC-SC-07 and AC-SC-09 DEFERRED [M] Manual
+**Deviations**:
+  - Step 9 elemental affiliation: int comparison vs PranaCatalog.get_type() — enum ints are 1:1; PranaCatalog unavailable headless; MVP migration planned (EA&W)
+  - apply_status not called: FP field-write stubs per GDD Rule 8; wired at MVP per ADR-0011
+  - apply_damage element = DamageClass.NONE: SC&E owns Step 9 multiplier to prevent H&D double-application; MVP migration when H&D elemental pipeline lands
+  - TR-SC-004 _rng @export: @export removed (Godot Inspector serialization issue for Variant fields); seam functional via plain var
+  - ATTACK_DATA FP inline const: documented; Resource migration at MVP
+**Test Evidence**: Logic — tests/unit/spell-casting-effects/damage_formula_test.gd — 18/18 PASSED; 33/33 full SC&E suite PASSED (GdUnit4 v6.1.3, Godot 4.6.2)
+**Code Review**: Complete — APPROVED after 9 required+suggestion fixes (2026-06-06)

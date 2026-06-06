@@ -31,6 +31,29 @@
 ##   - _trigger_cast(): advance _combo_index, emit cast_hit_started and
 ##     chain_index_changed (TR-SC-006, TR-SC-008)
 ##
+## Responsibilities (Story 003 — FP damage formula, targeting, and status stubs):
+##   - ATTACK_DATA inline constant: tier_attack_modifier per type/tier/index
+##   - Injectable seams: _rng, _health_and_damage (Variant), _status_effects
+##     (Variant), _override_target, _fayde_ref
+##   - _fire_attack(): Formula 3 (Steps 1–10); GDD Rule 7
+##   - _apply_fp_status_stubs(): Formula 7 field-write stubs (GDD Rule 8)
+##   - _fire_secondary_effect(): stub for tier_attack_modifier == 0.0 cases
+##   - _select_primary_target(): physics ray for real game (headless-incompatible)
+##
+## Story 003 deviations (approved 2026-06-06):
+##   Step 9: uses int comparison (enemy_affiliation == pt) instead of
+##     PranaCatalog.get_type(pt).damage_class — DamageClass enum values are 1:1
+##     with primary_type integers. PranaCatalog requires a live Autoload (breaks
+##     headless tests). Flagged for EA&W migration at MVP per GDD note.
+##   apply_status(): NOT called in _fire_attack at FP scope. GDD Rule 8 specifies
+##     field-write stubs only (target.set()) at FP — SEM is not wired to enemies
+##     at FP. apply_status() wired at MVP per ADR-0011.
+##   apply_damage() element param: GameEnums.DamageClass.NONE (not the spell's
+##     actual element). SC&E owns the elemental multiplier at Step 9 to avoid
+##     double-application by H&D's future elemental pipeline (ADR-0007). Once
+##     H&D's elemental multiplier is implemented at MVP, Step 9 must be removed
+##     and the correct DamageClass passed here instead.
+##
 ## Registration: Autoload #9 in project.godot (ADR-0002).
 ## No class_name — Godot 4 rejects class_name matching the Autoload node name.
 ## Access: SpellCastingEffects.get_stat_bonus(&"ASH_DMG")
@@ -72,6 +95,63 @@ const ASHFIRE_CAST_LOCK_DURATION: float = 0.20
 ## Seconds the player has to press the next chain attack before the chain resets. (TR-SC-002)
 const COMBO_CONTINUATION_WINDOW: float = 2.0
 
+## Reference damage constant for all spell calculations (GDD Formula 1).
+## Tuning knob: safe range 10–30. At 20, Ashfire T1 deals round(20×1.25×1.00)=25.
+const BASE_SPELL_DAMAGE: float = 20.0
+
+## Attack data per [primary_type][primary_tier][attack_index].
+## Key "modifier" = tier_attack_modifier used in Formula 3 Step 4.
+## FP inline — migrate to Resource at MVP (TR-SC-003).
+const ATTACK_DATA: Dictionary = {
+	0: {  # Ashfire — base_damage_modifier = 1.25
+		1: [{"modifier": 1.00}],
+		2: [{"modifier": 1.00}, {"modifier": 1.25}],
+		3: [{"modifier": 1.00}, {"modifier": 1.25}, {"modifier": 1.50}],
+	},
+	1: {  # Voidblue — base_damage_modifier = 0.90
+		1: [{"modifier": 1.00}],
+		2: [{"modifier": 1.00}, {"modifier": 1.10}],
+		3: [{"modifier": 1.00}, {"modifier": 1.10}, {"modifier": 1.30}],
+	},
+	2: {  # Stormgold — base_damage_modifier = 1.15
+		1: [{"modifier": 1.00}],
+		2: [{"modifier": 1.00}, {"modifier": 1.20}],
+		3: [{"modifier": 1.00}, {"modifier": 1.20}, {"modifier": 1.00}],
+	},
+	3: {  # Deepfrost — base_damage_modifier = 0.80
+		1: [{"modifier": 1.00}],
+		2: [{"modifier": 1.00}, {"modifier": 0.80}],
+		3: [{"modifier": 1.00}, {"modifier": 0.80}, {"modifier": 0.00}],  # T3 index 2 = glacial field
+	},
+	4: {  # Verdant — base_damage_modifier = 0.70
+		1: [{"modifier": 1.00}],
+		2: [{"modifier": 1.00}, {"modifier": 0.00}],  # T2 index 1 = SELF shield pulse
+		3: [{"modifier": 1.00}, {"modifier": 0.00}, {"modifier": 1.20}],
+	},
+}
+
+
+# ── Injectable seams (Story 003) ──────────────────────────────────────────────
+
+## RandomNumberGenerator for crit rolls. Auto-created in _ready(); assign directly
+## in tests for deterministic results (GDD Acceptance Criteria test harness requirement).
+## Not @export — RandomNumberGenerator is not a Resource/Node; Godot 4.6 parse error.
+var _rng: RandomNumberGenerator = null
+
+## HealthAndDamage Autoload reference. Set in _ready(); injectable for tests
+## without H&D Autoload being live (same Variant pattern as SEM._health_and_damage).
+var _health_and_damage: Variant = null
+
+## StatusEffectsManager Autoload reference. Set in _ready(); injectable for tests.
+var _status_effects: Variant = null
+
+## When non-null, bypasses _select_primary_target() — tests set this to a MockEnemy.
+## Set to null in production (ray cast is used). Never persists across tests.
+var _override_target: Node = null
+
+## Cached reference to Fayde (player node). Resolved in _ready() via player group.
+var _fayde_ref: Node = null
+
 
 # ── Private state ─────────────────────────────────────────────────────────────
 
@@ -104,6 +184,18 @@ func _ready() -> void:
 		var ev := InputEventKey.new()
 		ev.keycode = KEY_SPACE
 		InputMap.action_add_event(&"cast", ev)
+	# Injectable seam initialisation — only set if not already injected by a test.
+	# _rng is typed as RandomNumberGenerator; tests may assign a seeded real RNG for
+	# deterministic rolls. Duck-typed Variant injection (like _health_and_damage) is
+	# not needed here because RandomNumberGenerator's randf() cannot be safely overridden
+	# in GDScript subclasses (warning-as-error in Godot 4.6).
+	if _rng == null:
+		_rng = RandomNumberGenerator.new()
+	if _health_and_damage == null:
+		_health_and_damage = HealthAndDamage
+	if _status_effects == null:
+		_status_effects = StatusEffectsManager
+	_fayde_ref = get_tree().get_first_node_in_group(&"player")
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	GameStateManager.combat_started.connect(_on_combat_started)
 	CombinationResolution.combo_resolved.connect(_on_combo_resolved)
@@ -144,16 +236,20 @@ func _process(delta: float) -> void:
 			_trigger_cast()
 
 
-## Fires a single chain attack: advances _combo_index, emits signals, sets timers. (TR-SC-006, TR-SC-008)
-## Story 003 will inject _fire_attack() here — for Story 002 this is state advancement only.
+## Fires a single chain attack: advances _combo_index, calls _fire_attack,
+## emits signals, and sets timers. (TR-SC-006, TR-SC-008)
 func _trigger_cast() -> void:
 	if _current_spell_effect == null:
 		return
 	var combo_count: int = _current_spell_effect.combo_attack_count
-	# Story 003 will implement _fire_attack() here
-	# For Story 002: advance state only; no apply_damage yet
+
 	_combo_index += 1
 	chain_index_changed.emit(_combo_index, combo_count)
+
+	# Story 003: fire the attack for the just-advanced index.
+	# current_index is _combo_index - 1 because _combo_index was already incremented above.
+	var current_index: int = _combo_index - 1
+	_fire_attack(current_index)
 
 	var lock_dur: float = ASHFIRE_CAST_LOCK_DURATION if _current_spell_effect.primary_type == GameEnums.DamageClass.FIRE \
 		else CAST_LOCK_DURATION
@@ -161,7 +257,153 @@ func _trigger_cast() -> void:
 	_cast_lock_timer = lock_dur
 	_state = SCEState.CAST_LOCKED
 	_combo_window_timer = COMBO_CONTINUATION_WINDOW
-	# Final hit in chain — combo reset handled in Story 003
+
+
+# ── Damage formula (Story 003) ────────────────────────────────────────────────
+
+## Executes Formula 3 for one attack in the chain. (GDD Rule 7, TR-SC-003)
+##
+## [param attack_index] is zero-based: 0 = first attack, 1 = second, etc.
+## Precondition: _combo_index must already be incremented before this call
+## (as done by _trigger_cast()). Step 8 ASH_CRIT guard reads _combo_index == 1
+## to detect "first attack" — callers that invoke _fire_attack() directly must
+## pre-set _combo_index accordingly.
+func _fire_attack(attack_index: int) -> void:
+	var se: SpellEffect = _current_spell_effect
+	var tier: int = se.primary_tier
+	var pt: int = se.primary_type
+
+	if attack_index >= ATTACK_DATA[pt][tier].size():
+		push_error("SpellCastingEffects._fire_attack(): attack_index %d out of bounds for type %d tier %d (max %d)" % [attack_index, pt, tier, ATTACK_DATA[pt][tier].size() - 1])
+		return
+	var attack_entry: Dictionary = ATTACK_DATA[pt][tier][attack_index]
+	var tier_mod: float = attack_entry["modifier"]
+
+	# tier_attack_modifier == 0.0 guard: skip damage chain entirely; fire secondary only.
+	# Covers Verdant T2/T3 SELF shield pulse and Deepfrost T3 glacial field (GDD Edge Cases).
+	if tier_mod == 0.0:
+		_fire_secondary_effect(pt, tier, attack_index)
+		return
+
+	# Select target. _override_target is non-null only in tests; production uses ray cast.
+	var target: Node = _override_target if _override_target != null else _select_primary_target()
+
+	# No-target path: combo index has already advanced; no damage or status (GDD Edge Case 1).
+	if target == null:
+		return
+
+	# Step 1 — flat stat bonus (type-conditional; only Ashfire and Deepfrost get flat bonuses).
+	var flat_stat: float = 0.0
+	if pt == 0:
+		flat_stat = se.aggregate_stat_bonus.get(&"ASH_DMG", 0.0)
+	elif pt == 3:
+		flat_stat = se.aggregate_stat_bonus.get(&"FROST_DMG", 0.0)
+
+	# Step 2 — effective base damage.
+	var eff_base: float = BASE_SPELL_DAMAGE + flat_stat
+
+	# Step 3 — base_damage_modifier (burn_bonus via Ashfire NP — empty at FP; cap at 1.40).
+	var eff_mod: float = clampf(se.base_damage_modifier, 0.0, 1.40)
+
+	# Step 4 — core damage.
+	var raw: float = eff_base * eff_mod * tier_mod
+
+	# Step 5 — Shatter (ADR-0011): delegates to SEM.
+	# At FP: check_and_apply_shatter returns raw unchanged (has_status returns false for stubs).
+	raw = _status_effects.check_and_apply_shatter(target, raw)
+
+	# Step 6 — Follow-Through: always 0.0 at FP (_followthrough_window not implemented at FP).
+	# When _followthrough_window is added: if _followthrough_window > 0.0 → raw *= (1.30 + bonus).
+
+	# Step 7 — Blind bonus.
+	# At FP: has_status always returns false for field-write stubs — bonus inert.
+	if _status_effects.has_status(target, GameEnums.BaseStatus.BLIND):
+		raw *= (1.0 + se.aggregate_stat_bonus.get(&"VOID_DMG_VS_BLIND", 0.0))
+
+	# Step 8 — ASH_CRIT (first chain attack only; any primary type).
+	# _combo_index == 1 here means this is the first press (incremented before _fire_attack).
+	if _combo_index == 1:
+		var ash_crit: float = se.aggregate_stat_bonus.get(&"ASH_CRIT", 0.0)
+		if ash_crit > 0.0 and _rng.randf() < ash_crit:
+			raw *= 1.50
+
+	# Step 9 — Elemental affiliation [FP inline — remove at MVP when EA&W implements this].
+	# Step 9 — Elemental affiliation [FP inline — remove at MVP when EA&W implements this].
+	# Deviation: uses int comparison (enemy_affiliation == pt) instead of
+	# PranaCatalog.get_type(pt).damage_class. DamageClass enum values (FIRE=0,
+	# SHADOW=1, LIGHTNING=2, ICE=3, NATURE=4) are 1:1 with primary_type integers.
+	# PranaCatalog requires a live Autoload unavailable in headless tests.
+	# Approved 2026-06-06; see file header for full note.
+	var raw_affiliation = target.get(&"prana_affiliation")
+	var enemy_affiliation: int = raw_affiliation if raw_affiliation != null else GameEnums.DamageClass.NONE
+	if pt != GameEnums.DamageClass.NONE and enemy_affiliation == pt:
+		raw *= 2.0
+
+	# Step 10 — deliver damage through Health & Damage (ADR-0007).
+	# element = DamageClass.NONE: SC&E owns the elemental multiplier above (Step 9)
+	# to prevent double-application once H&D's elemental pipeline lands at MVP.
+	# See file header deviation note for the migration plan.
+	_health_and_damage.apply_damage(target, raw, GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
+
+	# Emit spell_hit_element for CombatHUD damage-number coloring (GDD Rule 1, B-1).
+	spell_hit_element.emit(target, pt)
+
+	# FP status field-write stubs (GDD Rule 8 — field writes only; SEM not wired at FP).
+	_apply_fp_status_stubs(target, pt, se)
+
+
+## Writes FP status stub fields to [param target] per GDD Rule 8 Formula 7.
+##
+## These are field-write stubs only — no Enemy AI behavior reads them at FP scope,
+## and StatusEffectsManager is not wired to them. They reserve the interface for MVP.
+## Uses target.set() to avoid GDScript type errors on nodes without these fields.
+func _apply_fp_status_stubs(target: Node, pt: int, se: SpellEffect) -> void:
+	match pt:
+		0:  # Ashfire — STATUS_BURN stub
+			target.set(&"status_burned", true)
+		1:  # Voidblue — STATUS_BLIND stub
+			var blind_dur: float = 2.0 + se.aggregate_stat_bonus.get(&"VOID_BLIND_DUR", 0.0)
+			target.set(&"status_blinded_timer", blind_dur)
+		2:  # Stormgold — STATUS_STUN stub
+			var stun_dur: float = 0.8 + se.aggregate_stat_bonus.get(&"STORM_STUN_DUR", 0.0)
+			target.set(&"status_stun_timer", stun_dur)
+		3:  # Deepfrost — STATUS_FREEZE stub
+			var freeze_dur: float = 2.0 + se.aggregate_stat_bonus.get(&"FROST_FREEZE_DUR", 0.0)
+			target.set(&"status_freeze_timer", freeze_dur)
+		4:  # Verdant — STATUS_REGEN stub (applies to Fayde, not target; field reserved for MVP)
+			pass  # Regen is on Fayde — handled by Verdant NP rules (not in FP scope at Story 003)
+
+
+## Stub for tier_attack_modifier == 0.0 secondary effects (Verdant T2 shield pulse,
+## Deepfrost T3 glacial field). Logs a warning — these effects are out of FP scope.
+func _fire_secondary_effect(pt: int, tier: int, attack_index: int) -> void:
+	push_warning(
+		"SpellCastingEffects._fire_secondary_effect(): secondary effect not implemented at FP "
+		+ "(type=%d tier=%d index=%d). No crash — field reserved for MVP." % [pt, tier, attack_index]
+	)
+
+
+## Selects a primary target via physics ray cast (real game only — headless-incompatible).
+## Returns null if no enemy is hit within cast range or if the player node is missing.
+## Tests bypass this entirely via _override_target.
+func _select_primary_target() -> Node:
+	if _fayde_ref == null:
+		_fayde_ref = get_tree().get_first_node_in_group(&"player")
+	if _fayde_ref == null:
+		return null
+	var space: PhysicsDirectSpaceState2D = get_viewport().get_world_2d().direct_space_state
+	var origin: Vector2 = _fayde_ref.global_position
+	var facing: Vector2 = _fayde_ref.get(&"_facing_direction") if _fayde_ref.get(&"_facing_direction") != null else Vector2.RIGHT
+	var cast_range: float = 80.0 if _current_spell_effect != null and _current_spell_effect.primary_type == 0 \
+		else 150.0
+	var query := PhysicsRayQueryParameters2D.create(origin, origin + facing * cast_range)
+	var result: Dictionary = space.intersect_ray(query)
+	if result.is_empty():
+		return null
+	var collider: Node = result.get("collider")
+	if collider != null and collider.is_in_group(&"enemy"):
+		return collider
+	return null
 
 
 # ── Public API ────────────────────────────────────────────────────────────────

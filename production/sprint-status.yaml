@@ -14,7 +14,7 @@ goal: "Implement remaining First Playable systems and validate the fun hypothesi
 start: "2026-06-04"
 end: "2026-06-17"
 generated: "2026-06-03"
-updated: "2026-06-06"  # S3-07 done (35/35 tests); S3-08 in-progress (stories 001+002 Complete)
+updated: "2026-06-06"  # S3-07 done (35/35 tests); S3-08 done (all 3 SC&E stories, 33/33 tests)
 
 stories:
   - id: "S3-01"
@@ -93,12 +93,12 @@ stories:
     name: "Create + Implement minimal SpellCastingEffects"
     file: "production/epics/spell-casting-effects/story-*.md"
     priority: must-have
-    status: in-progress
+    status: done
     owner: ""
     estimate_days: 2.0
     blocker: ""
-    completed: ""
-    note: "Stories 001+002 Complete 2026-06-06. Story 003 (FP Damage Formula, Targeting, Status Stubs) remaining."
+    completed: "2026-06-06"
+    note: "All 3 stories Complete 2026-06-06. 33/33 tests passing. 5 tech-debt items logged."
 
   - id: "S3-09"
     name: "Create + Implement minimal CombatHUD"
