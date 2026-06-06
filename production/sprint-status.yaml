@@ -14,7 +14,7 @@ goal: "Implement remaining First Playable systems and validate the fun hypothesi
 start: "2026-06-04"
 end: "2026-06-17"
 generated: "2026-06-03"
-updated: "2026-06-06"  # S3-07 done (35/35 tests); S3-08 done (all 3 SC&E stories, 33/33 tests)
+updated: "2026-06-06"  # S3-07 done (35/35 tests); S3-08 done (all 4 SC&E stories, 36/36 tests)
 
 stories:
   - id: "S3-01"
@@ -98,7 +98,7 @@ stories:
     estimate_days: 2.0
     blocker: ""
     completed: "2026-06-06"
-    note: "All 3 stories Complete 2026-06-06. 33/33 tests passing. 5 tech-debt items logged."
+    note: "All 4 stories Complete 2026-06-06. 36/36 tests passing (unit + integration). 5 tech-debt items logged."
 
   - id: "S3-09"
     name: "Create + Implement minimal CombatHUD"

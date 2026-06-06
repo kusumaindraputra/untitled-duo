@@ -1,12 +1,12 @@
 # Story 004: FP Integration Test
 
 > **Epic**: Spell Casting & Effects
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Estimate**: ~1 hour
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: —
+> **Last Updated**: 2026-06-06
 
 ## Context
 
@@ -33,9 +33,9 @@
 
 *Sprint S3-08 criteria verified end-to-end:*
 
-- [ ] **AC-WES-INT-01** — Full cast flow: `preparation_started` → `combo_resolved` → SC&E transitions to READY; `combat_started` received; cast input → `HealthAndDamage.apply_damage` called; `cast_hit_started` emitted with non-zero lock duration
-- [ ] **AC-WES-INT-02** — Elemental affiliation 2× verified end-to-end: MockEnemy with `prana_affiliation = DamageClass.FIRE`; Ashfire T1 SpellEffect injected → `apply_damage` raw_damage ≈ 50.0 (25 × 2.0)
-- [ ] **AC-WES-INT-03** — `preparation_started` resets SC&E to IDLE: after a full cast sequence, `preparation_started` fires → `_state == IDLE`, `_current_spell_effect == null`, `_combo_index == 0`
+- [x] **AC-WES-INT-01** — Full cast flow: `preparation_started` → `combo_resolved` → SC&E transitions to READY; `combat_started` received; cast input → `HealthAndDamage.apply_damage` called; `cast_hit_started` emitted with non-zero lock duration
+- [x] **AC-WES-INT-02** — Elemental affiliation 2× verified end-to-end: MockEnemy with `prana_affiliation = DamageClass.FIRE`; Ashfire T1 SpellEffect injected → `apply_damage` raw_damage ≈ 50.0 (25 × 2.0)
+- [x] **AC-WES-INT-03** — `preparation_started` resets SC&E to IDLE: after a full cast sequence, `preparation_started` fires → `_state == IDLE`, `_current_spell_effect == null`, `_combo_index == 0`
 
 ---
 
@@ -108,7 +108,7 @@ func _teardown_sce(sce: Node) -> void:
 **Story Type**: Integration
 **Required evidence**: `tests/integration/spell-casting-effects/spell_casting_integration_test.gd` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] `tests/integration/spell-casting-effects/spell_casting_integration_test.gd` — 3/3 PASSED (GdUnit4 v6.1.3, Godot 4.6.2, 2026-06-06)
 
 ---
 
@@ -117,3 +117,13 @@ func _teardown_sce(sce: Node) -> void:
 - Depends on: Story 003 DONE (damage formula implemented; full SC&E working end-to-end)
 - Unlocks: None — this is the final SC&E story for FP scope. Epic complete when this story is Done.
   S3-09 (CombatHUD) and S3-10 (RunManager) are unblocked after this story.
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-06
+**Criteria**: 3/3 passing (AC-WES-INT-01, AC-WES-INT-02, AC-WES-INT-03 — all auto-verified)
+**Deviations**: None — implementation matches story spec and implementation notes exactly
+**Test Evidence**: Integration test at `tests/integration/spell-casting-effects/spell_casting_integration_test.gd` — 3/3 PASSED; 36/36 full SC&E suite PASSED (GdUnit4 v6.1.3, Godot 4.6.2, 0 errors, 0 orphans)
+**Code Review**: Complete — approved with suggestions (lean mode)
+**Key finding**: `MockHD`/`MockSEM` as plain inner classes default to `RefCounted` — do NOT call `.free()` on them; `MockEnemy extends Node` requires explicit `.free()`
