@@ -23,6 +23,8 @@ GameStateManager="*res://src/core/game_state_manager.gd"
 SceneManager="*res://src/core/scene_manager.gd"
 HealthAndDamage="*res://src/systems/health_and_damage.gd"
 StatusEffectsManager="*res://src/systems/status_effects_manager.gd"
+CombinationResolution="*res://src/systems/combination_resolution.gd"
+SpellCastingEffects="*res://src/systems/spell_casting_effects.gd"
 
 [editor_plugins]
 
