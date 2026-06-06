@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/spell-casting-effects.md
 > **Architecture Module**: `src/systems/spell_casting_effects.gd` (Autoload #9)
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories spell-casting-effects`
+> **Stories**: 4 stories (created 2026-06-06)
 
 ## Overview
 
@@ -39,6 +39,15 @@ This epic is complete when:
 - All acceptance criteria from `design/gdd/spell-casting-effects.md` are verified
 - All Logic and Integration stories have passing test files in `tests/`
 
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | SpellEffect Resource, Stub CR, and SC&E Autoload Skeleton | Logic | Ready | ADR-0009 |
+| 002 | Cast Input, Float Accumulators, and Chain Timing | Logic | Ready | ADR-0004 |
+| 003 | FP Damage Formula, Targeting, and Status Stubs | Logic | Ready | ADR-0011 |
+| 004 | FP Integration Test | Integration | Ready | ADR-0003 |
+
 ## Next Step
 
-Run `/create-stories spell-casting-effects` to break this epic into implementable stories.
+Run `/story-readiness production/epics/spell-casting-effects/story-001-spell-effect-resource-skeleton.md` then `/dev-story` to begin implementation.

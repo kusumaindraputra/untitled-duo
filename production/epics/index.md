@@ -13,7 +13,7 @@ Engine: Godot 4.6
 | [Health & Damage](health-damage/EPIC.md) | Core | HealthAndDamage (Autoload #6) | design/gdd/health-damage.md | 5 stories | Ready |
 | [Prana Grid](prana-grid/EPIC.md) | Core | PranaGrid | design/gdd/prana-grid.md | Not yet created | Ready ⚠️ HIGH ENGINE RISK |
 | [Combination Resolution](combination-resolution/EPIC.md) | Core | CombinationResolution (Autoload #8) | design/gdd/combination-resolution.md | Not yet created | Ready |
-| [Spell Casting & Effects](spell-casting-effects/EPIC.md) | Core | SpellCastingEffects (Autoload #9) | design/gdd/spell-casting-effects.md | Not yet created | Ready |
+| [Spell Casting & Effects](spell-casting-effects/EPIC.md) | Core | SpellCastingEffects (Autoload #9) | design/gdd/spell-casting-effects.md | 4 stories | Ready |
 | [Status Effects](status-effects/EPIC.md) | Core | StatusEffectsManager (Autoload #7) | design/gdd/status-effects.md | 5 stories | Ready |
 | [Enemy Instance](enemy-instance/EPIC.md) | Core | EnemyInstance | design/gdd/enemy-ai.md | 6 stories | Ready |
 | [WaveManager](wave-manager/EPIC.md) | Feature | WaveManager | design/gdd/wave-encounter-system.md | 4 stories | Ready |
