@@ -23,6 +23,14 @@
 ##   - Implement get_stat_bonus() as sole stat query interface (ADR-0009)
 ##   - Disconnect from all signals in _exit_tree() (ADR-0003 Rule 4)
 ##
+## Responsibilities (Story 002 — cast input and chain timing):
+##   - Register "cast" action in InputMap if not already present
+##   - Float accumulator timers: _cast_lock_timer, _combo_window_timer (ADR-0004)
+##   - _process(delta): decrement timers, handle CAST_LOCKED → CHAINING/READY
+##     transitions, poll cast input when READY or CHAINING (TR-SC-002)
+##   - _trigger_cast(): advance _combo_index, emit cast_hit_started and
+##     chain_index_changed (TR-SC-006, TR-SC-008)
+##
 ## Registration: Autoload #9 in project.godot (ADR-0002).
 ## No class_name — Godot 4 rejects class_name matching the Autoload node name.
 ## Access: SpellCastingEffects.get_stat_bonus(&"ASH_DMG")
@@ -53,6 +61,18 @@ signal cast_hit_started(lock_duration: float)
 signal chain_index_changed(combo_index: int, combo_attack_count: int)
 
 
+# ── Constants ─────────────────────────────────────────────────────────────────
+
+## Default cast lock duration after each hit (all Prana types except Ashfire). (TR-SC-002)
+const CAST_LOCK_DURATION: float = 0.12
+
+## Extended cast lock for Ashfire — dance identity requires longer recovery. (TR-SC-002)
+const ASHFIRE_CAST_LOCK_DURATION: float = 0.20
+
+## Seconds the player has to press the next chain attack before the chain resets. (TR-SC-002)
+const COMBO_CONTINUATION_WINDOW: float = 2.0
+
+
 # ── Private state ─────────────────────────────────────────────────────────────
 
 ## Current operative state.
@@ -68,11 +88,22 @@ var _current_spell_effect: SpellEffect = null
 ## Required so _on_combo_resolved can guard the IDLE→READY transition.
 var _in_combat: bool = false
 
+## Counts down after each hit; blocks cast input when > 0. (ADR-0004, TR-SC-002)
+var _cast_lock_timer: float = 0.0
+
+## Counts down between chain presses; resets to COMBO_CONTINUATION_WINDOW on each cast. (ADR-0004, TR-SC-002)
+var _combo_window_timer: float = 0.0
+
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 func _ready() -> void:
 	process_mode = PROCESS_MODE_PAUSABLE
+	if not InputMap.has_action(&"cast"):
+		InputMap.add_action(&"cast")
+		var ev := InputEventKey.new()
+		ev.keycode = KEY_SPACE
+		InputMap.action_add_event(&"cast", ev)
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	GameStateManager.combat_started.connect(_on_combat_started)
 	CombinationResolution.combo_resolved.connect(_on_combo_resolved)
@@ -86,6 +117,54 @@ func _exit_tree() -> void:
 		GameStateManager.combat_started.disconnect(_on_combat_started)
 	if CombinationResolution.combo_resolved.is_connected(_on_combo_resolved):
 		CombinationResolution.combo_resolved.disconnect(_on_combo_resolved)
+
+
+# ── Frame update ──────────────────────────────────────────────────────────────
+
+## Drives all SC&E float accumulator timers per ADR-0004.
+## Handles CAST_LOCKED expiry, combo window expiry, and cast input polling. (TR-SC-002)
+func _process(delta: float) -> void:
+	if _cast_lock_timer > 0.0:
+		_cast_lock_timer -= delta
+		if _cast_lock_timer <= 0.0:
+			_cast_lock_timer = 0.0
+			if _state == SCEState.CAST_LOCKED:
+				_state = SCEState.CHAINING if _combo_index > 0 else SCEState.READY
+
+	if _state == SCEState.CHAINING:
+		_combo_window_timer -= delta
+		if _combo_window_timer <= 0.0:
+			# Combo window expired — reset chain to READY
+			_combo_index = 0
+			_state = SCEState.READY
+			chain_index_changed.emit(0, _current_spell_effect.combo_attack_count if _current_spell_effect else 0)
+
+	if (_state == SCEState.READY or _state == SCEState.CHAINING) and _cast_lock_timer <= 0.0:
+		if Input.is_action_just_pressed(&"cast"):
+			_trigger_cast()
+
+
+## Fires a single chain attack: advances _combo_index, emits signals, sets timers. (TR-SC-006, TR-SC-008)
+## Story 003 will inject _fire_attack() here — for Story 002 this is state advancement only.
+func _trigger_cast() -> void:
+	if _current_spell_effect == null:
+		return
+	var combo_count: int = _current_spell_effect.combo_attack_count
+	# Story 003 will implement _fire_attack() here
+	# For Story 002: advance state only; no apply_damage yet
+	_combo_index += 1
+	chain_index_changed.emit(_combo_index, combo_count)
+
+	var lock_dur: float = ASHFIRE_CAST_LOCK_DURATION if _current_spell_effect.primary_type == 0 \
+		else CAST_LOCK_DURATION
+	cast_hit_started.emit(lock_dur)
+	_cast_lock_timer = lock_dur
+	_state = SCEState.CAST_LOCKED
+	_combo_window_timer = COMBO_CONTINUATION_WINDOW
+
+	if _combo_index >= combo_count:
+		# Final attack in chain — Story 003 handles reset after lock expires
+		pass
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -108,6 +187,8 @@ func _on_preparation_started(_idx: int, _rem: int) -> void:
 	_combo_index = 0
 	_in_combat = false
 	_current_spell_effect = null
+	_cast_lock_timer = 0.0
+	_combo_window_timer = 0.0
 
 
 ## Marks SC&E as in-combat so the next combo_resolved can transition to READY.
