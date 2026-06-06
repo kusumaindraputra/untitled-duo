@@ -25,6 +25,7 @@ HealthAndDamage="*res://src/systems/health_and_damage.gd"
 StatusEffectsManager="*res://src/systems/status_effects_manager.gd"
 CombinationResolution="*res://src/systems/combination_resolution.gd"
 SpellCastingEffects="*res://src/systems/spell_casting_effects.gd"
+RunManager="*res://src/systems/run_manager.gd"
 
 [editor_plugins]
 

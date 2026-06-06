@@ -1,12 +1,12 @@
 # Story 001: RunManager Autoload — Run Lifecycle and get_run_data()
 
 > **Epic**: RunManagement
-> **Status**: Ready
+> **Status**: Done
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: ~1.5 hours
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: —
+> **Last Updated**: 2026-06-06
 
 ## Context
 
@@ -33,18 +33,18 @@
 
 *From GDD `design/gdd/run-management.md`, scoped to this story:*
 
-- [ ] **AC-RM-01** — GIVEN `run_started` fires, WHEN RunManager processes it, THEN `run_active = true`, `run_outcome = NONE`, `waves_completed = 0`
-- [ ] **AC-RM-02** — GIVEN `run_started` fires while `run_active` is already `true`, WHEN processed, THEN fields reset (`run_active=true`, `run_outcome=NONE`, `waves_completed=0`) AND `push_error()` called with message containing `"[RunManager]"`
-- [ ] **AC-RM-03** — GIVEN a run is active, WHEN `wave_ended` fires 3 times, THEN `waves_completed = 3` AND `get_run_data()["waves_completed"] == 3`
-- [ ] **AC-RM-04** — GIVEN a run is active and `run_outcome = NONE`, WHEN `room_cleared` fires, THEN `run_outcome = WIN` and `run_active` remains `true`; second `room_cleared` keeps `run_outcome = WIN` (idempotent, no error)
-- [ ] **AC-RM-05** — GIVEN `run_outcome = WIN` (from `room_cleared`), WHEN `run_ended(win: true)` fires, THEN `run_active = false` and `run_outcome = WIN`
-- [ ] **AC-RM-06** — GIVEN `run_outcome = NONE` (no `room_cleared` fired), WHEN `run_ended(win: false)` fires, THEN `run_active = false` and `run_outcome = LOSS`
-- [ ] **AC-RM-07** — GIVEN `run_outcome = WIN` (from `room_cleared`), WHEN `run_ended(win: false)` fires, THEN `run_active = false` AND `run_outcome` remains `WIN` — Rule 7 conditional guard does NOT overwrite WIN with LOSS
-- [ ] **AC-RM-08** — GIVEN `run_active = false`, WHEN `run_ended` fires, THEN `push_error()` called with message containing `"[RunManager]"` AND `run_active` remains `false`
-- [ ] **AC-RM-09** — GIVEN `run_ended` has fired, WHEN `get_run_data()` called, THEN returned Dictionary has keys `"run_active"`, `"run_outcome"`, `"waves_completed"` with finalized values
-- [ ] **AC-RM-10** — GIVEN `run_active = true` (mid-run), WHEN `get_run_data()` called, THEN `run_active = true` and `run_outcome = NONE` in returned dict
-- [ ] **AC-RM-11** — GIVEN `get_run_data()` returns a Dictionary, WHEN caller modifies any field, THEN RunManager's internal fields are unchanged (copy semantics)
-- [ ] **AC-RM-12** — GIVEN `wave_ended` fires while `run_active = false`, WHEN processed, THEN `waves_completed` incremented AND `push_error()` called with `"[RunManager]"`
+- [x] **AC-RM-01** — GIVEN `run_started` fires, WHEN RunManager processes it, THEN `run_active = true`, `run_outcome = NONE`, `waves_completed = 0`
+- [x] **AC-RM-02** — GIVEN `run_started` fires while `run_active` is already `true`, WHEN processed, THEN fields reset (`run_active=true`, `run_outcome=NONE`, `waves_completed=0`) AND `push_error()` called with message containing `"[RunManager]"`
+- [x] **AC-RM-03** — GIVEN a run is active, WHEN `wave_ended` fires 3 times, THEN `waves_completed = 3` AND `get_run_data()["waves_completed"] == 3`
+- [x] **AC-RM-04** — GIVEN a run is active and `run_outcome = NONE`, WHEN `room_cleared` fires, THEN `run_outcome = WIN` and `run_active` remains `true`; second `room_cleared` keeps `run_outcome = WIN` (idempotent, no error)
+- [x] **AC-RM-05** — GIVEN `run_outcome = WIN` (from `room_cleared`), WHEN `run_ended(win: true)` fires, THEN `run_active = false` and `run_outcome = WIN`
+- [x] **AC-RM-06** — GIVEN `run_outcome = NONE` (no `room_cleared` fired), WHEN `run_ended(win: false)` fires, THEN `run_active = false` and `run_outcome = LOSS`
+- [x] **AC-RM-07** — GIVEN `run_outcome = WIN` (from `room_cleared`), WHEN `run_ended(win: false)` fires, THEN `run_active = false` AND `run_outcome` remains `WIN` — Rule 7 conditional guard does NOT overwrite WIN with LOSS
+- [x] **AC-RM-08** — GIVEN `run_active = false`, WHEN `run_ended` fires, THEN `push_error()` called with message containing `"[RunManager]"` AND `run_active` remains `false`
+- [x] **AC-RM-09** — GIVEN `run_ended` has fired, WHEN `get_run_data()` called, THEN returned Dictionary has keys `"run_active"`, `"run_outcome"`, `"waves_completed"` with finalized values
+- [x] **AC-RM-10** — GIVEN `run_active = true` (mid-run), WHEN `get_run_data()` called, THEN `run_active = true` and `run_outcome = NONE` in returned dict
+- [x] **AC-RM-11** — GIVEN `get_run_data()` returns a Dictionary, WHEN caller modifies any field, THEN RunManager's internal fields are unchanged (copy semantics)
+- [x] **AC-RM-12** — GIVEN `wave_ended` fires while `run_active = false`, WHEN processed, THEN `waves_completed` incremented AND `push_error()` called with `"[RunManager]"`
 
 ---
 
@@ -171,7 +171,7 @@ Or use the pattern established in prior stories (capture error via signal watche
 **Story Type**: Logic
 **Required evidence**: `tests/unit/run-management/run_manager_test.gd` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] 13/13 PASSED — GdUnit4 v6.1.3, Godot 4.6.2, 0 orphans, 0 failures (2026-06-06)
 
 ---
 
