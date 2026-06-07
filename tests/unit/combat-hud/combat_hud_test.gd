@@ -260,3 +260,113 @@ func test_mid_tween_rapid_hit_starts_from_current_value() -> void:
 
 	_teardown_fayde(fayde)
 	_teardown_hud(hud)
+
+
+# ── AC-HUD-04: Zone CAREFUL → amber bar modulate and label color ──────────────
+
+## GIVEN CombatHUD in tree; zone = FULL (default)
+## WHEN player_hp_zone_changed(HPZone.CAREFUL) emits
+## THEN hp_bar.modulate == Color("#FFA500") AND hp_label font_color == Color("#FFA500")
+func test_zone_careful_applies_amber_color_to_bar_and_label() -> void:
+	var hud: Node = _make_hud()
+
+	HealthAndDamage.player_hp_zone_changed.emit(GameEnums.HPZone.CAREFUL)
+
+	assert_bool(hud.hp_bar.modulate == Color("#FFA500")).is_true()
+	assert_bool(hud.hp_label.get_theme_color(&"font_color") == Color("#FFA500")).is_true()
+
+	_teardown_hud(hud)
+
+
+# ── AC-HUD-05: Zone DESPERATE → red bar modulate and label color ──────────────
+
+## GIVEN CombatHUD in tree; zone = CAREFUL
+## WHEN player_hp_zone_changed(HPZone.DESPERATE) emits
+## THEN hp_bar.modulate == Color("#FF3333") AND hp_label font_color == Color("#FF3333")
+func test_zone_desperate_applies_red_color_to_bar_and_label() -> void:
+	var hud: Node = _make_hud()
+
+	HealthAndDamage.player_hp_zone_changed.emit(GameEnums.HPZone.CAREFUL)
+	HealthAndDamage.player_hp_zone_changed.emit(GameEnums.HPZone.DESPERATE)
+
+	assert_bool(hud.hp_bar.modulate == Color("#FF3333")).is_true()
+	assert_bool(hud.hp_label.get_theme_color(&"font_color") == Color("#FF3333")).is_true()
+
+	_teardown_hud(hud)
+
+
+# ── AC-HUD-06: Zone FULL from DESPERATE → warm white bar, white label ─────────
+
+## GIVEN zone = DESPERATE (red modulate)
+## WHEN player_hp_zone_changed(HPZone.FULL) emits
+## THEN hp_bar.modulate == Color("#F5F0E8") AND hp_label font_color == Color("#FFFFFF")
+func test_zone_full_from_desperate_applies_warm_white_to_bar_and_white_to_label() -> void:
+	var hud: Node = _make_hud()
+
+	HealthAndDamage.player_hp_zone_changed.emit(GameEnums.HPZone.DESPERATE)
+	HealthAndDamage.player_hp_zone_changed.emit(GameEnums.HPZone.FULL)
+
+	assert_bool(hud.hp_bar.modulate == Color("#F5F0E8")).is_true()
+	assert_bool(hud.hp_label.get_theme_color(&"font_color") == Color("#FFFFFF")).is_true()
+
+	_teardown_hud(hud)
+
+
+# ── AC-HUD-23: Heal tint reverts to DESPERATE zone color (not warm white) ─────
+
+## GIVEN zone = DESPERATE (red modulate; _current_zone set internally)
+## WHEN health_restored(fayde, 6, 26) emits (green tint applied) AND _process(0.21) expires tint
+## THEN hp_bar.modulate == Color("#FF3333") (DESPERATE red — NOT warm white)
+func test_heal_tint_reverts_to_desperate_zone_color_not_warm_white() -> void:
+	var hud: Node = _make_hud()
+	var fayde: MockFayde = _make_fayde()
+
+	# Set zone to DESPERATE so _current_zone is tracked internally
+	HealthAndDamage.player_hp_zone_changed.emit(GameEnums.HPZone.DESPERATE)
+	# Set bar value below max so health_restored routing doesn't no-op
+	hud.hp_bar.value = 20.0
+	# Emit heal — green tint applied, _tint_timer starts
+	HealthAndDamage.health_restored.emit(fayde, 6, 26)
+	# Advance past HEAL_TINT_DURATION (0.20s) — tint timer expires, _revert_zone_color() fires
+	hud._process(0.21)
+
+	assert_bool(hud.hp_bar.modulate == Color("#FF3333")).is_true()
+
+	_teardown_fayde(fayde)
+	_teardown_hud(hud)
+
+
+# ── AC-HUD-25: Zone exit from DESPERATE stops pulse and resets scale ──────────
+
+## GIVEN zone = DESPERATE (pulse is active; is_pulse_active() == true)
+## WHEN player_hp_zone_changed(HPZone.CAREFUL) emits
+## THEN is_pulse_active() == false AND hp_bar.scale == Vector2(1.0, 1.0)
+func test_zone_exit_from_desperate_stops_pulse_and_resets_scale() -> void:
+	var hud: Node = _make_hud()
+
+	HealthAndDamage.player_hp_zone_changed.emit(GameEnums.HPZone.DESPERATE)
+	# Pulse tween is valid immediately after creation (before any _process)
+	assert_bool(hud.is_pulse_active()).is_true()
+
+	HealthAndDamage.player_hp_zone_changed.emit(GameEnums.HPZone.CAREFUL)
+
+	assert_bool(hud.is_pulse_active()).is_false()
+	assert_bool(hud.hp_bar.scale == Vector2(1.0, 1.0)).is_true()
+
+	_teardown_hud(hud)
+
+
+# ── Dead-state guard prevents pulse on DESPERATE zone signal after death ────────
+
+## GIVEN player_died fired (_dead == true; any prior pulse killed)
+## WHEN player_hp_zone_changed(HPZone.DESPERATE) fires
+## THEN is_pulse_active() == false (dead guard fires before _start_pulse)
+func test_dead_state_prevents_pulse_on_desperate_zone() -> void:
+	var hud: Node = _make_hud()
+
+	HealthAndDamage.player_died.emit()
+	HealthAndDamage.player_hp_zone_changed.emit(GameEnums.HPZone.DESPERATE)
+
+	assert_bool(hud.is_pulse_active()).is_false()
+
+	_teardown_hud(hud)

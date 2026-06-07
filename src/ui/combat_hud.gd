@@ -89,6 +89,10 @@ var _tint_timer: float = 0.0
 ## Defaults to FULL; updated by _on_hp_zone_changed.
 var _current_zone: GameEnums.HPZone = GameEnums.HPZone.FULL
 
+## Looping Tween that scales hp_bar between 1.0 and 1.03 while zone is DESPERATE (AC-HUD-24).
+## Null when no pulse is running. Killed and set to null in _stop_pulse().
+var _pulse_tween: Tween = null
+
 
 # ── Built-in virtual methods ──────────────────────────────────────────────────
 
@@ -189,6 +193,27 @@ func _revert_zone_color() -> void:
 	_on_hp_zone_changed(_current_zone)
 
 
+## Starts the looping DESPERATE pulse animation on hp_bar.scale (AC-HUD-24).
+## No-op if a valid pulse tween is already running (idempotent).
+func _start_pulse() -> void:
+	if _pulse_tween and _pulse_tween.is_valid():
+		return
+	hp_bar.pivot_offset = hp_bar.size / 2.0  # center pivot so scale expands symmetrically
+	_pulse_tween = create_tween().set_loops()
+	_pulse_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	_pulse_tween.tween_property(hp_bar, "scale", Vector2(1.03, 1.03), 0.4)
+	_pulse_tween.tween_property(hp_bar, "scale", Vector2(1.0, 1.0), 0.4)
+
+
+## Stops the DESPERATE pulse animation and snaps hp_bar.scale back to identity (AC-HUD-25).
+## No-op if no pulse is currently running.
+func _stop_pulse() -> void:
+	if _pulse_tween and _pulse_tween.is_valid():
+		_pulse_tween.kill()
+		_pulse_tween = null
+	hp_bar.scale = Vector2(1.0, 1.0)
+
+
 ## Frees all floating damage label nodes spawned during combat.
 ## Stub — implemented in Story 003.
 func _free_all_damage_labels() -> void:
@@ -202,6 +227,14 @@ func _free_all_damage_labels() -> void:
 ## [param _damage] the final damage value to display.
 func _spawn_damage_label_for_enemy(_target: Node, _damage: int) -> void:
 	pass  # Story 003
+
+
+# ── Public methods ────────────────────────────────────────────────────────────
+
+## Returns true if the DESPERATE pulse animation is currently running.
+## Used by tests and Story 004 chain-dot indicator.
+func is_pulse_active() -> bool:
+	return _pulse_tween != null and _pulse_tween.is_valid()
 
 
 # ── Signal callbacks ──────────────────────────────────────────────────────────
@@ -241,6 +274,7 @@ func _on_player_died() -> void:
 	_dead = true
 	_hp_timer = 0.0
 	_tint_timer = 0.0
+	_stop_pulse()
 	hp_bar.value = 0.0
 	hp_label.text = "0 / %d" % FAYDE_MAX_HP
 
@@ -256,12 +290,15 @@ func _on_hp_zone_changed(zone: GameEnums.HPZone) -> void:
 		GameEnums.HPZone.FULL:
 			hp_bar.modulate = HP_COLOR_FULL
 			hp_label.add_theme_color_override(&"font_color", HP_COLOR_LABEL_FULL)
+			_stop_pulse()
 		GameEnums.HPZone.CAREFUL:
 			hp_bar.modulate = HP_COLOR_CAREFUL
 			hp_label.add_theme_color_override(&"font_color", HP_COLOR_CAREFUL)
+			_stop_pulse()
 		GameEnums.HPZone.DESPERATE:
 			hp_bar.modulate = HP_COLOR_DESPERATE
 			hp_label.add_theme_color_override(&"font_color", HP_COLOR_DESPERATE)
+			_start_pulse()
 		_:
 			push_warning("CombatHUD: unhandled HPZone value %d — zone color not updated" % zone)
 
@@ -273,6 +310,7 @@ func _on_run_started() -> void:
 	_dead = false
 	_hp_timer = 0.0
 	_tint_timer = 0.0
+	_stop_pulse()
 	_current_zone = GameEnums.HPZone.FULL
 	hp_bar.value = FAYDE_MAX_HP
 	hp_label.text = "%d / %d" % [FAYDE_MAX_HP, FAYDE_MAX_HP]

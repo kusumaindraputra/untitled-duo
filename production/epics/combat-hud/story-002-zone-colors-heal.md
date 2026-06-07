@@ -1,12 +1,12 @@
 # Story 002: HP Zone Colors and Heal Tween
 
 > **Epic**: CombatHUD
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: UI
 > **Estimate**: ~1 hour
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: —
+> **Last Updated**: 2026-06-07 (Complete)
 
 ## Context
 
@@ -162,3 +162,14 @@ Unit tests in `tests/unit/combat-hud/combat_hud_test.gd` strongly recommended.
 
 - Depends on: Story 001 DONE (HP bar skeleton, `_current_zone` state var, `_dead` guard live)
 - Unlocks: Story 003 — Floating Damage Numbers
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-07
+**Criteria**: 5/6 passing; AC-HUD-24 [M] DEFERRED (manual visual verification; pulse confirmed active via `is_pulse_active() == true` in AC-HUD-25 precondition)
+**Deviations**:
+- ADVISORY: `hp_bar.pivot_offset` set lazily in `_start_pulse()` — returns `Vector2.ZERO` headless; visually correct in real Godot session
+- ADVISORY: Pulse scale (`1.03`) and duration (`0.4`s) hardcoded — existing project pattern; EnemyStats migration in tech-debt-register
+**Test Evidence**: UI story — 16/16 unit tests pass (`tests/unit/combat-hud/combat_hud_test.gd`); manual walkthrough evidence deferred (ADVISORY)
+**Code Review**: APPROVED WITH SUGGESTIONS — pivot_offset fix and dead+DESPERATE pulse test applied; 16/16 clean re-run
