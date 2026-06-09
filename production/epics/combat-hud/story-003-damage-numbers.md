@@ -1,12 +1,12 @@
 # Story 003: Floating Damage Numbers
 
 > **Epic**: CombatHUD
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Logic
 > **Estimate**: ~1.5 hours
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: —
+> **Last Updated**: 2026-06-07
 
 ## Context
 
@@ -31,13 +31,13 @@
 
 *From GDD `design/gdd/combat-hud.md`, scoped to this story:*
 
-- [ ] **AC-HUD-13** — GIVEN `damage_taken(enemy_node, 25, 10)` fires; WHEN processed; THEN a Label node exists as CanvasLayer child; text == "25"
-- [ ] **AC-HUD-14** — GIVEN: emit `spell_hit_element(enemy_node, 2)` (Stormgold) AND `damage_taken(enemy_node, 23, 12)` before `await get_tree().process_frame`; WHEN frame processed; THEN spawned label color == `Color("#FFCC00")` (Stormgold)
-- [ ] **AC-HUD-15** — GIVEN: emit `spell_hit_element(enemy_A, 2)` AND `damage_taken(enemy_B, 16, 10)` (enemy_B ≠ enemy_A) before next frame; WHEN frame processed; THEN label for enemy_B color == `Color("#FFFFFF")` (element signal for enemy_A not applied to enemy_B)
-- [ ] **AC-HUD-16** — GIVEN `damage_taken(enemy_node, 16, 10)` fires; no `spell_hit_element` for this target in same frame; WHEN label spawns; THEN label color == `Color("#FFFFFF")`
-- [ ] **AC-HUD-17** — GIVEN `damage_taken(fayde_node, 20, 80)` fires; WHEN label spawns; THEN label color == `Color("#AAAAAA")`; label position derived from `fayde_node.global_position`
-- [ ] **AC-HUD-18** — GIVEN 12 Label nodes active as CanvasLayer children; `damage_taken` fires; WHEN new label spawns; THEN oldest label was freed BEFORE new spawn; active label count ≤ 12
-- [ ] **AC-HUD-19** — GIVEN 5 Label nodes active (below cap of 12); `damage_taken` fires; WHEN new label spawns; THEN no existing label freed; CanvasLayer has 6 label children
+- [x] **AC-HUD-13** — GIVEN `damage_taken(enemy_node, 25, 10)` fires; WHEN processed; THEN a Label node exists as CanvasLayer child; text == "25"
+- [x] **AC-HUD-14** — GIVEN: emit `spell_hit_element(enemy_node, 2)` (Stormgold) AND `damage_taken(enemy_node, 23, 12)` before `await get_tree().process_frame`; WHEN frame processed; THEN spawned label color == `Color("#FFCC00")` (Stormgold)
+- [x] **AC-HUD-15** — GIVEN: emit `spell_hit_element(enemy_A, 2)` AND `damage_taken(enemy_B, 16, 10)` (enemy_B ≠ enemy_A) before next frame; WHEN frame processed; THEN label for enemy_B color == `Color("#FFFFFF")` (element signal for enemy_A not applied to enemy_B)
+- [x] **AC-HUD-16** — GIVEN `damage_taken(enemy_node, 16, 10)` fires; no `spell_hit_element` for this target in same frame; WHEN label spawns; THEN label color == `Color("#FFFFFF")`
+- [x] **AC-HUD-17** — GIVEN `damage_taken(fayde_node, 20, 80)` fires; WHEN label spawns; THEN label color == `Color("#AAAAAA")`; label position derived from `fayde_node.global_position`
+- [x] **AC-HUD-18** — GIVEN 12 Label nodes active as CanvasLayer children; `damage_taken` fires; WHEN new label spawns; THEN oldest label was freed BEFORE new spawn; active label count ≤ 12
+- [x] **AC-HUD-19** — GIVEN 5 Label nodes active (below cap of 12); `damage_taken` fires; WHEN new label spawns; THEN no existing label freed; CanvasLayer has 6 label children
 
 ---
 
@@ -186,7 +186,7 @@ For same-frame correlation (AC-HUD-14): emit `spell_hit_element` then `damage_ta
 **Story Type**: Logic
 **Required evidence**: `tests/unit/combat-hud/combat_hud_test.gd` — must exist and pass (BLOCKING)
 
-**Status**: [ ] Not yet created
+**Status**: [x] PASSED — 23/23 tests (7 new AC-HUD-13–19 + 16 regression), GdUnit4 v6.1.3, Godot 4.6.2, 0 errors, 0 orphans
 
 ---
 

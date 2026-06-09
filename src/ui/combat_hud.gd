@@ -48,6 +48,18 @@ const HP_COLOR_LABEL_FULL: Color = Color("#FFFFFF")
 ## Heal tint color applied to hp_bar.modulate immediately on health_restored.
 const HEAL_TINT_COLOR: Color = Color(0.6, 1.0, 0.6, 1.0)
 
+## Maximum floating damage labels allowed on screen simultaneously (TR-CH-006).
+const DAMAGE_LABEL_POOL_CAP: int = 12
+
+## Vertical distance a damage label floats upward during animation (pixels).
+const DAMAGE_FLOAT_DISTANCE: float = 32.0
+
+## Total duration of the float + fade animation in seconds.
+const DAMAGE_FLOAT_DURATION: float = 0.8
+
+## Seconds after animation start before the fade-out begins.
+const DAMAGE_FADE_START: float = 0.5
+
 
 # ── Public child node references (created in _ready() for testability) ────────
 
@@ -92,6 +104,13 @@ var _current_zone: GameEnums.HPZone = GameEnums.HPZone.FULL
 ## Looping Tween that scales hp_bar between 1.0 and 1.03 while zone is DESPERATE (AC-HUD-24).
 ## Null when no pulse is running. Killed and set to null in _stop_pulse().
 var _pulse_tween: Tween = null
+
+## Per-frame element map: target Node → prana_type_id received via spell_hit_element.
+## Consumed once by _on_damage_taken and erased per-target (TR-CH-005).
+var _pending_element: Dictionary = {}
+
+## Active floating damage label pool. Filtered on each spawn call for eviction (TR-CH-006).
+var _active_damage_labels: Array[Label] = []
 
 
 # ── Built-in virtual methods ──────────────────────────────────────────────────
@@ -214,19 +233,57 @@ func _stop_pulse() -> void:
 	hp_bar.scale = Vector2(1.0, 1.0)
 
 
-## Frees all floating damage label nodes spawned during combat.
-## Stub — implemented in Story 003.
+## Frees all active floating damage label nodes and clears the pool.
+## Called on run_started to reset the HUD for a new run.
 func _free_all_damage_labels() -> void:
-	pass  # Story 003
+	for l: Label in _active_damage_labels:
+		if is_instance_valid(l):
+			l.free()
+	_active_damage_labels.clear()
 
 
-## Spawns a floating damage label anchored to [param target]'s screen position.
-## Stub — implemented in Story 003.
+## Spawns a floating damage label at [param target]'s screen position.
 ##
-## [param _target] the enemy node that was hit.
-## [param _damage] the final damage value to display.
-func _spawn_damage_label_for_enemy(_target: Node, _damage: int) -> void:
-	pass  # Story 003
+## [param target] the hit node; world position read if it is a Node2D.
+## [param damage] integer damage value shown as label text.
+## [param color] font color: element color, grey (#AAAAAA) for Fayde, white (#FFFFFF) default.
+func _spawn_damage_label(target: Node, damage: int, color: Color) -> void:
+	_evict_if_at_cap()
+	var label := Label.new()
+	label.text = str(damage)
+	label.add_theme_color_override(&"font_color", color)
+	var world_pos: Vector2 = (target as Node2D).global_position if target is Node2D else Vector2.ZERO
+	var vp_pos: Vector2 = get_viewport().get_canvas_transform() * world_pos
+	label.position = vp_pos + Vector2(randf_range(-8.0, 8.0), 0.0)
+	add_child(label)
+	_active_damage_labels.append(label)
+	_animate_damage_label(label)
+
+
+## Evicts the oldest label from the pool when at capacity (TR-CH-006).
+## Filters freed instances first, then pops front if pool is at or above DAMAGE_LABEL_POOL_CAP.
+func _evict_if_at_cap() -> void:
+	_active_damage_labels = _active_damage_labels.filter(
+		func(l: Label) -> bool: return is_instance_valid(l)
+	)
+	if _active_damage_labels.size() >= DAMAGE_LABEL_POOL_CAP:
+		var oldest: Label = _active_damage_labels.pop_front()
+		if is_instance_valid(oldest):
+			oldest.free()
+
+
+## Starts the float-up and fade-out tween animation for a damage label (GDD Formula 2).
+##
+## Position floats up DAMAGE_FLOAT_DISTANCE pixels over DAMAGE_FLOAT_DURATION seconds.
+## Alpha fades from 1.0 to 0.0 over the final (DAMAGE_FLOAT_DURATION - DAMAGE_FADE_START) seconds.
+## Label is freed via queue_free at animation end.
+func _animate_damage_label(label: Label) -> void:
+	var t: Tween = create_tween()
+	t.set_parallel(true)
+	t.tween_property(label, "position:y", label.position.y - DAMAGE_FLOAT_DISTANCE, DAMAGE_FLOAT_DURATION)
+	t.tween_interval(DAMAGE_FADE_START)
+	t.chain().tween_property(label, "modulate:a", 0.0, DAMAGE_FLOAT_DURATION - DAMAGE_FADE_START)
+	t.chain().tween_callback(label.queue_free)
 
 
 # ── Public methods ────────────────────────────────────────────────────────────
@@ -240,18 +297,26 @@ func is_pulse_active() -> bool:
 # ── Signal callbacks ──────────────────────────────────────────────────────────
 
 ## Handles damage_taken from HealthAndDamage.
-## Updates the HP label immediately (same frame) and starts the drain animation.
-## Enemy hits (non-player targets) always route to _spawn_damage_label_for_enemy,
-## even after death (queued spells can still land after player_died fires).
-## Player HP updates are skipped if Fayde is dead.
+## Enemy hits always spawn a floating label (even after death — in-flight spells can still land).
+## Element color from same-frame spell_hit_element overrides the default white (TR-CH-005).
+## Player HP bar updates and grey label spawn are skipped if Fayde is dead.
 func _on_damage_taken(target: Node, final_damage: int, current_hp: int) -> void:
 	if not target.is_in_group(&"player"):
-		_spawn_damage_label_for_enemy(target, final_damage)
+		if final_damage > 0:
+			var color: Color = Color("#FFFFFF")
+			if _pending_element.has(target):
+				var prana_type: PranaType = PranaCatalog.get_type(_pending_element[target])
+				if prana_type != null:
+					color = prana_type.color
+			_spawn_damage_label(target, final_damage, color)
+		_pending_element.erase(target)
 		return
 	if _dead:
 		return
 	hp_label.text = "%d / %d" % [current_hp, FAYDE_MAX_HP]
 	_start_hp_animation(float(current_hp), HP_BAR_DRAIN_DURATION)
+	if final_damage > 0:
+		_spawn_damage_label(target, final_damage, Color("#AAAAAA"))
 
 
 ## Handles health_restored from HealthAndDamage.
@@ -339,6 +404,6 @@ func _on_chain_index_changed(_combo_idx: int, _combo_count: int) -> void:
 
 
 ## Handles spell_hit_element from SpellCastingEffects.
-## Stub — damage number coloring logic implemented in Story 003.
-func _on_spell_hit_element(_target: Node, _prana_type_id: int) -> void:
-	pass  # Story 003
+## Stores the element for per-frame correlation with the subsequent damage_taken signal (TR-CH-005).
+func _on_spell_hit_element(target: Node, prana_type_id: int) -> void:
+	_pending_element[target] = prana_type_id
