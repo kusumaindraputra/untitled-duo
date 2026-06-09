@@ -109,7 +109,7 @@ stories:
     estimate_days: 1.0
     blocker: ""
     completed: ""
-    note: "4 stories created 2026-06-06 (skeleton+HP bar, zone colors, damage numbers, chain dots)"
+    note: "Stories 001-003 Complete 2026-06-09 (skeleton+HP bar, zone colors, damage numbers). Story 004 chain dots remaining."
 
   - id: "S3-10"
     name: "Create + Implement minimal RunManager"

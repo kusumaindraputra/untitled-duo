@@ -194,3 +194,14 @@ For same-frame correlation (AC-HUD-14): emit `spell_hit_element` then `damage_ta
 
 - Depends on: Story 001 DONE (CombatHUD skeleton with signal connections; `_free_all_damage_labels` stub)
 - Unlocks: Story 004 — Chain Dots
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-09
+**Criteria**: 7/7 passing
+**Deviations**:
+- ADVISORY: Labels parented to CombatHUD Control node (`self`) rather than the CanvasLayer parent. Story notes explicitly permit "add to self and accept the Control's coordinate space." `get_viewport().get_canvas_transform()` used per TR-CH-003; FP-adequate precision.
+- ADVISORY: `PranaCatalog.get_type(pt)` called in `_on_damage_taken` — reads an Autoload directly, which the Presentation manifest rule formally forbids ("signal consumer only"). Justified: PranaCatalog holds immutable color data (not mutable game state), and the story's implementation notes explicitly specify this call. Post-FP refactor option: pass color via the `spell_hit_element` signal payload instead.
+**Test Evidence**: Logic — `tests/unit/combat-hud/combat_hud_test.gd` PASSED 23/23
+**Code Review**: Complete (approved with suggestions)
