@@ -1,7 +1,7 @@
 # Story 005: Adjacency Effect Resolution
 
 > **Epic**: Combination Resolution
-> **Status**: Done
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~3 hours
@@ -174,3 +174,10 @@ func _collect_adjacency_effects(fragments: Array) -> Array:
 
 - Depends on: Story 001 DONE (AdjacencyEffect, NeighborCondition classes)
 - Unlocks: Story 006 (integration test validates the full pipeline including adjacency collection)
+
+## Completion Notes
+**Completed**: 2026-06-10
+**Criteria**: 8/8 passing
+**Deviations**: None
+**Test Evidence**: Logic — `tests/unit/combination-resolution/adjacency_resolution_test.gd` — 18/18 PASSED, 0 orphans, exit code 0
+**Code Review**: Complete
