@@ -39,3 +39,34 @@ This epic is complete when:
 ## Next Step
 
 Run `/create-stories combination-resolution` to break this epic into implementable stories.
+
+---
+
+## S3-16 QA Test Specs (pre-story; verify against story ACs after /create-stories)
+
+> **Test file**: `tests/unit/combination-resolution/combination_resolution_test.gd`
+> **Estimated count**: ~20–25 unit tests
+
+**TR-CR-001 — Autoload trigger:**
+- `combat_started.emit(false)` → `combo_resolved(spell_effect)` emitted exactly once
+
+**TR-CR-002 — Data-driven (no hardcoded rules):**
+- Two different arrangements produce different results via table lookup, not if/match on PranaType IDs
+
+**TR-CR-003 — Center slot primary type:**
+- `committed_fragments[4]` = Ashfire (0) → `spell_effect.primary_type == 0`
+- Center = Ashfire + 2 Stormgold neighbors → `spell_effect.element` or multiplier reflects neighbor modifier per table
+
+**TR-CR-004 — Emits exactly once:**
+- `combat_started` fires once → `combo_resolved` call count == 1, even if signal fires twice
+
+**TR-CR-005 — SpellEffect schema:**
+- `primary_type` set; `damage_multiplier > 0`; `element` set; `combo_attack_count >= 1`
+
+**TR-CR-006 — PranaType color from PranaCatalog:**
+- Center slot type = 2 → `spell_effect` color == `PranaCatalog.get_type(2).color` (not a hardcoded Color value)
+
+**Edge cases:**
+- Empty grid (all 9 slots null): does not crash; returns a valid fallback SpellEffect
+- All same type (9 Ashfire): valid SpellEffect, Ashfire primary type
+- Sparse array / invalid index: no index-out-of-bounds

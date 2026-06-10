@@ -54,3 +54,25 @@ This epic is complete when:
 ## Next Step
 
 Run `/story-readiness production/epics/enemy-instance/story-001-skeleton-phase-gating.md` then `/dev-story` to begin implementation.
+
+---
+
+## S3-13 Retro Fix: is_alive() Contract
+
+> **Sprint 3 backlog item** — no dedicated story file. Specs recorded here per QA plan.
+> **Test file**: `tests/unit/enemy-instance/enemy_instance_test.gd` (extend existing)
+> **Estimated new tests**: 2
+
+**Contract Test 1 — ALIVE state returns true:**
+- Given: `enemy_instance` created; `_enemy_state == ALIVE`
+- When: `enemy_instance.is_alive()` called
+- Then: returns `true`
+
+**Contract Test 2 — DEAD state returns false:**
+- Given: `enemy_instance` created; `_enemy_state` set to `DEAD`
+- When: `enemy_instance.is_alive()` called
+- Then: returns `false`
+
+**Edge case**: `is_alive()` called before `init()` — define and document the behavior, then test it.
+
+**Regression guard**: Run `enemy_instance_skeleton_test.gd` headless ×3 after fix to confirm S3-14 teardown fix has not regressed.

@@ -14,7 +14,7 @@ goal: "Implement remaining First Playable systems and validate the fun hypothesi
 start: "2026-06-04"
 end: "2026-06-17"
 generated: "2026-06-03"
-updated: "2026-06-06"  # S3-07 done; S3-08 done (36/36); S3-10 done (RunManager, 16 tests)
+updated: "2026-06-10"  # S3-03 done (QA plan refreshed); S3-09 done (CombatHUD Story 004 chain dots, 26/26 tests)
 
 stories:
   - id: "S3-01"
@@ -41,11 +41,12 @@ stories:
     name: "Run /qa-plan sprint — Sprint 3 QA plan"
     file: "production/qa/"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
-    blocker: "S3-01 must complete first"
-    completed: ""
+    blocker: ""
+    completed: "2026-06-10"
+    note: "Refreshed plan written to qa-plan-sprint-3-refresh-2026-06-10.md. CH-004 evidence file created. S3-13/S3-16 QA specs back-filled to EPIC files."
 
   - id: "S3-04"
     name: "Create stories: StatusEffects"
@@ -104,12 +105,12 @@ stories:
     name: "Create + Implement minimal CombatHUD"
     file: "production/epics/combat-hud/story-*.md"
     priority: must-have
-    status: in-progress
+    status: done
     owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: ""
-    note: "Stories 001-003 Complete 2026-06-09 (skeleton+HP bar, zone colors, damage numbers). Story 004 chain dots remaining."
+    completed: "2026-06-10"
+    note: "All 4 stories Complete 2026-06-10. 26/26 tests passing (inc. 3 new chain-dot tests)."
 
   - id: "S3-10"
     name: "Create + Implement minimal RunManager"
