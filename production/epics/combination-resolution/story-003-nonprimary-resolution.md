@@ -1,7 +1,7 @@
 # Story 003: Non-Primary Modifier Resolution
 
 > **Epic**: Combination Resolution
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~2 hours
@@ -139,7 +139,7 @@ func _build_nonprimary_modifiers(fragments: Array, primary_type: int) -> Array:
 **Story Type**: Logic
 **Required evidence**: `tests/unit/combination-resolution/nonprimary_resolution_test.gd` — must exist and pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — 10/10 PASSED, 0 orphans, exit code 0 (2026-06-10)
 
 ---
 
@@ -147,3 +147,10 @@ func _build_nonprimary_modifiers(fragments: Array, primary_type: int) -> Array:
 
 - Depends on: Story 001 DONE (NonPrimaryModifier class), Story 002 DONE (primary_type established before non-primary loop runs)
 - Unlocks: Story 004 (fills type-specific modifier field values on top of tier)
+
+## Completion Notes
+**Completed**: 2026-06-10
+**Criteria**: 5/5 passing
+**Deviations**: None
+**Test Evidence**: Logic — `tests/unit/combination-resolution/nonprimary_resolution_test.gd` — 10/10 PASSED, 0 orphans, exit code 0
+**Code Review**: Complete

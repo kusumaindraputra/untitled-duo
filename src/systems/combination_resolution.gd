@@ -22,6 +22,15 @@ const PRIMARY_T1_MAX: int = 2
 ## Tuning knob — see GDD combination-resolution.md Formula 2.
 const PRIMARY_T2_MAX: int = 5
 
+## Non-centre slot indices — slot 4 (centre) excluded. Tuning knob: NON_CENTRE_SLOTS.
+const NON_CENTRE_SLOTS: Array[int] = [0, 1, 2, 3, 5, 6, 7, 8]
+
+## All valid Prana type IDs. Iterate to build non-primary modifiers.
+const ALL_TYPES: Array[int] = [0, 1, 2, 3, 4]
+
+## Minimum effective count to reach non-primary Tier 2. Tuning knob — GDD Formula 4.
+const NP_TIER2_MIN: int = 3
+
 
 # ── Signals ───────────────────────────────────────────────────────────────────
 
@@ -98,11 +107,13 @@ func _resolve(fragments: Array) -> SpellEffect:
 	effect.primary_tier = tier
 	effect.combo_attack_count = tier
 
+	# Populate non-primary modifiers (Story 003).
+	effect.non_primary_modifiers = _build_nonprimary_modifiers(fragments, primary_type)
+
 	# Fields populated by later stories — leave at Resource defaults.
 	# base_damage_modifier = 1.0 (Story 004)
 	# aggregate_stat_bonus = {} (Story 003)
 	# primary_base_status = -1 (Story 004)
-	# non_primary_modifiers = [] (Story 003)
 	# active_adjacency_effects = [] (Story 005)
 
 	return effect
@@ -130,6 +141,64 @@ func _compute_effective_primary_count(fragments: Array, primary_type: int) -> in
 		if frag != null and frag.type_id == primary_type:
 			count += frag.level
 	return count
+
+
+## Returns the effective non-primary count for Prana type `type_t`.
+## Sums levels of all non-centre fragments whose type_id == type_t,
+## excluding fragments of the primary type (primary fragments never count as non-primary).
+##
+## fragments: Array of length 9 (nulls allowed).
+## type_t: Prana type ID being evaluated.
+## primary_type: type_id of the centre fragment (excluded from counting).
+## Returns effective count (int >= 0).
+func _compute_nonprimary_count(fragments: Array, type_t: int, primary_type: int) -> int:
+	if type_t == primary_type:
+		return 0
+	var count: int = 0
+	for i in NON_CENTRE_SLOTS:
+		var frag = fragments[i]
+		if frag != null and frag.type_id == type_t:
+			count += frag.level
+	return count
+
+
+## Maps an effective non-primary count to a tier (0 = inactive, 1 = Tier 1, 2 = Tier 2).
+## Boundary: count 0 → 0 (inactive); 1–(NP_TIER2_MIN-1) → 1; NP_TIER2_MIN+ → 2.
+##
+## effective_count: result of _compute_nonprimary_count.
+## Returns 0, 1, or 2.
+func _compute_nonprimary_tier(effective_count: int) -> int:
+	if effective_count <= 0:
+		return 0
+	elif effective_count < NP_TIER2_MIN:
+		return 1
+	else:
+		return 2
+
+
+## Builds the non_primary_modifiers array for the SpellEffect payload.
+## Iterates ALL_TYPES, skips the primary type, computes effective count and tier
+## for each, and appends a NonPrimaryModifier only when tier > 0 (i.e., active).
+## type_id and tier fields are populated; burn_bonus, window_extension, etc. are
+## left at NonPrimaryModifier defaults (populated by Story 004 payload assembly).
+##
+## fragments: Array of length 9 (nulls allowed).
+## primary_type: type_id of the centre fragment.
+## Returns Array of NonPrimaryModifier (may be empty).
+func _build_nonprimary_modifiers(fragments: Array, primary_type: int) -> Array:
+	var modifiers: Array = []
+	for t in ALL_TYPES:
+		if t == primary_type:
+			continue
+		var count: int = _compute_nonprimary_count(fragments, t, primary_type)
+		var tier: int = _compute_nonprimary_tier(count)
+		if tier == 0:
+			continue
+		var mod: NonPrimaryModifier = NonPrimaryModifier.new()
+		mod.type_id = t
+		mod.tier = tier
+		modifiers.append(mod)
+	return modifiers
 
 
 ## Maps an effective primary count to a tier (1, 2, or 3).
