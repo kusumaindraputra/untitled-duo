@@ -547,3 +547,70 @@ func test_damage_label_no_eviction_when_below_pool_cap() -> void:
 
 	_teardown_enemy(enemy)
 	_teardown_hud(hud)
+
+
+# ── AC-HUD-10: Chain dots appear with Prana color on chain_index_changed ────
+
+## GIVEN combo_resolved emitted with primary_type=2 (Stormgold)
+## WHEN chain_index_changed(0, 2) fires
+## THEN chain_dots_container visible; 2 dots; dot[0].color == Stormgold; dot[1].color == grey
+func test_chain_dots_appear_with_prana_color_on_chain_index_changed() -> void:
+	var hud: Node = _make_hud()
+
+	var effect := SpellEffect.new()
+	effect.primary_type = 2
+	CombinationResolution.combo_resolved.emit(effect)
+	SpellCastingEffects.chain_index_changed.emit(0, 2)
+
+	assert_bool(hud.chain_dots_container.visible).is_true()
+	assert_int(hud.chain_dots_container.get_child_count()).is_equal(2)
+	var dot0: ColorRect = hud.chain_dots_container.get_child(0)
+	var dot1: ColorRect = hud.chain_dots_container.get_child(1)
+	assert_bool(dot0.color == PranaCatalog.get_type(2).color).is_true()
+	assert_bool(dot1.color == Color("#888888")).is_true()
+
+	_teardown_hud(hud)
+
+
+# ── AC-HUD-11: Second chain_index_changed advances the active dot ─────────────
+
+## GIVEN combo_resolved with primary_type=0 (Ashfire); chain_index_changed(0, 2) already fired
+## WHEN chain_index_changed(1, 2) fires
+## THEN dot[1].color == Ashfire color; dot[0].color == grey
+func test_chain_dots_advance_active_dot_on_second_chain_index_changed() -> void:
+	var hud: Node = _make_hud()
+
+	var effect := SpellEffect.new()
+	effect.primary_type = 0
+	CombinationResolution.combo_resolved.emit(effect)
+	SpellCastingEffects.chain_index_changed.emit(0, 2)
+	SpellCastingEffects.chain_index_changed.emit(1, 2)
+
+	assert_int(hud.chain_dots_container.get_child_count()).is_equal(2)
+	var dot0: ColorRect = hud.chain_dots_container.get_child(0)
+	var dot1: ColorRect = hud.chain_dots_container.get_child(1)
+	assert_bool(dot1.color == PranaCatalog.get_type(0).color).is_true()
+	assert_bool(dot0.color == Color("#888888")).is_true()
+
+	_teardown_hud(hud)
+
+
+# ── AC-HUD-12: preparation_started hides chain dots ──────────────────────────
+
+## GIVEN chain dots are visible (combo_resolved + chain_index_changed fired)
+## WHEN preparation_started fires
+## THEN chain_dots_container.visible == false
+func test_preparation_started_hides_chain_dots() -> void:
+	var hud: Node = _make_hud()
+
+	var effect := SpellEffect.new()
+	effect.primary_type = 0
+	CombinationResolution.combo_resolved.emit(effect)
+	SpellCastingEffects.chain_index_changed.emit(0, 2)
+	assert_bool(hud.chain_dots_container.visible).is_true()
+
+	GameStateManager.preparation_started.emit(0, 1)
+
+	assert_bool(hud.chain_dots_container.visible).is_false()
+
+	_teardown_hud(hud)

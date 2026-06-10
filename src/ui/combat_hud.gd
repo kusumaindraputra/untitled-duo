@@ -112,6 +112,10 @@ var _pending_element: Dictionary = {}
 ## Active floating damage label pool. Filtered on each spawn call for eviction (TR-CH-006).
 var _active_damage_labels: Array[Label] = []
 
+## Primary Prana type index cached from the last combo_resolved signal.
+## -1 means no spell resolved this combat.
+var _current_primary_type: int = -1
+
 
 # ── Built-in virtual methods ──────────────────────────────────────────────────
 
@@ -127,6 +131,7 @@ func _ready() -> void:
 	GameStateManager.combat_started.connect(_on_combat_started)
 	SpellCastingEffects.chain_index_changed.connect(_on_chain_index_changed)
 	SpellCastingEffects.spell_hit_element.connect(_on_spell_hit_element)
+	CombinationResolution.combo_resolved.connect(_on_combo_resolved)
 
 
 func _process(delta: float) -> void:
@@ -167,6 +172,8 @@ func _exit_tree() -> void:
 		SpellCastingEffects.chain_index_changed.disconnect(_on_chain_index_changed)
 	if SpellCastingEffects.spell_hit_element.is_connected(_on_spell_hit_element):
 		SpellCastingEffects.spell_hit_element.disconnect(_on_spell_hit_element)
+	if CombinationResolution.combo_resolved.is_connected(_on_combo_resolved):
+		CombinationResolution.combo_resolved.disconnect(_on_combo_resolved)
 
 
 # ── Private methods ───────────────────────────────────────────────────────────
@@ -389,18 +396,40 @@ func _on_run_started() -> void:
 ## Hides the chain-dot container between waves.
 func _on_preparation_started(_idx: int, _rem: int) -> void:
 	chain_dots_container.visible = false
+	_current_primary_type = -1
 
 
 ## Handles combat_started from GameStateManager.
-## Chain dots are shown when chain_index_changed fires (Story 004).
 func _on_combat_started(_is_boss: bool) -> void:
-	pass  # Story 004 shows chain dots on first chain_index_changed
+	pass
 
 
 ## Handles chain_index_changed from SpellCastingEffects.
-## Stub — chain-dot indicator logic implemented in Story 004.
-func _on_chain_index_changed(_combo_idx: int, _combo_count: int) -> void:
-	pass  # Story 004
+## Shows chain dots and rebuilds them for the current combo state.
+func _on_chain_index_changed(combo_idx: int, combo_count: int) -> void:
+	chain_dots_container.visible = true
+	_rebuild_dots(combo_idx, combo_count)
+
+
+## Rebuilds chain dot ColorRect children to match current combo state.
+## Uses _current_primary_type (cached from combo_resolved) for active dot color.
+## Inactive dots are always Color("#888888"). Falls back to white if no type cached.
+func _rebuild_dots(active_index: int, count: int) -> void:
+	for child in chain_dots_container.get_children():
+		child.free()
+	var active_color: Color = Color.WHITE
+	if _current_primary_type >= 0:
+		active_color = PranaCatalog.get_type(_current_primary_type).color
+	for i: int in range(count):
+		var dot := ColorRect.new()
+		dot.custom_minimum_size = Vector2(6.0, 6.0)
+		dot.color = active_color if i == active_index else Color("#888888")
+		chain_dots_container.add_child(dot)
+
+
+## Caches the primary Prana type from a resolved spell for use in chain dot coloring.
+func _on_combo_resolved(spell_effect: SpellEffect) -> void:
+	_current_primary_type = spell_effect.primary_type
 
 
 ## Handles spell_hit_element from SpellCastingEffects.

@@ -1,12 +1,12 @@
 # Story 004: Chain Dots
 
 > **Epic**: CombatHUD
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Visual/Feel
 > **Estimate**: ~1 hour
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: —
+> **Last Updated**: 2026-06-10
 
 ## Context
 
@@ -144,3 +144,12 @@ Unit tests in `tests/unit/combat-hud/combat_hud_test.gd` strongly recommended.
 
 - Depends on: Story 001 DONE (skeleton, signal connections); Story 003 DONE (damage labels connected, `_current_primary_type` infrastructure)
 - Unlocks: None — this is the final CombatHUD story. Epic complete when this story is Done.
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-10
+**Criteria**: 3/4 passing (AC-HUD-26 DEFERRED — manual visual test, requires game session)
+**Deviations**: ADVISORY — `Color("#888888")` hardcoded for inactive dots; TR-CH-004 only forbids hardcoding Prana-type colors, which are correctly sourced from PranaCatalog.
+**Test Evidence**: Visual/Feel — evidence file not yet created (ADVISORY). Unit tests: `tests/unit/combat-hud/combat_hud_test.gd` (26/26 passing, 3 new chain-dot tests added).
+**Code Review**: Complete (lean mode, confirmed by developer)
