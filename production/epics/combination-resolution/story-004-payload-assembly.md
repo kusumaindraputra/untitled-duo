@@ -1,7 +1,7 @@
 # Story 004: SpellEffect Payload Assembly
 
 > **Epic**: Combination Resolution
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~2 hours
@@ -132,7 +132,7 @@ All modifier constants are `const` values — not magic numbers.
 **Story Type**: Logic
 **Required evidence**: `tests/unit/combination-resolution/payload_assembly_test.gd` — must exist and pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — 18/18 PASSED, 0 orphans, exit code 0 (2026-06-10)
 
 ---
 
@@ -140,3 +140,10 @@ All modifier constants are `const` values — not magic numbers.
 
 - Depends on: Story 001 DONE (NonPrimaryModifier, PranaFragment), Story 002 DONE (primary_type resolved), Story 003 DONE (non_primary_modifiers tier populated)
 - Unlocks: Story 005 (adjacency STAT_BONUS contributes to aggregate), Story 006 (full payload ready for integration test)
+
+## Completion Notes
+**Completed**: 2026-06-10
+**Criteria**: 3/4 passing (AC-CR-15 deferred to Story 005 per story notes)
+**Deviations**: ADVISORY — AC-CR-15 adjacency STAT_BONUS deferred; test will pass after Story 005 wires active_adjacency_effects
+**Test Evidence**: Logic — `tests/unit/combination-resolution/payload_assembly_test.gd` — 18/18 PASSED, 0 orphans, exit code 0
+**Code Review**: Complete

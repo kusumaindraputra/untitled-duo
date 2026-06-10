@@ -31,6 +31,26 @@ const ALL_TYPES: Array[int] = [0, 1, 2, 3, 4]
 ## Minimum effective count to reach non-primary Tier 2. Tuning knob — GDD Formula 4.
 const NP_TIER2_MIN: int = 3
 
+## Ashfire non-primary Tier 2 burn bonus added to base_damage_modifier.
+## Tuning knob — GDD combination-resolution.md Formula 6.
+const ASHFIRE_NP_BONUS: float = 0.15
+
+## Stormgold non-primary Tier 1 combo window extension in seconds.
+## Tuning knob — GDD combination-resolution.md Formula 6.
+const STORMGOLD_NP_WINDOW_T1: float = 0.3
+
+## Deepfrost non-primary Tier 1/2 chill slow fraction (0.0–1.0).
+## Tuning knob — GDD combination-resolution.md Formula 6.
+const CHILL_SLOW_PCT: float = 0.15
+
+## Deepfrost non-primary Tier 2 freeze duration in seconds.
+## Tuning knob — GDD combination-resolution.md Formula 6.
+const NONPRIMARY_FREEZE_DURATION: float = 1.0
+
+## Verdant non-primary Tier 2 heal amplifier multiplier.
+## Tuning knob — GDD combination-resolution.md Formula 6.
+const VERDANT_NP_HEAL_AMP: float = 1.25
+
 
 # ── Signals ───────────────────────────────────────────────────────────────────
 
@@ -85,6 +105,9 @@ func _on_combat_started(_is_boss: bool) -> void:
 ## Effective primary count is the sum of levels across all fragments whose
 ## type_id matches primary_type. That count is mapped to a tier (1/2/3).
 ## combo_attack_count mirrors primary_tier at FP scope (1:1).
+## base_damage_modifier and primary_base_status are read from PranaCatalog.
+## aggregate_stat_bonus is the additive sum of all fragment stat_property dicts.
+## Non-primary modifier fields are filled per GDD Formula 6 constants.
 ##
 ## fragments: Array of length 9; null entries represent empty slots.
 ## Returns a populated SpellEffect (caller owns it).
@@ -107,13 +130,18 @@ func _resolve(fragments: Array) -> SpellEffect:
 	effect.primary_tier = tier
 	effect.combo_attack_count = tier
 
-	# Populate non-primary modifiers (Story 003).
+	# Populate non-primary modifiers (Story 003) and fill their type fields (Story 004).
 	effect.non_primary_modifiers = _build_nonprimary_modifiers(fragments, primary_type)
+	for mod in effect.non_primary_modifiers:
+		_fill_nonprimary_modifier_fields(mod)
+
+	# Populate catalog-driven fields: base_damage_modifier and primary_base_status (Story 004).
+	_populate_from_catalog(effect, primary_type)
+
+	# Aggregate stat bonuses from all placed fragments (Story 004).
+	effect.aggregate_stat_bonus = _aggregate_stat_bonus(fragments)
 
 	# Fields populated by later stories — leave at Resource defaults.
-	# base_damage_modifier = 1.0 (Story 004)
-	# aggregate_stat_bonus = {} (Story 003)
-	# primary_base_status = -1 (Story 004)
 	# active_adjacency_effects = [] (Story 005)
 
 	return effect
@@ -179,8 +207,8 @@ func _compute_nonprimary_tier(effective_count: int) -> int:
 ## Builds the non_primary_modifiers array for the SpellEffect payload.
 ## Iterates ALL_TYPES, skips the primary type, computes effective count and tier
 ## for each, and appends a NonPrimaryModifier only when tier > 0 (i.e., active).
-## type_id and tier fields are populated; burn_bonus, window_extension, etc. are
-## left at NonPrimaryModifier defaults (populated by Story 004 payload assembly).
+## type_id and tier fields are populated; type-specific fields are left at defaults
+## and filled by _fill_nonprimary_modifier_fields() in Story 004.
 ##
 ## fragments: Array of length 9 (nulls allowed).
 ## primary_type: type_id of the centre fragment.
@@ -213,3 +241,85 @@ func _compute_primary_tier(effective_count: int) -> int:
 		return 2
 	else:
 		return 3
+
+
+## Reads base_damage_modifier and primary_base_status from PranaCatalog
+## and writes them to the SpellEffect payload (GDD Rule 11).
+##
+## Uses PranaCatalog.get_type() which returns duplicate_deep() — mutations to
+## the returned PranaType do not affect the catalog (ADR-0008).
+## If PranaCatalog returns null (not initialized or invalid id), logs an error
+## and leaves effect fields at their Resource defaults.
+##
+## effect: SpellEffect being assembled.
+## primary_type: type_id of the centre fragment.
+func _populate_from_catalog(effect: SpellEffect, primary_type: int) -> void:
+	var prana_catalog: Node = get_node_or_null("/root/PranaCatalog")
+	if not is_instance_valid(prana_catalog):
+		push_error(
+			"CombinationResolution._populate_from_catalog(): PranaCatalog Autoload not found"
+		)
+		return
+	var prana_type: PranaType = prana_catalog.get_type(primary_type)
+	if prana_type == null:
+		push_error(
+			"CombinationResolution._populate_from_catalog(): get_type(%d) returned null"
+			% primary_type
+		)
+		return
+	effect.base_damage_modifier = prana_type.base_damage_modifier
+	effect.primary_base_status = prana_type.base_status
+
+
+## Builds the aggregate_stat_bonus Dictionary by additively summing all
+## stat_property entries from every placed (non-null) fragment.
+##
+## Uses manual has()/+= loop — Dictionary.merge() overwrites existing keys
+## and is NOT additive (ADR note, story-004 implementation notes).
+## Keys are StringName stat IDs (e.g. &"ASH_DMG"); values are float deltas.
+##
+## fragments: Array of length 9 (nulls allowed).
+## Returns a Dictionary mapping StringName → float (may be empty).
+func _aggregate_stat_bonus(fragments: Array) -> Dictionary:
+	var bonus: Dictionary = {}
+	for frag in fragments:
+		if frag == null:
+			continue
+		for key in frag.stat_property:
+			if bonus.has(key):
+				bonus[key] += frag.stat_property[key]
+			else:
+				bonus[key] = frag.stat_property[key]
+	return bonus
+
+
+## Fills type-specific fields on a NonPrimaryModifier according to its
+## type_id and tier (GDD Formula 6).
+##
+## All values come from named constants — no magic numbers.
+## Fields not relevant to a given type/tier are left at NonPrimaryModifier defaults.
+##
+## Prana type ID mapping:
+##   0 = Ashfire   — T2: burn_bonus
+##   1 = Voidblue  — no non-primary modifier fields in this story's scope
+##   2 = Stormgold — T1+: window_extension; T2+: final_attack_stun
+##   3 = Deepfrost — T1+: chill_slow_pct; T2+: freeze_duration
+##   4 = Verdant   — T2+: heal_amplifier
+##
+## mod: NonPrimaryModifier with type_id and tier already set (by _build_nonprimary_modifiers).
+func _fill_nonprimary_modifier_fields(mod: NonPrimaryModifier) -> void:
+	match mod.type_id:
+		0:  # Ashfire
+			if mod.tier >= 2:
+				mod.burn_bonus = ASHFIRE_NP_BONUS
+		2:  # Stormgold
+			mod.window_extension = STORMGOLD_NP_WINDOW_T1
+			if mod.tier >= 2:
+				mod.final_attack_stun = true
+		3:  # Deepfrost
+			mod.chill_slow_pct = CHILL_SLOW_PCT
+			if mod.tier >= 2:
+				mod.freeze_duration = NONPRIMARY_FREEZE_DURATION
+		4:  # Verdant
+			if mod.tier >= 2:
+				mod.heal_amplifier = VERDANT_NP_HEAL_AMP
