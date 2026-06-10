@@ -1,7 +1,7 @@
 # Story 002: Primary Count and Tier Resolution
 
 > **Epic**: Combination Resolution
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~3 hours
@@ -140,7 +140,7 @@ At First Playable scope (PranaGrid not yet implemented), inject fragments via a 
 **Story Type**: Logic
 **Required evidence**: `tests/unit/combination-resolution/primary_resolution_test.gd` — must exist and pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — 10/10 PASSED, 0 orphans, exit code 0 (2026-06-10)
 
 ---
 
@@ -148,3 +148,12 @@ At First Playable scope (PranaGrid not yet implemented), inject fragments via a 
 
 - Depends on: Story 001 DONE (PranaFragment data model must exist)
 - Unlocks: Story 003 (non-primary uses same fragment loop), Story 004 (payload assembly needs primary_type and primary_tier)
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-10
+**Criteria**: 7/7 passing
+**Deviations**: None
+**Test Evidence**: Logic — `tests/unit/combination-resolution/primary_resolution_test.gd` — 10/10 PASSED
+**Code Review**: Skipped (lean mode)
