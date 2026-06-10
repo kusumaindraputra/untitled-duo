@@ -51,6 +51,13 @@ const NONPRIMARY_FREEZE_DURATION: float = 1.0
 ## Tuning knob — GDD combination-resolution.md Formula 6.
 const VERDANT_NP_HEAL_AMP: float = 1.25
 
+## Cardinal direction constants for adjacency neighbor lookup (GDD Rule 9).
+## Values match NeighborCondition.Direction enum entries.
+const DIRECTION_ABOVE: int = 0
+const DIRECTION_BELOW: int = 1
+const DIRECTION_LEFT: int = 2
+const DIRECTION_RIGHT: int = 3
+
 
 # ── Signals ───────────────────────────────────────────────────────────────────
 
@@ -141,8 +148,8 @@ func _resolve(fragments: Array) -> SpellEffect:
 	# Aggregate stat bonuses from all placed fragments (Story 004).
 	effect.aggregate_stat_bonus = _aggregate_stat_bonus(fragments)
 
-	# Fields populated by later stories — leave at Resource defaults.
-	# active_adjacency_effects = [] (Story 005)
+	# Collect adjacency effects from all placed fragments (Story 005).
+	effect.active_adjacency_effects = _collect_adjacency_effects(fragments)
 
 	return effect
 
@@ -323,3 +330,86 @@ func _fill_nonprimary_modifier_fields(mod: NonPrimaryModifier) -> void:
 		4:  # Verdant
 			if mod.tier >= 2:
 				mod.heal_amplifier = VERDANT_NP_HEAL_AMP
+
+
+## Returns the slot index of the cardinal neighbor in the given direction,
+## or -1 if the neighbor is out of grid bounds (GDD Rule 9).
+##
+## Uses integer division and modulo to convert a flat slot index to row/column:
+##   row = slot / 3,  col = slot % 3
+## Grid is 3×3; valid slot range is 0–8.
+##
+## slot: source slot index (0–8).
+## direction: one of DIRECTION_ABOVE / DIRECTION_BELOW / DIRECTION_LEFT / DIRECTION_RIGHT.
+## Returns neighbor slot index (0–8), or -1 when the direction leaves the grid.
+func _get_neighbor_slot(slot: int, direction: int) -> int:
+	var r: int = slot / 3
+	var c: int = slot % 3
+	match direction:
+		DIRECTION_ABOVE:
+			if r <= 0:
+				return -1
+			return slot - 3
+		DIRECTION_BELOW:
+			if r >= 2:
+				return -1
+			return slot + 3
+		DIRECTION_LEFT:
+			if c <= 0:
+				return -1
+			return slot - 1
+		DIRECTION_RIGHT:
+			if c >= 2:
+				return -1
+			return slot + 1
+	return -1
+
+
+## Returns true when the neighbor condition is satisfied for a fragment at slot.
+##
+## Out-of-bounds neighbor → false (condition unsatisfied, not an error).
+## Null neighbor slot → false (empty slot cannot satisfy any condition).
+## required_type_id == -1 → wildcard: any non-null fragment satisfies the condition.
+## Otherwise: neighbor.type_id must equal required_type_id.
+##
+## fragments: Array of length 9 (nulls allowed).
+## slot: index of the fragment whose condition is being checked (0–8).
+## condition: NeighborCondition describing direction and required type.
+## Returns true if the condition is satisfied, false otherwise.
+func _is_condition_satisfied(fragments: Array, slot: int, condition: NeighborCondition) -> bool:
+	var neighbor_slot: int = _get_neighbor_slot(slot, condition.direction)
+	if neighbor_slot == -1:
+		return false
+	var neighbor = fragments[neighbor_slot]
+	if neighbor == null:
+		return false
+	if condition.required_type_id != -1:
+		if neighbor.type_id != condition.required_type_id:
+			return false
+	return true
+
+
+## Iterates every placed fragment in the grid and collects the effect_id of each
+## AdjacencyEffect whose required_neighbors conditions are all satisfied (AND logic).
+##
+## Empty required_neighbors is vacuously satisfied — the effect always fires.
+## No deduplication: two fragments that each produce the same effect_id both
+## append to the collected array independently.
+##
+## fragments: Array of length 9 (nulls allowed).
+## Returns an Array of StringName effect IDs (may be empty).
+func _collect_adjacency_effects(fragments: Array) -> Array:
+	var collected: Array = []
+	for i in range(9):
+		var frag = fragments[i]
+		if frag == null:
+			continue
+		for adj_effect in frag.adjacency_effects:
+			var satisfied: bool = true
+			for condition in adj_effect.required_neighbors:
+				if not _is_condition_satisfied(fragments, i, condition):
+					satisfied = false
+					break
+			if satisfied:
+				collected.append(adj_effect.effect_id)
+	return collected

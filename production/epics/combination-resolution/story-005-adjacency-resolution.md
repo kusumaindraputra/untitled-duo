@@ -1,7 +1,7 @@
 # Story 005: Adjacency Effect Resolution
 
 > **Epic**: Combination Resolution
-> **Status**: Ready
+> **Status**: Done
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~3 hours
@@ -31,14 +31,14 @@
 
 *From GDD `design/gdd/combination-resolution.md` ACs CR-16 through CR-23:*
 
-- [ ] **AC-CR-16**: slot 4 = Ashfire with one adjacency effect `required_neighbors = []`, `effect_id = ADJ_DOUBLE_HIT`; all surrounding slots null; `active_adjacency_effects` contains `&"ADJ_DOUBLE_HIT"`
-- [ ] **AC-CR-17**: slot 4 with `required_neighbors = [{ABOVE, type 0}, {BELOW, type 0}]`, effect = ADJ_BURN_INTENSIFY; slot 1 (ABOVE) = Ashfire; slot 7 (BELOW) = Ashfire; `active_adjacency_effects` contains `&"ADJ_BURN_INTENSIFY"`
-- [ ] **AC-CR-18**: Same fragment as AC-CR-17 but slot 7 = null or Deepfrost; `active_adjacency_effects` does NOT contain `&"ADJ_BURN_INTENSIFY"` (partial AND not satisfied)
-- [ ] **AC-CR-19**: slot 0 (top-left corner, row 0) with `required_neighbors = [{ABOVE, type -1}]`; no row above slot 0; effect absent from `active_adjacency_effects`; no `push_error`
-- [ ] **AC-CR-20**: slot 4 with `required_neighbors = [{LEFT, type -1}]`; slot 3 = null; effect absent (null occupant does not satisfy any condition)
-- [ ] **AC-CR-21**: slot 4 with `required_neighbors = [{RIGHT, type 2}]` (requires Stormgold); slot 5 = Deepfrost; effect absent (wrong type)
-- [ ] **AC-CR-22**: slot 4 with `required_neighbors = [{RIGHT, type -1}]`; slot 5 = Deepfrost lv.1; effect present (wildcard accepts any non-null type)
-- [ ] **AC-CR-23**: slot 4 = ADJ_DOUBLE_HIT (no condition); slot 0 = Deepfrost with ADJ_STATUS_EXTEND requiring `{BELOW: any type}`; slot 3 (BELOW slot 0) = Ashfire lv.1; `active_adjacency_effects.size() == 2` containing both effects
+- [x] **AC-CR-16**: slot 4 = Ashfire with one adjacency effect `required_neighbors = []`, `effect_id = ADJ_DOUBLE_HIT`; all surrounding slots null; `active_adjacency_effects` contains `&"ADJ_DOUBLE_HIT"`
+- [x] **AC-CR-17**: slot 4 with `required_neighbors = [{ABOVE, type 0}, {BELOW, type 0}]`, effect = ADJ_BURN_INTENSIFY; slot 1 (ABOVE) = Ashfire; slot 7 (BELOW) = Ashfire; `active_adjacency_effects` contains `&"ADJ_BURN_INTENSIFY"`
+- [x] **AC-CR-18**: Same fragment as AC-CR-17 but slot 7 = null or Deepfrost; `active_adjacency_effects` does NOT contain `&"ADJ_BURN_INTENSIFY"` (partial AND not satisfied)
+- [x] **AC-CR-19**: slot 0 (top-left corner, row 0) with `required_neighbors = [{ABOVE, type -1}]`; no row above slot 0; effect absent from `active_adjacency_effects`; no `push_error`
+- [x] **AC-CR-20**: slot 4 with `required_neighbors = [{LEFT, type -1}]`; slot 3 = null; effect absent (null occupant does not satisfy any condition)
+- [x] **AC-CR-21**: slot 4 with `required_neighbors = [{RIGHT, type 2}]` (requires Stormgold); slot 5 = Deepfrost; effect absent (wrong type)
+- [x] **AC-CR-22**: slot 4 with `required_neighbors = [{RIGHT, type -1}]`; slot 5 = Deepfrost lv.1; effect present (wildcard accepts any non-null type)
+- [x] **AC-CR-23**: slot 4 = ADJ_DOUBLE_HIT (no condition); slot 0 = Deepfrost with ADJ_STATUS_EXTEND requiring `{BELOW: any type}`; slot 3 (BELOW slot 0) = Ashfire lv.1; `active_adjacency_effects.size() == 2` containing both effects
 
 ---
 
