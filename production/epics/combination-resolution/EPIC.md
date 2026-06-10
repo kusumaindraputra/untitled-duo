@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/combination-resolution.md
 > **Architecture Module**: `src/systems/combination_resolution.gd` (Autoload #8)
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories combination-resolution`
+> **Stories**: 6 stories created 2026-06-10
 
 ## Overview
 
@@ -36,9 +36,20 @@ This epic is complete when:
 - All acceptance criteria from `design/gdd/combination-resolution.md` are verified
 - All Logic stories have passing unit tests in `tests/unit/`
 
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | [PranaFragment Data Model + SpellEffect Extensions](story-001-data-model-spell-effect-extensions.md) | Logic | Ready | ADR-0008 |
+| 002 | [Primary Count and Tier Resolution](story-002-primary-resolution.md) | Logic | Ready | ADR-0003 |
+| 003 | [Non-Primary Modifier Resolution](story-003-nonprimary-resolution.md) | Logic | Ready | ADR-0003 |
+| 004 | [SpellEffect Payload Assembly](story-004-payload-assembly.md) | Logic | Ready | ADR-0008, ADR-0009 |
+| 005 | [Adjacency Effect Resolution](story-005-adjacency-resolution.md) | Logic | Ready | ADR-0003 |
+| 006 | [Signal Contract, Cache Lifecycle, Edge Cases](story-006-signal-contract-cache.md) | Integration | Ready | ADR-0003 |
+
 ## Next Step
 
-Run `/create-stories combination-resolution` to break this epic into implementable stories.
+Run `/story-readiness production/epics/combination-resolution/story-001-data-model-spell-effect-extensions.md` then `/dev-story` to begin implementation. Work through stories in order — each story's `Depends on:` field tells you what must be DONE before you can start it.
 
 ---
 

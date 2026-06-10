@@ -168,11 +168,12 @@ stories:
     name: "Create stories: CombinationResolution"
     file: "production/epics/combination-resolution/"
     priority: should-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-10"
+    note: "6 stories created (story-001 through story-006). 5 Logic + 1 Integration. 29 ACs covered."
 
   - id: "S3-16"
     name: "Implement CombinationResolution"
