@@ -147,11 +147,12 @@ stories:
     name: "Retro fix: resolve is_alive() contract (enemy_instance.gd + ADR-0011)"
     file: "src/gameplay/enemy_instance.gd"
     priority: should-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 0.25
     blocker: ""
-    completed: ""
+    completed: "2026-06-10"
+    note: "3 contract tests added (S3-13a/b/c). 36/36 enemy-instance suite passing, 0 orphans."
 
   - id: "S3-14"
     name: "Retro fix: fix flaky headless test enemy_instance_skeleton_test"

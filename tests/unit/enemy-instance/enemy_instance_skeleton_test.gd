@@ -1,6 +1,6 @@
 ## enemy_instance_skeleton_test.gd — Unit tests for EnemyInstance skeleton (Story EAI-001).
 ##
-## Coverage (10 ACs):
+## Coverage (13 ACs):
 ##   AC-EAI-01:  process_mode == PROCESS_MODE_PAUSABLE
 ##   AC-EAI-02:  child Area2D named "HitArea" exists with a CollisionShape2D child;
 ##               root node also has a CollisionShape2D direct child
@@ -12,6 +12,9 @@
 ##   AC-EAI-06:  _on_combat_started() sets _combat_active = true
 ##   AC-EAI-18:  is_in_group("enemy") returns true
 ##   AC-EAI-19:  is_in_group("player") returns false
+##   S3-13a:     is_alive() returns true when _state == CHASING (default / alive state)
+##   S3-13b:     is_alive() returns false when _state == DEAD
+##   S3-13c:     is_alive() returns true before init() — default _state is CHASING
 ##
 ## Framework: GdUnit4 v6.1.3 (extends GdUnitTestSuite)
 extends GdUnitTestSuite
@@ -251,4 +254,33 @@ func test_enemy_instance_ready_not_in_player_group() -> void:
 	assert_bool(enemy.is_in_group(&"player")).is_false()
 
 	remove_child(enemy)
+	enemy.free()
+
+
+# ── S3-13: is_alive() contract ───────────────────────────────────────────────
+
+func test_enemy_instance_is_alive_returns_true_when_chasing() -> void:
+	var enemy: EnemyInstance = _make_enemy()
+	enemy._state = EnemyInstance.EnemyState.CHASING
+
+	assert_bool(enemy.is_alive()).is_true()
+
+	enemy.free()
+
+
+func test_enemy_instance_is_alive_returns_false_when_dead() -> void:
+	var enemy: EnemyInstance = _make_enemy()
+	enemy._state = EnemyInstance.EnemyState.DEAD
+
+	assert_bool(enemy.is_alive()).is_false()
+
+	enemy.free()
+
+
+func test_enemy_instance_is_alive_returns_true_before_init() -> void:
+	# Default _state is CHASING — is_alive() must return true without init() call.
+	var enemy: EnemyInstance = _make_enemy()
+
+	assert_bool(enemy.is_alive()).is_true()
+
 	enemy.free()
