@@ -14,7 +14,7 @@ goal: "Implement remaining First Playable systems and validate the fun hypothesi
 start: "2026-06-04"
 end: "2026-06-17"
 generated: "2026-06-03"
-updated: "2026-06-10"  # S3-03 done (QA plan refreshed); S3-09 done (CombatHUD Story 004 chain dots, 26/26 tests)
+updated: "2026-06-10"  # S3-03 done (QA plan refreshed); S3-09 done (CombatHUD Story 004 chain dots, 26/26 tests); S3-16 CR story-001 done (15/15 tests)
 
 stories:
   - id: "S3-01"
@@ -179,11 +179,12 @@ stories:
     name: "Implement CombinationResolution"
     file: "production/epics/combination-resolution/story-*.md"
     priority: nice-to-have
-    status: backlog
+    status: in-progress
     owner: ""
     estimate_days: 2.0
-    blocker: "S3-15, S3-08 must complete first"
+    blocker: ""
     completed: ""
+    note: "story-001 done 2026-06-10 (15/15 tests). Stories 002-006 pending."
 
   - id: "S3-17"
     name: "Implement PranaGrid (ADR-0013 SAFE — proceed)"

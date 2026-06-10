@@ -33,3 +33,19 @@ extends Resource
 ## Untyped Dictionary (not Dictionary[StringName, float]) — typed dicts cannot
 ## be used with @export in GDScript 4.6.
 @export var aggregate_stat_bonus: Dictionary = {}
+
+## Primary Prana type's base_status from PranaCatalog (GDD Rule 11).
+## GameEnums.BaseStatus enum value. SC&E applies this on every primary attack
+## regardless of non_primary_modifiers content — see AC-CR-29.
+## -1 = unset (invalid SpellEffect).
+@export var primary_base_status: int = -1
+
+## Active non-primary type modifiers for this wave (GDD Rule 11).
+## Array[NonPrimaryModifier]. One entry per qualifying non-primary type.
+## Empty if no non-primary types meet the tier threshold.
+@export var non_primary_modifiers: Array = []
+
+## Active adjacency effects whose spatial conditions were satisfied this wave (GDD Rule 8).
+## Array[StringName] effect IDs, e.g. [&"ADJ_DOUBLE_HIT", &"ADJ_PIERCE"].
+## SpellCastingEffects applies these during chain execution.
+@export var active_adjacency_effects: Array = []

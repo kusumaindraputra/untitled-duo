@@ -1,7 +1,7 @@
 # Story 001: PranaFragment Data Model and SpellEffect Extensions
 
 > **Epic**: Combination Resolution
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: ~2 hours
@@ -147,7 +147,7 @@ extends Resource
 **Story Type**: Logic
 **Required evidence**: `tests/unit/combination-resolution/data_model_test.gd` — must exist and pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — 15/15 PASSED, 0 orphans, exit code 0 (2026-06-10)
 
 ---
 
@@ -155,3 +155,12 @@ extends Resource
 
 - Depends on: None — this is the foundation story for the CR epic
 - Unlocks: Story 002 (primary resolution), Story 003 (non-primary), Story 005 (adjacency)
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-10
+**Criteria**: 6/6 passing
+**Deviations**: ADVISORY — `.godot/global_script_class_cache.cfg` updated to register new class_name declarations (required for headless test discovery; not game logic)
+**Test Evidence**: Logic — `tests/unit/combination-resolution/data_model_test.gd` — 15/15 PASSED
+**Code Review**: Skipped (lean mode)
