@@ -38,6 +38,7 @@ func _make_catalog_with(types: Array[EnemyType]) -> Node:
 	for entry: EnemyType in types:
 		catalog._types[entry.id] = entry
 	catalog._initialized = true
+	auto_free(catalog)
 	return catalog
 
 
@@ -306,6 +307,7 @@ func test_enemy_catalog_get_type_before_initialized_returns_null() -> void:
 	# Arrange — create catalog but leave _initialized at its default (false).
 	# Untyped var: required to set _types directly before _initialized is set.
 	var catalog = EnemyCatalogScript.new()
+	auto_free(catalog)
 	catalog._types[0] = _make_enemy_type(0)
 	# _initialized deliberately NOT set to true
 
@@ -319,6 +321,7 @@ func test_enemy_catalog_get_type_before_initialized_returns_null() -> void:
 func test_enemy_catalog_get_active_types_before_initialized_returns_empty_array() -> void:
 	# Arrange
 	var catalog = EnemyCatalogScript.new()
+	auto_free(catalog)
 	catalog._types[0] = _make_enemy_type(0)
 	# _initialized deliberately NOT set to true
 
@@ -332,6 +335,7 @@ func test_enemy_catalog_get_active_types_before_initialized_returns_empty_array(
 func test_enemy_catalog_get_spawnable_types_before_initialized_returns_empty_array() -> void:
 	# Arrange
 	var catalog = EnemyCatalogScript.new()
+	auto_free(catalog)
 	catalog._types[0] = _make_enemy_type(0)
 	# _initialized deliberately NOT set to true
 

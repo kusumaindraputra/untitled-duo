@@ -32,6 +32,7 @@ func test_pc_disabled_state_physics_process_zeroes_velocity() -> void:
 
 	# Assert
 	assert_vector(pc.velocity).is_equal(Vector2.ZERO)
+	pc.free()
 
 
 # ── AC-PC-04: preparation_started signal disables via scene tree (integration) ─
@@ -70,6 +71,7 @@ func test_pc_on_preparation_started_disables_and_zeroes_velocity() -> void:
 	# Assert
 	assert_int(pc.get_controller_state()).is_equal(PlayerController.ControllerState.DISABLED)
 	assert_vector(pc.velocity).is_equal(Vector2.ZERO)
+	pc.free()
 
 
 # ── AC-PC-11: _on_combat_started enables controller (non-boss) ────────────────
@@ -84,6 +86,7 @@ func test_pc_on_combat_started_non_boss_enables_controller() -> void:
 
 	# Assert
 	assert_int(pc.get_controller_state()).is_equal(PlayerController.ControllerState.ENABLED)
+	pc.free()
 
 
 # ── AC-PC-11: _on_combat_started enables controller (boss) ───────────────────
@@ -98,6 +101,7 @@ func test_pc_on_combat_started_boss_enables_controller() -> void:
 
 	# Assert
 	assert_int(pc.get_controller_state()).is_equal(PlayerController.ControllerState.ENABLED)
+	pc.free()
 
 
 # ── AC-PC-12: Mid-dash preparation_started clears all three states ────────────
@@ -116,3 +120,4 @@ func test_pc_mid_dash_preparation_started_clears_all_three_states() -> void:
 	assert_int(pc.get_controller_state()).is_equal(PlayerController.ControllerState.DISABLED)
 	assert_vector(pc.velocity).is_equal(Vector2.ZERO)
 	assert_bool(pc.is_invincible()).is_false()
+	pc.free()

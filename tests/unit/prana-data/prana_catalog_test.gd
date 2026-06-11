@@ -38,6 +38,7 @@ func _make_catalog_with(types: Array[PranaType]) -> Node:
 	var catalog: Node = PranaCatalogScript.new()
 	catalog._types = types
 	catalog._initialized = true
+	auto_free(catalog)
 	return catalog
 
 
@@ -246,6 +247,7 @@ func test_prana_catalog_get_type_before_initialized_returns_null() -> void:
 	# Arrange — create catalog but leave _initialized at its default (false).
 	# Untyped var: required to set _types directly before _initialized is set.
 	var catalog = PranaCatalogScript.new()
+	auto_free(catalog)
 	var types: Array[PranaType] = [_make_prana_type(0)]
 	catalog._types = types
 	# _initialized deliberately NOT set to true
@@ -261,6 +263,7 @@ func test_prana_catalog_get_all_types_before_initialized_returns_empty_array() -
 	# Arrange
 	# Untyped var: required to set _types directly before _initialized is set.
 	var catalog = PranaCatalogScript.new()
+	auto_free(catalog)
 	var types: Array[PranaType] = [_make_prana_type(0)]
 	catalog._types = types
 	# _initialized deliberately NOT set to true

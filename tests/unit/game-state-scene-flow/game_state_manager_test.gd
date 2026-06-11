@@ -48,6 +48,7 @@ func test_boss_self_transition_emits_grid_locked_before_combat_started() -> void
 	assert_int(order.size()).is_equal(2)
 	assert_str(order[0]).is_equal("grid_locked")
 	assert_str(order[1]).is_equal("combat_started")
+	gsm.free()
 
 
 func test_boss_self_transition_emits_combat_started_with_is_boss_true() -> void:
@@ -60,6 +61,7 @@ func test_boss_self_transition_emits_combat_started_with_is_boss_true() -> void:
 
 	assert_int(received.size()).is_equal(1)
 	assert_bool(received[0]).is_true()
+	gsm.free()
 
 
 func test_boss_self_transition_state_remains_combat_phase() -> void:
@@ -69,6 +71,7 @@ func test_boss_self_transition_state_remains_combat_phase() -> void:
 	gsm._on_all_waves_cleared()
 
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.COMBAT_PHASE)
+	gsm.free()
 
 # ── AC-2: Boss defeat deferred → RUN_SUMMARY ─────────────────────────────────
 
@@ -85,7 +88,7 @@ func test_boss_defeated_transitions_to_run_summary_after_frame() -> void:
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.RUN_SUMMARY)
 	assert_int(wins.size()).is_equal(1)
 	assert_bool(wins[0]).is_true()
-	gsm.queue_free()
+	gsm.free()
 
 # ── AC-3: Same-frame death priority ──────────────────────────────────────────
 
@@ -101,7 +104,7 @@ func test_player_died_beats_deferred_boss_defeated_same_frame() -> void:
 	await get_tree().process_frame
 
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.DEATH_SCREEN)
-	gsm.queue_free()
+	gsm.free()
 
 
 func test_same_frame_run_ended_win_true_not_emitted() -> void:
@@ -118,7 +121,7 @@ func test_same_frame_run_ended_win_true_not_emitted() -> void:
 	assert_bool(wins.has(true)).is_false()
 	assert_int(wins.size()).is_equal(1)
 	assert_bool(wins[0]).is_false()
-	gsm.queue_free()
+	gsm.free()
 
 # ── AC-4: Death signal ordering ───────────────────────────────────────────────
 
@@ -136,6 +139,7 @@ func test_player_died_signal_order_is_death_started_state_changed_run_ended() ->
 	assert_str(order[0]).is_equal("death_started")
 	assert_str(order[1]).is_equal("state_changed")
 	assert_str(order[2]).is_equal("run_ended")
+	gsm.free()
 
 
 func test_state_is_death_screen_when_run_ended_fires() -> void:
@@ -150,6 +154,7 @@ func test_state_is_death_screen_when_run_ended_fires() -> void:
 
 	assert_int(state_at_run_ended.size()).is_equal(1)
 	assert_int(state_at_run_ended[0]).is_equal(GameEnums.GameState.DEATH_SCREEN)
+	gsm.free()
 
 # ── AC-5: run_started emitted exactly once ────────────────────────────────────
 
@@ -162,6 +167,7 @@ func test_start_run_emits_run_started_once_and_enters_preparation_phase() -> voi
 
 	assert_int(count[0]).is_equal(1)
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.PREPARATION_PHASE)
+	gsm.free()
 
 
 func test_start_run_from_preparation_phase_does_not_emit_run_started() -> void:
@@ -173,6 +179,7 @@ func test_start_run_from_preparation_phase_does_not_emit_run_started() -> void:
 	gsm.start_run()  # second call while not in MAIN_MENU
 
 	assert_int(count[0]).is_equal(0)
+	gsm.free()
 
 
 func test_start_run_emits_run_started_before_preparation_started() -> void:
@@ -188,6 +195,7 @@ func test_start_run_emits_run_started_before_preparation_started() -> void:
 	assert_int(order.size()).is_equal(2)
 	assert_str(order[0]).is_equal("run_started")
 	assert_str(order[1]).is_equal("preparation_started")
+	gsm.free()
 
 # ── AC-6: Invalid loadout blocks combat ───────────────────────────────────────
 
@@ -202,6 +210,7 @@ func test_arrangement_confirmed_blocked_when_loadout_invalid() -> void:
 
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.PREPARATION_PHASE)
 	assert_int(count[0]).is_equal(0)
+	gsm.free()
 
 
 func test_arrangement_confirmed_proceeds_when_loadout_valid() -> void:
@@ -212,6 +221,7 @@ func test_arrangement_confirmed_proceeds_when_loadout_valid() -> void:
 	gsm._on_arrangement_confirmed()
 
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.COMBAT_PHASE)
+	gsm.free()
 
 # ── AC-7: Re-entrancy guard ───────────────────────────────────────────────────
 
@@ -227,6 +237,7 @@ func test_reentrant_transition_rejected_outer_state_wins() -> void:
 
 	# Inner DEATH_SCREEN transition was rejected; outer COMBAT_PHASE stands.
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.COMBAT_PHASE)
+	gsm.free()
 
 # ── AC-8: Pause / resume cycle ────────────────────────────────────────────────
 
@@ -244,7 +255,7 @@ func test_pause_from_combat_stores_previous_state_and_emits_game_paused() -> voi
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.PAUSED)
 	assert_int(gsm._previous_state).is_equal(GameEnums.GameState.COMBAT_PHASE)
 	assert_int(count[0]).is_equal(1)
-	gsm.queue_free()
+	gsm.free()
 
 
 func test_resume_restores_previous_state_and_emits_game_resumed() -> void:
@@ -259,7 +270,7 @@ func test_resume_restores_previous_state_and_emits_game_resumed() -> void:
 
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.COMBAT_PHASE)
 	assert_int(count[0]).is_equal(1)
-	gsm.queue_free()
+	gsm.free()
 
 # ── AC-9: Pause unavailable from menu states ──────────────────────────────────
 
@@ -272,6 +283,7 @@ func test_pause_from_main_menu_is_noop() -> void:
 
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.MAIN_MENU)
 	assert_int(count[0]).is_equal(0)
+	gsm.free()
 
 
 func test_pause_from_run_summary_is_noop() -> void:
@@ -284,6 +296,7 @@ func test_pause_from_run_summary_is_noop() -> void:
 
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.RUN_SUMMARY)
 	assert_int(count[0]).is_equal(0)
+	gsm.free()
 
 
 func test_pause_from_death_screen_is_noop() -> void:
@@ -296,6 +309,7 @@ func test_pause_from_death_screen_is_noop() -> void:
 
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.DEATH_SCREEN)
 	assert_int(count[0]).is_equal(0)
+	gsm.free()
 
 # ── AC-10: Wave cleared cycle ─────────────────────────────────────────────────
 
@@ -310,6 +324,7 @@ func test_wave_cleared_transitions_to_preparation_phase_and_emits_wave_ended() -
 
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.PREPARATION_PHASE)
 	assert_int(count[0]).is_equal(1)
+	gsm.free()
 
 # ── AC-11: preparation_started payload ───────────────────────────────────────
 
@@ -330,6 +345,7 @@ func test_preparation_started_carries_incremented_wave_index_and_decremented_wav
 	assert_int(wi_out.size()).is_equal(1)
 	assert_int(wi_out[0]).is_equal(3)
 	assert_int(wr_out[0]).is_equal(0)
+	gsm.free()
 
 # ── AC-12: Prep timer auto-confirm and halt ───────────────────────────────────
 
@@ -343,7 +359,7 @@ func test_prep_timer_auto_confirms_when_elapsed_and_loadout_valid() -> void:
 	gsm._process(5.01)
 
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.COMBAT_PHASE)
-	gsm.queue_free()
+	gsm.free()
 
 
 func test_prep_timer_halted_when_elapsed_and_loadout_invalid() -> void:
@@ -357,7 +373,7 @@ func test_prep_timer_halted_when_elapsed_and_loadout_invalid() -> void:
 
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.PREPARATION_PHASE)
 	assert_bool(gsm._prep_timer_halted).is_true()
-	gsm.queue_free()
+	gsm.free()
 
 
 func test_prep_timer_does_not_resume_after_halt() -> void:
@@ -372,7 +388,7 @@ func test_prep_timer_does_not_resume_after_halt() -> void:
 	gsm._process(1.0)  # more time arrives
 
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.PREPARATION_PHASE)
-	gsm.queue_free()
+	gsm.free()
 
 
 func test_prep_timer_does_not_tick_while_tree_is_paused() -> void:
@@ -388,7 +404,7 @@ func test_prep_timer_does_not_tick_while_tree_is_paused() -> void:
 	# Tree is paused — accumulator should not have advanced; state unchanged.
 	get_tree().paused = false
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.PREPARATION_PHASE)
-	gsm.queue_free()
+	gsm.free()
 
 # ── AC-19: quit_to_menu ───────────────────────────────────────────────────────
 
@@ -405,7 +421,7 @@ func test_quit_to_menu_transitions_to_main_menu_and_emits_run_ended_false() -> v
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.MAIN_MENU)
 	assert_int(wins.size()).is_equal(1)
 	assert_bool(wins[0]).is_false()
-	gsm.queue_free()
+	gsm.free()
 
 
 func test_quit_to_menu_noop_when_not_paused() -> void:
@@ -418,6 +434,7 @@ func test_quit_to_menu_noop_when_not_paused() -> void:
 
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.COMBAT_PHASE)
 	assert_int(count[0]).is_equal(0)
+	gsm.free()
 
 # ── RUN_SUMMARY entry emits run_ended(true) ───────────────────────────────────
 
@@ -432,6 +449,7 @@ func test_run_summary_entry_emits_run_ended_win_true() -> void:
 	assert_int(wins.size()).is_equal(1)
 	assert_bool(wins[0]).is_true()
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.RUN_SUMMARY)
+	gsm.free()
 
 # ── Pause from PREPARATION_PHASE ─────────────────────────────────────────────
 
@@ -448,4 +466,4 @@ func test_pause_from_preparation_phase_stores_previous_state() -> void:
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.PAUSED)
 	assert_int(gsm._previous_state).is_equal(GameEnums.GameState.PREPARATION_PHASE)
 	assert_int(count[0]).is_equal(1)
-	gsm.queue_free()
+	gsm.free()

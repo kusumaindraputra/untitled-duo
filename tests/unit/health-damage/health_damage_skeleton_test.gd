@@ -38,6 +38,7 @@ func _make_catalog_with(types: Array[EnemyType]) -> Node:
 	for entry: EnemyType in types:
 		catalog._types[entry.id] = entry
 	catalog._initialized = true
+	auto_free(catalog)
 	return catalog
 
 

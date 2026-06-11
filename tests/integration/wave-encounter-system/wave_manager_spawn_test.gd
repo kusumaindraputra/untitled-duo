@@ -233,15 +233,15 @@ func test_spawned_enemy_archetype_matches_fp_composition_order() -> void:
 	_teardown_wm(wm)
 
 
-# ── AC-WES-06: Fewer markers → partial spawn with push_error ─────────────────
+# ── AC-WES-06: Fewer markers → all enemies spawn via modulo wrap ──────────────
 
 ## GIVEN WaveManager with a SpawnPoints container containing only 4 markers
 ## AND _wave_composition injected with 10 entries
 ## WHEN _on_combat_started(false) is called
-## THEN push_error is logged; exactly 4 enemy nodes added; _enemies_total=4; _wave_state=WAVE_ACTIVE
-## Note: push_error() routes to Godot's error stream. GdUnit4 v6.1.3 does not expose
-## assert_error() for push_error() calls — the state assertions are the observable contract.
-func test_partial_spawn_when_fewer_markers_than_composition_count() -> void:
+## THEN all 10 enemies are spawned using modulo-wrapped marker positions;
+##      _enemies_total=10; _wave_state=WAVE_ACTIVE
+## (playtest fix 2026-06-11: hard-break removed; extras wrap + spread offset)
+func test_all_enemies_spawn_via_modulo_wrap_when_fewer_markers() -> void:
 	var wm: WaveManager = _make_wm()
 	var spawn_container: Node = _make_spawn_container(4)
 	wm.spawn_points_container = spawn_container
@@ -249,9 +249,9 @@ func test_partial_spawn_when_fewer_markers_than_composition_count() -> void:
 
 	wm._on_combat_started(false)
 
-	assert_int(wm.get_child_count()).is_equal(4)
-	assert_int(wm._enemies_total).is_equal(4)
-	assert_int(wm._enemies_alive).is_equal(4)
+	assert_int(wm.get_child_count()).is_equal(10)
+	assert_int(wm._enemies_total).is_equal(10)
+	assert_int(wm._enemies_alive).is_equal(10)
 	assert_int(wm._wave_state).is_equal(WaveManager.WaveState.WAVE_ACTIVE)
 
 	_teardown_container(spawn_container)
