@@ -329,7 +329,7 @@ func _on_enemy_killed(instance_id: int, _type_id: int, _affiliation: GameEnums.D
 	if _active_statuses.has(instance_id):
 		for instance: StatusInstance in _active_statuses[instance_id]:
 			if instance.status_type == GameEnums.BaseStatus.BURN:
-				_try_burn_contagion(instance.target.global_position, instance.spell_base_damage)
+				_try_burn_contagion((instance.target as Node2D).global_position, instance.spell_base_damage)
 				break  # Only one Burn instance per target is possible.
 	_run_expiry_cleanup(instance_id)
 
