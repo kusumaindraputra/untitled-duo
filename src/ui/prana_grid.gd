@@ -30,7 +30,7 @@ var _state: State = State.HIDDEN
 
 ## Slot contents. Length always GRID_SIZE. null = empty. PranaFragment = filled.
 ## Written in Story 002 (placement/clear). Read by Story 003 (CR integration).
-var _slots: Array = []
+var _slots: Array[Variant] = []
 
 ## Gamepad cursor index. Default: slot 4 (centre). Updated in Story 004.
 var _selected_slot_index: int = 4
@@ -64,6 +64,8 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 ## Transitions to LOCKED state. Logs a sequencing error if no arrangement was
 ## confirmed this phase (committed_fragments will be all-null — GSM bug guard).
 func _on_grid_locked() -> void:
+	# _slots[4] access is safe: initial state is HIDDEN, so this branch cannot
+	# execute before _ready() initialises _slots to length GRID_SIZE.
 	if _state == State.ARRANGEMENT and _slots[4] == null:
 		push_error("PranaGrid: grid_locked received without arrangement_confirmed — committed_fragments all-null (Game State sequencing bug)")
 	_state = State.LOCKED

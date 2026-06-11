@@ -14,7 +14,7 @@ goal: "Ship PranaGrid and validate the fun hypothesis with an external human tes
 start: "2026-06-12"
 end: "2026-06-25"
 generated: "2026-06-11"
-updated: "2026-06-11"  # S4-01 done — qa-plan-sprint-4-2026-06-11.md written
+updated: "2026-06-11"  # S4-01 done, S4-02 done, S4-03 done
 
 stories:
   - id: "S4-01"
@@ -41,11 +41,11 @@ stories:
     name: "Implement PranaGrid — skeleton + phase gating (ARRANGEMENT / LOCKED / HIDDEN)"
     file: "production/epics/prana-grid/story-001-phase-gating.md"
     priority: must-have
-    status: in_progress
+    status: done
     owner: ""
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-11"
 
   - id: "S4-04"
     name: "Implement PranaGrid — mouse drag-and-drop input + confirm validation"

@@ -27,6 +27,12 @@ func _make_grid() -> PranaGrid:
 	return PranaGridScript.new()
 
 
+## Resizes and fills [param pg]._slots to GRID_SIZE nulls, simulating _ready() init.
+func _init_slots(pg: PranaGrid) -> void:
+	pg._slots.resize(PranaGrid.GRID_SIZE)
+	pg._slots.fill(null)
+
+
 func _fill_slots(pg: PranaGrid, values: Array) -> void:
 	for i in values.size():
 		pg._slots[i] = values[i]
@@ -35,8 +41,7 @@ func _fill_slots(pg: PranaGrid, values: Array) -> void:
 
 func test_preparation_started_from_arrangement_resets_slots_and_state() -> void:
 	var pg := _make_grid()
-	pg._slots.resize(PranaGrid.GRID_SIZE)
-	pg._slots.fill(null)
+	_init_slots(pg)
 	# Pre-fill some slots to ensure reset clears them
 	_fill_slots(pg, [1, null, 2, null, null, null, 3, null, null])
 	pg._state = PranaGrid.State.ARRANGEMENT
@@ -53,8 +58,7 @@ func test_preparation_started_from_arrangement_resets_slots_and_state() -> void:
 
 func test_preparation_started_from_locked_resets_slots_and_state() -> void:
 	var pg := _make_grid()
-	pg._slots.resize(PranaGrid.GRID_SIZE)
-	pg._slots.fill(null)
+	_init_slots(pg)
 	_fill_slots(pg, [0, 1, 2, 3, 4, 0, 1, 2, 3])
 	pg._state = PranaGrid.State.LOCKED
 
@@ -70,8 +74,7 @@ func test_preparation_started_from_locked_resets_slots_and_state() -> void:
 
 func test_preparation_started_from_hidden_resets_slots_and_state() -> void:
 	var pg := _make_grid()
-	pg._slots.resize(PranaGrid.GRID_SIZE)
-	pg._slots.fill(null)
+	_init_slots(pg)
 	pg._state = PranaGrid.State.HIDDEN
 
 	pg._on_preparation_started()
@@ -86,8 +89,7 @@ func test_preparation_started_from_hidden_resets_slots_and_state() -> void:
 
 func test_grid_locked_sets_locked_state() -> void:
 	var pg := _make_grid()
-	pg._slots.resize(PranaGrid.GRID_SIZE)
-	pg._slots.fill(null)
+	_init_slots(pg)
 	# Fill slot 4 so push_error guard does not fire
 	pg._slots[4] = 2
 	pg._state = PranaGrid.State.ARRANGEMENT
@@ -98,11 +100,12 @@ func test_grid_locked_sets_locked_state() -> void:
 	pg.free()
 
 # ── AC-PG-02 edge: second grid_locked call while already LOCKED — no crash ────
+## Guard condition checks _state == ARRANGEMENT, so it never fires from LOCKED.
+## The slot-4 fill here is not load-bearing — kept for consistency.
 
 func test_grid_locked_twice_no_crash() -> void:
 	var pg := _make_grid()
-	pg._slots.resize(PranaGrid.GRID_SIZE)
-	pg._slots.fill(null)
+	_init_slots(pg)
 	pg._slots[4] = 0
 	pg._state = PranaGrid.State.LOCKED
 
@@ -115,8 +118,7 @@ func test_grid_locked_twice_no_crash() -> void:
 
 func test_grid_hidden_sets_hidden_state() -> void:
 	var pg := _make_grid()
-	pg._slots.resize(PranaGrid.GRID_SIZE)
-	pg._slots.fill(null)
+	_init_slots(pg)
 	pg._state = PranaGrid.State.ARRANGEMENT
 
 	pg._on_grid_hidden()
@@ -130,8 +132,7 @@ func test_grid_hidden_sets_hidden_state() -> void:
 
 func test_grid_locked_without_arrangement_confirmed_sets_locked_no_crash() -> void:
 	var pg := _make_grid()
-	pg._slots.resize(PranaGrid.GRID_SIZE)
-	pg._slots.fill(null)
+	_init_slots(pg)
 	# Slot 4 is null — sequencing bug condition
 	pg._state = PranaGrid.State.ARRANGEMENT
 
@@ -150,23 +151,19 @@ func test_formula1_slot_index_and_inverse() -> void:
 	assert_int(PranaGridScript.slot_index(0, 2)).is_equal(2)
 	assert_int(PranaGridScript.slot_index(2, 0)).is_equal(6)
 
-	# FORMULA-1b: inverses
+	# FORMULA-1b: inverses — index 4 (centre) is the critical invariant
 	assert_int(PranaGridScript.slot_row(0)).is_equal(0)
 	assert_int(PranaGridScript.slot_col(0)).is_equal(0)
 	assert_int(PranaGridScript.slot_row(4)).is_equal(1)
 	assert_int(PranaGridScript.slot_col(4)).is_equal(1)
 	assert_int(PranaGridScript.slot_row(8)).is_equal(2)
 	assert_int(PranaGridScript.slot_col(8)).is_equal(2)
-	# Index 4 is the centre — row 1, col 1 (most important invariant)
-	assert_int(PranaGridScript.slot_row(4)).is_equal(1)
-	assert_int(PranaGridScript.slot_col(4)).is_equal(1)
 
 # ── PAUSABLE: process_mode is PROCESS_MODE_PAUSABLE; state/slots unchanged ────
 
 func test_process_mode_is_pausable_and_state_preserved() -> void:
 	var pg := _make_grid()
-	pg._slots.resize(PranaGrid.GRID_SIZE)
-	pg._slots.fill(null)
+	_init_slots(pg)
 	# Simulate what _ready() does: set process_mode and initial state
 	pg.process_mode = Node.PROCESS_MODE_PAUSABLE
 	pg._slots[0] = 1

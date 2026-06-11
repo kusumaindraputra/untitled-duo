@@ -1,13 +1,14 @@
 # Story 001: PranaGrid Phase Gating (ARRANGEMENT / LOCKED / HIDDEN)
 
 > **Epic**: Prana Grid
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: 0.75 days
 > **Sprint ID**: S4-03
 > **Manifest Version**: 2026-06-03
 > **Last Updated**: 2026-06-11
+> **Completed**: 2026-06-11
 
 ## Context
 
@@ -192,3 +193,12 @@ static func slot_col(index: int) -> int:
 
 - Depends on: None — this is the foundation story for the PranaGrid epic
 - Unlocks: Story 002 (mouse input + confirm needs the phase gating state machine), Story 003 (integration needs LOCKED state), Story 004 (gamepad needs ARRANGEMENT state + slot index formula)
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-11
+**Criteria**: 8/8 passing (all automated)
+**Deviations**: None
+**Test Evidence**: `tests/unit/prana-grid/prana_grid_phase_gating_test.gd` — 9/9 PASSED, 0 orphans, exit code 0
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS (Array[Variant] typing, safety comment on _slots[4], _init_slots() test helper extracted; all applied before close)
