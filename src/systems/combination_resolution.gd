@@ -5,6 +5,9 @@
 ## resolves primary_type from slot 4, computes effective primary count by
 ## summing levels of matching fragments, then maps count to a tier (1/2/3).
 ##
+## Story 006 additions: _in_combat guard (exactly-once emission per wave),
+## _on_preparation_started state clear, ADJ_ECHO delay timer with cancellation.
+##
 ## Registration: Autoload #8 in project.godot (ADR-0002).
 ## No class_name — Godot 4 rejects class_name matching the Autoload node name
 ## ("hides autoload singleton" parse error).
@@ -58,12 +61,44 @@ const DIRECTION_BELOW: int = 1
 const DIRECTION_LEFT: int = 2
 const DIRECTION_RIGHT: int = 3
 
+## Delay in seconds before the Echo Strike fires after the full chain resolves.
+## Tuning knob — GDD combination-resolution.md Tuning Knobs table (ADJ_ECHO_DELAY).
+const ADJ_ECHO_DELAY: float = 0.8
+
+## StringName identifier for the Echo Strike adjacency effect (GDD adjacency pool).
+const ADJ_ECHO_EFFECT_ID: StringName = &"ADJ_ECHO"
+
 
 # ── Signals ───────────────────────────────────────────────────────────────────
 
 ## Emitted once per wave when the spell payload is resolved.
 ## SpellCastingEffects is the sole authorised subscriber (ADR-0009).
 signal combo_resolved(spell_effect: SpellEffect)
+
+## Emitted after ADJ_ECHO_DELAY seconds when ADJ_ECHO is active this wave.
+## Carries the resolved SpellEffect so the subscriber can execute the echo hit.
+## Cancelled (never emitted) if preparation_started fires before the delay elapses.
+signal echo_strike_fired(spell_effect: SpellEffect)
+
+
+# ── Private state ─────────────────────────────────────────────────────────────
+
+## Guards against duplicate combat_started signals in a single combat phase.
+## Reset to false by _on_preparation_started.
+var _in_combat: bool = false
+
+## SceneTreeTimer reference for the pending ADJ_ECHO delay.
+## Null when no echo is pending. Cancelled on preparation_started.
+var _echo_timer: SceneTreeTimer = null
+
+## SpellEffect resolved this wave. Held so _fire_echo_strike can emit it.
+## Cleared on preparation_started.
+var _cached_spell_effect: SpellEffect = null
+
+## Test seam — overrides PranaGrid lookup when size == 9.
+## Set via set_test_fragments() before triggering _on_combat_started in tests.
+## Never set from production game code.
+var _test_fragments: Array = []
 
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -82,25 +117,43 @@ func _exit_tree() -> void:
 
 # ── Signal handlers ───────────────────────────────────────────────────────────
 
-## Wave reset hook — state clear belongs to Story 006.
+## Clears wave-scoped state and cancels any pending ADJ_ECHO timer.
+## Ensures the next wave resolves fresh with no stale data.
 func _on_preparation_started(_idx: int, _rem: int) -> void:
-	pass
+	_clear_echo_timer()
+	_in_combat = false
+	_cached_spell_effect = null
 
 
 ## Reads committed fragments from PranaGrid (or an empty grid if PranaGrid is
 ## not yet available), resolves the SpellEffect, and emits combo_resolved.
 ##
+## Guarded by _in_combat to prevent duplicate emissions if combat_started fires
+## more than once in the same combat phase (AC-CR-26).
+##
 ## PranaGrid is looked up dynamically via get_node_or_null so that this script
 ## parses and compiles even before PranaGrid is registered as an Autoload.
 func _on_combat_started(_is_boss: bool) -> void:
+	if _in_combat:
+		return
+	_in_combat = true
+
 	var fragments: Array
-	var prana_grid: Node = get_node_or_null("/root/PranaGrid")
-	if is_instance_valid(prana_grid):
-		fragments = prana_grid.get_committed_fragments()
+	if _test_fragments.size() == 9:
+		fragments = _test_fragments
 	else:
-		fragments = _make_empty_grid()
+		var prana_grid: Node = get_node_or_null("/root/PranaGrid")
+		if is_instance_valid(prana_grid):
+			fragments = prana_grid.get_committed_fragments()
+		else:
+			fragments = _make_empty_grid()
+
 	var effect: SpellEffect = _resolve(fragments)
+	_cached_spell_effect = effect
 	combo_resolved.emit(effect)
+
+	if effect.active_adjacency_effects.has(ADJ_ECHO_EFFECT_ID):
+		_start_echo_timer()
 
 
 # ── Public resolution API ─────────────────────────────────────────────────────
@@ -152,6 +205,14 @@ func _resolve(fragments: Array) -> SpellEffect:
 	effect.active_adjacency_effects = _collect_adjacency_effects(fragments)
 
 	return effect
+
+
+## Test seam — injects fragment data for integration tests, bypassing PranaGrid.
+## Call with a 9-element Array before triggering _on_combat_started.
+## Pass an empty Array to restore live PranaGrid lookup.
+## Never call from production game code (see TR-HD-008 precedent).
+func set_test_fragments(fragments: Array) -> void:
+	_test_fragments = fragments
 
 
 # ── Private helpers ───────────────────────────────────────────────────────────
@@ -413,3 +474,30 @@ func _collect_adjacency_effects(fragments: Array) -> Array:
 			if satisfied:
 				collected.append(adj_effect.effect_id)
 	return collected
+
+
+## Starts the ADJ_ECHO delay timer. Called when active_adjacency_effects contains
+## &"ADJ_ECHO". Uses SceneTreeTimer so the delay is engine-frame-accurate.
+## The one-shot connection ensures _fire_echo_strike runs at most once per timer.
+func _start_echo_timer() -> void:
+	_echo_timer = get_tree().create_timer(ADJ_ECHO_DELAY)
+	_echo_timer.timeout.connect(_fire_echo_strike, CONNECT_ONE_SHOT)
+
+
+## Cancels a pending ADJ_ECHO delay timer. Disconnects the callback before
+## nulling the reference so the signal does not fire after cancellation.
+## Safe to call when no timer is pending (_echo_timer == null is a no-op).
+func _clear_echo_timer() -> void:
+	if _echo_timer != null:
+		if _echo_timer.timeout.is_connected(_fire_echo_strike):
+			_echo_timer.timeout.disconnect(_fire_echo_strike)
+		_echo_timer = null
+
+
+## Fires echo_strike_fired with the cached SpellEffect after ADJ_ECHO_DELAY elapses.
+## Only reached if _clear_echo_timer() was not called first (i.e., preparation_started
+## did not fire before the delay expired).
+func _fire_echo_strike() -> void:
+	_echo_timer = null
+	if _cached_spell_effect != null:
+		echo_strike_fired.emit(_cached_spell_effect)

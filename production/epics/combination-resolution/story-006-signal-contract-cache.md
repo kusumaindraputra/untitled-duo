@@ -1,12 +1,12 @@
 # Story 006: Signal Contract, Cache Lifecycle, and Edge Cases
 
 > **Epic**: Combination Resolution
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Estimate**: ~2 hours
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: 2026-06-10
+> **Last Updated**: 2026-06-11
 
 ## Context
 
@@ -31,11 +31,11 @@
 
 *From GDD `design/gdd/combination-resolution.md` ACs CR-24 through CR-28:*
 
-- [ ] **AC-CR-24**: slot 4 = null; `push_error` called; `combo_resolved` emitted with `SpellEffect.primary_type == -1`
-- [ ] **AC-CR-25**: all 9 slots null; same as AC-CR-24 (`push_error` + no-op SpellEffect emitted)
-- [ ] **AC-CR-26**: valid arrangement (slot 4 non-null); signal spy connected to `combo_resolved`; after `combat_started` fires, spy call count == 1; `spell_effect.primary_type` is 0–4
-- [ ] **AC-CR-27**: CR resolves wave 1 with primary_type=0 (Ashfire); `preparation_started` fires; `combat_started` fires again with slot 4 = Stormgold (type 2); second `combo_resolved` payload has `primary_type == 2` (not 0); cache was cleared between waves
-- [ ] **AC-CR-28**: slot 4 has fragment with ADJ_ECHO satisfied; `combat_started` fires; `ADJ_ECHO_DELAY = 0.8s` timer started but not elapsed; `preparation_started` fires; no Echo Strike signal or additional `combo_resolved` emits into the preparation phase; cache is null after `preparation_started`
+- [x] **AC-CR-24**: slot 4 = null; `push_error` called; `combo_resolved` emitted with `SpellEffect.primary_type == -1`
+- [x] **AC-CR-25**: all 9 slots null; same as AC-CR-24 (`push_error` + no-op SpellEffect emitted)
+- [x] **AC-CR-26**: valid arrangement (slot 4 non-null); signal spy connected to `combo_resolved`; after `combat_started` fires, spy call count == 1; `spell_effect.primary_type` is 0–4
+- [x] **AC-CR-27**: CR resolves wave 1 with primary_type=0 (Ashfire); `preparation_started` fires; `combat_started` fires again with slot 4 = Stormgold (type 2); second `combo_resolved` payload has `primary_type == 2` (not 0); cache was cleared between waves
+- [x] **AC-CR-28**: slot 4 has fragment with ADJ_ECHO satisfied; `combat_started` fires; `ADJ_ECHO_DELAY = 0.8s` timer started but not elapsed; `preparation_started` fires; no Echo Strike signal or additional `combo_resolved` emits into the preparation phase; cache is null after `preparation_started`
 
 ---
 
@@ -138,7 +138,7 @@ func _clear_echo_timer() -> void:
 **Story Type**: Integration
 **Required evidence**: `tests/integration/combination-resolution/cr_integration_test.gd` — must exist and pass headless (GdUnit4 with SceneTree)
 
-**Status**: [ ] Not yet created
+**Status**: [x] `tests/integration/combination-resolution/cr_integration_test.gd` — 8/8 PASSED, 0 orphans, exit code 0
 
 ---
 
@@ -146,3 +146,12 @@ func _clear_echo_timer() -> void:
 
 - Depends on: Stories 001–005 DONE (full resolution pipeline implemented before integration test)
 - Unlocks: CombinationResolution epic is complete when this story is Done
+
+## Completion Notes
+**Completed**: 2026-06-11
+**Criteria**: 5/5 passing (all auto-verified by integration test suite)
+**Deviations**:
+- ADVISORY: `_cached_spell_effect` held on CR between waves for ADJ_ECHO timer; cleared in `_on_preparation_started` — stateless-between-waves invariant maintained
+- ADVISORY: `echo_strike_fired(spell_effect)` signal added to CR public contract — SC&E must subscribe in a future story
+**Test Evidence**: `tests/integration/combination-resolution/cr_integration_test.gd` — 8/8 PASSED, 0 orphans
+**Code Review**: Skipped (lean mode)

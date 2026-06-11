@@ -14,7 +14,7 @@ goal: "Implement remaining First Playable systems and validate the fun hypothesi
 start: "2026-06-04"
 end: "2026-06-17"
 generated: "2026-06-03"
-updated: "2026-06-10"  # S3-16 CR stories 001-005 done (71/71 tests); story-006 (integration) pending
+updated: "2026-06-11"  # S3-16 CR epic complete — all 6 stories done (79/79 tests)
 
 stories:
   - id: "S3-01"
@@ -179,12 +179,12 @@ stories:
     name: "Implement CombinationResolution"
     file: "production/epics/combination-resolution/story-*.md"
     priority: nice-to-have
-    status: in-progress
+    status: done
     owner: ""
     estimate_days: 2.0
     blocker: ""
-    completed: ""
-    note: "Stories 001-005 done (71/71 tests). Story 006 (integration) pending."
+    completed: "2026-06-11"
+    note: "All 6 stories done (79/79 tests). Story 006 integration: 8/8 PASSED. CR epic complete."
 
   - id: "S3-17"
     name: "Implement PranaGrid (ADR-0013 SAFE — proceed)"
