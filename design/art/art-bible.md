@@ -1,6 +1,7 @@
 # Art Bible — The Last Cipher
 
 *Created: 2026-05-21*
+*Updated: 2026-06-11 — ADR-0001 (Isometric 2D View, Accepted 2026-05-26) applied: top-down perspective replaced with isometric dimetric; sprite height targets updated to 32–48px; tile resolution updated to 64×32px; FFT/Disgaea added as isometric reference (Section 9, Reference 6).*
 *Status: Complete*
 
 > **Art Director Sign-Off (AD-ART-BIBLE)**: Skipped — Lean review mode.
@@ -354,7 +355,7 @@ Every Prana slot displays a small icon that is silhouette-readable without color
 
 **All-ages approachability:** Default expression is curious or slightly worried, never aggressive. No sharp silhouette angles except the vertical accent. No realistic weapon silhouettes. No exposed skin beyond face and hands.
 
-**Camera distance readability (top-down, 16–24px native — non-negotiable):**
+**Camera distance readability (isometric dimetric, 32–48px native — non-negotiable):**
 1. Vertical accent (hood/collar peak or held item upright)
 2. Coat/robe hem — single-pixel-wide dark line separating from legs
 3. Face dot cluster — two-pixel eyes minimum
@@ -407,7 +408,7 @@ All costume detail (pouches, clasps, stitching) exists only in portrait/promo ar
 
 **Register: Exaggerated-readable.** SNES/GBA RPG clarity (every pose telegraphs meaning in silhouette alone) + Ghibli warmth (curious, approachable). Not stiff, not comedic.
 
-At 16–24px native, anatomical realism is impossible. Every pose must read in silhouette alone — exaggeration is the tool.
+At 32–48px native (isometric dimetric angle), anatomical realism is still limited. Every pose must read in silhouette alone — exaggeration is the tool.
 
 **Fayde state poses:**
 
@@ -439,16 +440,19 @@ The bloom beat is critical. Defeat reads as "transformation or dispersal," not d
 
 **Design for game distance first.** Portrait detail is a bonus, never a driver.
 
-**Two-distance rule:** Every sprite designed for (1) game distance — native res, top-down camera; and (2) portrait/detail distance — 4–8x upscale in menus or promo art. Details that only read at portrait distance must not drive the game-distance silhouette.
+**Two-distance rule:** Every sprite designed for (1) game distance — native res, isometric dimetric camera (~26.57° angle, 2:1 tile ratio per ADR-0001); and (2) portrait/detail distance — 4–8x upscale in menus or promo art. Details that only read at portrait distance must not drive the game-distance silhouette.
 
 **Target sprite resolutions:**
 
+All sprites are drawn from the isometric dimetric angle (~26.57°). Heights below are measured vertically in screen space, consistent with the 32–48px sprite target from ADR-0001. Validate silhouette readability against a 64×32px floor tile before art production begins (Reference 6).
+
 | Entity | Native Sprite Size |
 |--------|-------------------|
-| Fayde (The Cipher) | 16×24 px |
-| Drifter, Charger | 16×16 px (Charger may use 12×20) |
-| Cluster | 24×24 px |
-| Boss | 48×48 px |
+| Fayde (The Cipher) | 16×32 px |
+| Drifter | 16×24 px |
+| Charger | 12×32 px |
+| Cluster | 24×32 px |
+| Boss | 48×64 px |
 
 All sprites snap to an 8px position grid.
 
@@ -499,7 +503,7 @@ Rooms progress through surface tiers based on dungeon depth. Tier establishes th
 
 Pixel art, hand-authored. No procedural texture generation, no filter-based effects on static tiles.
 
-- **Base resolution:** 16×16 px per tile
+- **Base resolution:** 64×32 px per isometric floor tile (2:1 dimetric diamond — matches TileSet `tile_size = Vector2i(64, 32)`, per ADR-0001)
 - **Palette:** E1–E7 only. No new colors on environment tiles.
 - **Shading:** Dithering for surface transitions (stone cracks, moss spread) at 2–3 px density. Selective color-cluster shading (dark/light E1 variants) for depth on wall faces.
 - **Variation:** All tilesets have at least 2 variant frames minimum — no purely repeating patterns.
@@ -733,14 +737,14 @@ assets/
 
 | Entity | Native Size | Atlas Policy | Palette Cap |
 |--------|-------------|--------------|-------------|
-| Fayde | 16×24 px | Player atlas | 8 colors |
-| Enemy Drifter | 16×16 px | Enemy atlas (all standard enemies) | 6 colors |
-| Enemy Charger | 12×20 px | Enemy atlas | 6 colors |
-| Enemy Cluster | 24×24 px | Enemy atlas | 6 colors |
-| Boss (Warped Warden) | 48×48 px | Boss-solo atlas | 12 colors |
+| Fayde | 16×32 px | Player atlas | 8 colors |
+| Enemy Drifter | 16×24 px | Enemy atlas (all standard enemies) | 6 colors |
+| Enemy Charger | 12×32 px | Enemy atlas | 6 colors |
+| Enemy Cluster | 24×32 px | Enemy atlas | 6 colors |
+| Boss (Warped Warden) | 48×64 px | Boss-solo atlas | 12 colors |
 | Prana particles | ≤ 16×16 px per frame | VFX atlas (per Prana type) | 4 colors |
 | UI elements | Powers of 2, ≤ 256 px | UI atlas | Full palette (no cap) |
-| Environment tiles | 16×16 px | Per-tier tileset atlas | 7 colors (E1–E7) |
+| Environment tiles | 64×32 px | Per-tier tileset atlas | 7 colors (E1–E7) |
 
 **Pixel art rendering rules (from Section 5.4):**
 - No anti-aliasing anywhere — hard pixel boundaries
@@ -834,3 +838,23 @@ Five references. Each specifies exactly what to take, what to avoid, and the dis
 - Fast-restart death loop — roguelike run loss has different emotional weight; our defeat sequence is longer and more deliberate.
 
 **Rule:** At 16px, every animation frame is a word. Write precisely.
+
+---
+
+### Reference 6 — Final Fantasy Tactics (Square, 1997) & Disgaea (Nippon Ichi, 2003)
+
+*Primary isometric sprite angle and tile-to-character ratio reference — cited in ADR-0001.*
+
+**What to take:**
+- **Tile-to-character size ratio:** characters 32–40px tall against 64×32px isometric tiles. This ratio is the proven readable proportion for dimetric pixel art — validate all sprite silhouettes against it before art production begins.
+- **Ground contact shadow:** flat dark ellipse beneath each entity, drawn below the sprite. This single detail converts a floating sprite into a grounded isometric character. Non-negotiable for depth readability.
+- **Per-tile ground detail:** each floor tile has subtle interior variation (slight colour gradient from front edge to back, a single crack line, or a 2px edge shadow at the front face) that separates it from adjacent tiles without adding visual noise.
+- **Y-sort overlap legibility:** sprites at the same Y-depth position are designed so their silhouettes separate cleanly — characters share tile space without merging into one visual blob.
+
+**What to avoid:**
+- FFT's specific art aesthetic (Western-fantasy armour, painted portrait cutscenes) — The Last Cipher uses its own environment and character vocabulary from this art bible.
+- Disgaea's extreme chibi proportions (head-to-body ratio closer to 1:1) — our target is the 1:2.5 ratio specified in Section 5.1.
+- Chess-grid tactical room layouts — our dungeon is irregular organic stone (Section 6.3), not symmetric tactical maps.
+- FFT's high-contrast blue sky / outdoor lighting — our palette is dungeon earth tones (E1–E7) with jewel-tone magic.
+
+**Rule:** 64×32px floor tile + 32–48px character height is the proven readable isometric ratio. Ground-contact shadow is mandatory — it is what makes characters read as *on* the floor rather than *above* it.
