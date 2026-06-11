@@ -96,6 +96,9 @@ func _exit_tree() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# Isometric draw-order sort — same rationale as PlayerController (ADR-0001).
+	z_index = clamp(int(global_position.y) + 500, 1, 2000)
+
 	# Death fallback timer — ticks even in DEAD state (AC-EAI-29).
 	# Must come before the DEAD-state early return so the timer can expire.
 	if _death_fallback_active:

@@ -65,6 +65,12 @@ func _exit_tree() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# Isometric draw-order sort: higher Y = closer to viewer = draw on top (ADR-0001).
+	# Entities live in different subtrees (PlayerController, WaveManager enemies) so
+	# y_sort_enabled cannot connect them — z_index is the correct substitute until
+	# all entities are moved into a shared EntityLayer (ADR-0001 migration plan).
+	z_index = clamp(int(global_position.y) + 500, 1, 2000)
+
 	if _cast_beam_timer > 0.0:
 		_cast_beam_timer -= delta
 
