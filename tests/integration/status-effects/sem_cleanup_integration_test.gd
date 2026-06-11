@@ -36,7 +36,7 @@ class MockHD extends Node:
 		pass
 
 
-class MockEnemy extends Node:
+class MockEnemy extends Node2D:
 	var _alive: bool = true
 	var speed_modifier_calls: Array[float] = []
 	var stun_calls: Array[float] = []
