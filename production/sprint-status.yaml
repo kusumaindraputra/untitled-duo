@@ -31,11 +31,11 @@ stories:
     name: "Create PranaGrid stories (/create-stories prana-grid)"
     file: "production/epics/prana-grid/"
     priority: must-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 0.5
-    blocker: "S4-01 must complete first"
-    completed: ""
+    blocker: ""
+    completed: "2026-06-11"
 
   - id: "S4-03"
     name: "Implement PranaGrid — skeleton + phase gating (ARRANGEMENT / LOCKED / HIDDEN)"

@@ -11,7 +11,7 @@ Engine: Godot 4.6
 | [Audio System](audio-system/EPIC.md) | Foundation | AudioSystem | design/gdd/audio-system.md | Not yet created | Ready (Deferred — Vertical Slice tier) |
 | [Player Controller](player-controller/EPIC.md) | Core | PlayerController | design/gdd/player-controller.md | 4 stories | Ready |
 | [Health & Damage](health-damage/EPIC.md) | Core | HealthAndDamage (Autoload #6) | design/gdd/health-damage.md | 5 stories | Ready |
-| [Prana Grid](prana-grid/EPIC.md) | Core | PranaGrid | design/gdd/prana-grid.md | Not yet created | Ready ⚠️ HIGH ENGINE RISK |
+| [Prana Grid](prana-grid/EPIC.md) | Core | PranaGrid | design/gdd/prana-grid.md | 4 stories | Ready ⚠️ HIGH ENGINE RISK |
 | [Combination Resolution](combination-resolution/EPIC.md) | Core | CombinationResolution (Autoload #8) | design/gdd/combination-resolution.md | 6 stories | Ready |
 | [Spell Casting & Effects](spell-casting-effects/EPIC.md) | Core | SpellCastingEffects (Autoload #9) | design/gdd/spell-casting-effects.md | 4 stories | Ready |
 | [Status Effects](status-effects/EPIC.md) | Core | StatusEffectsManager (Autoload #7) | design/gdd/status-effects.md | 5 stories | Ready |

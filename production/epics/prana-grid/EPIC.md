@@ -4,7 +4,7 @@
 > **GDD**: design/gdd/prana-grid.md
 > **Architecture Module**: `src/ui/prana_grid.gd` (CanvasLayer 1 inside IsometricRoom.tscn)
 > **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories prana-grid`
+> **Stories**: 4 stories created
 
 ## Overview
 
@@ -38,6 +38,11 @@ This epic is complete when:
 - Visual/Feel stories (drag-and-drop feel, gamepad cursor) have evidence docs in `production/qa/evidence/`
 - ⚠️ HIGH ENGINE RISK: dual-input focus must be manually validated on mouse + gamepad paths independently before story is marked Done
 
-## Next Step
+## Stories
 
-Run `/create-stories prana-grid` to break this epic into implementable stories.
+| # | Story | Type | Status | Sprint ID | ADR |
+|---|-------|------|--------|-----------|-----|
+| 001 | [Phase Gating (ARRANGEMENT / LOCKED / HIDDEN)](story-001-phase-gating.md) | Logic | Ready | S4-03 | ADR-0013, ADR-0003 |
+| 002 | [Mouse Drag-and-Drop Input + Confirm Validation](story-002-mouse-input-confirm.md) | UI (Logic secondary) | Ready | S4-04 | ADR-0013, ADR-0003 |
+| 003 | [committed_fragments → CR + SCE Integration](story-003-cr-sce-integration.md) | Integration | Ready | S4-05 | ADR-0003, ADR-0009 |
+| 004 | [Gamepad Input (ADR-0013 HIGH Risk Path)](story-004-gamepad-input.md) | UI | Ready | S4-07 | ADR-0013 |
