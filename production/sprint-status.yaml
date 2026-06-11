@@ -14,7 +14,7 @@ goal: "Ship PranaGrid and validate the fun hypothesis with an external human tes
 start: "2026-06-12"
 end: "2026-06-25"
 generated: "2026-06-11"
-updated: "2026-06-11"  # S4-01 done, S4-02 done, S4-03 done, S4-04 done
+updated: "2026-06-11"  # S4-01 done, S4-02 done, S4-03 done, S4-04 done, S4-05 in-progress
 
 stories:
   - id: "S4-01"
@@ -59,12 +59,12 @@ stories:
 
   - id: "S4-05"
     name: "Implement PranaGrid — committed_fragments → CR + SCE integration"
-    file: "production/epics/prana-grid/story-*.md"
+    file: "production/epics/prana-grid/story-003-cr-sce-integration.md"
     priority: must-have
-    status: backlog
+    status: in-progress
     owner: ""
     estimate_days: 0.75
-    blocker: "S4-04"
+    blocker: ""
     completed: ""
 
   - id: "S4-06"

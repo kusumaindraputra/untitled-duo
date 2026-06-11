@@ -142,7 +142,7 @@ func _on_combat_started(_is_boss: bool) -> void:
 	if _test_fragments.size() == 9:
 		fragments = _test_fragments
 	else:
-		var prana_grid: Node = get_node_or_null("/root/PranaGrid")
+		var prana_grid: Node = get_tree().get_first_node_in_group(&"prana_grid")
 		if is_instance_valid(prana_grid):
 			fragments = prana_grid.get_committed_fragments()
 		else:

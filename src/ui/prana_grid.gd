@@ -62,12 +62,18 @@ func _ready() -> void:
 	_slots.resize(GRID_SIZE)
 	_slots.fill(null)
 	_committed_fragments.resize(GRID_SIZE)
+	# Register in group so CombinationResolution can find this node via the scene tree.
+	add_to_group(&"prana_grid")
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	GameStateManager.grid_locked.connect(_on_grid_locked)
 	GameStateManager.grid_hidden.connect(_on_grid_hidden)
+	# Wire arrangement_confirmed → GSM PREPARATION → COMBAT trigger (TR-PG-004, ADR-0003).
+	arrangement_confirmed.connect(GameStateManager._on_arrangement_confirmed)
 
 
 func _exit_tree() -> void:
+	if arrangement_confirmed.is_connected(GameStateManager._on_arrangement_confirmed):
+		arrangement_confirmed.disconnect(GameStateManager._on_arrangement_confirmed)
 	GameStateManager.preparation_started.disconnect(_on_preparation_started)
 	GameStateManager.grid_locked.disconnect(_on_grid_locked)
 	GameStateManager.grid_hidden.disconnect(_on_grid_hidden)
