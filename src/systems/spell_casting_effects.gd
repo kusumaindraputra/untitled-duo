@@ -242,6 +242,8 @@ func _trigger_cast() -> void:
 	if _current_spell_effect == null:
 		return
 	var combo_count: int = _current_spell_effect.combo_attack_count
+	if _combo_index >= combo_count:
+		return
 
 	_combo_index += 1
 	chain_index_changed.emit(_combo_index, combo_count)
@@ -393,7 +395,7 @@ func _select_primary_target() -> Node:
 		return null
 	var space: PhysicsDirectSpaceState2D = get_viewport().get_world_2d().direct_space_state
 	var origin: Vector2 = _fayde_ref.global_position
-	var facing: Vector2 = _fayde_ref.get(&"_facing_direction") if _fayde_ref.get(&"_facing_direction") != null else Vector2.RIGHT
+	var facing: Vector2 = _fayde_ref.get_facing_direction() if _fayde_ref.has_method(&"get_facing_direction") else Vector2.RIGHT
 	var cast_range: float = 80.0 if _current_spell_effect != null and _current_spell_effect.primary_type == 0 \
 		else 150.0
 	var query := PhysicsRayQueryParameters2D.create(origin, origin + facing * cast_range)
@@ -444,7 +446,11 @@ func _on_combo_resolved(spell_effect: SpellEffect) -> void:
 	if spell_effect.primary_type == GameEnums.DamageClass.NONE:
 		push_error("SpellCastingEffects: combo_resolved received invalid SpellEffect (primary_type == NONE). Staying IDLE.")
 		return
-	if not _in_combat:
+	# Allow through if _in_combat (set by SCE's own handler) OR if GSM is already
+	# in COMBAT_PHASE. The latter handles the case where CR fires combo_resolved
+	# synchronously inside combat_started before SCE's own _on_combat_started runs
+	# (Autoload ordering: CR=#8, SCE=#9).
+	if not (_in_combat or GameStateManager.get_active_state() == GameEnums.GameState.COMBAT_PHASE):
 		return
 	_current_spell_effect = spell_effect
 	_state = SCEState.READY

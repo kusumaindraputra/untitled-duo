@@ -80,6 +80,7 @@ var _loadout_valid: bool = true
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	HealthAndDamage.player_died.connect(_on_player_died)
 
 
 func _process(delta: float) -> void:

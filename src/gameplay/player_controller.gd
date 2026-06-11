@@ -27,6 +27,7 @@ var _is_invincible: bool = false
 var _last_facing_dir: Vector2 = Vector2.RIGHT
 var _dash_duration_timer: float = 0.0  # countdown; > 0.0 means currently dashing
 var _dash_cooldown_timer: float = 0.0  # countdown; > 0.0 means on cooldown
+var _cast_beam_timer: float = 0.0     # countdown; > 0.0 means cast beam visible (debug)
 
 ## AudioSystem Autoload reference; null-safe — set in _ready(), overridable for tests.
 ## Variant (not Node) intentional — allows MockAudioSystem injection without Node inheritance.
@@ -44,6 +45,8 @@ func _ready() -> void:
 		"PlayerController: exactly one 'player' node expected")
 	GameStateManager.combat_started.connect(_on_combat_started)
 	GameStateManager.preparation_started.connect(_on_preparation_started)
+	HealthAndDamage.player_died.connect(_on_player_died)
+	SpellCastingEffects.cast_hit_started.connect(_on_cast_hit_started)
 	audio_system = get_node_or_null("/root/AudioSystem")
 	if VELOCITY_SNAP_THRESHOLD >= FOOTSTEP_VELOCITY_THRESHOLD:
 		push_error("VELOCITY_SNAP_THRESHOLD (%f) must be < FOOTSTEP_VELOCITY_THRESHOLD (%f)" % [
@@ -55,9 +58,16 @@ func _exit_tree() -> void:
 		GameStateManager.combat_started.disconnect(_on_combat_started)
 	if GameStateManager.preparation_started.is_connected(_on_preparation_started):
 		GameStateManager.preparation_started.disconnect(_on_preparation_started)
+	if HealthAndDamage.player_died.is_connected(_on_player_died):
+		HealthAndDamage.player_died.disconnect(_on_player_died)
+	if SpellCastingEffects.cast_hit_started.is_connected(_on_cast_hit_started):
+		SpellCastingEffects.cast_hit_started.disconnect(_on_cast_hit_started)
 
 
 func _physics_process(delta: float) -> void:
+	if _cast_beam_timer > 0.0:
+		_cast_beam_timer -= delta
+
 	if _controller_state == ControllerState.DISABLED:
 		velocity = Vector2.ZERO
 		return
@@ -198,4 +208,9 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 
 ## TR-PC-007 stub: CAST_LOCKED movement sub-state. Full behaviour in SpellCastingEffects epic.
 func _on_cast_hit_started(_lock_duration: float = 0.0) -> void:
-	pass
+	_cast_beam_timer = 0.20
+
+
+func _on_player_died() -> void:
+	_controller_state = ControllerState.DISABLED
+	velocity = Vector2.ZERO

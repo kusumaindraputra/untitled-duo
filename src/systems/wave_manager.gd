@@ -104,6 +104,8 @@ func _ready() -> void:
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	GameStateManager.combat_started.connect(_on_combat_started)
 	HealthAndDamage.enemy_killed.connect(_on_enemy_killed)
+	all_waves_cleared.connect(GameStateManager._on_all_waves_cleared)
+	boss_defeated.connect(GameStateManager._on_boss_defeated)
 
 
 func _exit_tree() -> void:
@@ -116,6 +118,10 @@ func _exit_tree() -> void:
 		GameStateManager.combat_started.disconnect(_on_combat_started)
 	if HealthAndDamage.enemy_killed.is_connected(_on_enemy_killed):
 		HealthAndDamage.enemy_killed.disconnect(_on_enemy_killed)
+	if all_waves_cleared.is_connected(GameStateManager._on_all_waves_cleared):
+		all_waves_cleared.disconnect(GameStateManager._on_all_waves_cleared)
+	if boss_defeated.is_connected(GameStateManager._on_boss_defeated):
+		boss_defeated.disconnect(GameStateManager._on_boss_defeated)
 
 # ── Signal handlers ───────────────────────────────────────────────────────────
 
@@ -200,14 +206,19 @@ func _spawn_wave() -> void:
 	var markers: Array[Node2D] = _get_spawn_markers()
 	var spawn_idx: int = 0
 	for entry: Dictionary in _wave_composition:
-		if spawn_idx >= markers.size():
-			push_error("WaveManager: fewer spawn markers (%d) than composition entries" % markers.size())
+		if markers.is_empty():
+			push_error("WaveManager: no spawn markers — cannot spawn enemies")
 			break
 		var enemy_scene: PackedScene = entry["scene"] as PackedScene
 		var enemy: EnemyInstance = enemy_scene.instantiate() as EnemyInstance
 		HealthAndDamage.register_enemy(enemy, entry["type_id"])  # ADR-0014: BEFORE add_child
 		add_child(enemy)
-		enemy.global_position = markers[spawn_idx].global_position
+		var base_pos: Vector2 = markers[spawn_idx % markers.size()].global_position
+		var wrap_lap: int = spawn_idx / markers.size()
+		var spread: Vector2 = Vector2(
+			cos(spawn_idx * 2.4) * 24.0 * wrap_lap,
+			sin(spawn_idx * 2.4) * 24.0 * wrap_lap)
+		enemy.global_position = base_pos + spread
 		enemy.init(entry["type_id"])
 		spawn_idx += 1
 	_enemies_total = spawn_idx
@@ -215,7 +226,7 @@ func _spawn_wave() -> void:
 	if _enemies_total == 0:
 		push_error("WaveManager: no enemies spawned — wave vacuously complete")
 		_wave_state = WaveState.WAVE_COMPLETE
-		all_waves_cleared.emit()
+		all_waves_cleared.emit()     
 		boss_defeated.emit()
 		return
 	_wave_state = WaveState.WAVE_ACTIVE

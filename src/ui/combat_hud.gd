@@ -57,6 +57,9 @@ const DAMAGE_FLOAT_DISTANCE: float = 32.0
 ## Total duration of the float + fade animation in seconds.
 const DAMAGE_FLOAT_DURATION: float = 0.8
 
+## Duration of the chain-dot flash when a cast fires (playtest feedback).
+const CAST_FLASH_DURATION: float = 0.15
+
 ## Seconds after animation start before the fade-out begins.
 const DAMAGE_FADE_START: float = 0.5
 
@@ -112,6 +115,9 @@ var _pending_element: Dictionary = {}
 ## Active floating damage label pool. Filtered on each spawn call for eviction (TR-CH-006).
 var _active_damage_labels: Array[Label] = []
 
+## Countdown for chain-dot cast flash. Resets to CAST_FLASH_DURATION on cast_hit_started.
+var _cast_flash_timer: float = 0.0
+
 ## Primary Prana type index cached from the last combo_resolved signal.
 ## -1 means no spell resolved this combat.
 var _current_primary_type: int = -1
@@ -131,6 +137,7 @@ func _ready() -> void:
 	GameStateManager.combat_started.connect(_on_combat_started)
 	SpellCastingEffects.chain_index_changed.connect(_on_chain_index_changed)
 	SpellCastingEffects.spell_hit_element.connect(_on_spell_hit_element)
+	SpellCastingEffects.cast_hit_started.connect(_on_cast_hit_started)
 	CombinationResolution.combo_resolved.connect(_on_combo_resolved)
 
 
@@ -152,6 +159,13 @@ func _process(delta: float) -> void:
 			_tint_timer = 0.0
 			_revert_zone_color()
 
+	# Cast flash float accumulator
+	if _cast_flash_timer > 0.0:
+		_cast_flash_timer -= delta
+		if _cast_flash_timer <= 0.0:
+			_cast_flash_timer = 0.0
+			chain_dots_container.modulate = Color.WHITE
+
 
 func _exit_tree() -> void:
 	if HealthAndDamage.damage_taken.is_connected(_on_damage_taken):
@@ -172,6 +186,8 @@ func _exit_tree() -> void:
 		SpellCastingEffects.chain_index_changed.disconnect(_on_chain_index_changed)
 	if SpellCastingEffects.spell_hit_element.is_connected(_on_spell_hit_element):
 		SpellCastingEffects.spell_hit_element.disconnect(_on_spell_hit_element)
+	if SpellCastingEffects.cast_hit_started.is_connected(_on_cast_hit_started):
+		SpellCastingEffects.cast_hit_started.disconnect(_on_cast_hit_started)
 	if CombinationResolution.combo_resolved.is_connected(_on_combo_resolved):
 		CombinationResolution.combo_resolved.disconnect(_on_combo_resolved)
 
@@ -187,15 +203,20 @@ func _create_ui_nodes() -> void:
 	hp_bar.value = FAYDE_MAX_HP
 	hp_bar.step = 0.01  # fractional values required during animation
 	hp_bar.modulate = HP_COLOR_FULL
+	hp_bar.position = Vector2(8, 8)
+	hp_bar.size = Vector2(200, 20)
 	add_child(hp_bar)
 
 	hp_label = Label.new()
 	hp_label.text = "%d / %d" % [FAYDE_MAX_HP, FAYDE_MAX_HP]
 	hp_label.add_theme_color_override(&"font_color", HP_COLOR_LABEL_FULL)
+	hp_label.position = Vector2(8, 32)
+	hp_label.size = Vector2(200, 20)
 	add_child(hp_label)
 
 	chain_dots_container = HBoxContainer.new()
 	chain_dots_container.visible = false
+	chain_dots_container.position = Vector2(8, 56)
 	add_child(chain_dots_container)
 
 
@@ -270,9 +291,11 @@ func _spawn_damage_label(target: Node, damage: int, color: Color) -> void:
 ## Evicts the oldest label from the pool when at capacity (TR-CH-006).
 ## Filters freed instances first, then pops front if pool is at or above DAMAGE_LABEL_POOL_CAP.
 func _evict_if_at_cap() -> void:
-	_active_damage_labels = _active_damage_labels.filter(
-		func(l: Label) -> bool: return is_instance_valid(l)
-	)
+	# Array[T].filter() returns untyped Array in Godot 4 — use assign() to retype.
+	# Variant lambda parameter avoids cast errors on freed Label instances.
+	_active_damage_labels.assign(_active_damage_labels.filter(
+		func(l: Variant) -> bool: return is_instance_valid(l)
+	))
 	if _active_damage_labels.size() >= DAMAGE_LABEL_POOL_CAP:
 		var oldest: Label = _active_damage_labels.pop_front()
 		if is_instance_valid(oldest):
@@ -430,6 +453,13 @@ func _rebuild_dots(active_index: int, count: int) -> void:
 ## Caches the primary Prana type from a resolved spell for use in chain dot coloring.
 func _on_combo_resolved(spell_effect: SpellEffect) -> void:
 	_current_primary_type = spell_effect.primary_type
+
+
+## Handles cast_hit_started from SpellCastingEffects.
+## Flashes chain_dots_container bright yellow as immediate cast confirmation (playtest feedback).
+func _on_cast_hit_started(_lock_duration: float) -> void:
+	chain_dots_container.modulate = Color(1.5, 1.5, 0.3, 1.0)
+	_cast_flash_timer = CAST_FLASH_DURATION
 
 
 ## Handles spell_hit_element from SpellCastingEffects.

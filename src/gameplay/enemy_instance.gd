@@ -52,18 +52,29 @@ func _ready() -> void:
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	HealthAndDamage.enemy_killed.connect(_on_enemy_killed)
 	_fayde_ref = get_tree().get_first_node_in_group(&"player") as Node2D
+	# Enemies are spawned inside WaveManager._on_combat_started, so they always
+	# miss the combat_started signal. Self-activate when spawned mid-combat.
+	if GameStateManager.get_active_state() == GameEnums.GameState.COMBAT_PHASE:
+		_on_combat_started(false)
 
 
 ## Programmatic collision node setup — replaced by EnemyInstance.tscn in a later story.
 ## Creates a root CollisionShape2D (movement) and a child Area2D named "HitArea"
 ## with its own CollisionShape2D (contact detection). (AC-EAI-02)
+## Placeholder radii (8 / 12 px) chosen for physics correctness; tune with real art.
 func _setup_collision_nodes() -> void:
+	var body_circle := CircleShape2D.new()
+	body_circle.radius = 8.0
 	var root_shape := CollisionShape2D.new()
 	root_shape.name = "CollisionShape2D"
+	root_shape.shape = body_circle
 	add_child(root_shape)
+	var hit_circle := CircleShape2D.new()
+	hit_circle.radius = 12.0
+	var hit_shape := CollisionShape2D.new()
+	hit_shape.shape = hit_circle
 	var hit_area := Area2D.new()
 	hit_area.name = "HitArea"
-	var hit_shape := CollisionShape2D.new()
 	hit_area.add_child(hit_shape)
 	add_child(hit_area)
 	var anim_player := AnimationPlayer.new()
