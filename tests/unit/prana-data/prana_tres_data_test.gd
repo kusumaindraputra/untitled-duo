@@ -29,6 +29,7 @@ func _load_catalog_from_disk() -> Node:
 	var catalog: Node = PranaCatalogScript.new()
 	catalog._load_types()
 	catalog._initialized = true
+	auto_free(catalog)
 	return catalog
 
 
