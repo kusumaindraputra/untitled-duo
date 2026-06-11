@@ -39,12 +39,12 @@ stories:
 
   - id: "S4-03"
     name: "Implement PranaGrid — skeleton + phase gating (ARRANGEMENT / LOCKED / HIDDEN)"
-    file: "production/epics/prana-grid/story-*.md"
+    file: "production/epics/prana-grid/story-001-phase-gating.md"
     priority: must-have
-    status: backlog
+    status: in_progress
     owner: ""
     estimate_days: 0.75
-    blocker: "S4-02"
+    blocker: ""
     completed: ""
 
   - id: "S4-04"
