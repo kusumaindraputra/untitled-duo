@@ -14,18 +14,18 @@ goal: "Ship PranaGrid and validate the fun hypothesis with an external human tes
 start: "2026-06-12"
 end: "2026-06-25"
 generated: "2026-06-11"
-updated: "2026-06-11"
+updated: "2026-06-11"  # S4-01 done — qa-plan-sprint-4-2026-06-11.md written
 
 stories:
   - id: "S4-01"
     name: "Run /qa-plan sprint — Sprint 4 QA plan (DAY 1 GATE)"
     file: "production/qa/"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-11"
 
   - id: "S4-02"
     name: "Create PranaGrid stories (/create-stories prana-grid)"
