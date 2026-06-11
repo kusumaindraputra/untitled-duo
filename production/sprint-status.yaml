@@ -9,189 +9,100 @@
 #   done           ↔  Complete
 #   blocked        ↔  Blocked
 
-sprint: 3
-goal: "Implement remaining First Playable systems and validate the fun hypothesis via first internal playtest"
-start: "2026-06-04"
-end: "2026-06-17"
-generated: "2026-06-03"
-updated: "2026-06-11"  # S3-16 CR epic complete — all 6 stories done (79/79 tests)
+sprint: 4
+goal: "Ship PranaGrid and validate the fun hypothesis with an external human tester — completing the First Playable milestone"
+start: "2026-06-12"
+end: "2026-06-25"
+generated: "2026-06-11"
+updated: "2026-06-11"
 
 stories:
-  - id: "S3-01"
-    name: "Architecture housekeeping (architecture.md L110, control-manifest, ADR-0001)"
-    file: "docs/architecture/"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 0.5
-    blocker: ""
-    completed: "2026-06-03"
-
-  - id: "S3-02"
-    name: "ADR-0013 engine verification — PranaGrid dual-input"
-    file: "docs/architecture/adr-0013-prana-grid-dual-input-focus-model.md"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 0.5
-    blocker: ""
-    completed: "2026-06-05"
-
-  - id: "S3-03"
-    name: "Run /qa-plan sprint — Sprint 3 QA plan"
+  - id: "S4-01"
+    name: "Run /qa-plan sprint — Sprint 4 QA plan (DAY 1 GATE)"
     file: "production/qa/"
     priority: must-have
-    status: done
+    status: ready-for-dev
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: "2026-06-10"
-    note: "Refreshed plan written to qa-plan-sprint-3-refresh-2026-06-10.md. CH-004 evidence file created. S3-13/S3-16 QA specs back-filled to EPIC files."
+    completed: ""
 
-  - id: "S3-04"
-    name: "Create stories: StatusEffects"
-    file: "production/epics/status-effects/"
+  - id: "S4-02"
+    name: "Create PranaGrid stories (/create-stories prana-grid)"
+    file: "production/epics/prana-grid/"
     priority: must-have
-    status: done
+    status: backlog
     owner: ""
     estimate_days: 0.5
-    blocker: ""
-    completed: "2026-06-04"
+    blocker: "S4-01 must complete first"
+    completed: ""
 
-  - id: "S3-05"
-    name: "Implement StatusEffects (Freeze + Burn, Stun stub)"
-    file: "production/epics/status-effects/story-*.md"
+  - id: "S4-03"
+    name: "Implement PranaGrid — skeleton + phase gating (ARRANGEMENT / LOCKED / HIDDEN)"
+    file: "production/epics/prana-grid/story-*.md"
     priority: must-have
-    status: done
+    status: backlog
     owner: ""
-    estimate_days: 2.0
-    blocker: ""
-    completed: "2026-06-05"
-    note: "All 5 stories Complete 2026-06-05. StatusEffectsManager fully implemented at FP scope."
+    estimate_days: 0.75
+    blocker: "S4-02"
+    completed: ""
 
-  - id: "S3-06"
-    name: "Create stories: WaveManager"
-    file: "production/epics/wave-manager/"
+  - id: "S4-04"
+    name: "Implement PranaGrid — mouse drag-and-drop input + confirm validation"
+    file: "production/epics/prana-grid/story-*.md"
     priority: must-have
-    status: done
+    status: backlog
     owner: ""
-    estimate_days: 0.5
-    blocker: ""
-    completed: "2026-06-06"
+    estimate_days: 2.5
+    blocker: "S4-03"
+    completed: ""
 
-  - id: "S3-07"
-    name: "Implement WaveManager (1 hardcoded wave, 10 enemies, win condition)"
-    file: "production/epics/wave-manager/story-*.md"
+  - id: "S4-05"
+    name: "Implement PranaGrid — committed_fragments → CR + SCE integration"
+    file: "production/epics/prana-grid/story-*.md"
     priority: must-have
-    status: done
+    status: backlog
     owner: ""
-    estimate_days: 2.0
-    blocker: ""
-    completed: "2026-06-06"
-    note: "All 4 stories Complete 2026-06-06. 35/35 tests passing."
+    estimate_days: 0.75
+    blocker: "S4-04"
+    completed: ""
 
-  - id: "S3-08"
-    name: "Create + Implement minimal SpellCastingEffects"
-    file: "production/epics/spell-casting-effects/story-*.md"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 2.0
-    blocker: ""
-    completed: "2026-06-06"
-    note: "All 4 stories Complete 2026-06-06. 36/36 tests passing (unit + integration). 5 tech-debt items logged."
-
-  - id: "S3-09"
-    name: "Create + Implement minimal CombatHUD"
-    file: "production/epics/combat-hud/story-*.md"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 1.0
-    blocker: ""
-    completed: "2026-06-10"
-    note: "All 4 stories Complete 2026-06-10. 26/26 tests passing (inc. 3 new chain-dot tests)."
-
-  - id: "S3-10"
-    name: "Create + Implement minimal RunManager"
-    file: "production/epics/run-management/story-*.md"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 0.5
-    blocker: ""
-    completed: "2026-06-06"
-    note: "Both stories Complete 2026-06-06. 13 unit + 3 integration tests passing."
-
-  - id: "S3-11"
-    name: "First Playable internal playtest — validate fun hypothesis"
+  - id: "S4-06"
+    name: "External human playtest — fun hypothesis final verdict"
     file: "production/playtests/"
     priority: must-have
     status: backlog
     owner: ""
     estimate_days: 1.0
-    blocker: "S3-05, S3-07, S3-08, S3-09, S3-10 must all complete first"
+    blocker: "S4-05 must complete first; external tester must be available"
     completed: ""
 
-  - id: "S3-12"
-    name: "Retro fix: GdUnit4 teardown rule in test-standards.md"
-    file: ".claude/docs/"
-    priority: should-have
-    status: done
-    owner: ""
-    estimate_days: 0.25
-    blocker: ""
-    completed: "2026-06-04"
-
-  - id: "S3-13"
-    name: "Retro fix: resolve is_alive() contract (enemy_instance.gd + ADR-0011)"
-    file: "src/gameplay/enemy_instance.gd"
-    priority: should-have
-    status: done
-    owner: ""
-    estimate_days: 0.25
-    blocker: ""
-    completed: "2026-06-10"
-    note: "3 contract tests added (S3-13a/b/c). 36/36 enemy-instance suite passing, 0 orphans."
-
-  - id: "S3-14"
-    name: "Retro fix: fix flaky headless test enemy_instance_skeleton_test"
-    file: "tests/unit/enemy-instance/enemy_instance_skeleton_test.gd"
-    priority: should-have
-    status: done
-    owner: ""
-    estimate_days: 0.25
-    blocker: ""
-    completed: "2026-06-04"
-
-  - id: "S3-15"
-    name: "Create stories: CombinationResolution"
-    file: "production/epics/combination-resolution/"
-    priority: should-have
-    status: done
-    owner: ""
-    estimate_days: 0.5
-    blocker: ""
-    completed: "2026-06-10"
-    note: "6 stories created (story-001 through story-006). 5 Logic + 1 Integration. 29 ACs covered."
-
-  - id: "S3-16"
-    name: "Implement CombinationResolution"
-    file: "production/epics/combination-resolution/story-*.md"
-    priority: nice-to-have
-    status: done
-    owner: ""
-    estimate_days: 2.0
-    blocker: ""
-    completed: "2026-06-11"
-    note: "All 6 stories done (79/79 tests). Story 006 integration: 8/8 PASSED. CR epic complete."
-
-  - id: "S3-17"
-    name: "Implement PranaGrid (ADR-0013 SAFE — proceed)"
+  - id: "S4-07"
+    name: "Implement PranaGrid — gamepad input (ADR-0013 HIGH risk path)"
     file: "production/epics/prana-grid/story-*.md"
-    priority: nice-to-have
+    priority: should-have
     status: backlog
     owner: ""
     estimate_days: 2.5
-    blocker: "Create PranaGrid epic + stories first"
+    blocker: "S4-04"
+    completed: ""
+
+  - id: "S4-08"
+    name: "Tech debt review pass — close or formally accept 39 open entries"
+    file: "docs/tech-debt-register.md"
+    priority: should-have
+    status: backlog
+    owner: ""
+    estimate_days: 0.5
+    blocker: ""
+    completed: ""
+
+  - id: "S4-09"
+    name: "Isometric visual pass — player/enemy placeholder art + lighting tweak"
+    file: "assets/art/"
+    priority: nice-to-have
+    status: backlog
+    owner: ""
+    estimate_days: 2.0
+    blocker: ""
     completed: ""

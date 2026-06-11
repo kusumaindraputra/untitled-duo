@@ -36,7 +36,7 @@ Implement the remaining First Playable systems (WaveManager, SpellCastingEffects
 | S3-08 | Create + Implement minimal SpellCastingEffects | 2.0 | S3-05; S2-02 (H&D) | Player input triggers `apply_damage`; elemental 2× affiliation bonus applies; `cast_hit_started` fires; tests pass |
 | S3-09 | Create + Implement minimal CombatHUD | 1.0 | S2-02 (H&D signals); S3-07 | HP bar updates on `damage_taken`/`health_restored`; wave-cleared message on `wave_ended`; no crash |
 | S3-10 | Create + Implement minimal RunManager | 0.5 | S3-07; S2-02 (player_died) | `run_ended(win)` shows result screen; no softlock; complete run (start → result screen) works |
-| S3-11 | First Playable internal playtest — validate fun hypothesis | 1.0 | S3-05–S3-10 all done | ≥1 session in `production/playtests/`; all Hard criteria from `first-playable.md` checked; fun hypothesis confirmed or falsified |
+| S3-11 ✓ | First Playable internal playtest — validate fun hypothesis | 1.0 | S3-05–S3-10 all done | ≥1 session in `production/playtests/`; all Hard criteria from `first-playable.md` checked; fun hypothesis confirmed or falsified | **DONE 2026-06-11** — 11/11 hard criteria PASS; fun hypothesis PARTIALLY ASSESSABLE (PranaGrid absent; external tester required post-PranaGrid) |
 
 **Must Have total: 11.0 days**
 
