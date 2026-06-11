@@ -16,9 +16,22 @@
 class_name IsometricRoom
 extends Node2D
 
+const _FLOOR_TILE_PATH: String = "res://assets/art/tiles/iso_floor_stone.png"
+const _FLOOR_SOURCE_ID: int = 0
+const _FLOOR_ATLAS_COORD: Vector2i = Vector2i(0, 0)
+## Radius in tiles from origin. 10 tiles covers ±320 px screen-x, ±160 px screen-y
+## per step — enough to enclose all spawn markers and player start position.
+const _FLOOR_RADIUS: int = 10
+
 # ── @onready ──────────────────────────────────────────────────────────────────
 
 @onready var _spawn_markers: Node2D = $SpawnMarkers
+@onready var _tile_map: TileMapLayer = $TileMapLayer
+
+# ── Lifecycle ─────────────────────────────────────────────────────────────────
+
+func _ready() -> void:
+	_build_floor()
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
@@ -38,3 +51,21 @@ func get_spawn_markers() -> Array[Vector2]:
 		if child is Marker2D:
 			markers.append(child.global_position)
 	return markers
+
+# ── Private ───────────────────────────────────────────────────────────────────
+
+## Loads the floor tile texture, registers it as a TileSetAtlasSource,
+## and fills a square grid of floor tiles centred on the room origin.
+func _build_floor() -> void:
+	var tex: Texture2D = load(_FLOOR_TILE_PATH) as Texture2D
+	if tex == null:
+		push_error("IsometricRoom: floor tile not found at %s" % _FLOOR_TILE_PATH)
+		return
+	var atlas := TileSetAtlasSource.new()
+	atlas.texture = tex
+	atlas.texture_region_size = Vector2i(64, 32)
+	atlas.create_tile(_FLOOR_ATLAS_COORD)
+	_tile_map.tile_set.add_source(atlas, _FLOOR_SOURCE_ID)
+	for tx: int in range(-_FLOOR_RADIUS, _FLOOR_RADIUS + 1):
+		for ty: int in range(-_FLOOR_RADIUS, _FLOOR_RADIUS + 1):
+			_tile_map.set_cell(Vector2i(tx, ty), _FLOOR_SOURCE_ID, _FLOOR_ATLAS_COORD)
