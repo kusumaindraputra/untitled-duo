@@ -1,7 +1,7 @@
 # Story 002: Mouse Drag-and-Drop Input + Confirm Validation
 
 > **Epic**: Prana Grid
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: UI (Logic secondary)
 > **Estimate**: 2.5 days (×2.5 adjusted — UI story with HIGH engine risk per ADR-0013)
@@ -255,7 +255,8 @@ Manual check: **ADR-0013 mouse path validation** — see full checklist in `prod
 - Automated: `tests/unit/prana-grid/prana_grid_confirm_logic_test.gd` — must exist and pass
 - Manual: `production/qa/evidence/prana-grid-mouse-evidence.md` — ADR-0013 mouse path sign-off required
 
-**Status**: [ ] Not yet created
+**Status**: [x] prana_grid_confirm_logic_test.gd — 27/27 PASSED (2026-06-11)
+**Status**: [ ] prana-grid-mouse-evidence.md — manual items pending (ADVISORY)
 
 ---
 
@@ -263,3 +264,14 @@ Manual check: **ADR-0013 mouse path validation** — see full checklist in `prod
 
 - Depends on: Story 001 (phase gating state machine must be DONE — this story adds input to an existing ARRANGEMENT state)
 - Unlocks: Story 003 (integration wires committed_fragments to CR/SCE — needs the getter from this story)
+
+## Completion Notes
+**Completed**: 2026-06-11
+**Criteria**: 14/18 automated passing; 4 deferred to manual evidence (ADVISORY)
+**Deviations**:
+- `stat_property = {}` not `null` — Dictionary non-nullable in GDScript 4.6; story spec text corrected
+- `_error_label: Label = null` placeholder — scene node not yet authored; safe for headless tests
+- `mouse_filter = MOUSE_FILTER_STOP` relies on parent wiring — carry to Story 004 scene setup
+- Manual evidence items pending (drag-and-drop path, AC-PG-12, AC-0013-01b) — require live scene
+**Test Evidence**: `tests/unit/prana-grid/prana_grid_confirm_logic_test.gd` — 27/27 passed; `production/qa/evidence/prana-grid-mouse-evidence.md` — created, manual sign-off pending
+**Code Review**: Complete — /code-review run; 5 issues found and fixed before close

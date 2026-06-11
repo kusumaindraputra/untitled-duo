@@ -45,6 +45,11 @@ var _committed_fragments: Array[PranaFragment] = []
 ## Counts down in _process(). Zero means no flash is active.
 var _error_flash_timer: float = 0.0
 
+## Error label shown when confirm is attempted with slot 4 empty (AC-PG-05).
+## Null in headless tests (._ready() not called) and before the scene node is wired.
+## Set by scene configuration or parent after instantiation.
+var _error_label: Label = null
+
 ## Gamepad cursor index. Default: slot 4 (centre). Updated in Story 004.
 var _selected_slot_index: int = 4
 
@@ -77,14 +82,15 @@ func _process(delta: float) -> void:
 			_error_flash_timer = 0.0
 			# _error_label node wired in scene tree (Story 002 scene setup).
 			# Guard protects against headless-test instantiation with .new().
-			if has_node("ErrorLabel"):
-				$ErrorLabel.visible = false
+			if _error_label != null:
+				_error_label.visible = false
 
 
 ## Resets all slots to empty and enters ARRANGEMENT state.
 ## Called on every new wave start, from any prior state.
 func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) -> void:
 	_slots.fill(null)
+	_committed_fragments.fill(null)
 	_state = State.ARRANGEMENT
 
 
@@ -152,8 +158,9 @@ func _clear_slot(slot_index: int) -> void:
 
 
 ## Clears all 9 slots during ARRANGEMENT state (AC-PG-08).
-## Confirm button must return to disabled state after this (handled in scene tree).
-func _clear_all() -> void:
+## Called by the Clear All button in the scene tree. Confirm button returns to
+## disabled state after this (handled in scene tree via is_loadout_valid()).
+func clear_all() -> void:
 	if _state != State.ARRANGEMENT:
 		return
 	_slots.fill(null)
@@ -178,8 +185,8 @@ func _show_centre_error_indicator() -> void:
 	_error_flash_timer = ERROR_FLASH_DURATION
 	# _error_label node wired in scene tree (Story 002 scene setup).
 	# Guard protects against headless-test instantiation with .new().
-	if has_node("ErrorLabel"):
-		$ErrorLabel.visible = true
+	if _error_label != null:
+		_error_label.visible = true
 
 
 ## Returns the flat slot index for a given [param row] and [param col] (GDD Formula 1).

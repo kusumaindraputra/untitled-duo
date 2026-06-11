@@ -239,7 +239,7 @@ func test_clear_all_sets_all_slots_to_null() -> void:
 	pg._state = PranaGrid.State.ARRANGEMENT
 	_fill_slots_at(pg, [0, 1, 2, 3, 4, 5, 6, 7, 8], 0)
 
-	pg._clear_all()
+	pg.clear_all()
 
 	for i in pg._slots.size():
 		assert_object(pg._slots[i]).is_null()
@@ -252,7 +252,7 @@ func test_clear_all_makes_loadout_invalid() -> void:
 	pg._state = PranaGrid.State.ARRANGEMENT
 	pg._slots[4] = 2
 
-	pg._clear_all()
+	pg.clear_all()
 
 	assert_bool(pg.is_loadout_valid()).is_false()
 	pg.free()
@@ -332,7 +332,7 @@ func test_committed_fragments_non_null_entries_have_empty_stat_property() -> voi
 	pg._on_confirm_pressed()
 
 	var f := pg.get_committed_fragments()[4] as PranaFragment
-	assert_bool(f.stat_property == {}).is_true()
+	assert_object(f.stat_property).is_equal({})
 	pg.free()
 
 
@@ -383,6 +383,35 @@ func test_is_loadout_valid_false_when_all_non_centre_filled_but_centre_null() ->
 	pg.free()
 
 
+# ── AC-PG-11: drag cancelled on grid_locked — committed array unchanged ───────
+## When grid_locked fires, the ARRANGEMENT → LOCKED transition must prevent any
+## further placement. This test verifies the full sequence: confirm, lock, then
+## attempt mutation — committed_fragments must reflect the pre-lock arrangement.
+
+func test_grid_lock_prevents_mutation_of_committed_arrangement() -> void:
+	var pg := _make_grid()
+	_init_slots(pg)
+	pg._state = PranaGrid.State.ARRANGEMENT
+	pg._slots[4] = 0  # Ashfire centre
+	pg._slots[0] = 2  # Stormgold slot 0
+
+	pg._on_confirm_pressed()  # commit the arrangement
+	pg._on_grid_locked()      # transition to LOCKED
+
+	# Attempt to mutate slots — all must be no-ops
+	pg._place_token(1, 3)     # try to place Deepfrost in slot 1 (empty)
+	pg._place_token(0, 4)     # try to replace Stormgold in slot 0
+	pg._clear_slot(4)         # try to clear the centre slot
+	pg.clear_all()            # try to clear everything
+
+	var cf := pg.get_committed_fragments()
+	assert_int(cf.size()).is_equal(9)
+	assert_int((cf[4] as PranaFragment).type_id).is_equal(0)  # centre unchanged
+	assert_int((cf[0] as PranaFragment).type_id).is_equal(2)  # slot 0 unchanged
+	assert_object(cf[1]).is_null()                             # slot 1 still empty
+	pg.free()
+
+
 # ── _place_token / _clear_slot no-ops outside ARRANGEMENT ─────────────────────
 
 func test_place_token_is_noop_in_locked_state() -> void:
@@ -415,7 +444,7 @@ func test_clear_all_is_noop_in_locked_state() -> void:
 	pg._slots[0] = 1
 	pg._state = PranaGrid.State.LOCKED
 
-	pg._clear_all()
+	pg.clear_all()
 
 	assert_int(pg._slots[4]).is_equal(0)
 	assert_int(pg._slots[0]).is_equal(1)

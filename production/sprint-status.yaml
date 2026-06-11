@@ -14,7 +14,7 @@ goal: "Ship PranaGrid and validate the fun hypothesis with an external human tes
 start: "2026-06-12"
 end: "2026-06-25"
 generated: "2026-06-11"
-updated: "2026-06-11"  # S4-01 done, S4-02 done, S4-03 done
+updated: "2026-06-11"  # S4-01 done, S4-02 done, S4-03 done, S4-04 done
 
 stories:
   - id: "S4-01"
@@ -51,11 +51,11 @@ stories:
     name: "Implement PranaGrid — mouse drag-and-drop input + confirm validation"
     file: "production/epics/prana-grid/story-002-mouse-input-confirm.md"
     priority: must-have
-    status: in_progress
+    status: done
     owner: ""
     estimate_days: 2.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-11"
 
   - id: "S4-05"
     name: "Implement PranaGrid — committed_fragments → CR + SCE integration"

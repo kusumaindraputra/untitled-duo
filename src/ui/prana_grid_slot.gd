@@ -55,7 +55,7 @@ func get_drag_data(_at_position: Vector2) -> Variant:
 
 ## Accepts drop only when payload is a Dictionary containing "type_id" (ADR-0013).
 func can_drop_data(_at_position: Vector2, data: Variant) -> bool:
-	return typeof(data) == TYPE_DICTIONARY and data.has("type_id")
+	return data is Dictionary and data.has("type_id")
 
 
 ## Handles the drop: places the incoming token on this slot.
@@ -84,7 +84,7 @@ func _gui_input(event: InputEvent) -> void:
 		var parent := get_parent() as PranaGrid
 		if parent != null:
 			parent._clear_slot(slot_index)
-		get_viewport().set_input_as_handled()
+		accept_event()
 
 
 ## Applies hover StyleBoxFlat — no grab_focus() (ADR-0013 hard constraint).
