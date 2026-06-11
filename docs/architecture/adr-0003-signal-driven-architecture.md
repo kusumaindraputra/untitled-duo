@@ -214,7 +214,7 @@ GDScript typed signal parameters (`signal foo(param: SomeType)`) are used for ed
 | GDD System | Requirement (TR ID) | How This ADR Addresses It |
 |------------|---------------------|--------------------------|
 | game-state-scene-flow.md | TR-GSF-002: GameStateManager is the sole emitter of game state transition events; no other system may transition state directly | Signal-only pattern: no system calls `_request_transition()` directly; all state changes flow through GSM's public signal emissions |
-| prana-grid.md | TR-PG-004: PranaGrid notifies upstream systems about user input via `arrangement_confirmed` signal, not by calling GSM methods | Signal pattern (Pattern 1) — PranaGrid emits; GSM connects and reacts. PranaGrid has no reference to GSM. |
+| prana-grid.md | TR-PG-004: PranaGrid notifies upstream systems about user input via `arrangement_confirmed` signal, not by calling GSM methods | Signal pattern (Pattern 1) — PranaGrid emits; GSM reacts via a connection established in PranaGrid's `_ready()`. |
 | combat-hud.md | TR-CH-002: CombatHUD is a passive listener; it never reads game state directly and never calls methods on gameplay systems | CombatHUD implements Pattern 1 only (signal consumer). All HP, combo, and state information arrives via signals. |
 | run-management.md | TR-RM-004: RunManager accumulates wave count and run outcome from GSM signals; never polls `get_active_state()` in `_process()` | Signal pattern (Pattern 1) — RunManager connects to `run_started`, `wave_ended`, `run_ended` in `_ready()`; no `_process()` loop reads GSM |
 

@@ -89,6 +89,8 @@ func _make_frag(type_id: int) -> PranaFragment:
 
 
 ## Returns a 9-element Array of nulls (empty grid).
+## Untyped Array (not Array[PranaFragment]) — slots hold mixed null/PranaFragment;
+## GDScript 4.6 typed arrays cannot hold null for reference types.
 func _make_grid() -> Array:
 	var grid: Array = []
 	grid.resize(9)
@@ -96,6 +98,7 @@ func _make_grid() -> Array:
 
 
 ## Returns a grid with only slot 4 set to the given fragment.
+## Untyped Array for the same reason as _make_grid().
 func _grid_with_centre(frag: PranaFragment) -> Array:
 	var grid := _make_grid()
 	grid[4] = frag
@@ -107,7 +110,7 @@ func _grid_with_centre(frag: PranaFragment) -> Array:
 ## GIVEN slot 4 = Ashfire (type_id 0), all others empty
 ## WHEN arrangement confirmed
 ## THEN get_committed_fragments().size() == 9; slot 4 non-null; other slots null
-func test_getter_returns_length_9_with_only_centre_filled() -> void:
+func test_prana_grid_getter_returns_length_9_with_only_centre_filled() -> void:
 	var pg := _make_pg()
 	pg._place_token(4, 0)
 	pg._on_confirm_pressed()
@@ -126,7 +129,7 @@ func test_getter_returns_length_9_with_only_centre_filled() -> void:
 ## GIVEN all 9 slots filled with distinct types
 ## WHEN arrangement confirmed
 ## THEN get_committed_fragments().size() == 9; all non-null
-func test_getter_returns_length_9_all_slots_filled() -> void:
+func test_prana_grid_getter_returns_length_9_all_slots_filled() -> void:
 	var pg := _make_pg()
 	for i in 9:
 		pg._place_token(i, i % 5)
@@ -196,7 +199,7 @@ func test_cr_reads_multi_slot_arrangement_via_group_lookup() -> void:
 ## GIVEN valid arrangement (slot 4 = Ashfire type_id 0) via test seam
 ## WHEN _on_combat_started fires
 ## THEN combo_resolved emitted exactly once; primary_type == 0
-func test_ac_cr_26_combo_resolved_emitted_exactly_once() -> void:
+func test_cr_combo_resolved_emitted_exactly_once() -> void:
 	var cr := _make_cr()
 	cr.set_test_fragments(_grid_with_centre(_make_frag(0)))
 
@@ -217,7 +220,7 @@ func test_ac_cr_26_combo_resolved_emitted_exactly_once() -> void:
 
 ## GIVEN _on_combat_started called twice before preparation_started
 ## THEN combo_resolved still emitted only once (_in_combat guard)
-func test_duplicate_combat_started_emits_only_once() -> void:
+func test_cr_duplicate_combat_started_emits_only_once() -> void:
 	var cr := _make_cr()
 	cr.set_test_fragments(_grid_with_centre(_make_frag(1)))
 
@@ -269,7 +272,7 @@ func test_full_loop_cr_resolves_and_sce_enters_ready() -> void:
 ## GIVEN wave 1 = Ashfire (0); preparation_started resets; wave 2 = Deepfrost (3)
 ## WHEN second combat_started fires
 ## THEN second combo_resolved.primary_type == 3, not 0 (no stale data)
-func test_ac_cr_27_second_wave_reflects_new_arrangement() -> void:
+func test_cr_second_wave_reflects_new_arrangement() -> void:
 	var cr := _make_cr()
 
 	var received: Array[int] = []
@@ -330,7 +333,7 @@ func test_null_slots_do_not_crash_cr_resolution() -> void:
 ## GIVEN preparation_started fires after a wave
 ## THEN PranaGrid _slots + _committed_fragments both reset to null
 ## (guards against stale data being served to CR on wave 2)
-func test_preparation_started_resets_prana_grid_fragments() -> void:
+func test_prana_grid_preparation_started_resets_fragments() -> void:
 	var pg := _make_pg()
 	pg._place_token(4, 2)
 	pg._place_token(0, 1)

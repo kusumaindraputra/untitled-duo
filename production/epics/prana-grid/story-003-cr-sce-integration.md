@@ -1,7 +1,7 @@
 # Story 003: committed_fragments → CR + SCE Integration
 
 > **Epic**: Prana Grid
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Integration
 > **Estimate**: 0.75 days
@@ -136,7 +136,7 @@ Pick the approach consistent with how other scene-node references are resolved i
 **Story Type**: Integration
 **Required evidence**: `tests/integration/prana-grid/prana_grid_cr_integration_test.gd` — must exist and pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] `tests/integration/prana-grid/prana_grid_cr_integration_test.gd` — 10/10 PASSED, 0 orphans, exit code 0
 
 ---
 
@@ -144,3 +144,12 @@ Pick the approach consistent with how other scene-node references are resolved i
 
 - Depends on: Story 001 (phase gating — LOCKED state required for combat_started integration), Story 002 (committed_fragments getter — must be DONE before wiring CR/SCE)
 - Unlocks: S4-06 External Playtest — PranaGrid loop must be complete for external playtest to proceed
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-11
+**Criteria**: 7/8 passing (AC 6 full signal chain ADVISORY — headless limit, deferred to S4-06 External Playtest; AC 8 SCE null-slot routing ADVISORY — CR side tested, SCE iteration recommended follow-up)
+**Deviations**: None blocking. ADR-0003 line 217 prose updated to reflect actual PranaGrid → GSM wiring pattern.
+**Test Evidence**: Integration test at `tests/integration/prana-grid/prana_grid_cr_integration_test.gd` — 10/10 PASSED, exit 0
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS (suggestions applied; tests re-run 10/10)

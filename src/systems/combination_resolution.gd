@@ -98,6 +98,7 @@ var _cached_spell_effect: SpellEffect = null
 ## Test seam — overrides PranaGrid lookup when size == 9.
 ## Set via set_test_fragments() before triggering _on_combat_started in tests.
 ## Never set from production game code.
+## Untyped Array — slots hold mixed null/PranaFragment; typed Array cannot hold null.
 var _test_fragments: Array = []
 
 
