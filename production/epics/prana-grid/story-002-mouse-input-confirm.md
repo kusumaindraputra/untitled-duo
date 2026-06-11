@@ -7,7 +7,7 @@
 > **Estimate**: 2.5 days (×2.5 adjusted — UI story with HIGH engine risk per ADR-0013)
 > **Sprint ID**: S4-04
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: (set by /dev-story when implementation begins)
+> **Last Updated**: 2026-06-11
 
 ## Context
 

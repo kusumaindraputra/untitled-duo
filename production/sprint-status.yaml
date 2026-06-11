@@ -49,12 +49,12 @@ stories:
 
   - id: "S4-04"
     name: "Implement PranaGrid — mouse drag-and-drop input + confirm validation"
-    file: "production/epics/prana-grid/story-*.md"
+    file: "production/epics/prana-grid/story-002-mouse-input-confirm.md"
     priority: must-have
-    status: backlog
+    status: in_progress
     owner: ""
     estimate_days: 2.5
-    blocker: "S4-03"
+    blocker: ""
     completed: ""
 
   - id: "S4-05"
