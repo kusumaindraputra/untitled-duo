@@ -1,19 +1,20 @@
-## debug_game_loop.gd — Temporary launcher for the S3-11 First Playable internal playtest.
+## debug_game_loop.gd — Temporary launcher for the First Playable build.
 ##
-## Wires the scene tree, registers input actions, injects a default Ashfire grid
-## so SpellCastingEffects enters READY state, and auto-starts the run.
-## Remove when a proper game menu, PranaGrid, and run-start flow are implemented.
+## Wires the scene tree, registers input actions, and auto-starts the run.
+## The player uses the PranaGrid UI to arrange fragments and confirm before
+## combat begins — no keyboard bypass.
 ##
 ## Controls (in-game):
 ##   W / A / S / D  — Move Fayde
 ##   Left Shift      — Dash
 ##   Space           — Cast spell (registered by SpellCastingEffects)
-##   Enter           — Start combat (triggers arrangement_confirmed)
+##   R               — Reload scene (restart run)
+##
+## Remove when a proper game menu and run-start flow are implemented.
 extends Node
 
 func _ready() -> void:
 	_register_input_actions()
-	_inject_debug_fragments()
 	$WaveManager.spawn_points_container = $SubSceneRoot/IsometricRoom/SpawnMarkers
 	$PlayerController.position = Vector2(0, -200)
 	GameStateManager._active_state = GameEnums.GameState.MAIN_MENU
@@ -23,9 +24,7 @@ func _ready() -> void:
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and not event.echo and event.pressed:
-		if event.keycode == KEY_ENTER:
-			GameStateManager._on_arrangement_confirmed()
-		elif event.keycode == KEY_R:
+		if event.keycode == KEY_R:
 			get_tree().reload_current_scene()
 
 
@@ -37,20 +36,6 @@ func _register_input_actions() -> void:
 	_ensure_key_action(&"move_up", KEY_W)
 	_ensure_key_action(&"move_down", KEY_S)
 	_ensure_key_action(&"dash", KEY_SHIFT)
-
-
-## Injects a minimal Ashfire grid (centre slot only) so CombinationResolution
-## emits a valid SpellEffect when combat_started fires without a real PranaGrid.
-## This lets SpellCastingEffects enter READY state and accept cast input.
-func _inject_debug_fragments() -> void:
-	var center := PranaFragment.new()
-	center.type_id = 0  # Ashfire
-	center.level = 1
-	var slots: Array = []
-	for i in 9:
-		slots.append(null)
-	slots[4] = center
-	CombinationResolution.set_test_fragments(slots)
 
 
 func _on_run_ended(win: bool) -> void:

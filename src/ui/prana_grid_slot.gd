@@ -13,15 +13,26 @@
 ##   - Drag payload is { "type_id": int } — no other keys.
 ##   - can_drop_data rejects any payload that is not a Dictionary with "type_id".
 class_name PranaGridSlot
-extends Control  # Never Container — ADR-0013 hard constraint
+extends Panel  # Panel so add_theme_stylebox_override("panel", ...) renders correctly
+
+## Prana type colors — Art Bible palette (QA plan S4-04 manual checklist).
+const TYPE_COLORS: Array[Color] = [
+	Color("#F24C1D"),  # 0 Ashfire
+	Color("#4A5EF5"),  # 1 Voidblue
+	Color("#FFCC00"),  # 2 Stormgold
+	Color("#3DD9F0"),  # 3 Deepfrost
+	Color("#1AC953"),  # 4 Verdant
+]
+
+## Background color for an empty slot.
+const EMPTY_COLOR := Color(0.13, 0.13, 0.13, 0.92)
 
 ## Index of this slot in the parent PranaGrid's _slots array (0–8).
 ## Set by PranaGrid._ready() immediately after instantiation.
 var slot_index: int = -1
 
 ## type_id of the token currently displayed in this slot, or -1 if empty.
-## Kept in sync with PranaGrid._slots[slot_index] via _refresh().
-## -1 matches PranaFragment.type_id sentinel for "no fragment" (prana_fragment.gd).
+## Kept in sync with PranaGrid._slots[slot_index] via refresh().
 var _displayed_type_id: int = -1
 
 ## StyleBox applied when the mouse is hovering over this slot.
@@ -36,6 +47,20 @@ var _focus_stylebox: StyleBoxFlat = null
 ## Assigned by PranaGrid._ready().
 var _default_stylebox: StyleBoxFlat = null
 
+## ColorRect child that shows the Prana type color (or empty state).
+## Created in _ready(); null until the node enters the scene tree.
+var _color_rect: ColorRect = null
+
+
+func _ready() -> void:
+	_color_rect = ColorRect.new()
+	_color_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_color_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_color_rect.color = EMPTY_COLOR
+	add_child(_color_rect)
+	mouse_entered.connect(_on_mouse_entered)
+	mouse_exited.connect(_on_mouse_exited)
+
 
 ## Returns the drag payload when a filled slot is dragged (GDD Rule 9).
 ## Payload: { "type_id": int, "source_slot": int } so the grid can clear the
@@ -45,8 +70,6 @@ func get_drag_data(_at_position: Vector2) -> Variant:
 	if _displayed_type_id == -1:
 		return null
 	var payload := { "type_id": _displayed_type_id, "source_slot": slot_index }
-	# Drag preview — lightweight label so the player sees what they are dragging.
-	# Full art preview is a Story 002 scene-tree concern; this is the logic stub.
 	var preview := Label.new()
 	preview.text = str(_displayed_type_id)
 	set_drag_preview(preview)
@@ -99,10 +122,10 @@ func _on_mouse_exited() -> void:
 		add_theme_stylebox_override("panel", _default_stylebox)
 
 
-## Updates _displayed_type_id. Called by PranaGrid after any slot mutation.
+## Updates _displayed_type_id and the ColorRect background color.
+## Called by PranaGrid after any slot mutation.
 ## [param type_id] is -1 for empty, 0–4 for a placed fragment type.
 func refresh(type_id: int) -> void:
 	_displayed_type_id = type_id
-	# Visual update (token icon/color swap) is a scene-tree concern handled in
-	# the .tscn scene; this method is the logic hook that drives it.
-	queue_redraw()
+	if _color_rect != null:
+		_color_rect.color = EMPTY_COLOR if type_id == -1 else TYPE_COLORS[type_id]

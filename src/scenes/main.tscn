@@ -1,10 +1,11 @@
-[gd_scene load_steps=6 format=3 uid="uid://b_main_scene"]
+[gd_scene load_steps=7 format=3 uid="uid://b_main_scene"]
 
 [ext_resource type="Script" path="res://src/scenes/debug_game_loop.gd" id="1_debug"]
 [ext_resource type="PackedScene" uid="uid://combat_hud_scene" path="res://src/scenes/CombatHUD.tscn" id="2_hud"]
 [ext_resource type="PackedScene" uid="uid://b_isometric_room" path="res://src/scenes/IsometricRoom.tscn" id="3_room"]
 [ext_resource type="PackedScene" path="res://src/scenes/PlayerController.tscn" id="4_player"]
 [ext_resource type="Script" path="res://src/systems/wave_manager.gd" id="5_wm"]
+[ext_resource type="PackedScene" uid="uid://b_prana_grid" path="res://src/ui/PranaGrid.tscn" id="6_pg"]
 
 [node name="main" type="Node"]
 script = ExtResource("1_debug")
@@ -14,6 +15,11 @@ layer = 10
 process_mode = 3
 
 [node name="CombatHUD" parent="CanvasLayer" instance=ExtResource("2_hud")]
+
+[node name="PranaGridLayer" type="CanvasLayer" parent="."]
+layer = 1
+
+[node name="PranaGrid" parent="PranaGridLayer" instance=ExtResource("6_pg")]
 
 [node name="SubSceneRoot" type="Node2D" parent="."]
 
