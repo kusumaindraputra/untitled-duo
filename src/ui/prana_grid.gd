@@ -70,7 +70,6 @@ func _ready() -> void:
 	GameStateManager.grid_locked.connect(_on_grid_locked)
 	GameStateManager.grid_hidden.connect(_on_grid_hidden)
 	arrangement_confirmed.connect(GameStateManager._on_arrangement_confirmed)
-	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_create_ui_nodes()
 	visible = false
 
@@ -228,17 +227,13 @@ static func slot_col(index: int) -> int:
 ## Called once from _ready(). Headless unit tests use .new() and never call
 ## _ready(), so this method is never executed in the test harness.
 func _create_ui_nodes() -> void:
-	# Content panel anchored to the right side of the viewport.
-	# Left edge = viewport_right - 380; right edge = viewport_right - 20.
+	# Panel pinned to the right side of the viewport using absolute position+size
+	# (same pattern as CombatHUD — anchors on CanvasLayer children are unreliable
+	# until the layout pass runs, causing the panel to land off-screen).
+	var vp_width := get_viewport_rect().size.x
 	var panel := Panel.new()
-	panel.anchor_left = 1.0
-	panel.anchor_right = 1.0
-	panel.anchor_top = 0.0
-	panel.anchor_bottom = 0.0
-	panel.offset_left = -380.0
-	panel.offset_top = 20.0
-	panel.offset_right = -20.0
-	panel.offset_bottom = 560.0
+	panel.position = Vector2(vp_width - 380.0, 20.0)
+	panel.size = Vector2(360.0, 540.0)
 	add_child(panel)
 
 	var layout := VBoxContainer.new()
