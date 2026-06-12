@@ -45,9 +45,9 @@ func _ready() -> void:
 	add_child(label)
 
 
-## Returns drag payload { "type_id": int } consumed by PranaGridSlot.drop_data().
+## Returns drag payload { "type_id": int } consumed by PranaGridSlot._drop_data().
 ## Drag preview shows the type abbreviation label.
-func get_drag_data(_at_position: Vector2) -> Variant:
+func _get_drag_data(_at_position: Vector2) -> Variant:
 	if type_id < 0:
 		return null
 	var preview := Label.new()

@@ -4,14 +4,15 @@
 ## can_drop_data / drop_data), right-click-to-clear via _gui_input(), and hover
 ## highlight via StyleBoxFlat swap (no grab_focus() in the mouse path — ADR-0013).
 ##
-## Parent contract: PranaGridSlot is always a direct child of PranaGrid. It calls
-## back to the parent via get_parent()._place_token() and get_parent()._clear_slot().
-## mouse_filter and focus_mode are set by PranaGrid._ready() after instantiation.
+## Parent contract: PranaGridSlot calls back to PranaGrid via the _prana_grid
+## reference set by PranaGrid._create_ui_nodes() after instantiation. Do NOT use
+## get_parent() — slots live inside a GridContainer, not directly under PranaGrid.
+## mouse_filter and focus_mode are set by PranaGrid._create_ui_nodes() after instantiation.
 ##
 ## ADR-0013 constraints enforced here:
 ##   - grab_focus() NEVER called in any mouse handler.
 ##   - Drag payload is { "type_id": int } — no other keys.
-##   - can_drop_data rejects any payload that is not a Dictionary with "type_id".
+##   - _can_drop_data rejects any payload that is not a Dictionary with "type_id".
 class_name PranaGridSlot
 extends Panel  # Panel so add_theme_stylebox_override("panel", ...) renders correctly
 
@@ -28,8 +29,12 @@ const TYPE_COLORS: Array[Color] = [
 const EMPTY_COLOR := Color(0.13, 0.13, 0.13, 0.92)
 
 ## Index of this slot in the parent PranaGrid's _slots array (0–8).
-## Set by PranaGrid._ready() immediately after instantiation.
+## Set by PranaGrid._create_ui_nodes() immediately after instantiation.
 var slot_index: int = -1
+
+## Direct reference to the owning PranaGrid. Set by PranaGrid._create_ui_nodes().
+## Required because slots live inside a GridContainer (not a direct PranaGrid child).
+var _prana_grid: PranaGrid = null
 
 ## type_id of the token currently displayed in this slot, or -1 if empty.
 ## Kept in sync with PranaGrid._slots[slot_index] via refresh().
@@ -62,7 +67,7 @@ func _ready() -> void:
 ## Payload: { "type_id": int, "source_slot": int } so the grid can clear the
 ## source slot on a successful inter-slot drag.
 ## Returns null when this slot is empty — cancels the drag initiation.
-func get_drag_data(_at_position: Vector2) -> Variant:
+func _get_drag_data(_at_position: Vector2) -> Variant:
 	if _displayed_type_id == -1:
 		return null
 	var payload := { "type_id": _displayed_type_id, "source_slot": slot_index }
@@ -73,22 +78,21 @@ func get_drag_data(_at_position: Vector2) -> Variant:
 
 
 ## Accepts drop only when payload is a Dictionary containing "type_id" (ADR-0013).
-func can_drop_data(_at_position: Vector2, data: Variant) -> bool:
+func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
 	return data is Dictionary and data.has("type_id")
 
 
 ## Handles the drop: places the incoming token on this slot.
 ## If the payload carries a "source_slot" key (inter-slot drag), the source slot
 ## is cleared first so the token moves rather than copies.
-func drop_data(_at_position: Vector2, data: Variant) -> void:
-	var parent := get_parent() as PranaGrid
-	if parent == null:
-		push_error("PranaGridSlot: parent is not PranaGrid — slot_index %d orphaned" % slot_index)
+func _drop_data(_at_position: Vector2, data: Variant) -> void:
+	if _prana_grid == null:
+		push_error("PranaGridSlot: _prana_grid not set — slot_index %d orphaned" % slot_index)
 		return
 	# Clear source slot on inter-slot drag (slot-to-slot swap path, GDD Rule 9).
 	if data.has("source_slot") and data["source_slot"] != slot_index:
-		parent._clear_slot(data["source_slot"])
-	parent._place_token(slot_index, data["type_id"])
+		_prana_grid._clear_slot(data["source_slot"])
+	_prana_grid._place_token(slot_index, data["type_id"])
 
 
 ## Handles right-click-to-clear (AC-PG-07) and future click-to-place events.
@@ -100,9 +104,8 @@ func _gui_input(event: InputEvent) -> void:
 	if not mb.pressed:
 		return
 	if mb.button_index == MOUSE_BUTTON_RIGHT:
-		var parent := get_parent() as PranaGrid
-		if parent != null:
-			parent._clear_slot(slot_index)
+		if _prana_grid != null:
+			_prana_grid._clear_slot(slot_index)
 		accept_event()
 
 

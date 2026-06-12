@@ -264,6 +264,7 @@ func _create_ui_nodes() -> void:
 	for i in GRID_SIZE:
 		var slot := PranaGridSlot.new()
 		slot.slot_index = i
+		slot._prana_grid = self
 		slot.custom_minimum_size = Vector2(72.0, 72.0)
 		slot.mouse_filter = Control.MOUSE_FILTER_STOP
 		slot.focus_mode = Control.FOCUS_ALL
