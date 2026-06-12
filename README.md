@@ -8,7 +8,7 @@ A roguelike where Fayde composes spells by arranging Prana types in a 3×3 drag-
 
 ## Development Status
 
-**Stage**: Production · Sprint 3 · First Playable target: 2026-06-14
+**Stage**: Production · Sprint 4 → **COMPLETE** · First Playable delivered · Fun hypothesis: PARTIALLY CONFIRMED
 
 | Layer | System | Status |
 |-------|--------|--------|
@@ -18,13 +18,15 @@ A roguelike where Fayde composes spells by arranging Prana types in a 3×3 drag-
 | Core | Health & Damage (Autoload #5 — full pipeline) | ✅ Complete · 32 tests |
 | Core | Player Controller (movement, dash, footsteps, audio) | ✅ Complete · 37 tests |
 | Core | Enemy Instance (FP AI + contact + death) | ✅ Complete · 37 tests |
-| Core | Status Effects (Freeze + Burn + Stun stub) | 🟡 Story files created — implementing (S3-05) |
-| Core | WaveManager (1 hardcoded wave, win condition) | 🔵 Story files pending (S3-06) |
-| Core | Spell Casting & Effects (basic cast → apply_damage) | 🔵 Story files pending (S3-08) |
-| Core | Combination Resolution | 🔵 Should Have (S3-15/16 — after Must Have complete) |
-| Core | Prana Grid | ⚠️ Deferred — ADR-0013 engine verification pending (S3-02) |
+| Core | Status Effects (Freeze + Burn + Stun stub) | ✅ Complete |
+| Core | WaveManager (1 hardcoded wave, win condition) | ✅ Complete |
+| Core | Spell Casting & Effects (basic cast → apply_damage) | ✅ Complete |
+| Core | Combination Resolution | ✅ Complete |
+| Core | Prana Grid (3×3 drag-and-drop, phase gating, CR + SCE integration) | ✅ Complete |
 
-**Test suite**: 288 unit/integration tests across 20 suites, all passing headless (GdUnit4 v6.1.3 · Godot 4.6.2)
+**Test suite**: 585 unit/integration tests across all suites, all passing headless (GdUnit4 v6.1.3 · Godot 4.6.2)
+
+**Sprint 5 scope** (Feature layer): combination visual differentiation per Prana type, PranaGrid compact mode in combat, dash HUD affordance + cooldown, chain dots repositioned above player.
 
 ---
 
@@ -122,7 +124,7 @@ Requires Godot 4.6.x in PATH. GdUnit4 addon is checked in at `addons/gdUnit4/`.
 
 Built with [Claude Code Game Studios](https://github.com/Donchitos/Claude-Code-Game-Studios) — a 49-agent AI studio framework for Claude Code. All design reviews, architecture decisions, sprint planning, and code implementation are coordinated through the framework's skill pipeline.
 
-Sprint tracking: `production/sprints/sprint-3.md`  
+Sprint tracking: `production/sprints/sprint-4.md`  
 Epic index: `production/epics/index.md`  
 Gate checks: `production/gate-checks/`
 
