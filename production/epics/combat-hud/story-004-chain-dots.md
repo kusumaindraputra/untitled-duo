@@ -103,10 +103,12 @@ Test: read actual color from `PranaCatalog.get_type(0).color` at test time rathe
 
 ## QA Test Cases
 
-*Embedded from `production/qa/qa-plan-sprint-3-2026-06-03.md` (S3-09 chain dots specs).*
+*Original specs from `production/qa/qa-plan-sprint-3-2026-06-03.md`. Repositioning specs added by `production/qa/qa-plan-sprint-5-2026-06-12.md` (S5-06).*
 
 **Test file**: `tests/unit/combat-hud/combat_hud_test.gd` (chain dots section)
-**Evidence file**: `production/qa/evidence/combat-hud-chain-evidence.md`
+**Evidence file**: `production/qa/evidence/sprint-5-chain-dots-position-evidence.md`
+
+### Regression — color logic (must still pass after repositioning)
 
 - **AC-HUD-10**: Chain dots appear with correct Prana color on chain_index_changed
   - Given: CombatHUD in tree; `CombinationResolution.combo_resolved.emit(stormgold_t2_effect)` fired (primary_type=2)
@@ -123,7 +125,30 @@ Test: read actual color from `PranaCatalog.get_type(0).color` at test time rathe
   - When: `GameStateManager.preparation_started.emit(0, 1)`
   - Then: `chain_dots_container.visible == false`
 
-**Manual [M] AC-HUD-26**: Damage label float and fade animation
+### New (S5-06) — repositioning above player
+
+- **AC-HUD-27**: Dots are above Fayde in screen-space after chain_index_changed
+  - Given: CombatHUD in tree; fayde_node at position (200, 200); `chain_index_changed(0, 2)` fires
+  - When: one `_process` frame elapses (position update)
+  - Then: `chain_dots_container` screen-Y < `(get_viewport_transform() * fayde_node.global_position).y - DOT_OFFSET_MIN`
+    where `DOT_OFFSET_MIN` is the configured upward offset constant
+
+- **AC-HUD-28**: Dots track Fayde position when she moves
+  - Given: dots visible; fayde_node at (200, 200); one frame processed
+  - When: fayde_node.global_position set to (264, 200) (moved 64px right); one more `_process` frame
+  - Then: chain_dots_container position has shifted by approximately 64px in screen-X (tracks Fayde)
+
+- **AC-HUD-29**: Dots clamped to viewport bounds when Fayde near top edge
+  - Given: fayde_node at (320, 8) (near top of screen)
+  - When: `chain_index_changed(0, 1)` fires
+  - Then: chain_dots_container.global_position.y >= 0 (not negative / off-screen)
+
+- **AC-HUD-30**: preparation_started stops position tracking
+  - Given: dots visible and tracking fayde_node
+  - When: `preparation_started` fires
+  - Then: chain_dots_container.visible == false; subsequent fayde_node position changes do not update chain_dots_container
+
+**Manual [M] AC-HUD-26**: Damage label float and fade animation — CLOSE this deferred AC in S5-06 evidence session
   - Setup: Run game in Godot editor; trigger a spell hit so `damage_taken` fires for an enemy
   - Verify: spawned label rises ~32px and fades to transparent over ~0.8s, then disappears
   - Pass: label is no longer in scene tree after 0.8–1.0s; visual ascent and fade observable
