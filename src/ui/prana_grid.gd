@@ -52,12 +52,6 @@ var _error_flash_timer: float = 0.0
 ## Null in headless tests (._ready() not called) and before the scene node is wired.
 var _error_label: Label = null
 
-## Gamepad cursor index. Default: slot 4 (centre). Updated in Story 004.
-var _selected_slot_index: int = 4
-
-## True when last input event was from a joypad. Updated in Story 004.
-var _cursor_visible: bool = false
-
 ## Live PranaGridSlot nodes, indexed 0–8. Empty until _create_ui_nodes() runs.
 ## Guards in _place_token/_clear_slot check size before accessing.
 var _slot_nodes: Array = []
@@ -160,23 +154,23 @@ func _on_confirm_pressed() -> void:
 ## Places [param type_id] into slot [param slot_index] during ARRANGEMENT state.
 ## Called by PranaGridSlot.drop_data() (drag-and-drop path) and by direct
 ## placement logic (click-to-place path). No-op outside ARRANGEMENT.
-func _place_token(slot_index: int, type_id: int) -> void:
+func _place_token(idx: int, type_id: int) -> void:
 	if _state != State.ARRANGEMENT:
 		return
-	_slots[slot_index] = type_id
-	if slot_index < _slot_nodes.size():
-		(_slot_nodes[slot_index] as PranaGridSlot).refresh(type_id)
+	_slots[idx] = type_id
+	if idx < _slot_nodes.size():
+		(_slot_nodes[idx] as PranaGridSlot).refresh(type_id)
 	_update_confirm_button()
 
 
 ## Clears slot [param slot_index] during ARRANGEMENT state (AC-PG-07).
 ## Called by PranaGridSlot right-click handler. No-op outside ARRANGEMENT.
-func _clear_slot(slot_index: int) -> void:
+func _clear_slot(idx: int) -> void:
 	if _state != State.ARRANGEMENT:
 		return
-	_slots[slot_index] = null
-	if slot_index < _slot_nodes.size():
-		(_slot_nodes[slot_index] as PranaGridSlot).refresh(-1)
+	_slots[idx] = null
+	if idx < _slot_nodes.size():
+		(_slot_nodes[idx] as PranaGridSlot).refresh(-1)
 	_update_confirm_button()
 
 

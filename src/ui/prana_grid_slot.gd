@@ -39,10 +39,6 @@ var _displayed_type_id: int = -1
 ## Assigned by PranaGrid._ready(). Not set here to keep slot stateless on init.
 var _hover_stylebox: StyleBoxFlat = null
 
-## StyleBox applied when this slot has keyboard focus (must be explicit in Godot 4.6).
-## Assigned by PranaGrid._ready() via add_theme_stylebox_override("focus", ...).
-var _focus_stylebox: StyleBoxFlat = null
-
 ## StyleBox applied in the default (no-hover, no-focus) state.
 ## Assigned by PranaGrid._ready().
 var _default_stylebox: StyleBoxFlat = null
