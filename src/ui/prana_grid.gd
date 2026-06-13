@@ -59,6 +59,16 @@ var _slot_nodes: Array = []
 ## Confirm button reference. Null in headless tests — all callers guard with != null.
 var _confirm_button: Button = null
 
+## Full-size grid panel reference. Null in headless tests. Hidden during LOCKED state.
+var _grid_panel: Control = null
+
+## Compact 3×3 indicator shown in LOCKED state instead of the full grid panel.
+## Null in headless tests. mouse_filter = MOUSE_FILTER_IGNORE (AC-CG-07).
+var _compact_indicator: Control = null
+
+## ColorRect dot nodes for the compact indicator, indexed 0–8.
+var _dot_nodes: Array[ColorRect] = []
+
 
 func _ready() -> void:
 	process_mode = PROCESS_MODE_PAUSABLE
@@ -99,20 +109,28 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	_slots.fill(null)
 	_committed_fragments.fill(null)
 	_state = State.ARRANGEMENT
+	if _compact_indicator != null:
+		_compact_indicator.visible = false
+	if _grid_panel != null:
+		_grid_panel.visible = true
 	for i in _slot_nodes.size():
 		(_slot_nodes[i] as PranaGridSlot).refresh(-1)
 	_update_confirm_button()
 	visible = true
 
 
-## Transitions to LOCKED state and reduces grid opacity to 70% (AC-PG-12).
+## Transitions to LOCKED state: hides the full panel, shows the compact dot indicator.
 ## Logs a sequencing error if no arrangement was confirmed this phase
 ## (committed_fragments all-null — GSM bug guard).
 func _on_grid_locked() -> void:
 	if _state == State.ARRANGEMENT and _slots[4] == null:
 		push_error("PranaGrid: grid_locked received without arrangement_confirmed — committed_fragments all-null (Game State sequencing bug)")
 	_state = State.LOCKED
-	modulate.a = 0.7
+	if _grid_panel != null:
+		_grid_panel.visible = false
+	_update_compact_dots()
+	if _compact_indicator != null:
+		_compact_indicator.visible = true
 
 
 ## Transitions to HIDDEN state (between runs or during main menu).
@@ -120,6 +138,8 @@ func _on_grid_locked() -> void:
 func _on_grid_hidden() -> void:
 	_state = State.HIDDEN
 	modulate.a = 1.0
+	if _compact_indicator != null:
+		_compact_indicator.visible = false
 	visible = false
 
 
@@ -235,6 +255,7 @@ func _create_ui_nodes() -> void:
 	panel.position = Vector2(vp_width - 380.0, 20.0)
 	panel.size = Vector2(360.0, 540.0)
 	add_child(panel)
+	_grid_panel = panel
 
 	var layout := VBoxContainer.new()
 	layout.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -313,6 +334,27 @@ func _create_ui_nodes() -> void:
 	_error_label.visible = false
 	layout.add_child(_error_label)
 
+	# Compact 3×3 dot indicator shown during LOCKED state (AC-CG-04).
+	# Added directly to PranaGrid Control (not to panel) so it stays visible when
+	# the panel is hidden. Pinned to bottom-right corner with 4px margin.
+	_compact_indicator = Control.new()
+	_compact_indicator.position = Vector2(vp_width - 68.0, get_viewport_rect().size.y - 68.0)
+	_compact_indicator.custom_minimum_size = Vector2(60.0, 60.0)
+	_compact_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var dot_grid := GridContainer.new()
+	dot_grid.columns = 3
+	dot_grid.add_theme_constant_override(&"h_separation", 4)
+	dot_grid.add_theme_constant_override(&"v_separation", 4)
+	_compact_indicator.add_child(dot_grid)
+	for _i in GRID_SIZE:
+		var dot := ColorRect.new()
+		dot.custom_minimum_size = Vector2(14.0, 14.0)
+		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		dot_grid.add_child(dot)
+		_dot_nodes.append(dot)
+	add_child(_compact_indicator)
+	_compact_indicator.visible = false
+
 
 ## Syncs the Confirm button appearance and disabled state with slot 4's content.
 ## No-op when _confirm_button is null (headless test context).
@@ -322,3 +364,18 @@ func _update_confirm_button() -> void:
 	var valid: bool = _slots.size() > 4 and _slots[4] != null
 	_confirm_button.disabled = not valid
 	_confirm_button.modulate.a = 1.0 if valid else 0.4
+
+
+## Updates compact indicator dot colors to match _committed_fragments (AC-CG-04).
+## Empty slots show Color("#333333"); filled slots show PranaCatalog.get_type(type_id).color.
+## No-op when _dot_nodes is empty (headless test context before _create_ui_nodes() runs).
+func _update_compact_dots() -> void:
+	if _dot_nodes.is_empty():
+		return
+	for i in GRID_SIZE:
+		var dot: ColorRect = _dot_nodes[i]
+		var fragment: PranaFragment = _committed_fragments[i]
+		if fragment != null:
+			dot.color = PranaCatalog.get_type(fragment.type_id).color
+		else:
+			dot.color = Color("#333333")

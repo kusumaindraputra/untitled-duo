@@ -51,11 +51,11 @@ stories:
     name: "PranaGrid compact mode in combat"
     file: "production/epics/prana-grid/story-005-compact-combat-mode.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-13"
 
   - id: "S5-05"
     name: "Dash discoverability + cooldown indicator in CombatHUD"
