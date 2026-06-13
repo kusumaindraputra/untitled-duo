@@ -83,6 +83,10 @@ signal cast_hit_started(lock_duration: float)
 ## Emitted when _combo_index changes — drives CombatHUD chain-dot indicator.
 signal chain_index_changed(combo_index: int, combo_attack_count: int)
 
+## Emitted when SC&E transitions from IDLE → READY (SpellEffect cached, player may cast).
+## SpellVFX listens to this to prime visual/audio readiness cues per GDD Rule 1.
+signal cast_started(spell_effect: SpellEffect)
+
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -455,3 +459,4 @@ func _on_combo_resolved(spell_effect: SpellEffect) -> void:
 	_current_spell_effect = spell_effect
 	_state = SCEState.READY
 	_combo_index = 0
+	cast_started.emit(spell_effect)

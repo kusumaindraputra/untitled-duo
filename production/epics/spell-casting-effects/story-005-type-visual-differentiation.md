@@ -28,14 +28,14 @@ SC&E already emits `spell_hit_element(target, prana_type_id)` on each valid hit.
 
 `design/gdd/spell-casting-effects.md` Visual/Audio Requirements section reads `[To be designed]`.
 
-**Before implementing this story**, author a Quick Spec (or inline amendment) answering:
-1. Which node owns VFX emission? **Recommendation**: a `SpellVFX` autoload (or SC&E child node) that subscribes to `spell_hit_element` and spawns per-hit particle scenes
-2. VFX emission point: `target.global_position` for hit bursts; Fayde's `global_position` for cast animation overlay
-3. Particle color source: `PranaCatalog.get_type(prana_type_id).color` — never hardcoded
-4. FP scope constraint: all VFX are code-driven `GPUParticles2D` — **no texture or sprite asset dependency**
-5. CastAnimation routing: plays a `string_name` variant on an `AnimationPlayer` node on Fayde (e.g., `"cast_thrust"`, `"cast_reach"`) OR uses a separate Fayde animation overlay — confirm approach before implementation
+**GAP-1 RESOLVED 2026-06-12** — Quick Spec authored in `design/gdd/spell-casting-effects.md` Visual/Audio Requirements section.
 
-Once the Quick Spec is written, back-fill this section and mark GAP-1 RESOLVED.
+Key decisions:
+- **VFX owner**: `SpellVFX` Autoload subscribes to `spell_hit_element` — SC&E is signal-only
+- **Hit burst**: at `target.global_position`; color from `PranaCatalog.get_type(id).color`
+- **Cast animation**: AnimationPlayer on Fayde via `string_name` (`"cast_thrust"` etc.)
+- **FP scope**: code-driven `GPUParticles2D` only — no art assets
+- **Miss**: cast animation fires in facing direction; no `spell_hit_element`
 
 ---
 

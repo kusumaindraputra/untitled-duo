@@ -21,60 +21,60 @@ stories:
     name: "Run /qa-plan sprint — Sprint 5 QA plan (DAY 1 GATE)"
     file: "production/qa/"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-12"
 
   - id: "S5-02"
     name: "Create sprint 5 stories — legibility pass items across epics"
     file: "production/epics/"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
-    blocker: "S5-01"
-    completed: ""
+    blocker: ""
+    completed: "2026-06-12"
 
   - id: "S5-03"
     name: "Prana visual differentiation per type — SC&E type-specific visuals"
     file: "production/epics/spell-casting-effects/story-005-type-visual-differentiation.md"
     priority: must-have
-    status: backlog
+    status: in-progress
     owner: ""
     estimate_days: 2.5
-    blocker: "S5-02; SC&E Visual/Audio spec required before story begins"
+    blocker: ""
     completed: ""
 
   - id: "S5-04"
     name: "PranaGrid compact mode in combat"
     file: "production/epics/prana-grid/story-005-compact-combat-mode.md"
     priority: must-have
-    status: backlog
+    status: ready-for-dev
     owner: ""
     estimate_days: 1.5
-    blocker: "S5-02"
+    blocker: ""
     completed: ""
 
   - id: "S5-05"
     name: "Dash discoverability + cooldown indicator in CombatHUD"
     file: "production/epics/combat-hud/story-005-dash-feedback.md"
     priority: must-have
-    status: backlog
+    status: ready-for-dev
     owner: ""
     estimate_days: 1.0
-    blocker: "S5-02"
+    blocker: ""
     completed: ""
 
   - id: "S5-06"
     name: "Chain dots repositioned above player character (CH-004, deferred x3)"
     file: "production/epics/combat-hud/story-004-chain-dots.md"
     priority: must-have
-    status: backlog
+    status: ready-for-dev
     owner: ""
     estimate_days: 0.75
-    blocker: "S5-02"
+    blocker: ""
     completed: ""
 
   - id: "S5-07"

@@ -539,7 +539,51 @@ SC&E computes these before each `apply_status()` call:
 
 ## Visual/Audio Requirements
 
-[To be designed]
+> **Quick Spec authored 2026-06-12 — GAP-1 RESOLVED for S5-03.**
+
+### Visual Requirements
+
+**VFX ownership**: A `SpellVFX` Autoload node subscribes to SC&E's `spell_hit_element(target, prana_type_id)` signal and drives all hit burst emission. SC&E does not own or reference any VFX nodes directly.
+
+**Hit burst** (fired at `target.global_position` on a valid hit):
+
+| Prana Type | type_id | VfxBurstShape | Color source | Visual description |
+|------------|---------|---------------|--------------|-------------------|
+| Ashfire | 0 | `BURST_FLAME` | `PranaCatalog.get_type(0).color` (#F24C1D) | Outward orange-red flame cluster, short duration |
+| Voidblue | 1 | `BURST_SPIRAL` | `PranaCatalog.get_type(1).color` (#4A5EF5) | Inward blue particle spiral, medium duration |
+| Stormgold | 2 | `BURST_LIGHTNING` | `PranaCatalog.get_type(2).color` (#FFCC00) | Forked gold lightning arcs, instant |
+| Deepfrost | 3 | `BURST_CRYSTAL` | `PranaCatalog.get_type(3).color` (#3DD9F0) | Cyan hexagonal shard spray |
+| Verdant | 4 | `BURST_VINE` | `PranaCatalog.get_type(4).color` (#1AC953) | Green leaf/vine expansion ring |
+
+**Implementation rule**: particle color is always sourced from `PranaCatalog.get_type(prana_type_id).color` — never hardcoded hex.
+
+**Cast animation** (plays on Fayde's `AnimationPlayer` via `string_name` lookup):
+
+| Prana Type | CastAnimation | AnimationPlayer key |
+|------------|---------------|---------------------|
+| Ashfire | `CAST_THRUST` | `"cast_thrust"` |
+| Voidblue | `CAST_REACH` | `"cast_reach"` |
+| Stormgold | `CAST_SNAP` | `"cast_snap"` |
+| Deepfrost | `CAST_PUSH` | `"cast_push"` |
+| Verdant | `CAST_BLOOM` | `"cast_bloom"` |
+
+**Miss cast**: cast animation fires from Fayde in facing direction; no hit burst emitted; `spell_hit_element` NOT emitted.
+
+**Zero-modifier attack** (e.g. Verdant T2 SELF type, `tier_attack_modifier == 0.0`): hit burst VFX fires at `target.global_position`; `apply_damage` NOT called.
+
+**No-op SpellEffect** (`primary_type == -1`): no cast animation, no hit burst, no signal.
+
+**FP scope constraint**: all VFX are code-driven `GPUParticles2D` — no texture, sprite-sheet, or art-asset dependency at First Playable scope.
+
+### Audio Requirements
+
+SC&E calls into an injected `audio_system` (testable via `@export var audio_system`) — audio is VS scope and stubbed at FP:
+
+- Valid hit: `audio_system.play_event(&"sfx_cast_[type_name]")` where `type_name` is the lowercased Prana type slug (e.g. `"sfx_cast_ashfire"`)
+- Echo strike: `audio_system.play_event(&"sfx_echo_strike")`
+- Miss: `audio_system.play_event(&"sfx_cast_miss")`
+
+At FP scope these calls are no-ops (stub returns immediately). Audio System implementation is deferred to VS.
 
 ## UI Requirements
 
