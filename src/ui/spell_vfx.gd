@@ -87,8 +87,13 @@ func _configure_burst(burst: GPUParticles2D, type_data: PranaType) -> void:
 	burst.modulate = type_data.color
 	burst.process_material = mat
 	mat.gravity = Vector3(0.0, 0.0, 0.0)
+	_apply_burst_shape_params(burst, mat, type_data.vfx_burst_shape)
 
-	match type_data.vfx_burst_shape:
+
+## Applies per-shape physics parameters to [param burst] and [param mat].
+## Extracted to keep _configure_burst under the 40-line method limit.
+func _apply_burst_shape_params(burst: GPUParticles2D, mat: ParticleProcessMaterial, shape: GameEnums.VfxBurstShape) -> void:
+	match shape:
 		GameEnums.VfxBurstShape.BURST_FLAME:
 			burst.amount = 12
 			burst.lifetime = 0.3

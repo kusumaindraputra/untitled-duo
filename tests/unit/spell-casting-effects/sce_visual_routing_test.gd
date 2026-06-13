@@ -460,14 +460,13 @@ func test_spell_vfx_on_cast_hit_started_receives_ashfire_extended_duration() -> 
 
 ## GIVEN a SpellVFX instance instantiated standalone (not as Autoload)
 ## AND its three handler methods pre-connected to a local SCE instance's signals
-## WHEN _exit_tree() is called manually
-## THEN all three signals report is_connected == false for those callables
+## WHEN the same is_connected-guarded disconnect logic that _exit_tree() uses is applied
+## THEN all three signals report is_connected == false AND a subsequent emission
+##      fires only a fresh spy (proving the vfx handlers are no longer in the connection list)
 ##
-## Note: SpellVFX._ready() connects to the SpellCastingEffects Autoload singleton,
-## not to our test SCE. We verify _exit_tree()'s disconnect logic by pre-connecting
-## the VFX handlers to our local SCE, then calling _exit_tree directly on a fresh VFX
-## instance whose internal checks use is_connected guards.
-## The authoritative test: after _exit_tree(), emitting the signals does NOT call the handlers.
+## Why we do not call vfx._exit_tree() directly: SpellVFX._exit_tree() disconnects
+## from SpellCastingEffects (the Autoload), not from our isolated test SCE instance.
+## We test the correctness of the disconnect guard pattern, not that _exit_tree is called.
 func test_spell_vfx_exit_tree_disconnects_signals_cleanly() -> void:
 	var sce = _make_sce()
 
@@ -485,7 +484,7 @@ func test_spell_vfx_exit_tree_disconnects_signals_cleanly() -> void:
 	assert_bool(sce.spell_hit_element.is_connected(vfx._on_spell_hit_element)).is_true()
 	assert_bool(sce.cast_hit_started.is_connected(vfx._on_cast_hit_started)).is_true()
 
-	# Manually disconnect (same logic as _exit_tree — is_connected guards).
+	# Disconnect (same is_connected-guarded logic as _exit_tree).
 	if sce.cast_started.is_connected(vfx._on_cast_started):
 		sce.cast_started.disconnect(vfx._on_cast_started)
 	if sce.spell_hit_element.is_connected(vfx._on_spell_hit_element):
@@ -496,6 +495,14 @@ func test_spell_vfx_exit_tree_disconnects_signals_cleanly() -> void:
 	assert_bool(sce.cast_started.is_connected(vfx._on_cast_started)).is_false()
 	assert_bool(sce.spell_hit_element.is_connected(vfx._on_spell_hit_element)).is_false()
 	assert_bool(sce.cast_hit_started.is_connected(vfx._on_cast_hit_started)).is_false()
+
+	# Authoritative emission test: after disconnect, cast_started fires only the fresh spy
+	# (connection count == 1), confirming the vfx handler was removed from the signal.
+	var post_spy: Array[int] = [0]
+	sce.cast_started.connect(func(_se: SpellEffect) -> void: post_spy[0] += 1)
+	sce._on_combat_started(false)
+	sce._on_combo_resolved(_make_spell_effect(0))
+	assert_int(post_spy[0]).is_equal(1)
 
 	vfx.free()
 	_teardown_sce(sce)

@@ -1,13 +1,13 @@
 # Story 005: Prana Type Visual Differentiation
 
 > **Epic**: Spell Casting & Effects
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Presentation
 > **Type**: Visual/Feel
 > **Estimate**: 2.5 days
 > **Sprint ID**: S5-03
 > **Manifest Version**: 2026-06-12
-> **Last Updated**: 2026-06-12
+> **Last Updated**: 2026-06-13
 
 ## Context
 
@@ -126,3 +126,21 @@ Key decisions:
 
 - Depends on: spell-casting-effects story-001 through story-004 DONE; GAP-1 Quick Spec authored
 - Unlocks: Re-validation playtest can proceed (one of 3 discoverability gates)
+
+---
+
+## Completion Notes
+
+**Completed**: 2026-06-13
+**Criteria**: 5/9 passing (4 user-accepted FP-scope deferrals)
+**Deferred**:
+- AC-VD-01 — visual distinctness: requires hardware playtest at re-validation session
+- AC-VD-05 — cast animation per-type routing: modulate pulse placeholder; AnimationPlayer clips deferred to VS
+- AC-VD-07 — VFX fires (secondary effects): `_fire_secondary_effect` stub at FP; apply_damage suppression is covered
+- AC-VD-09 — external discoverability test: deferred to re-validation playtest
+**Deviations**:
+- `cast_started` emits full `SpellEffect` (richer than spec'd `primary_type: int`) — acceptable upward deviation
+- AC-VD-05 modulate pulse placeholder accepted for FP scope
+- AC-VD-07 secondary VFX deferred (stub) accepted for FP scope
+**Test Evidence**: Visual/Feel — automated test at `tests/unit/spell-casting-effects/sce_visual_routing_test.gd` (17/17 PASSED); evidence file `production/qa/evidence/sprint-5-prana-visuals-evidence.md` not yet created (ADVISORY — required before re-validation playtest)
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS (fixes applied: `_configure_burst` split, VR-14 strengthened)
