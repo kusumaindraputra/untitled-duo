@@ -32,16 +32,14 @@ State transition driven by `combat_started` / `preparation_started` signals — 
 
 ---
 
-## ⚠️ Pre-Implementation Requirement (GAP-2)
+## ~~⚠️ Pre-Implementation Requirement (GAP-2)~~ — RESOLVED 2026-06-13
 
-`design/gdd/prana-grid.md` LOCKED state and UI Requirements sections must be updated to specify:
-1. **Compact node**: a separate `Control` child of PranaGrid (e.g., `%CompactIndicator`) — distinct from the main grid panel
-2. **Dimensions**: ≤60×60px total; 3×3 array of 14×14px dots with 4px gaps
-3. **Position**: bottom-right corner, within Combat HUD's reserved region (bottom-right, ≤288×216px)
-4. **Visual**: filled dot = `PranaCatalog.get_type(slot_type_id).color`; empty dot = `Color("#333333")`; no slot interaction
-5. **Transition**: immediate on signal (no animation at FP scope)
-
-Once amended, update this story's Implementation Notes and mark GAP-2 RESOLVED.
+`design/gdd/prana-grid.md` amended: Rule 3, UI Requirements (Layout + Grid Panel), Visual Requirements (LOCKED row), and AC-PG-12 all updated with compact indicator spec. Key decisions locked in GDD:
+1. **Compact node**: `%CompactIndicator` — `Control` child of PranaGrid, distinct from main grid panel ✅
+2. **Dimensions**: ≤60×60px; 3×3 array of 14×14px dots with 4px gaps ✅
+3. **Position**: bottom-right corner, within Combat HUD reserved region (≤288×216px) ✅
+4. **Visual**: filled dot = `PranaCatalog.get_type(slot_type_id).color`; empty dot = `Color("#333333")` ✅
+5. **Transition**: immediate on `grid_locked` (no animation at FP scope) ✅
 
 ---
 

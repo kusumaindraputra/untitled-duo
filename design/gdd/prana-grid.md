@@ -2,7 +2,7 @@
 
 > **Status**: Approved
 > **Author**: Kusuma Putra + Claude Code Game Studios
-> **Last Updated**: 2026-05-28 (round 2 — signal contract revision)
+> **Last Updated**: 2026-06-13 (round 3 — GAP-2: compact indicator spec for LOCKED state, S5-04)
 > **Implements Pillar**: Pillar 1 (Every Run Tells a Different Story), Pillar 2 (Power is Earned Through Understanding), Pillar 3 (Chaos Has Consequences)
 
 ## Overview
@@ -35,7 +35,9 @@ The failure version matters equally. A misread wave — the wrong type, the comb
 
 2. **Phase gating — ARRANGEMENT state**: The grid enters ARRANGEMENT state on `preparation_started`. On entry, all slots reset to empty. In ARRANGEMENT state the grid accepts all player input: place, remove, swap, and confirm.
 
-3. **Phase gating — LOCKED state**: The grid enters LOCKED state on `grid_locked`. (`grid_locked` is emitted by Game State immediately before `combat_started` — guaranteeing the grid is locked before Player Controller enables movement.) All input is disabled. The grid remains visually displayed showing the confirmed arrangement so the player can see what they committed during combat. No drag, select, place, remove, or confirm input is processed while LOCKED.
+3. **Phase gating — LOCKED state**: The grid enters LOCKED state on `grid_locked`. (`grid_locked` is emitted by Game State immediately before `combat_started` — guaranteeing the grid is locked before Player Controller enables movement.) All input is disabled. The full grid panel is hidden; a **compact indicator** (≤60×60px, read-only) becomes visible in the bottom-right corner of the screen showing the committed arrangement. No drag, select, place, remove, or confirm input is processed while LOCKED.
+
+   **Compact indicator**: A 3×3 array of 14×14px dots with 4px gaps, positioned in the bottom-right screen corner within the Combat HUD's reserved region (bottom-right, ≤288×216px). Filled slot → dot color == `PranaCatalog.get_type(slot_type_id).color`; empty slot → `Color("#333333")`. Implemented as a `Control` child of PranaGrid (e.g., `%CompactIndicator`) with `mouse_filter = MOUSE_FILTER_IGNORE` on all children — receives no input. Transition is immediate on `grid_locked` (no animation at First Playable). The compact indicator also hides on `grid_hidden`.
 
 3a. **Phase gating — HIDDEN state**: The grid enters HIDDEN state on `grid_hidden`. The grid is not rendered and does not participate in input. `grid_hidden` is emitted by Game State on entry to `MAIN_MENU`, `RUN_SUMMARY`, `DEATH_SCREEN`; and `[VS]` `PATH_SELECTION`, `SHOP_PHASE`, `REST_PHASE`, `CIPHERS_TRIAL`. The grid exits HIDDEN on `preparation_started` → enter ARRANGEMENT.
 
@@ -236,7 +238,7 @@ Prana Grid is a UI/input surface rather than a balance-sensitive gameplay system
 | Occupied | Octagonal frame filled with the type's canonical color (`PranaType.color`). Type icon (`PranaType.icon`) centered. Color and icon sourced from `PranaCatalog.get_type(id)` — never hardcoded. |
 | Cursor-selected (gamepad) | Occupied or empty slot with a bright white/gold border highlight and slight scale-up (1.05×) |
 | Dragging-over (mouse) | Target slot shows a pulsed highlight ring indicating a valid drop target |
-| LOCKED | All slots dim to 70% opacity. No highlight, no pulse. Arrangement is still visible — the player can read what they committed during combat. |
+| LOCKED | **Full grid panel hidden.** Compact indicator (≤60×60px) visible in bottom-right corner. Filled dot: `PranaCatalog.get_type(id).color`. Empty dot: `Color("#333333")`. Full opacity, no pulse, no interaction. |
 
 **Type Selector panel** — adjacent to the grid, displays all available Prana type tokens in a row or column. Each token uses its canonical color and icon. The panel dims and becomes non-interactive in LOCKED state.
 
@@ -273,14 +275,14 @@ The Prana Grid UI consists of three components displayed together during Prepara
 2. **Type Selector panel** — the source of draggable Prana tokens (mouse) / current-type indicator (gamepad)
 3. **Action buttons** — Confirm and Clear All
 
-During LOCKED state (Combat Phase), the Grid panel remains visible but the Type Selector panel and Action buttons are hidden or fully non-interactive. The grid acts as a read-only reference.
+During LOCKED state (Combat Phase), the full Grid panel **hides**; the Type Selector panel and Action buttons also hide. A compact indicator (≤60×60px, read-only) appears in the bottom-right corner showing the committed arrangement as colored dots — see Rule 3 for the full compact indicator specification.
 
 ### Grid Panel
 
 - 3×3 arrangement of slot nodes, evenly spaced with a small gap between slots
 - Slot 4 (centre) may be visually distinguished (e.g., subtle accent ring) to signal its role as the combo primary slot — this distinction must not obscure the placed token
 - Total grid display fits within the Preparation Phase UI zone; exact pixel dimensions deferred to the Combat HUD GDD
-- Grid must remain visible during LOCKED state at the same screen position
+- During LOCKED state, the full Grid panel is **hidden** and replaced by the compact indicator (Rule 3). The compact indicator occupies the bottom-right corner; the arena is unobstructed.
 
 ### Type Selector Panel
 
@@ -371,10 +373,13 @@ Each criterion is independently verifiable by a QA tester.
 **Then** the drag is cancelled; the dragged token does not land; the grid enters LOCKED with the pre-drag arrangement
 **Pass**: No partial placement; LOCKED state shows arrangement as it was before drag started
 
-### AC-PG-12: LOCKED grid visible during Combat Phase
+### AC-PG-12: Compact indicator visible during Combat Phase; full panel hidden
 **Given** the grid has confirmed an arrangement and entered LOCKED state
-**Then** the grid display (all slot tokens with their type colors and icons) remains visible on screen at reduced opacity (70%)
-**Pass**: QA can read which types were committed during an active combat wave
+**Then** the full grid panel is NOT visible; the compact indicator (≤60×60px dot array) IS visible in the bottom-right corner
+**And** filled dot colors match `PranaCatalog.get_type(slot_type_id).color`; empty dots show `Color("#333333")`
+**And** compact indicator is non-interactive (`mouse_filter == MOUSE_FILTER_IGNORE`)
+**On `preparation_started`**: compact indicator hides, full panel becomes visible (ARRANGEMENT entry)
+**Pass**: QA confirms full panel invisible during combat; compact dot colors correct; no mouse interaction registered; full panel reappears on next Preparation Phase
 
 ## Open Questions
 
