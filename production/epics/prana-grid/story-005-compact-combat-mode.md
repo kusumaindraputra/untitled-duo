@@ -18,7 +18,7 @@
 
 **Desired behavior**: Full panel during Preparation; compact 3×3 indicator (read-only, small) in the bottom-right corner during Combat. This keeps the arrangement visible for reference without crowding the play area.
 
-**GDD status**: This story adds compact mode behavior to the LOCKED state. The prana-grid.md LOCKED state section must be amended before implementation begins (GAP-2 in QA plan).
+**GDD status**: This story adds compact mode behavior to the LOCKED state. GAP-2 resolved 2026-06-13 — prana-grid.md Rule 3, UI Requirements, Visual Requirements, and AC-PG-12 updated with compact indicator spec.
 
 **ADR Governing Implementation**: ADR-0003: Signal-Driven Architecture
 State transition driven by `combat_started` / `preparation_started` signals — no polling.
@@ -61,7 +61,7 @@ State transition driven by `combat_started` / `preparation_started` signals — 
 
 ## Implementation Notes
 
-*After GAP-2 amendment is authored, fill in:*
+*GAP-2 resolved — spec is locked in prana-grid.md Rule 3.*
 
 **CompactIndicator node structure** (placeholder):
 ```
@@ -165,5 +165,5 @@ func _update_compact_dots() -> void:
 ## Dependencies
 
 - Depends on: PranaGrid story-001 (phase gating), story-002 (committed_fragments), story-003 (CR integration) — all DONE
-- GAP-2 GDD amendment must be authored before implementation begins
+- GAP-2 GDD amendment — DONE 2026-06-13
 - Unlocks: S5-07 (gamepad input) depends on S5-04 being Done
