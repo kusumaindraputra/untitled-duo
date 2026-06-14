@@ -1,8 +1,15 @@
 ## player_controller.gd — Fayde's CharacterBody2D controller.
-## Layer: Core | Stories: PC-001, PC-002, PC-003, PC-004 — Skeleton, state machine, WASD movement,
-##   friction, dash system, I-frame, interface getters, footstep shuffle-bag, and audio events.
+## Layer: Core | Stories: PC-001–PC-004, S5-05 — Skeleton, state machine, WASD movement,
+##   friction, dash system, I-frame, interface getters, footstep shuffle-bag, audio events,
+##   dash_cooldown_changed signal (CombatHUD discoverability).
 class_name PlayerController
 extends CharacterBody2D
+
+# ── Signals ───────────────────────────────────────────────────────────────────
+
+## Emitted when dash availability changes. Fires false when dash activates (no longer
+## available); fires true when cooldown expires or preparation_started resets dash (GDD Rule 4).
+signal dash_cooldown_changed(available: bool)
 
 # ── Enums ─────────────────────────────────────────────────────────────────────
 
@@ -101,6 +108,7 @@ func _physics_process(delta: float) -> void:
 			_is_invincible = true
 			if audio_system != null:
 				audio_system.play_event(&"sfx_fayde_dash")
+			dash_cooldown_changed.emit(false)
 
 	# ── DASHING: duration countdown ───────────────────────────────────────────
 	if _controller_state == ControllerState.DASHING:
@@ -113,8 +121,9 @@ func _physics_process(delta: float) -> void:
 	# ── Dash cooldown countdown (unconditional) ───────────────────────────────
 	if _dash_cooldown_timer > 0.0:
 		_dash_cooldown_timer -= delta
-		if _dash_cooldown_timer < 0.0:
+		if _dash_cooldown_timer <= 0.0:
 			_dash_cooldown_timer = 0.0
+			dash_cooldown_changed.emit(true)
 
 	# ── Footstep accumulator (count-up; fires when >= interval) ─────────────────
 	# Timer advances during DASHING — post-dash first footstep may fire early (by design).
@@ -208,6 +217,7 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	_is_invincible = false
 	_dash_duration_timer = 0.0
 	_dash_cooldown_timer = 0.0
+	dash_cooldown_changed.emit(true)
 	_footstep_timer = 0.0
 	_footstep_bag.clear()
 

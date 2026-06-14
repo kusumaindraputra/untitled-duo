@@ -14,7 +14,7 @@ goal: "Address playtest legibility failures — Prana visual differentiation, Pr
 start: "2026-06-26"
 end: "2026-07-10"
 generated: "2026-06-12"
-updated: "2026-06-13"
+updated: "2026-06-14"
 
 stories:
   - id: "S5-01"
@@ -61,11 +61,11 @@ stories:
     name: "Dash discoverability + cooldown indicator in CombatHUD"
     file: "production/epics/combat-hud/story-005-dash-feedback.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-06-14"
 
   - id: "S5-06"
     name: "Chain dots repositioned above player character (CH-004, deferred x3)"

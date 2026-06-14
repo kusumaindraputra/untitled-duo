@@ -73,6 +73,8 @@ The paired fantasy: the run where you barely used the dash at all, because the g
 
    The dash i-frame window (0.15s) is distinct from Health & Damage's post-hit i-frame window (0.5s, contact-triggered). Both protect Fayde from CONTACT damage; `is_invincible()` returning `true` causes H&D to skip the call regardless of which source triggered it.
 
+   **Signal: `dash_cooldown_changed(available: bool)`** — emitted by PlayerController when dash availability changes. Emits `false` when a dash begins (cooldown starts); emits `true` when the cooldown expires and dash is available again. CombatHUD listens to this signal to update the cooldown indicator opacity.
+
 5. **Collision**: Fayde cannot pass through arena walls or static obstacles. `move_and_slide()` handles this automatically via physics layers. Enemy bodies occupy a separate collision layer — Fayde does not physically block enemies spatially; enemy contact damage is triggered by Enemy AI's hit detection, not by Player Controller collision.
 
 6. **Footstep audio**: When `get_controller_state() == ENABLED` and `velocity.length() > FOOTSTEP_VELOCITY_THRESHOLD`, Player Controller fires the next footstep variant via a float accumulator timer (every `FOOTSTEP_INTERVAL_SEC`, default 0.38s — ~2.6 steps/sec). The accumulator resets to zero when velocity drops below `FOOTSTEP_VELOCITY_THRESHOLD` (timer restarts on re-entry, preventing an immediate fire after a brief stop).

@@ -101,6 +101,11 @@ Therefore: `sfx_fayde_heal` is **not required at FP scope**. Audio System GDD mu
 
 **8. Prana Grid layout contract.** Prana Grid positions its panel in the bottom region (Rule 2). Combat HUD elements must not occupy that region. The grid panel's input lock during Combat Phase is triggered by `GameStateManager.combat_started` — owned by Prana Grid, not Combat HUD. This GDD documents the contract; Prana Grid GDD must implement it.
 
+**9. Dash discoverability and cooldown indicator.** During Combat Phase, CombatHUD shows two dash-related elements:
+
+- **DashHintLabel** (`Label`): small text hint ("Press [Dash]") visible when Combat Phase begins; hides on `run_started` (player has discovered dash) or `preparation_started`. Never shown during Preparation Phase.
+- **DashCooldownIcon** (`TextureRect` or `ColorRect`): icon indicating dash availability. Full opacity (1.0) when available; dimmed opacity (0.4) when on cooldown. Updates via `PlayerController.dash_cooldown_changed(available: bool)` signal. Visible during Combat Phase only. CombatHUD receives the signal via `@export var player_controller: PlayerController` (scene node — not Autoload).
+
 ---
 
 ### States and Transitions

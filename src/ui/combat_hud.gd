@@ -12,9 +12,11 @@
 ## Story 002: Zone colors, heal tint revert, DESPERATE pulse animation.
 ## Story 003: Floating damage number labels for enemy hits.
 ## Story 004: Chain-dot indicator, chain_index_changed logic.
+## Story S5-05: Dash discoverability hint + cooldown icon (AC-DH-01–AC-DH-07).
 ##
 ## ADR: ADR-0003 (Signal-Driven Architecture), ADR-0004 (Float Accumulator Timers),
 ##      ADR-0005 (Persistent HUD Sub-Scene Swap)
+class_name CombatHUD
 extends Control
 
 
@@ -63,6 +65,13 @@ const CAST_FLASH_DURATION: float = 0.15
 ## Seconds after animation start before the fade-out begins.
 const DAMAGE_FADE_START: float = 0.5
 
+## Opacity of DashCooldownIcon when dash is on cooldown (AC-DH-04).
+const DASH_COOLDOWN_DIMMED_ALPHA: float = 0.4
+
+## Hint text shown to player during first combat encounter (AC-DH-03).
+# TODO(l10n): localize before shipping
+const DASH_HINT_TEXT: String = "Shift / LT — Dash"
+
 
 # ── Public child node references (created in _ready() for testability) ────────
 
@@ -76,6 +85,18 @@ var hp_label: Label = null
 ## HBoxContainer holding the chain-dot indicator sprites.
 ## Hidden outside combat; Story 004 populates it.
 var chain_dots_container: HBoxContainer = null
+
+## @export var to receive PlayerController from scene (S5-05, AC-DH-04, AC-DH-05).
+## Null in headless tests — all dash handlers null-guard on this.
+@export var player_controller: PlayerController = null
+
+## Label shown during Combat Phase with the dash keybinding hint (AC-DH-01, AC-DH-03).
+## Null in headless tests.
+var _dash_hint_label: Label = null
+
+## ColorRect icon dimmed when dash is on cooldown (AC-DH-04, AC-DH-05).
+## Null in headless tests.
+var _dash_cooldown_icon: ColorRect = null
 
 
 # ── Private state ─────────────────────────────────────────────────────────────
@@ -139,6 +160,8 @@ func _ready() -> void:
 	SpellCastingEffects.spell_hit_element.connect(_on_spell_hit_element)
 	SpellCastingEffects.cast_hit_started.connect(_on_cast_hit_started)
 	CombinationResolution.combo_resolved.connect(_on_combo_resolved)
+	if player_controller != null:
+		player_controller.dash_cooldown_changed.connect(_on_dash_cooldown_changed)
 
 
 func _process(delta: float) -> void:
@@ -190,6 +213,9 @@ func _exit_tree() -> void:
 		SpellCastingEffects.cast_hit_started.disconnect(_on_cast_hit_started)
 	if CombinationResolution.combo_resolved.is_connected(_on_combo_resolved):
 		CombinationResolution.combo_resolved.disconnect(_on_combo_resolved)
+	if is_instance_valid(player_controller) and \
+			player_controller.dash_cooldown_changed.is_connected(_on_dash_cooldown_changed):
+		player_controller.dash_cooldown_changed.disconnect(_on_dash_cooldown_changed)
 
 
 # ── Private methods ───────────────────────────────────────────────────────────
@@ -218,6 +244,22 @@ func _create_ui_nodes() -> void:
 	chain_dots_container.visible = false
 	chain_dots_container.position = Vector2(8, 56)
 	add_child(chain_dots_container)
+
+	_dash_hint_label = Label.new()
+	_dash_hint_label.text = DASH_HINT_TEXT
+	_dash_hint_label.position = Vector2(8, 80)
+	_dash_hint_label.size = Vector2(200, 20)
+	_dash_hint_label.visible = false
+	add_child(_dash_hint_label)
+
+	_dash_cooldown_icon = ColorRect.new()
+	_dash_cooldown_icon.custom_minimum_size = Vector2(16, 16)
+	_dash_cooldown_icon.size = Vector2(16, 16)
+	_dash_cooldown_icon.position = Vector2(8, 104)
+	_dash_cooldown_icon.color = Color("#FFFFFF")
+	_dash_cooldown_icon.color.a = 1.0
+	_dash_cooldown_icon.visible = false
+	add_child(_dash_cooldown_icon)
 
 
 ## Starts a float-accumulator HP bar animation toward [param target] hp value.
@@ -412,6 +454,11 @@ func _on_run_started() -> void:
 	hp_bar.modulate = HP_COLOR_FULL
 	hp_label.add_theme_color_override(&"font_color", HP_COLOR_LABEL_FULL)
 	chain_dots_container.visible = false
+	if _dash_hint_label != null:
+		_dash_hint_label.visible = false
+	if _dash_cooldown_icon != null:
+		_dash_cooldown_icon.color.a = 1.0
+		_dash_cooldown_icon.visible = false
 	_free_all_damage_labels()
 
 
@@ -420,11 +467,19 @@ func _on_run_started() -> void:
 func _on_preparation_started(_idx: int, _rem: int) -> void:
 	chain_dots_container.visible = false
 	_current_primary_type = -1
+	if _dash_hint_label != null:
+		_dash_hint_label.visible = false
+	if _dash_cooldown_icon != null:
+		_dash_cooldown_icon.color.a = 1.0
+		_dash_cooldown_icon.visible = false
 
 
 ## Handles combat_started from GameStateManager.
-func _on_combat_started(_is_boss: bool) -> void:
-	pass
+func _on_combat_started(_is_boss: bool = false) -> void:
+	if _dash_hint_label != null:
+		_dash_hint_label.visible = true
+	if _dash_cooldown_icon != null:
+		_dash_cooldown_icon.visible = true
 
 
 ## Handles chain_index_changed from SpellCastingEffects.
@@ -466,3 +521,11 @@ func _on_cast_hit_started(_lock_duration: float) -> void:
 ## Stores the element for per-frame correlation with the subsequent damage_taken signal (TR-CH-005).
 func _on_spell_hit_element(target: Node, prana_type_id: int) -> void:
 	_pending_element[target] = prana_type_id
+
+
+## Handles dash_cooldown_changed from PlayerController (AC-DH-04, AC-DH-05).
+## Dims icon when on cooldown; restores full opacity when dash is available.
+func _on_dash_cooldown_changed(available: bool) -> void:
+	if _dash_cooldown_icon == null:
+		return
+	_dash_cooldown_icon.color.a = 1.0 if available else DASH_COOLDOWN_DIMMED_ALPHA

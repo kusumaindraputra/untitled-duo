@@ -1,13 +1,13 @@
 # Story 005: Dash Discoverability + Cooldown Indicator
 
 > **Epic**: CombatHUD
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: UI
 > **Type**: UI
 > **Estimate**: 1.0 day
 > **Sprint ID**: S5-05
 > **Manifest Version**: 2026-06-12
-> **Last Updated**: 2026-06-12
+> **Last Updated**: 2026-06-14
 
 ## Context
 
@@ -33,7 +33,7 @@ Combat HUD must NOT poll `PlayerController.is_dash_available()` each frame. Play
 
 ---
 
-## ⚠️ Pre-Implementation Requirement (GAP-3)
+## ~~⚠️ Pre-Implementation Requirement (GAP-3)~~ — RESOLVED 2026-06-13
 
 Two GDD amendments required before this story begins:
 
@@ -52,7 +52,7 @@ Add to Detailed Design (new Rule 9):
 - `DashCooldownIcon` (TextureRect or ColorRect): full opacity = ready; 40% opacity = on cooldown; no animation (immediate switch)
 - Both nodes connect to `PlayerController.dash_cooldown_changed(available: bool)`
 
-Once both amendments are authored, mark GAP-3 RESOLVED.
+Both amendments authored and written to GDD files 2026-06-13. GAP-3 RESOLVED.
 
 ---
 
@@ -194,3 +194,15 @@ dash_cooldown_changed.emit(true)  # ready for next wave
 - Depends on: CombatHUD story-001 through story-004 DONE; GAP-3 amendments authored
 - GAP-3 requires changes to both `design/gdd/player-controller.md` AND `design/gdd/combat-hud.md`
 - Unlocks: Re-validation playtest (one of 3 discoverability gates)
+
+---
+
+## Completion Notes
+**Completed**: 2026-06-14
+**Criteria**: 7/10 passing (AC-DH-08, AC-DH-09, AC-DH-10 deferred — [M] playtest-only ACs)
+**Deviations**:
+- ADVISORY: `DASH_COOLDOWN_DIMMED_ALPHA` (0.4) and `DASH_HINT_TEXT` are in-file constants (not data-driven). Consistent with codebase-wide pattern. `TODO(l10n)` added to DASH_HINT_TEXT.
+- ADVISORY: No manual evidence file at `production/qa/evidence/sprint-5-dash-feedback-evidence.md`. Create during next playtest session.
+- CODE REVIEW: `/code-review` returned CHANGES REQUIRED (`modulate.a` → `color.a` on ColorRect); all required changes applied before story close. Review confirmed complete.
+**Test Evidence**: `tests/unit/combat-hud/combat_hud_dash_test.gd` — 7/7 PASSED, 0 orphans, exit 0 (2026-06-14)
+**Code Review**: Complete — CHANGES REQUIRED resolved (color.a fix applied)
