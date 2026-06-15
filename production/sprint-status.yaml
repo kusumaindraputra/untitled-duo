@@ -14,7 +14,7 @@ goal: "Close post-First Playable housekeeping (test count, tech debt, scene wiri
 start: "2026-06-16"
 end: "2026-06-30"
 generated: "2026-06-15"
-updated: "2026-06-15"
+updated: "2026-06-15"  # S6-02 closed
 
 stories:
   - id: "S6-01"
@@ -31,21 +31,21 @@ stories:
     name: "Investigate + restore missing tests (585→535 discrepancy)"
     file: "tests/"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-15"
 
   - id: "S6-03"
     name: "Document Godot 4 scene wiring rule in coding-standards.md"
     file: ".claude/docs/coding-standards.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.25
     blocker: ""
-    completed: ""
+    completed: "2026-06-15"
 
   - id: "S6-04"
     name: "Tech debt review pass — close or formally accept open entries (carryover S5-08)"

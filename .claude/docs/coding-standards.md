@@ -65,6 +65,41 @@ All stories must have appropriate test evidence before they can be marked Done:
   - **Unity**: `game-ci/unity-test-runner@v4` (GitHub Actions)
   - **Unreal**: headless runner with `-nullrhi` flag
 
+## Godot 4 Scene Wiring Rule
+
+**Cross-sibling `@export Node` references must be wired programmatically in the parent node's
+`_ready()`, not via NodePath text overrides in `.tscn`, when the target node appears after the
+referencing node in scene order.**
+
+Root cause: Godot 4 initializes nodes in the order they appear in the `.tscn` file. If node A
+(e.g., CombatHUD under CanvasLayer) appears before node B (e.g., PlayerController) in the file,
+then A's `_ready()` fires before B even exists — NodePath resolution for B silently returns null.
+
+**Correct pattern**: wire in the shared parent's `_ready()`, which fires after ALL children have
+completed their own `_ready()` calls:
+
+```gdscript
+# In the parent scene's _ready() (e.g., debug_game_loop.gd):
+func _ready() -> void:
+    var hud: CombatHUD = $CanvasLayer/CombatHUD
+    hud.player_controller = $PlayerController   # B is guaranteed ready by now
+    hud.fayde_node = $PlayerController
+```
+
+If the receiving node needs to react to assignment (e.g., connect a signal), use a GDScript
+property setter with an `is_node_ready()` guard:
+
+```gdscript
+@export var player_controller: PlayerController = null:
+    set(pc):
+        # disconnect previous if needed
+        player_controller = pc
+        if is_instance_valid(pc) and is_node_ready():
+            pc.some_signal.connect(_on_some_signal)
+```
+
+First documented fix: `debug_game_loop.gd` wiring CombatHUD → PlayerController (S5-05/S5-06, 2026-06-15).
+
 ## Node Teardown in Headless Tests (Godot — GdUnit4)
 
 Use `node.free()` (not `node.queue_free()`) for nodes created with `.new()` that are **never added
