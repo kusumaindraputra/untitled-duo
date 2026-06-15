@@ -9,100 +9,100 @@
 #   done           ↔  Complete
 #   blocked        ↔  Blocked
 
-sprint: 5
-goal: "Address playtest legibility failures — Prana visual differentiation, PranaGrid compact mode, dash feedback, chain dots — before Feature layer expansion"
-start: "2026-06-26"
-end: "2026-07-10"
-generated: "2026-06-12"
+sprint: 6
+goal: "Close post-First Playable housekeeping (test count, tech debt, scene wiring docs), complete PranaGrid gamepad, begin Audio System"
+start: "2026-06-16"
+end: "2026-06-30"
+generated: "2026-06-15"
 updated: "2026-06-15"
 
 stories:
-  - id: "S5-01"
-    name: "Run /qa-plan sprint — Sprint 5 QA plan (DAY 1 GATE)"
+  - id: "S6-01"
+    name: "Run /qa-plan sprint — Sprint 6 QA plan (DAY 1 GATE)"
     file: "production/qa/"
     priority: must-have
-    status: done
+    status: ready-for-dev
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: "2026-06-12"
+    completed: ""
 
-  - id: "S5-02"
-    name: "Create sprint 5 stories — legibility pass items across epics"
-    file: "production/epics/"
+  - id: "S6-02"
+    name: "Investigate + restore missing tests (585→535 discrepancy)"
+    file: "tests/"
     priority: must-have
-    status: done
+    status: ready-for-dev
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: "2026-06-12"
+    completed: ""
 
-  - id: "S5-03"
-    name: "Prana visual differentiation per type — SC&E type-specific visuals"
-    file: "production/epics/spell-casting-effects/story-005-type-visual-differentiation.md"
+  - id: "S6-03"
+    name: "Document Godot 4 scene wiring rule in coding-standards.md"
+    file: ".claude/docs/coding-standards.md"
     priority: must-have
-    status: done
+    status: ready-for-dev
+    owner: ""
+    estimate_days: 0.25
+    blocker: ""
+    completed: ""
+
+  - id: "S6-04"
+    name: "Tech debt review pass — close or formally accept open entries (carryover S5-08)"
+    file: "docs/tech-debt-register.md"
+    priority: must-have
+    status: ready-for-dev
+    owner: ""
+    estimate_days: 0.5
+    blocker: ""
+    completed: ""
+
+  - id: "S6-05"
+    name: "PranaGrid gamepad input (carryover S5-07) — ADR-0013 HIGH risk"
+    file: "production/epics/prana-grid/story-004-gamepad-input.md"
+    priority: must-have
+    status: ready-for-dev
     owner: ""
     estimate_days: 2.5
     blocker: ""
-    completed: "2026-06-13"
+    completed: ""
 
-  - id: "S5-04"
-    name: "PranaGrid compact mode in combat"
-    file: "production/epics/prana-grid/story-005-compact-combat-mode.md"
-    priority: must-have
-    status: done
+  - id: "S6-06"
+    name: "Audio System — create stories + implement skeleton (4-bus, Autoload #5)"
+    file: "production/epics/audio-system/"
+    priority: should-have
+    status: backlog
     owner: ""
-    estimate_days: 1.5
-    blocker: ""
-    completed: "2026-06-13"
+    estimate_days: 2.5
+    blocker: "S6-01"
+    completed: ""
 
-  - id: "S5-05"
-    name: "Dash discoverability + cooldown indicator in CombatHUD"
-    file: "production/epics/combat-hud/story-005-dash-feedback.md"
-    priority: must-have
-    status: done
+  - id: "S6-07"
+    name: "Re-validation playtest — verify Sprint 5 legibility fixes"
+    file: "production/playtests/"
+    priority: should-have
+    status: backlog
     owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: "2026-06-14"
-
-  - id: "S5-06"
-    name: "Chain dots repositioned above player character (CH-004, deferred x3)"
-    file: "production/epics/combat-hud/story-004-chain-dots.md"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 0.75
-    blocker: ""
-    completed: "2026-06-15"
-
-  - id: "S5-07"
-    name: "PranaGrid gamepad input (carryover S4-07) — ADR-0013 HIGH risk"
-    file: "production/epics/prana-grid/story-004-gamepad-input.md"
-    priority: should-have
-    status: backlog
-    owner: ""
-    estimate_days: 2.5
-    blocker: "S5-04"
     completed: ""
 
-  - id: "S5-08"
-    name: "Tech debt review pass — close or formally accept open entries (carryover S4-08)"
-    file: "docs/tech-debt-register.md"
-    priority: should-have
-    status: backlog
-    owner: ""
-    estimate_days: 0.5
-    blocker: ""
-    completed: ""
-
-  - id: "S5-09"
-    name: "Isometric visual pass — player/enemy placeholder art + lighting tweak (carryover S4-09)"
+  - id: "S6-08"
+    name: "Isometric visual pass — player/enemy placeholder art + lighting tweak (carryover S5-09)"
     file: "assets/art/"
     priority: nice-to-have
     status: backlog
     owner: ""
     estimate_days: 2.0
     blocker: ""
+    completed: ""
+
+  - id: "S6-09"
+    name: "Audio System SFX pool + event dispatch (only if S6-06 done)"
+    file: "production/epics/audio-system/"
+    priority: nice-to-have
+    status: backlog
+    owner: ""
+    estimate_days: 2.0
+    blocker: "S6-06"
     completed: ""
