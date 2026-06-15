@@ -92,7 +92,15 @@ var chain_dots_container: HBoxContainer = null
 
 ## @export var to receive PlayerController from scene (S5-05, AC-DH-04, AC-DH-05).
 ## Null in headless tests — all dash handlers null-guard on this.
-@export var player_controller: PlayerController = null
+## Setter connects/disconnects dash_cooldown_changed when assigned after _ready().
+@export var player_controller: PlayerController = null:
+	set(pc):
+		if is_instance_valid(player_controller) and \
+				player_controller.dash_cooldown_changed.is_connected(_on_dash_cooldown_changed):
+			player_controller.dash_cooldown_changed.disconnect(_on_dash_cooldown_changed)
+		player_controller = pc
+		if is_instance_valid(pc) and is_node_ready():
+			pc.dash_cooldown_changed.connect(_on_dash_cooldown_changed)
 
 ## World-space Node2D whose position drives chain dot screen placement (AC-HUD-27–AC-HUD-29).
 ## Assign PlayerController in scene; plain Node2D is acceptable in headless tests.

@@ -17,6 +17,12 @@ func _ready() -> void:
 	_register_input_actions()
 	$WaveManager.spawn_points_container = $SubSceneRoot/IsometricRoom/SpawnMarkers
 	$PlayerController.position = Vector2(0, -200)
+	# Wire CombatHUD node references here — NodePath in .tscn can't resolve because
+	# CombatHUD enters the tree before PlayerController (scene ordering in main.tscn).
+	# debug_game_loop._ready() fires last (parent after all children), so both are ready.
+	var hud: CombatHUD = $CanvasLayer/CombatHUD
+	hud.player_controller = $PlayerController
+	hud.fayde_node = $PlayerController
 	GameStateManager._active_state = GameEnums.GameState.MAIN_MENU
 	GameStateManager.run_ended.connect(_on_run_ended)
 	GameStateManager.start_run()

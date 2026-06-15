@@ -17,8 +17,6 @@ layer = 10
 [node name="CombatHUD" parent="CanvasLayer" unique_id=1559835441 instance=ExtResource("2_hud")]
 layout_mode = 3
 anchors_preset = 0
-player_controller = NodePath("PlayerController")
-fayde_node = NodePath("PlayerController")
 
 [node name="PranaGridLayer" type="CanvasLayer" parent="." unique_id=38144227]
 
