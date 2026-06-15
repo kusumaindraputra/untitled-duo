@@ -42,6 +42,10 @@ func _register_input_actions() -> void:
 	_ensure_key_action(&"move_up", KEY_W)
 	_ensure_key_action(&"move_down", KEY_S)
 	_ensure_key_action(&"dash", KEY_SHIFT)
+	_ensure_joypad_action(&"prana_place", JOY_BUTTON_A)
+	_ensure_joypad_action(&"prana_clear", JOY_BUTTON_B)
+	_ensure_joypad_action(&"prana_confirm", JOY_BUTTON_Y)
+	_ensure_joypad_action(&"prana_type_cycle", JOY_BUTTON_RIGHT_SHOULDER)
 
 
 func _on_run_ended(win: bool) -> void:
@@ -69,4 +73,13 @@ func _ensure_key_action(action: StringName, keycode: Key) -> void:
 	InputMap.add_action(action)
 	var ev := InputEventKey.new()
 	ev.keycode = keycode
+	InputMap.action_add_event(action, ev)
+
+
+func _ensure_joypad_action(action: StringName, button: JoyButton) -> void:
+	if InputMap.has_action(action):
+		return
+	InputMap.add_action(action)
+	var ev := InputEventJoypadButton.new()
+	ev.button_index = button
 	InputMap.action_add_event(action, ev)

@@ -69,6 +69,17 @@ var _compact_indicator: Control = null
 ## ColorRect dot nodes for the compact indicator, indexed 0–8.
 var _dot_nodes: Array[ColorRect] = []
 
+## Gamepad: currently selected slot index. Default: 4 (centre slot). (ADR-0013)
+var _selected_slot_index: int = 4
+## Gamepad: overlay visibility — true when last input was joypad. Event-driven, never polled. (ADR-0013)
+var _cursor_visible: bool = false
+## Gamepad: Prana type currently selected for placement. Cycles 0–4.
+var _selected_type_id: int = 0
+## Gamepad cursor overlay Control. Created in _create_ui_nodes(); repositioned on each d-pad press. (ADR-0013)
+var _gamepad_cursor: Control = null
+## Type indicator label displayed in the gamepad HUD strip. Null in headless tests.
+var _type_indicator_label: Label = null
+
 
 func _ready() -> void:
 	process_mode = PROCESS_MODE_PAUSABLE
@@ -82,6 +93,13 @@ func _ready() -> void:
 	arrangement_confirmed.connect(GameStateManager._on_arrangement_confirmed)
 	_create_ui_nodes()
 	visible = false
+	# Initialize gamepad cursor position after first layout pass. (ADR-0013: must defer
+	# global_position read until layout is complete.)
+	await get_tree().process_frame
+	if _gamepad_cursor != null:
+		_gamepad_cursor.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_move_cursor_to(_selected_slot_index)
+		_gamepad_cursor.visible = false
 
 
 func _exit_tree() -> void:
@@ -90,6 +108,38 @@ func _exit_tree() -> void:
 	GameStateManager.preparation_started.disconnect(_on_preparation_started)
 	GameStateManager.grid_locked.disconnect(_on_grid_locked)
 	GameStateManager.grid_hidden.disconnect(_on_grid_hidden)
+
+
+## Detects input mode switch (gamepad ↔ mouse/keyboard) and dispatches d-pad navigation
+## and gamepad actions. Mode detection is event-driven — never polled in _process(). (ADR-0013)
+## Forbidden: grab_focus() must NEVER be called from any branch of this handler.
+func _input(event: InputEvent) -> void:
+	if event is InputEventJoypadButton or event is InputEventJoypadMotion:
+		_cursor_visible = true
+		if _gamepad_cursor != null:
+			_gamepad_cursor.visible = true
+	elif event is InputEventMouseButton or event is InputEventMouseMotion:
+		_cursor_visible = false
+		if _gamepad_cursor != null:
+			_gamepad_cursor.visible = false
+	if not (_cursor_visible and _state == State.ARRANGEMENT):
+		return
+	if event.is_action_pressed(&"ui_left"):
+		_navigate_gamepad(Vector2i(-1, 0))
+	elif event.is_action_pressed(&"ui_right"):
+		_navigate_gamepad(Vector2i(1, 0))
+	elif event.is_action_pressed(&"ui_up"):
+		_navigate_gamepad(Vector2i(0, -1))
+	elif event.is_action_pressed(&"ui_down"):
+		_navigate_gamepad(Vector2i(0, 1))
+	elif event.is_action_pressed(&"prana_type_cycle"):
+		_cycle_selected_type()
+	elif event.is_action_pressed(&"prana_place"):
+		_gamepad_place()
+	elif event.is_action_pressed(&"prana_clear"):
+		_gamepad_clear()
+	elif event.is_action_pressed(&"prana_confirm"):
+		_on_confirm_pressed()
 
 
 ## Ticks the error-flash timer and hides the error label when it expires (AC-PG-05).
@@ -334,6 +384,22 @@ func _create_ui_nodes() -> void:
 	_error_label.visible = false
 	layout.add_child(_error_label)
 
+	# Gamepad HUD strip — shows the currently selected Prana type for gamepad placement.
+	# Always present in the panel layout; _type_indicator_label updates on every _cycle_selected_type().
+	var gp_strip := HBoxContainer.new()
+	gp_strip.add_theme_constant_override(&"separation", 8)
+	gp_strip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	layout.add_child(gp_strip)
+
+	var gp_hint := Label.new()
+	gp_hint.text = "PAD: "
+	gp_strip.add_child(gp_hint)
+
+	_type_indicator_label = Label.new()
+	_type_indicator_label.text = "TYPE: ASH"
+	_type_indicator_label.add_theme_color_override(&"font_color", Color("#F24C1D"))
+	gp_strip.add_child(_type_indicator_label)
+
 	# Compact 3×3 dot indicator shown during LOCKED state (AC-CG-04).
 	# Added directly to PranaGrid Control (not to panel) so it stays visible when
 	# the panel is hidden. Pinned to bottom-right corner with 4px margin.
@@ -354,6 +420,21 @@ func _create_ui_nodes() -> void:
 		_dot_nodes.append(dot)
 	add_child(_compact_indicator)
 	_compact_indicator.visible = false
+
+	# Gamepad cursor overlay — gold border Panel over the currently selected slot. (ADR-0013)
+	# Added to PranaGrid root (not panel) so global_position assignments work without layout
+	# interference. mouse_filter set to MOUSE_FILTER_IGNORE in _ready() after process_frame.
+	# All anchors default to 0.0 — non-zero anchors offset global_position. (ADR-0013 risk)
+	var cursor := Panel.new()
+	cursor.size = Vector2(72.0, 72.0)
+	var cursor_style := StyleBoxFlat.new()
+	cursor_style.bg_color = Color(1.0, 1.0, 1.0, 0.0)  # transparent fill
+	cursor_style.border_color = Color("#FFD700")          # gold border
+	cursor_style.set_border_width_all(3)
+	cursor.add_theme_stylebox_override(&"panel", cursor_style)
+	cursor.z_index = 10  # renders above slot Panel nodes
+	add_child(cursor)
+	_gamepad_cursor = cursor
 
 
 ## Syncs the Confirm button appearance and disabled state with slot 4's content.
@@ -379,3 +460,54 @@ func _update_compact_dots() -> void:
 			dot.color = PranaCatalog.get_type(fragment.type_id).color
 		else:
 			dot.color = Color("#333333")
+
+
+## Moves the gamepad cursor to a new slot using 3x3 torus wrap arithmetic. (ADR-0013, GDD Formula 1)
+## direction.x: -1 = left, +1 = right. direction.y: -1 = up, +1 = down.
+func _navigate_gamepad(direction: Vector2i) -> void:
+	var row: int = _selected_slot_index / 3
+	var col: int = _selected_slot_index % 3
+	row = (row + direction.y + 3) % 3
+	col = (col + direction.x + 3) % 3
+	_selected_slot_index = row * 3 + col
+	_move_cursor_to(_selected_slot_index)
+
+
+## Repositions the gamepad cursor overlay over the slot at [param index]. (ADR-0013)
+## Reads slot global_position after layout — safe because _ready() awaits process_frame.
+func _move_cursor_to(index: int) -> void:
+	if _gamepad_cursor == null or _slot_nodes.is_empty():
+		return
+	var slot_node: Control = _slot_nodes[index]
+	_gamepad_cursor.global_position = slot_node.global_position
+	_gamepad_cursor.size = slot_node.size
+
+
+## Cycles _selected_type_id through 0-4 (wraps). Updates the type indicator label.
+func _cycle_selected_type() -> void:
+	_selected_type_id = (_selected_type_id + 1) % 5
+	_update_type_indicator()
+
+
+## Places the currently selected Prana type into the currently selected slot.
+func _gamepad_place() -> void:
+	_place_token(_selected_slot_index, _selected_type_id)
+
+
+## Clears the currently selected slot.
+func _gamepad_clear() -> void:
+	_clear_slot(_selected_slot_index)
+
+
+## Updates the type indicator label to show the current selected type name and color.
+## No-op when _type_indicator_label is null (headless context).
+func _update_type_indicator() -> void:
+	if _type_indicator_label == null:
+		return
+	const TYPE_NAMES: Array[String] = ["ASH", "VOID", "STRM", "DEEP", "VERD"]
+	const TYPE_COLORS: Array[Color] = [
+		Color("#F24C1D"), Color("#4A5EF5"), Color("#FFCC00"),
+		Color("#3DD9F0"), Color("#1AC953"),
+	]
+	_type_indicator_label.text = "TYPE: " + TYPE_NAMES[_selected_type_id]
+	_type_indicator_label.add_theme_color_override(&"font_color", TYPE_COLORS[_selected_type_id])
