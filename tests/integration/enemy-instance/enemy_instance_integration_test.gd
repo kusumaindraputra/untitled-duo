@@ -59,7 +59,7 @@ func _add_death_animation(enemy: EnemyInstance) -> void:
 ## GIVEN alive enemy in COMBAT_PHASE,
 ## WHEN full contact sequence runs (enter → timer fires → exit → no more hits),
 ## THEN HP reflects exactly 2 hits and no more.
-func test_contact_full_four_step_sequence() -> void:
+func test_enemy_instance_contact_full_sequence_applies_initial_and_repeat_damage() -> void:
 	var enemy := _make_enemy()
 	auto_free(enemy)
 	var fayde := _make_fayde()
@@ -96,7 +96,7 @@ func test_contact_full_four_step_sequence() -> void:
 ## GIVEN Fayde overlapping with timer mid-interval,
 ## WHEN preparation_started fires then combat_started fires,
 ## THEN no damage during PREP and a fresh body_entered fires exactly one hit.
-func test_contact_phase_transition_clears_state_and_rearmed_cleanly() -> void:
+func test_enemy_instance_contact_phase_transition_clears_state_and_rearms() -> void:
 	var enemy := _make_enemy()
 	auto_free(enemy)
 	var fayde := _make_fayde()
@@ -132,7 +132,7 @@ func test_contact_phase_transition_clears_state_and_rearmed_cleanly() -> void:
 ## GIVEN Fayde overlapping and timer running,
 ## WHEN enemy_killed fires for this enemy,
 ## THEN HitArea.monitoring is false and no further damage occurs.
-func test_contact_kill_during_overlap_stops_all_damage() -> void:
+func test_enemy_instance_kill_during_contact_overlap_stops_all_damage() -> void:
 	var enemy := _make_enemy()
 	auto_free(enemy)
 	var fayde := _make_fayde()
@@ -160,7 +160,7 @@ func test_contact_kill_during_overlap_stops_all_damage() -> void:
 
 ## is_alive() returns true when CHASING, false when DEAD.
 ## apply_speed_modifier() and apply_stun() exist and do not crash (FP stubs).
-func test_status_api_stubs_and_is_alive_state_transitions() -> void:
+func test_enemy_instance_status_api_stubs_and_is_alive_reflect_dead_state() -> void:
 	var enemy := _make_enemy()
 	auto_free(enemy)
 

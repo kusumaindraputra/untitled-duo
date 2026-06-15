@@ -43,7 +43,8 @@ func before_test() -> void:
 
 
 func after_test() -> void:
-	_sem.queue_free()
+	remove_child(_sem)
+	_sem.free()
 
 
 func _on_shatter(_target: Node) -> void:
