@@ -1,12 +1,12 @@
 # Story 004: Chain Dots
 
 > **Epic**: CombatHUD
-> **Status**: Complete
+> **Status**: Complete (S5-06 repositioning pass)
 > **Layer**: Presentation
 > **Type**: Visual/Feel
 > **Estimate**: ~1 hour
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: 2026-06-10
+> **Last Updated**: 2026-06-15
 
 ## Context
 
@@ -173,8 +173,12 @@ Unit tests in `tests/unit/combat-hud/combat_hud_test.gd` strongly recommended.
 ---
 
 ## Completion Notes
-**Completed**: 2026-06-10
-**Criteria**: 3/4 passing (AC-HUD-26 DEFERRED — manual visual test, requires game session)
-**Deviations**: ADVISORY — `Color("#888888")` hardcoded for inactive dots; TR-CH-004 only forbids hardcoding Prana-type colors, which are correctly sourced from PranaCatalog.
-**Test Evidence**: Visual/Feel — evidence file not yet created (ADVISORY). Unit tests: `tests/unit/combat-hud/combat_hud_test.gd` (26/26 passing, 3 new chain-dot tests added).
-**Code Review**: Complete (lean mode, confirmed by developer)
+**Completed**: 2026-06-10 (original S3 pass) / 2026-06-15 (S5-06 repositioning pass)
+**Criteria**: 7/8 passing (AC-HUD-26 DEFERRED — manual visual test, requires game session)
+**Deviations**:
+- ADVISORY — `Color("#888888")` hardcoded for inactive dots; TR-CH-004 only forbids hardcoding Prana-type colors, which are correctly sourced from PranaCatalog.
+- ADVISORY — `@export var fayde_node: Node2D` added alongside `player_controller` for testability; PlayerController assigned in live scene.
+- ADVISORY — `fayde_node = null` during active `_process` untested (guarded by `is_instance_valid()` at runtime). Follow-up before CombatHUD epic release sign-off.
+- ADVISORY — AC-HUD-26 (damage label float/fade) remains deferred; requires running game session.
+**Test Evidence**: Visual/Feel — `production/qa/evidence/sprint-5-chain-dots-position-evidence.md` not yet created (ADVISORY). Unit tests: `tests/unit/combat-hud/combat_hud_test.gd` (37/37 passing, 7 chain-dot tests: AC-HUD-10/11/12 regression + AC-HUD-27/28/29/30 new).
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS (suggestion fixed); lean mode confirmed by developer.

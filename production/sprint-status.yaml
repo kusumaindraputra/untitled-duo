@@ -14,7 +14,7 @@ goal: "Address playtest legibility failures — Prana visual differentiation, Pr
 start: "2026-06-26"
 end: "2026-07-10"
 generated: "2026-06-12"
-updated: "2026-06-14"
+updated: "2026-06-15"
 
 stories:
   - id: "S5-01"
@@ -71,11 +71,11 @@ stories:
     name: "Chain dots repositioned above player character (CH-004, deferred x3)"
     file: "production/epics/combat-hud/story-004-chain-dots.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.75
     blocker: ""
-    completed: ""
+    completed: "2026-06-15"
 
   - id: "S5-07"
     name: "PranaGrid gamepad input (carryover S4-07) — ADR-0013 HIGH risk"

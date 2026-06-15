@@ -13,6 +13,7 @@
 ## Story 003: Floating damage number labels for enemy hits.
 ## Story 004: Chain-dot indicator, chain_index_changed logic.
 ## Story S5-05: Dash discoverability hint + cooldown icon (AC-DH-01–AC-DH-07).
+## Story S5-06: Chain dots repositioned above Fayde in screen-space (AC-HUD-27–AC-HUD-30).
 ##
 ## ADR: ADR-0003 (Signal-Driven Architecture), ADR-0004 (Float Accumulator Timers),
 ##      ADR-0005 (Persistent HUD Sub-Scene Swap)
@@ -72,6 +73,9 @@ const DASH_COOLDOWN_DIMMED_ALPHA: float = 0.4
 # TODO(l10n): localize before shipping
 const DASH_HINT_TEXT: String = "Shift / LT — Dash"
 
+## Upward pixel offset for chain dots above Fayde's world position in screen-space (AC-HUD-27).
+const DOT_OFFSET_ABOVE_PLAYER: float = 48.0
+
 
 # ── Public child node references (created in _ready() for testability) ────────
 
@@ -89,6 +93,10 @@ var chain_dots_container: HBoxContainer = null
 ## @export var to receive PlayerController from scene (S5-05, AC-DH-04, AC-DH-05).
 ## Null in headless tests — all dash handlers null-guard on this.
 @export var player_controller: PlayerController = null
+
+## World-space Node2D whose position drives chain dot screen placement (AC-HUD-27–AC-HUD-29).
+## Assign PlayerController in scene; plain Node2D is acceptable in headless tests.
+@export var fayde_node: Node2D = null
 
 ## Label shown during Combat Phase with the dash keybinding hint (AC-DH-01, AC-DH-03).
 ## Null in headless tests.
@@ -188,6 +196,13 @@ func _process(delta: float) -> void:
 		if _cast_flash_timer <= 0.0:
 			_cast_flash_timer = 0.0
 			chain_dots_container.modulate = Color.WHITE
+
+	# Chain dot position tracking above Fayde in screen-space (AC-HUD-27, AC-HUD-28, AC-HUD-29)
+	if chain_dots_container.visible and is_instance_valid(fayde_node):
+		var screen_pos: Vector2 = get_viewport().get_canvas_transform() * fayde_node.global_position
+		var dot_x: float = screen_pos.x - chain_dots_container.size.x * 0.5
+		var dot_y: float = maxf(screen_pos.y - DOT_OFFSET_ABOVE_PLAYER, 0.0)
+		chain_dots_container.position = Vector2(dot_x, dot_y)
 
 
 func _exit_tree() -> void:

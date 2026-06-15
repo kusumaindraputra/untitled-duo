@@ -17,6 +17,10 @@
 ##   AC-HUD-20: run_started cancels in-flight animation and snaps HP to max
 ##   AC-HUD-21: run_started resets zone color and hides chain dots
 ##   AC-HUD-22: Mid-animation rapid hit starts new animation from current visual position
+##   AC-HUD-27: Chain dots positioned above Fayde in screen-space after chain_index_changed
+##   AC-HUD-28: Chain dots track Fayde X position when she moves 64px right
+##   AC-HUD-29: Chain dots clamped to viewport top when Fayde is near the top edge
+##   AC-HUD-30: preparation_started stops chain dot position tracking
 ##
 ## Setup pattern:
 ##   - CombatHUD instantiated with CombatHUDScript.new() and add_child() — it connects
@@ -613,4 +617,122 @@ func test_preparation_started_hides_chain_dots() -> void:
 
 	assert_bool(hud.chain_dots_container.visible).is_false()
 
+	_teardown_hud(hud)
+
+
+# ── AC-HUD-27: Chain dots appear above Fayde in screen-space after chain_index_changed ──
+
+## GIVEN CombatHUD in tree; fayde_node at (200, 200); combo_resolved(type=0) + chain_index_changed(0,2) fired
+## WHEN one _process frame elapses
+## THEN chain_dots_container.position.y < fayde screen-Y (dots above Fayde)
+func test_chain_dots_positioned_above_fayde_in_screen_space() -> void:
+	var hud: Node = _make_hud()
+	var fayde := Node2D.new()
+	add_child(fayde)
+	fayde.global_position = Vector2(200.0, 200.0)
+	hud.fayde_node = fayde
+
+	var effect := SpellEffect.new()
+	effect.primary_type = 0
+	CombinationResolution.combo_resolved.emit(effect)
+	SpellCastingEffects.chain_index_changed.emit(0, 2)
+	hud._process(0.016)
+
+	var canvas_xform: Transform2D = hud.get_viewport().get_canvas_transform()
+	var fayde_screen_y: float = (canvas_xform * fayde.global_position).y
+	# Verify dots are offset above Fayde by at least DOT_OFFSET_ABOVE_PLAYER (not just any upward shift).
+	assert_float(hud.chain_dots_container.position.y).is_less_equal(fayde_screen_y - hud.DOT_OFFSET_ABOVE_PLAYER)
+
+	remove_child(fayde)
+	fayde.free()
+	_teardown_hud(hud)
+
+
+# ── AC-HUD-28: Chain dots track Fayde position when she moves ─────────────────
+
+## GIVEN dots visible; fayde_node at (200, 200); one frame processed
+## WHEN fayde_node.global_position set to (264, 200); one more _process frame
+## THEN chain_dots_container.position.x has shifted ~64px (tracks Fayde in X)
+func test_chain_dots_track_fayde_position_when_she_moves() -> void:
+	var hud: Node = _make_hud()
+	var fayde := Node2D.new()
+	add_child(fayde)
+	fayde.global_position = Vector2(200.0, 200.0)
+	hud.fayde_node = fayde
+
+	var effect := SpellEffect.new()
+	effect.primary_type = 0
+	CombinationResolution.combo_resolved.emit(effect)
+	SpellCastingEffects.chain_index_changed.emit(0, 2)
+	hud._process(0.016)
+	var x_before: float = hud.chain_dots_container.position.x
+
+	fayde.global_position = Vector2(264.0, 200.0)
+	hud._process(0.016)
+	var x_after: float = hud.chain_dots_container.position.x
+
+	var delta_x: float = x_after - x_before
+	# HBoxContainer layout size may stabilize between frames (±8px centering shift),
+	# so allow ±10px tolerance around the expected 64px movement.
+	assert_float(absf(delta_x - 64.0)).is_less(10.0)
+
+	remove_child(fayde)
+	fayde.free()
+	_teardown_hud(hud)
+
+
+# ── AC-HUD-29: Chain dots clamped to viewport top when Fayde is near top edge ─
+
+## GIVEN fayde_node at (320, 8) — near top of screen; DOT_OFFSET_ABOVE_PLAYER = 48
+## WHEN chain_index_changed(0, 1) fires and one _process frame elapses
+## THEN chain_dots_container.global_position.y >= 0.0 (not off-screen)
+func test_chain_dots_clamped_when_fayde_near_top_edge() -> void:
+	var hud: Node = _make_hud()
+	var fayde := Node2D.new()
+	add_child(fayde)
+	fayde.global_position = Vector2(320.0, 8.0)
+	hud.fayde_node = fayde
+
+	var effect := SpellEffect.new()
+	effect.primary_type = 0
+	CombinationResolution.combo_resolved.emit(effect)
+	SpellCastingEffects.chain_index_changed.emit(0, 1)
+	hud._process(0.016)
+
+	assert_float(hud.chain_dots_container.global_position.y).is_greater_equal(0.0)
+
+	remove_child(fayde)
+	fayde.free()
+	_teardown_hud(hud)
+
+
+# ── AC-HUD-30: preparation_started stops chain dot position tracking ──────────
+
+## GIVEN dots visible and tracking fayde_node at (200, 200)
+## WHEN preparation_started fires; fayde_node moves to (400, 200); one _process frame
+## THEN chain_dots_container.visible == false AND position.x unchanged
+func test_preparation_started_stops_chain_dot_position_tracking() -> void:
+	var hud: Node = _make_hud()
+	var fayde := Node2D.new()
+	add_child(fayde)
+	fayde.global_position = Vector2(200.0, 200.0)
+	hud.fayde_node = fayde
+
+	var effect := SpellEffect.new()
+	effect.primary_type = 0
+	CombinationResolution.combo_resolved.emit(effect)
+	SpellCastingEffects.chain_index_changed.emit(0, 2)
+	hud._process(0.016)
+
+	GameStateManager.preparation_started.emit(0, 1)
+	assert_bool(hud.chain_dots_container.visible).is_false()
+	var x_locked: float = hud.chain_dots_container.position.x
+
+	fayde.global_position = Vector2(400.0, 200.0)
+	hud._process(0.016)
+
+	assert_float(hud.chain_dots_container.position.x).is_equal(x_locked)
+
+	remove_child(fayde)
+	fayde.free()
 	_teardown_hud(hud)
