@@ -520,7 +520,9 @@ func _rebuild_dots(active_index: int, count: int) -> void:
 		child.free()
 	var active_color: Color = Color.WHITE
 	if _current_primary_type >= 0:
-		active_color = PranaCatalog.get_type(_current_primary_type).color
+		var prana_type := PranaCatalog.get_type(_current_primary_type)
+		if prana_type != null:
+			active_color = prana_type.color
 	for i: int in range(count):
 		var dot := ColorRect.new()
 		dot.custom_minimum_size = Vector2(6.0, 6.0)

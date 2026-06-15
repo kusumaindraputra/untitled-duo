@@ -158,6 +158,7 @@ func _on_enemy_killed(_instance_id: int, _type_id: int,
 	_enemies_alive -= 1
 	if _enemies_alive <= 0:
 		_wave_state = WaveState.WAVE_COMPLETE
+		wave_cleared.emit()
 		all_waves_cleared.emit()
 		boss_defeated.emit()  # FP: no boss encounter; fires immediately after (TR-WES-005)
 

@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-05-29"  # updated: 3 new constants (burn_contagion_range, burn_contagion_duration, shatter_multiplier); referenced_by extended for 13 entries (Status Effects GDD); 3 new constants (nonprimary_freeze_duration, chill_slow_pct, chill_duration) from /consistency-check
+last_updated: "2026-06-16"  # updated: Charger prana_affiliation corrected Ashfire→Deepfrost (wave-encounter-system GDD 2026-05-31 + enemy-data GDD; entities.yaml lagged); referenced_by updated in ashfire and deepfrost entries. Prior: 3 new constants (burn_contagion_range, burn_contagion_duration, shatter_multiplier); referenced_by extended for 13 entries (Status Effects GDD); 3 new constants (nonprimary_freeze_duration, chill_slow_pct, chill_duration) from /consistency-check
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -54,7 +54,6 @@ entities:
     source: design/gdd/prana-data.md
     referenced_by:
       - design/gdd/prana-data.md
-      - design/gdd/enemy-data.md  # Charger prana_affiliation + drop_prana_type
       - design/gdd/spell-casting-effects.md  # base_damage_modifier used in Formula 3; dance melee identity
       - design/gdd/combat-hud.md  # color #F24C1D used for damage number and chain dot coloring
     prana_id: 0
@@ -102,6 +101,7 @@ entities:
     source: design/gdd/prana-data.md
     referenced_by:
       - design/gdd/prana-data.md
+      - design/gdd/enemy-data.md  # Charger prana_affiliation + drop_prana_type (revised from Ashfire 2026-06-16)
       - design/gdd/spell-casting-effects.md  # base_damage_modifier used in Formula 3
       - design/gdd/combat-hud.md  # color #3DD9F0 used for damage number and chain dot coloring
     prana_id: 3
@@ -155,17 +155,17 @@ entities:
       - design/gdd/enemy-ai.md  # archetype routing, base_damage, base_move_speed cached at spawn
     enemy_id: 1
     archetype: RUSHER
-    prana_affiliation: Ashfire  # Fire / damage_class=Fire
+    prana_affiliation: Deepfrost  # Ice / damage_class=Ice (was Ashfire; changed wave-encounter-system GDD 2026-05-31)
     base_hp: 35  # provisional
     base_damage: 20.0  # provisional
     base_move_speed: 50  # px/s; provisional
     wave_threat_value: 2
-    drop_prana_type: 0  # Ashfire ID
+    drop_prana_type: 3  # Deepfrost ID (was 0 Ashfire; corrected 2026-06-16)
     drop_rate: 0.40  # provisional
     sprite_size: "12x20"
     catalog_status: active
     added: 2026-05-23
-    revised: ""
+    revised: "2026-06-16"
 
   - name: cluster
     status: active
