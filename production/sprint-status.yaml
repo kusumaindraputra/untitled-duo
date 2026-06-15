@@ -51,11 +51,11 @@ stories:
     name: "Tech debt review pass — close or formally accept open entries (carryover S5-08)"
     file: "docs/tech-debt-register.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-15"
 
   - id: "S6-05"
     name: "PranaGrid gamepad input (carryover S5-07) — ADR-0013 HIGH risk"
