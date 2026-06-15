@@ -124,21 +124,21 @@ func _input(event: InputEvent) -> void:
 			_gamepad_cursor.visible = false
 	if not (_cursor_visible and _state == State.ARRANGEMENT):
 		return
-	if event.is_action_pressed(&"ui_left"):
+	if event.is_action_just_pressed(&"ui_left"):
 		_navigate_gamepad(Vector2i(-1, 0))
-	elif event.is_action_pressed(&"ui_right"):
+	elif event.is_action_just_pressed(&"ui_right"):
 		_navigate_gamepad(Vector2i(1, 0))
-	elif event.is_action_pressed(&"ui_up"):
+	elif event.is_action_just_pressed(&"ui_up"):
 		_navigate_gamepad(Vector2i(0, -1))
-	elif event.is_action_pressed(&"ui_down"):
+	elif event.is_action_just_pressed(&"ui_down"):
 		_navigate_gamepad(Vector2i(0, 1))
-	elif event.is_action_pressed(&"prana_type_cycle"):
+	elif event.is_action_just_pressed(&"prana_type_cycle"):
 		_cycle_selected_type()
-	elif event.is_action_pressed(&"prana_place"):
+	elif event.is_action_just_pressed(&"prana_place"):
 		_gamepad_place()
-	elif event.is_action_pressed(&"prana_clear"):
+	elif event.is_action_just_pressed(&"prana_clear"):
 		_gamepad_clear()
-	elif event.is_action_pressed(&"prana_confirm"):
+	elif event.is_action_just_pressed(&"prana_confirm"):
 		_on_confirm_pressed()
 
 
@@ -396,8 +396,8 @@ func _create_ui_nodes() -> void:
 	gp_strip.add_child(gp_hint)
 
 	_type_indicator_label = Label.new()
-	_type_indicator_label.text = "TYPE: ASH"
-	_type_indicator_label.add_theme_color_override(&"font_color", Color("#F24C1D"))
+	_type_indicator_label.text = "TYPE: " + PranaTypeToken.TYPE_NAMES[0]
+	_type_indicator_label.add_theme_color_override(&"font_color", PranaTypeToken.TYPE_COLORS[0])
 	gp_strip.add_child(_type_indicator_label)
 
 	# Compact 3×3 dot indicator shown during LOCKED state (AC-CG-04).
@@ -426,7 +426,6 @@ func _create_ui_nodes() -> void:
 	# interference. mouse_filter set to MOUSE_FILTER_IGNORE in _ready() after process_frame.
 	# All anchors default to 0.0 — non-zero anchors offset global_position. (ADR-0013 risk)
 	var cursor := Panel.new()
-	cursor.size = Vector2(72.0, 72.0)
 	var cursor_style := StyleBoxFlat.new()
 	cursor_style.bg_color = Color(1.0, 1.0, 1.0, 0.0)  # transparent fill
 	cursor_style.border_color = Color("#FFD700")          # gold border
@@ -500,14 +499,10 @@ func _gamepad_clear() -> void:
 
 
 ## Updates the type indicator label to show the current selected type name and color.
+## Uses PranaTypeToken as the single source of truth for the Art Bible palette. (ADR-0013)
 ## No-op when _type_indicator_label is null (headless context).
 func _update_type_indicator() -> void:
 	if _type_indicator_label == null:
 		return
-	const TYPE_NAMES: Array[String] = ["ASH", "VOID", "STRM", "DEEP", "VERD"]
-	const TYPE_COLORS: Array[Color] = [
-		Color("#F24C1D"), Color("#4A5EF5"), Color("#FFCC00"),
-		Color("#3DD9F0"), Color("#1AC953"),
-	]
-	_type_indicator_label.text = "TYPE: " + TYPE_NAMES[_selected_type_id]
-	_type_indicator_label.add_theme_color_override(&"font_color", TYPE_COLORS[_selected_type_id])
+	_type_indicator_label.text = "TYPE: " + PranaTypeToken.TYPE_NAMES[_selected_type_id]
+	_type_indicator_label.add_theme_color_override(&"font_color", PranaTypeToken.TYPE_COLORS[_selected_type_id])
