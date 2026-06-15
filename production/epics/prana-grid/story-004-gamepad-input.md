@@ -149,41 +149,51 @@ if Input.is_action_pressed(&"ui_right"):         # FORBIDDEN — use _input() di
 
 ## QA Test Cases
 
-*From `production/qa/qa-plan-sprint-4-2026-06-11.md` — § S4-07.*
+*Specs from `production/qa/qa-plan-sprint-6-2026-06-15.md` — § S6-05.*
 
-**No automated tests for this story** — gamepad input behaviour is physics/input-dependent and not testable headless. All verification is manual.
+**No automated tests for this story** — gamepad input behaviour is hardware/input-dependent and not testable headless. All verification is manual.
 
 **Manual evidence file**: `production/qa/evidence/prana-grid-gamepad-adr0013.md`
 
-Manual check: **AC-0013-05** — 3×3 torus wrap correctness
-  - Setup: Launch game in Preparation Phase; gamepad connected; observe `_selected_slot_index` via print/debugger
-  - Verify: (a) From slot 2, press d-pad RIGHT → `_selected_slot_index == 0`; (b) From slot 2, press d-pad DOWN → `_selected_slot_index == 5`
-  - Pass condition: Both wraps correct; no out-of-bounds or stuck navigation
+### ADR-0013 Mandatory Checks (all 6 required before Done)
 
-Manual check: **AC-PG-09** — full gamepad-only cycle
-  - Setup: Start preparation phase; unplug or ignore mouse; use only gamepad
-  - Verify: Navigate to slot 0, 4, 8 (corners + centre); cycle type to each of 5 types; Place in slot 4; Clear; Place again; press Confirm
-  - Pass condition: `arrangement_confirmed` fires; no mouse input used at any point
+- [ ] **AC-0013-01a** — D-pad press moves `_gamepad_cursor` to correct slot position in screen-space
+  - Setup: Preparation phase; gamepad connected; observe overlay position after d-pad press
+  - Pass: Overlay repositions to exactly the pressed-toward slot
 
-Manual check: **cursor overlay independence**
-  - Setup: Start with gamepad input; switch to mouse mid-arrangement (move mouse)
-  - Verify: `_gamepad_cursor` hides on mouse movement; mouse hover highlight appears; `_selected_slot_index` preserved at last d-pad position; switch back to gamepad — cursor reappears at correct position
-  - Pass condition: No crash; tokens not lost; both input modes work after switch
+- [ ] **AC-0013-01c** — Tab key does NOT move `_gamepad_cursor`
+  - Setup: Switch to gamepad input; cursor visible at slot 4; press Tab
+  - Pass: Engine keyboard focus moves; `_gamepad_cursor` stays at slot 4
 
-Manual check: **AC-0013-04** — no grab_focus in gamepad handlers
-  - Setup: After implementation, run from terminal
-  - Verify: `grep -n "grab_focus" src/ui/prana_grid.gd`
-  - Pass condition: Zero matches in any joypad handler function
+- [ ] **AC-0013-02 / AC-PG-09** — Full gamepad-only cycle completable
+  - Setup: Preparation phase; ignore mouse; gamepad only
+  - Verify: Navigate all 9 slots; cycle all 5 Prana types; Place in slot 4; Clear; Place again; Confirm
+  - Pass: `arrangement_confirmed` fires; zero mouse input used at any point
 
-Manual check: **AC-0013-03** — mouse_filter on cursor overlay
-  - Setup: Open prana_grid.gd or run a test that reads the property
-  - Verify: `_gamepad_cursor.mouse_filter == Control.MOUSE_FILTER_IGNORE`
-  - Pass condition: Property confirmed; clicking slots through the overlay works correctly
+- [ ] **AC-0013-04** — No `grab_focus()` in gamepad handlers
+  - Run: `grep -n "grab_focus" src/ui/prana_grid.gd`
+  - Pass: Zero matches in any joypad handler function
 
-Manual check: **AC-0013-01c** — Tab key does not move gamepad overlay
-  - Setup: Switch to gamepad input; cursor visible at slot 4; press Tab key
-  - Verify: Engine keyboard focus moves to a different slot; `_gamepad_cursor` overlay stays at slot 4
-  - Pass condition: Overlay does not move; gamepad cursor and keyboard focus are independent
+- [ ] **AC-0013-03** — `_gamepad_cursor.mouse_filter == Control.MOUSE_FILTER_IGNORE`
+  - Verify in editor inspector or by script assertion
+  - Pass: Property confirmed; clicking slots through the overlay works correctly
+
+- [ ] **AC-0013-05** — 3×3 torus wrap correctness
+  - From slot 2 (top-right): d-pad RIGHT → slot 0 (top-left, same row)
+  - From slot 2 (top-right): d-pad DOWN → slot 5 (middle-right)
+  - Pass: Both wraps correct; no out-of-bounds; no stuck navigation
+
+### Full Interaction Flow Checks
+
+- [ ] All 9 slots reachable; LEFT/RIGHT moves columns; UP/DOWN moves rows
+- [ ] Type Cycle: 0→4→0 wraps; Type Indicator updates color + icon each cycle
+- [ ] Place: fills `_selected_slot_index` with current type; token visible
+- [ ] Place on occupied slot: replaces cleanly — no crash, no duplicate
+- [ ] Clear: removes token; slot returns to empty state
+- [ ] Confirm (slot 4 empty): rejected with error indicator
+- [ ] Confirm (slot 4 filled): `arrangement_confirmed` fires; transitions to LOCKED
+- [ ] Switch gamepad → mouse: `_gamepad_cursor` hides; mouse hover works; `_selected_slot_index` preserved
+- [ ] Switch mouse → gamepad: cursor reappears at `_selected_slot_index`; no interference
 
 ---
 
