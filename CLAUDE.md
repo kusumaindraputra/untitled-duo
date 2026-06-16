@@ -30,6 +30,14 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
 
 @.claude/docs/coordination-rules.md
 
+## Solo Dev Lean Workflow
+
+**This is a solo dev project. The lean workflow overrides the default pipeline.**
+
+See `.claude/docs/solo-dev-workflow.md` for the full decision tree and tier guide.
+Short version: pick the right tier (1-4) for the task size, skip all overhead skills,
+ship code and tests, commit. Documents only exist when they prevent future mistakes.
+
 ## Collaboration Protocol
 
 **User-driven collaboration, not autonomous execution.**
@@ -38,17 +46,16 @@ Every task follows: **Question -> Options -> Decision -> Draft -> Approval**
 - Agents MUST ask "May I write this to [filepath]?" before using Write/Edit tools
 - Agents MUST show drafts or summaries before requesting approval
 - Multi-file changes require explicit approval for the full changeset
-- No commits without user instruction **except after `/story-done` or `/dev-story` completes** — see Auto-Publish below
+- No commits without user instruction **except after `/dev-story` completes** — see Auto-Publish below
 
 ## Story-Done Auto-Publish
 
-After `/story-done` verdict is COMPLETE or COMPLETE WITH NOTES, and after `/dev-story` finishes implementation, **automatically without asking**:
+After `/dev-story` finishes implementation, **automatically without asking**:
 1. Stage all relevant changed files: `rtk git add <files>`
-2. Commit with Conventional Commits format referencing the story and issue
+2. Commit with Conventional Commits format referencing the story
 3. Push to remote: `rtk git push origin main`
-4. Post a completion comment to the linked GitHub issue: `rtk gh issue comment <N> --body "..."`
 
-Issue number comes from the story file's `refs #N` pattern or from context established at start of story work.
+No GitHub issue comment needed — solo dev is the stakeholder.
 
 See `docs/COLLABORATIVE-DESIGN-PRINCIPLE.md` for full protocol and examples.
 

@@ -36,15 +36,23 @@ high-stakes output; otherwise leave unset (Sonnet).
 
 ## Solo Developer Context
 
-This project is maintained by a **single developer on Claude Pro**. All coordination
-rules apply, but the following constraints override defaults to conserve usage limits:
+This project is maintained by a **single developer on Claude Pro**. The lean solo dev
+workflow in `.claude/docs/solo-dev-workflow.md` **overrides the default pipeline**.
+Read that file to determine the correct tier for any task before starting.
 
-- **`team-*` skills are disabled** — they spawn 4-9 specialist agents per run, designed
-  for team use. As a solo dev, review and judgment happen in a single session instead.
+### Hard Overrides (always apply)
+
+- **`team-*` skills are disabled** — they spawn 4-9 specialist agents, designed for teams.
+- **`/story-readiness` is always skipped** — solo dev wrote the story, knows if it's ready.
+- **`/code-review` per story is skipped** — review inline during implementation.
+- **`/qa-plan` is skipped** unless preparing for an external playtest.
+- **`/smoke-check` is skipped** — run the test suite directly instead.
+- **`/gate-check` is only run** before milestone handoffs, not every sprint.
+- **GitHub issue comments after story-done are skipped** — you are the stakeholder.
+- **Opus-tier skills** (`/review-all-gdds`, `/architecture-review`) only when a holistic
+  cross-system view is genuinely needed — never routinely.
 - **Prefer `--depth lean`** for `/design-review` (already set as default).
 - **Use `/clear` between unrelated tasks** and after each GDD session completes.
-- **Opus-tier skills** (`/review-all-gdds`, `/architecture-review`) should be used
-  sparingly — only when a holistic cross-system view is genuinely needed, not routinely.
 
 ## Subagents vs Agent Teams
 
