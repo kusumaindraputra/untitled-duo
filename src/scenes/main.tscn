@@ -5,8 +5,6 @@
 [ext_resource type="PackedScene" path="res://src/scenes/IsometricRoom.tscn" id="3_room"]
 [ext_resource type="PackedScene" path="res://src/scenes/PlayerController.tscn" id="4_player"]
 [ext_resource type="Script" uid="uid://b2mnhwlifl6ew" path="res://src/systems/wave_manager.gd" id="5_wm"]
-[ext_resource type="PackedScene" path="res://src/ui/PranaGrid.tscn" id="6_pg"]
-
 [node name="main" type="Node" unique_id=1390226147]
 script = ExtResource("1_debug")
 
@@ -15,12 +13,6 @@ process_mode = 3
 layer = 10
 
 [node name="CombatHUD" parent="CanvasLayer" unique_id=1559835441 instance=ExtResource("2_hud")]
-layout_mode = 3
-anchors_preset = 0
-
-[node name="PranaGridLayer" type="CanvasLayer" parent="." unique_id=38144227]
-
-[node name="PranaGrid" parent="PranaGridLayer" unique_id=1000996273 instance=ExtResource("6_pg")]
 layout_mode = 3
 anchors_preset = 0
 
