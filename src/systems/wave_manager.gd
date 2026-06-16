@@ -104,8 +104,8 @@ func _ready() -> void:
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	GameStateManager.combat_started.connect(_on_combat_started)
 	HealthAndDamage.enemy_killed.connect(_on_enemy_killed)
-	all_waves_cleared.connect(GameStateManager._on_all_waves_cleared)
-	boss_defeated.connect(GameStateManager._on_boss_defeated)
+	all_waves_cleared.connect(GameStateManager.receive_all_waves_cleared)
+	boss_defeated.connect(GameStateManager.receive_boss_defeated)
 
 
 func _exit_tree() -> void:
@@ -118,10 +118,10 @@ func _exit_tree() -> void:
 		GameStateManager.combat_started.disconnect(_on_combat_started)
 	if HealthAndDamage.enemy_killed.is_connected(_on_enemy_killed):
 		HealthAndDamage.enemy_killed.disconnect(_on_enemy_killed)
-	if all_waves_cleared.is_connected(GameStateManager._on_all_waves_cleared):
-		all_waves_cleared.disconnect(GameStateManager._on_all_waves_cleared)
-	if boss_defeated.is_connected(GameStateManager._on_boss_defeated):
-		boss_defeated.disconnect(GameStateManager._on_boss_defeated)
+	if all_waves_cleared.is_connected(GameStateManager.receive_all_waves_cleared):
+		all_waves_cleared.disconnect(GameStateManager.receive_all_waves_cleared)
+	if boss_defeated.is_connected(GameStateManager.receive_boss_defeated):
+		boss_defeated.disconnect(GameStateManager.receive_boss_defeated)
 
 # ── Signal handlers ───────────────────────────────────────────────────────────
 

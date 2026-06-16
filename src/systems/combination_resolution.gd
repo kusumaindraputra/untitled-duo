@@ -87,9 +87,9 @@ signal echo_strike_fired(spell_effect: SpellEffect)
 ## Reset to false by _on_preparation_started.
 var _in_combat: bool = false
 
-## SceneTreeTimer reference for the pending ADJ_ECHO delay.
-## Null when no echo is pending. Cancelled on preparation_started.
-var _echo_timer: SceneTreeTimer = null
+## Float accumulator for the pending ADJ_ECHO delay (ADR-0004).
+## Negative = no echo pending. Counts up in _process(); fires at ADJ_ECHO_DELAY.
+var _echo_elapsed: float = -1.0
 
 ## SpellEffect resolved this wave. Held so _fire_echo_strike can emit it.
 ## Cleared on preparation_started.
@@ -107,6 +107,17 @@ var _test_fragments: Array = []
 func _ready() -> void:
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	GameStateManager.combat_started.connect(_on_combat_started)
+
+
+## Ticks the ADJ_ECHO float accumulator (ADR-0004 — no SceneTreeTimer on Autoloads).
+## Early-exits when no echo is pending (_echo_elapsed < 0).
+func _process(delta: float) -> void:
+	if _echo_elapsed < 0.0:
+		return
+	_echo_elapsed += delta
+	if _echo_elapsed >= ADJ_ECHO_DELAY:
+		_echo_elapsed = -1.0
+		_fire_echo_strike()
 
 
 func _exit_tree() -> void:
@@ -477,28 +488,20 @@ func _collect_adjacency_effects(fragments: Array) -> Array:
 	return collected
 
 
-## Starts the ADJ_ECHO delay timer. Called when active_adjacency_effects contains
-## &"ADJ_ECHO". Uses SceneTreeTimer so the delay is engine-frame-accurate.
-## The one-shot connection ensures _fire_echo_strike runs at most once per timer.
+## Arms the ADJ_ECHO accumulator (ADR-0004 float accumulator pattern).
+## _process() will fire _fire_echo_strike() after ADJ_ECHO_DELAY seconds.
 func _start_echo_timer() -> void:
-	_echo_timer = get_tree().create_timer(ADJ_ECHO_DELAY)
-	_echo_timer.timeout.connect(_fire_echo_strike, CONNECT_ONE_SHOT)
+	_echo_elapsed = 0.0
 
 
-## Cancels a pending ADJ_ECHO delay timer. Disconnects the callback before
-## nulling the reference so the signal does not fire after cancellation.
-## Safe to call when no timer is pending (_echo_timer == null is a no-op).
+## Disarms the ADJ_ECHO accumulator. Safe to call when no echo is pending.
 func _clear_echo_timer() -> void:
-	if _echo_timer != null:
-		if _echo_timer.timeout.is_connected(_fire_echo_strike):
-			_echo_timer.timeout.disconnect(_fire_echo_strike)
-		_echo_timer = null
+	_echo_elapsed = -1.0
 
 
 ## Fires echo_strike_fired with the cached SpellEffect after ADJ_ECHO_DELAY elapses.
 ## Only reached if _clear_echo_timer() was not called first (i.e., preparation_started
 ## did not fire before the delay expired).
 func _fire_echo_strike() -> void:
-	_echo_timer = null
 	if _cached_spell_effect != null:
 		echo_strike_fired.emit(_cached_spell_effect)

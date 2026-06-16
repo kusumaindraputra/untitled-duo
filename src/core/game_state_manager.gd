@@ -183,6 +183,17 @@ func _on_boss_defeated() -> void:
 	call_deferred("_request_boss_defeat_transition")
 
 
+## Public entry point for WaveManager.all_waves_cleared signal connection (AV-5).
+## External callers connect here; private _on_all_waves_cleared() is the implementation.
+func receive_all_waves_cleared() -> void:
+	_on_all_waves_cleared()
+
+
+## Public entry point for WaveManager.boss_defeated signal connection (AV-5).
+func receive_boss_defeated() -> void:
+	_on_boss_defeated()
+
+
 ## Immediate death sequence (TR-GSF-008).
 ## Signal order: death_started → state changes to DEATH_SCREEN → run_ended(win: false).
 func _on_player_died() -> void:

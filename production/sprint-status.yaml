@@ -81,11 +81,11 @@ stories:
     name: "SC&E ADR-0004 fix — combination_resolution create_timer() → float accumulator (AV-1)"
     file: "src/systems/combination_resolution.gd"
     priority: should-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-16"
 
   - id: "S7-08"
     name: "ADR-0005 fix — move PranaGrid into IsometricRoom.tscn SubSceneContainer (AV-4)"
@@ -101,11 +101,11 @@ stories:
     name: "WaveManager public signal fix — connect to all_waves_cleared signal instead of private method (AV-5)"
     file: "src/systems/wave_manager.gd"
     priority: should-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-16"
 
   - id: "S7-10"
     name: "Re-validation playtest — verify Sprint 5 legibility fixes (carryover S6-07)"
