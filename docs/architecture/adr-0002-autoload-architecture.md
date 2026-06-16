@@ -15,7 +15,7 @@ Accepted
 | **Knowledge Risk** | LOW — AutoLoad system unchanged since Godot 4.0; no breaking changes in 4.4–4.6 |
 | **References Consulted** | `docs/engine-reference/godot/VERSION.md`, `docs/engine-reference/godot/breaking-changes.md`, `docs/engine-reference/godot/deprecated-apis.md` |
 | **Post-Cutoff APIs Used** | None |
-| **Verification Required** | Open Project Settings → AutoLoad after initial setup; confirm 10 entries in documented order |
+| **Verification Required** | Open Project Settings → AutoLoad after initial setup; confirm 11 entries in documented order |
 
 ## ADR Dependencies
 
@@ -29,7 +29,7 @@ Accepted
 ## Context
 
 ### Problem Statement
-The project has 10 global systems that must be accessible from any scene node at runtime and must survive scene transitions. Godot's AutoLoad system provides this, but without a document locking in (a) which systems are Autoloads vs. scene nodes, and (b) the exact registration order and the reasoning behind it, any developer reordering the Project Settings → AutoLoad entries will produce startup null crashes as downstream systems connect to signals before upstream systems have initialized.
+The project has 11 global systems that must be accessible from any scene node at runtime and must survive scene transitions. Godot's AutoLoad system provides this, but without a document locking in (a) which systems are Autoloads vs. scene nodes, and (b) the exact registration order and the reasoning behind it, any developer reordering the Project Settings → AutoLoad entries will produce startup null crashes as downstream systems connect to signals before upstream systems have initialized.
 
 ### Constraints
 - Godot 4.6: AutoLoad registration order is controlled through Project Settings → AutoLoad (UI panel — not version-controlled as plain text by default)
@@ -38,7 +38,7 @@ The project has 10 global systems that must be accessible from any scene node at
 - Solo development context: no build tooling to enforce registration order automatically
 
 ### Requirements
-- Must support the 10 global systems identified in architecture.md: PranaCatalog, EnemyCatalog, GameStateManager, SceneManager, AudioSystem, HealthAndDamage, StatusEffectsManager, CombinationResolution, SpellCastingEffects, RunManager
+- Must support the 11 global systems identified in architecture.md: PranaCatalog, EnemyCatalog, GameStateManager, SceneManager, AudioSystem, HealthAndDamage, StatusEffectsManager, CombinationResolution, SpellCastingEffects, SpellVFX, RunManager
 - Must guarantee data catalogs (PranaCatalog, EnemyCatalog) are ready before any system that calls `get_type()` in its `_ready()`
 - Must guarantee GameStateManager is ready before any system that connects to its signals in `_ready()`
 - Must guarantee HealthAndDamage is ready before StatusEffectsManager (SEM calls `apply_damage()`)
@@ -46,7 +46,7 @@ The project has 10 global systems that must be accessible from any scene node at
 
 ## Decision
 
-Use Godot's native AutoLoad system for exactly **10 global systems**. Register them in the fixed order below in Project Settings → AutoLoad. This order is the single authoritative initialization sequence for the project.
+Use Godot's native AutoLoad system for exactly **11 global systems**. Register them in the fixed order below in Project Settings → AutoLoad. This order is the single authoritative initialization sequence for the project.
 
 ### Autoload vs. Scene Node Criteria
 
@@ -61,18 +61,19 @@ A system is a **scene node** if any of the following is true:
 
 ### Autoload Registration Order
 
-| # | Class Name | File | Reason for Position |
+| # | Node Name | File | Reason for Position |
 |---|-----------|------|---------------------|
 | 1 | PranaCatalog | `src/data/prana_catalog.gd` | Data catalog — no dependencies; first because all Prana-aware systems depend on it |
 | 2 | EnemyCatalog | `src/data/enemy_catalog.gd` | Data catalog — no dependencies; second for symmetry with PranaCatalog |
-| 3 | GameStateManager | `src/core/game_state_manager.gd` | State machine — reads catalogs only at transition time (not at `_ready()`); must be ready before all signal subscribers (positions 4–10) |
+| 3 | GameStateManager | `src/core/game_state_manager.gd` | State machine — reads catalogs only at transition time (not at `_ready()`); must be ready before all signal subscribers (positions 4–11) |
 | 4 | SceneManager | `src/core/scene_manager.gd` | Subscribes to GSM signals in `_ready()`; depends on GSM (position 3) |
 | 5 | AudioSystem | `src/audio/audio_system.gd` | Subscribes to GSM signals in `_ready()`; depends on GSM (position 3) |
 | 6 | HealthAndDamage | `src/systems/health_and_damage.gd` | Subscribes to GSM.`run_started` in `_ready()`; must be before StatusEffectsManager |
 | 7 | StatusEffectsManager | `src/systems/status_effects_manager.gd` | Subscribes to H&D.`enemy_killed` in `_ready()`; depends on H&D (position 6) |
 | 8 | CombinationResolution | `src/systems/combination_resolution.gd` | Subscribes to GSM.`combat_started` in `_ready()`; accesses PranaCatalog at init |
 | 9 | SpellCastingEffects | `src/systems/spell_casting_effects.gd` | Subscribes to CombinationResolution.`combo_resolved` in `_ready()`; depends on CR (position 8) |
-| 10 | RunManager | `src/systems/run_manager.gd` | Subscribes to GSM run lifecycle signals; last — no downstream Autoload depends on it |
+| 10 | SpellVFX | `src/ui/spell_vfx.gd` | Particle pool Autoload (ADR-0015); depends on PranaCatalog at init; no downstream Autoload depends on it |
+| 11 | RunManager | `src/systems/run_manager.gd` | Subscribes to GSM run lifecycle signals; last — no downstream Autoload depends on it |
 
 ### Scene Node Systems (NOT Autoloads)
 
@@ -109,7 +110,7 @@ static var bad2: int = GameStateManager.get_active_state()  # WRONG
 ```
 
 **Rules enforced by this ADR:**
-1. Project Settings Autoload node name **must exactly match** the script's `class_name` declaration.
+1. Autoload `.gd` files **must NOT declare `class_name`**. Godot 4.6 rejects a `class_name` that matches the Autoload node name registered in Project Settings — the editor reports "class_name hides autoload singleton". Access all Autoloads via their Project Settings node name directly (e.g. `GameStateManager.get_active_state()`). *(Corrected in AV-6 — original Rule 1 was inverted.)*
 2. Autoloads may only be accessed from `_ready()`, deferred calls, or signal handlers — never from `_init()`, `@export` default expressions, or static initializers.
 3. No Autoload may call methods on a **higher-registered** Autoload during its own `_ready()`. Use signal connections for deferred communication.
 4. Runtime child node instantiation inside Autoloads must use `call_deferred("add_child", node)` to avoid scene tree warnings during the AutoLoad initialization phase.
@@ -128,7 +129,8 @@ Project Settings → AutoLoad (initialization order)
 │  7. StatusEffectsManager (connects to H&D signals)           │
 │  8. CombinationResolution (connects to GSM.combat_started)   │
 │  9. SpellCastingEffects   (connects to CR.combo_resolved)    │
-│ 10. RunManager       (connects to GSM lifecycle signals)     │
+│ 10. SpellVFX         (particle pool; reads PranaCatalog)     │
+│ 11. RunManager       (connects to GSM lifecycle signals)     │
 └──────────────────────────────────────────────────────────────┘
                        ↓
 All Autoloads complete _ready() → Main scene _ready() fires → safe
@@ -151,7 +153,7 @@ All Autoloads complete _ready() → Main scene _ready() fires → safe
 ## Consequences
 
 ### Positive
-- All 10 Autoloads complete `_ready()` before the main scene's `_ready()` runs — safe to call from any scene node's `_ready()`
+- All 11 Autoloads complete `_ready()` before the main scene's `_ready()` runs — safe to call from any scene node's `_ready()`
 - Project Settings → AutoLoad is the single source of truth for initialization sequence
 - Autoloads persist across scene changes — no state loss during room transitions
 - `class_name` access is a compile-time constant lookup — zero runtime overhead
@@ -167,7 +169,7 @@ All Autoloads complete _ready() → Main scene _ready() fires → safe
 - **Risk**: Scene node accesses an Autoload in `_init()` or an `@export` default expression before Autoloads are in the tree.
   **Mitigation**: Rule 2 above is enforced by code review and the CI grep invariant check for `_init()` → Autoload access patterns.
 - **Risk**: New Autoload added without updating this document, silently breaking the dependency graph.
-  **Mitigation**: Any new Autoload requires either a revision to this ADR or a superseding ADR. The 10-system list is exhaustive for First Playable / MVP scope.
+  **Mitigation**: Any new Autoload requires either a revision to this ADR or a superseding ADR. The 11-system list is exhaustive for First Playable / MVP scope.
 
 ## GDD Requirements Addressed
 
@@ -183,7 +185,7 @@ All Autoloads complete _ready() → Main scene _ready() fires → safe
 
 ## Performance Implications
 - **CPU**: Negligible — 10 `_ready()` calls at project start; no per-frame cost from Autoload registration
-- **Memory**: ~10 additional Node allocations at root level; unmeasurable for a project of this scale
+- **Memory**: ~11 additional Node allocations at root level; unmeasurable for a project of this scale
 - **Load Time**: < 1ms startup overhead from AutoLoad initialization
 - **Network**: N/A
 
@@ -191,7 +193,7 @@ All Autoloads complete _ready() → Main scene _ready() fires → safe
 New project — no existing code to migrate. Developer action on initial project setup: open Project Settings → AutoLoad, add 10 entries in documented order using exact `class_name` values.
 
 ## Validation Criteria
-1. **AC-0002-01**: Open Project Settings → AutoLoad; confirm 10 entries in documented order with names matching `class_name` exactly
+1. **AC-0002-01**: Open Project Settings → AutoLoad; confirm 11 entries in documented order. Autoload `.gd` files must NOT declare `class_name` (Godot 4.6 constraint — see Rule 1)
 2. **AC-0002-02**: Launch game from Godot editor; verify no `push_error()` or null-dereference errors in Output panel during startup
 3. **AC-0002-03**: From the first loaded scene's `_ready()`, call `PranaCatalog.get_type(1)`; confirm it returns a valid `PranaType` (not null)
 4. **AC-0002-04**: Call `GameStateManager.get_active_state()` from a scene node `_ready()`; confirm it returns `GameEnums.GameState.MAIN_MENU`
