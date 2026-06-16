@@ -41,11 +41,11 @@ stories:
     name: "Arena boundaries — invisible collision walls di IsometricRoom"
     file: "src/scenes/IsometricRoom.tscn"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.25
     blocker: ""
-    completed: ""
+    completed: "2026-06-16"
 
   - id: "S8-04"
     name: "Enemy color per-archetype — debug_color field di EnemyType"
