@@ -51,11 +51,11 @@ stories:
     name: "Enemy color per-archetype — debug_color field di EnemyType"
     file: "src/data/enemy_type.gd"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.25
     blocker: ""
-    completed: ""
+    completed: "2026-06-16"
 
   - id: "S8-05"
     name: "Shooter enemy + Projectile system"

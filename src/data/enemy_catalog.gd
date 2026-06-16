@@ -153,14 +153,43 @@ func _load_catalog() -> void:
 func _make_stub(index: int) -> EnemyType:
 	var stub: EnemyType = EnemyType.new()
 	stub.id = index
-	stub.name = "EnemyStub_%d" % index
-	stub.archetype = GameEnums.EnemyArchetype.SEEKER
 	stub.prana_affiliation = GameEnums.DamageClass.NONE
 	stub.base_hp = 10
 	stub.base_damage = 1.0
 	stub.base_move_speed = 60.0
 	stub.status = GameEnums.EnemyStatus.ACTIVE
 	stub.wave_threat_value = 1
+	# Per-archetype differentiation — colour + stat tuning per enemy role.
+	match index:
+		0:  # Drifter — steady pursuer
+			stub.name = "Drifter"
+			stub.archetype = GameEnums.EnemyArchetype.SEEKER
+			stub.debug_color = Color(1.0, 0.2, 0.2)      # red
+			stub.base_move_speed = 60.0
+		1:  # Charger — fast rusher
+			stub.name = "Charger"
+			stub.archetype = GameEnums.EnemyArchetype.RUSHER
+			stub.debug_color = Color(1.0, 0.5, 0.0)      # orange
+			stub.base_move_speed = 100.0
+			stub.base_damage = 2.0
+		2:  # Cluster — weak swarmer
+			stub.name = "Cluster"
+			stub.archetype = GameEnums.EnemyArchetype.SWARMER
+			stub.debug_color = Color(1.0, 0.9, 0.1)      # yellow
+			stub.base_hp = 5
+			stub.base_move_speed = 80.0
+			stub.base_damage = 0.5
+		3:  # Warped Warden — boss
+			stub.name = "WarpedWarden"
+			stub.archetype = GameEnums.EnemyArchetype.BOSS
+			stub.debug_color = Color(0.6, 0.1, 0.8)      # purple
+			stub.base_hp = 50
+			stub.base_move_speed = 40.0
+			stub.base_damage = 3.0
+		_:
+			stub.name = "EnemyStub_%d" % index
+			stub.archetype = GameEnums.EnemyArchetype.SEEKER
+			stub.debug_color = Color.WHITE
 	return stub
 
 

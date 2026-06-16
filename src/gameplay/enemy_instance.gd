@@ -164,6 +164,9 @@ func init(enemy_type_id: int, catalog: Variant = null) -> void:
 	_archetype = et.archetype
 	_base_damage = et.base_damage
 	_move_speed = et.base_move_speed
+	var debug_circle: Node = get_node_or_null("DebugCircle")
+	if debug_circle != null:
+		debug_circle.set("color", et.debug_color)
 
 
 ## Returns true when this enemy is not in the DEAD state.

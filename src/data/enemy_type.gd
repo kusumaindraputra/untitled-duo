@@ -20,3 +20,6 @@ extends Resource
 @export var sprite_size: Vector2i = Vector2i(16, 16)
 @export var status: GameEnums.EnemyStatus = GameEnums.EnemyStatus.ACTIVE
 @export var scene: PackedScene = null
+## Debug placeholder colour shown on DebugCircle until real sprites land.
+## Applied in EnemyInstance.init() via DebugCircle.color = et.debug_color.
+@export var debug_color: Color = Color.WHITE
