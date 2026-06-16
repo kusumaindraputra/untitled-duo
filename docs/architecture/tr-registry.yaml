@@ -343,7 +343,7 @@ requirements:
   - id: TR-PG-001
     system: pg
     gdd: design/gdd/prana-grid.md
-    requirement: "Dual-input support: mouse drag (primary) + gamepad d-pad cursor (secondary); no hover-only interactions; Godot 4.6 dual-focus requires custom _selected_slot_index + Sprite2D cursor, NOT grab_focus()"
+    requirement: "Dual-input support: mouse drag (primary) + gamepad d-pad cursor (secondary); no hover-only interactions; Godot 4.6 dual-focus requires custom _selected_slot_index + Control overlay, NOT grab_focus()"
     created: "2026-05-29"
     revised: ""
     status: active

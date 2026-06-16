@@ -105,6 +105,9 @@ var _active_statuses: Dictionary[int, Array] = {}
 ## injection in tests without Node inheritance (same pattern as PlayerController.audio_system).
 var _health_and_damage: Variant = null
 
+## Scratch buffer reused each frame in _process to avoid per-tick allocation (PERF-W1).
+var _process_scratch: Array = []
+
 
 # ── Built-in virtual methods ──────────────────────────────────────────────────
 
@@ -117,7 +120,8 @@ func _ready() -> void:
 
 
 ## Drives all tick timers and duration counters (ADR-0004 float accumulator pattern).
-## Iterates a duplicate of each array to safely handle mid-loop expiry.
+## Copies each active array into _process_scratch before iteration to safely handle
+## mid-loop expiry without allocating a new Array per tick (PERF-W1).
 func _process(delta: float) -> void:
 	if _active_statuses.is_empty():
 		return
@@ -125,8 +129,9 @@ func _process(delta: float) -> void:
 	for target_id: int in target_ids:
 		if not _active_statuses.has(target_id):
 			continue
-		var instances: Array = _active_statuses[target_id].duplicate()
-		for instance: StatusInstance in instances:
+		_process_scratch.resize(0)
+		_process_scratch.append_array(_active_statuses[target_id])
+		for instance: StatusInstance in _process_scratch:
 			instance.duration_remaining -= delta
 			if instance.tick_interval > 0.0:
 				instance.tick_timer -= delta
@@ -204,8 +209,7 @@ func apply_status(
 func _run_expiry_cleanup(target_id: int) -> void:
 	if not _active_statuses.has(target_id):
 		return
-	var instances: Array = _active_statuses[target_id].duplicate()
-	for instance: StatusInstance in instances:
+	for instance: StatusInstance in _active_statuses[target_id]:
 		match instance.status_type:
 			GameEnums.BaseStatus.FREEZE, GameEnums.BaseStatus.CHILL:
 				if is_instance_valid(instance.target):

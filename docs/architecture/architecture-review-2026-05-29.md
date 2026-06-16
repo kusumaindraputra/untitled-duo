@@ -52,7 +52,7 @@ Full TR-ID list in `docs/architecture/tr-registry.yaml`. Summary by system:
 | TR-SE-003 | apply_status() 4-arg API — conflicts with architecture.md 3-arg definition | /architecture-decision "StatusEffectsManager Public API Contract" |
 | TR-SE-004 | check_and_apply_shatter() — not in architecture.md at all | (same ADR) |
 | TR-SE-005 | has_status() — architecture.md shows is_frozen()/is_blinded() instead | (same ADR) |
-| TR-PG-001 | PranaGrid dual-input: Godot 4.6 dual-focus requires custom _selected_slot_index + Sprite2D cursor, NOT grab_focus() | /architecture-decision "PranaGrid Dual-Input Focus Model (Godot 4.6)" |
+| TR-PG-001 | PranaGrid dual-input: Godot 4.6 dual-focus requires custom _selected_slot_index + Control overlay, NOT grab_focus() | /architecture-decision "PranaGrid Dual-Input Focus Model (Godot 4.6)" |
 
 **Tier 2 — High Priority (required before Audio/Status/Enemy sprints)**
 
@@ -219,7 +219,7 @@ Enable text-based project.godot format (Project Settings → Editor → Version 
 
 | GDD | Assumption | Reality (from engine-reference / ADR) | Action |
 |-----|-----------|---------------------------------------|--------|
-| prana-grid.md | Mouse drag and gamepad d-pad navigation can be implemented on the same Control node without special dual-focus handling | Godot 4.6 dual-focus breaking change: mouse/touch focus and keyboard/gamepad focus are now separate systems; mixing them on the same node requires custom cursor management | Revise PranaGrid GDD interaction model to specify: gamepad uses _selected_slot_index variable + Sprite2D cursor overlay, NOT grab_focus() |
+| prana-grid.md | Mouse drag and gamepad d-pad navigation can be implemented on the same Control node without special dual-focus handling | Godot 4.6 dual-focus breaking change: mouse/touch focus and keyboard/gamepad focus are now separate systems; mixing them on the same node requires custom cursor management | Revise PranaGrid GDD interaction model to specify: gamepad uses _selected_slot_index variable + Control overlay overlay, NOT grab_focus() |
 
 No other GDD revision flags found — all other GDD design assumptions are consistent with verified engine behavior.
 

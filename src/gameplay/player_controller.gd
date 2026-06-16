@@ -148,11 +148,11 @@ func is_invincible() -> bool:
 	return _is_invincible
 
 
-## Returns true when the player is alive.
+## Returns true when the player is alive (W-1 fix).
+## Delegates to GameStateManager state — DEATH_SCREEN is the authoritative dead state.
 ## Required by ADR-0011 (StatusEffectsManager Public API Contract).
-## Placeholder until HealthAndDamage player-death API is implemented.
 func is_alive() -> bool:
-	return true
+	return GameStateManager.get_active_state() != GameEnums.GameState.DEATH_SCREEN
 
 
 ## Returns Fayde's last snapped facing direction (8-directional, normalized).

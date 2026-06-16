@@ -276,4 +276,4 @@ The prototype's keyboard focus visual was text colour change only (cyan via `add
 - [ADR-0002: Autoload Architecture](adr-0002-autoload-architecture.md) — PranaGrid is NOT an Autoload; it is a scene node instantiated within the Preparation Phase UI hierarchy
 - [ADR-0003: Signal-Driven Architecture](adr-0003-signal-driven-architecture.md) — `_cursor_visible` must be driven by `_input()` events, not polled in `_process()`; PranaGrid emits `arrangement_confirmed` via signal, not direct call
 - [design/gdd/prana-grid.md](../../design/gdd/prana-grid.md) — GDD Rules 9 (mouse model), 10 (gamepad model), Accessibility section, and Visual spec ("Cursor-selected (gamepad)" state); this ADR resolves QQ-02 from the architecture review
-- [docs/architecture/architecture-review-2026-05-29.md](architecture-review-2026-05-29.md) — QQ-02 open question; engine specialist recommendation: `_selected_slot_index` + Sprite2D cursor, NOT `grab_focus()`
+- [docs/architecture/architecture-review-2026-05-29.md](architecture-review-2026-05-29.md) — QQ-02 open question; engine specialist recommendation: `_selected_slot_index` + Control overlay, NOT `grab_focus()`
