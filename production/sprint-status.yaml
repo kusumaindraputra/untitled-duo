@@ -49,23 +49,23 @@ stories:
 
   - id: "S7-04"
     name: "SpellVFX ADR-0015 — document pooling strategy, Autoload position, layer assignment"
-    file: "docs/architecture/adr-0015-spellvfx.md"
+    file: "docs/architecture/adr-0015-spellvfx-particle-pool.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-16"
 
   - id: "S7-05"
     name: "SpellVFX particle pre-pool — fix PERF-C1; 5 nodes pooled at _ready(), one per Prana type"
     file: "src/ui/spell_vfx.gd"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.5
-    blocker: "S7-04"
-    completed: ""
+    blocker: ""
+    completed: "2026-06-16"
 
   - id: "S7-06"
     name: "Audio System — /create-stories + AS-001 (Autoload #5) + AS-002 (4-bus) + AS-003 (play_event stub)"
