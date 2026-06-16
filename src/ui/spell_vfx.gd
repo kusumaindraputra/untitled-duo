@@ -7,12 +7,19 @@
 ##   - spell_hit_element → per-type GPUParticles2D hit burst at target position
 ##   - cast_hit_started  → stub (FP; MVP: flash Fayde cast-lock indicator)
 ##
-## ADR: ADR-0003 (Signal-Driven Architecture)
+## ADR: ADR-0003 (Signal-Driven Architecture), ADR-0015 (SpellVFX Particle Pool)
 ## Story: SC&E Story 005 — Prana Type Visual Differentiation (S5-03)
+##        S7-05 — SpellVFX particle pre-pool (PERF-C1 fix)
 ##
 ## Registration: Autoload #10 in project.godot (after SpellCastingEffects).
 ## No class_name — Godot 4.6 rejects class_name matching the Autoload node name.
 extends Node
+
+
+# Pre-allocated pool: one GPUParticles2D per VfxBurstShape (indices 0–4).
+# Shape params and materials are fully configured at _ready(). Hot path is zero-allocation:
+# only modulate color and global_position change per hit.
+var _pool: Dictionary = {}
 
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -22,6 +29,7 @@ func _ready() -> void:
 	SpellCastingEffects.cast_started.connect(_on_cast_started)
 	SpellCastingEffects.spell_hit_element.connect(_on_spell_hit_element)
 	SpellCastingEffects.cast_hit_started.connect(_on_cast_hit_started)
+	_init_pool()
 
 
 func _exit_tree() -> void:
@@ -49,8 +57,8 @@ func _on_cast_started(_spell_effect: SpellEffect) -> void:
 	tween.tween_property(player as CanvasItem, "modulate:a", 1.0, 0.10)
 
 
-## Spawns a one-shot hit burst at the target's position using the Prana type's
-## color and vfx_burst_shape from PranaCatalog.
+## Zero-allocation hot path (ADR-0015): looks up pool node by shape,
+## updates position and color, then restarts emission.
 func _on_spell_hit_element(target: Node, prana_type_id: int) -> void:
 	var type_data: PranaType = PranaCatalog.get_type(prana_type_id)
 	if type_data == null:
@@ -59,7 +67,7 @@ func _on_spell_hit_element(target: Node, prana_type_id: int) -> void:
 	if not target is Node2D:
 		push_warning("SpellVFX: target '%s' is not Node2D — no burst." % target.name)
 		return
-	_spawn_hit_burst((target as Node2D).global_position, type_data)
+	_reuse_from_pool((target as Node2D).global_position, type_data)
 
 
 ## FP stub — MVP: flash Fayde cast-lock indicator for lock_duration.
@@ -67,32 +75,41 @@ func _on_cast_hit_started(_lock_duration: float) -> void:
 	pass
 
 
+# ── Pool ──────────────────────────────────────────────────────────────────────
+
+## Pre-creates one GPUParticles2D + ParticleProcessMaterial per VfxBurstShape.
+## All shape params configured here — nothing created on the hot path after this.
+func _init_pool() -> void:
+	for shape: int in GameEnums.VfxBurstShape.values():
+		var node := GPUParticles2D.new()
+		var mat := ParticleProcessMaterial.new()
+		node.one_shot = true
+		node.emitting = false
+		node.process_material = mat
+		mat.gravity = Vector3(0.0, 0.0, 0.0)
+		_apply_burst_shape_params(node, mat, shape)
+		add_child(node)
+		_pool[shape] = node
+
+
+## Hot path: teleport pool node, update color, restart.
+## No allocation. Concurrent same-shape hits restart the previous burst.
+func _reuse_from_pool(pos: Vector2, type_data: PranaType) -> void:
+	var shape: int = type_data.vfx_burst_shape
+	if not _pool.has(shape):
+		push_warning("SpellVFX: no pool node for shape %d — skipping burst." % shape)
+		return
+	var node: GPUParticles2D = _pool[shape]
+	node.global_position = pos
+	node.modulate = type_data.color
+	node.restart()
+	node.emitting = true
+
+
 # ── Private helpers ────────────────────────────────────────────────────────────
 
-## Instantiates a one-shot GPUParticles2D at [param pos]; auto-frees on finish.
-func _spawn_hit_burst(pos: Vector2, type_data: PranaType) -> void:
-	var burst := GPUParticles2D.new()
-	add_child(burst)
-	burst.global_position = pos
-	burst.one_shot = true
-	burst.emitting = false
-	_configure_burst(burst, type_data)
-	burst.emitting = true
-	burst.finished.connect(burst.queue_free)
-
-
-## Applies per-type particle parameters. Color always from type_data.color — no hardcoded hex.
-func _configure_burst(burst: GPUParticles2D, type_data: PranaType) -> void:
-	var mat := ParticleProcessMaterial.new()
-	burst.modulate = type_data.color
-	burst.process_material = mat
-	mat.gravity = Vector3(0.0, 0.0, 0.0)
-	_apply_burst_shape_params(burst, mat, type_data.vfx_burst_shape)
-
-
-## Applies per-shape physics parameters to [param burst] and [param mat].
-## Extracted to keep _configure_burst under the 40-line method limit.
-func _apply_burst_shape_params(burst: GPUParticles2D, mat: ParticleProcessMaterial, shape: GameEnums.VfxBurstShape) -> void:
+## Applies per-shape physics parameters. Called once per pool slot at init.
+func _apply_burst_shape_params(burst: GPUParticles2D, mat: ParticleProcessMaterial, shape: int) -> void:
 	match shape:
 		GameEnums.VfxBurstShape.BURST_FLAME:
 			burst.amount = 12
