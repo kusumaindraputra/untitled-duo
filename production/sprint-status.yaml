@@ -9,77 +9,87 @@
 #   done           ↔  Complete
 #   blocked        ↔  Blocked
 
-sprint: 6
-goal: "Close post-First Playable housekeeping (test count, tech debt, scene wiring docs), complete PranaGrid gamepad, begin Audio System"
-start: "2026-06-16"
-end: "2026-06-30"
-generated: "2026-06-15"
-updated: "2026-06-15"  # S6-05 closed
+sprint: 7
+goal: "Close Feature-layer entry gates (GDD blockers, SpellVFX pooling, Audio System skeleton) to unblock sound integration"
+start: "2026-07-01"
+end: "2026-07-14"
+generated: "2026-06-16"
+updated: "2026-06-16"
 
 stories:
-  - id: "S6-01"
-    name: "Run /qa-plan sprint — Sprint 6 QA plan (DAY 1 GATE)"
+  - id: "S7-01"
+    name: "Run /qa-plan sprint — Sprint 7 QA plan (DAY 1 GATE)"
     file: "production/qa/"
     priority: must-have
-    status: done
+    status: ready-for-dev
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: "2026-06-15"
+    completed: ""
 
-  - id: "S6-02"
-    name: "Investigate + restore missing tests (585→535 discrepancy)"
-    file: "tests/"
+  - id: "S7-02"
+    name: "ADR-0013 live gamepad gate — fill prana-grid-gamepad-adr0013.md (6 mandatory checks)"
+    file: "production/qa/evidence/prana-grid-gamepad-adr0013.md"
     priority: must-have
-    status: done
+    status: ready-for-dev
+    owner: ""
+    estimate_days: 0.5
+    blocker: "Requires physical gamepad"
+    completed: ""
+
+  - id: "S7-03"
+    name: "GDD Feature-layer gate — close GDD-B1 through GDD-B5 (apply_status fix, SC&E header, Enemy Data, GameEnums)"
+    file: "src/systems/spell_casting_effects.gd"
+    priority: must-have
+    status: ready-for-dev
+    owner: ""
+    estimate_days: 1.0
+    blocker: ""
+    completed: ""
+
+  - id: "S7-04"
+    name: "SpellVFX ADR-0015 — document pooling strategy, Autoload position, layer assignment"
+    file: "docs/architecture/adr-0015-spellvfx.md"
+    priority: must-have
+    status: ready-for-dev
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: "2026-06-15"
+    completed: ""
 
-  - id: "S6-03"
-    name: "Document Godot 4 scene wiring rule in coding-standards.md"
-    file: ".claude/docs/coding-standards.md"
+  - id: "S7-05"
+    name: "SpellVFX particle pre-pool — fix PERF-C1; 5 nodes pooled at _ready(), one per Prana type"
+    file: "src/ui/spell_vfx.gd"
     priority: must-have
-    status: done
+    status: ready-for-dev
     owner: ""
-    estimate_days: 0.25
-    blocker: ""
-    completed: "2026-06-15"
+    estimate_days: 1.5
+    blocker: "S7-04"
+    completed: ""
 
-  - id: "S6-04"
-    name: "Tech debt review pass — close or formally accept open entries (carryover S5-08)"
-    file: "docs/tech-debt-register.md"
+  - id: "S7-06"
+    name: "Audio System — /create-stories + AS-001 (Autoload #5) + AS-002 (4-bus) + AS-003 (play_event stub)"
+    file: "production/epics/audio-system/"
     priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 0.5
-    blocker: ""
-    completed: "2026-06-15"
-
-  - id: "S6-05"
-    name: "PranaGrid gamepad input (carryover S5-07) — ADR-0013 HIGH risk"
-    file: "production/epics/prana-grid/story-004-gamepad-input.md"
-    priority: must-have
-    status: done
+    status: ready-for-dev
     owner: ""
     estimate_days: 2.5
-    blocker: ""
-    completed: "2026-06-15"
+    blocker: "S7-01"
+    completed: ""
 
-  - id: "S6-06"
-    name: "Audio System — create stories + implement skeleton (4-bus, Autoload #5)"
-    file: "production/epics/audio-system/"
+  - id: "S7-07"
+    name: "SC&E ADR-0004 fix — combination_resolution create_timer() → float accumulator (AV-1)"
+    file: "src/systems/combination_resolution.gd"
     priority: should-have
     status: backlog
     owner: ""
-    estimate_days: 2.5
-    blocker: "S6-01"
+    estimate_days: 0.5
+    blocker: ""
     completed: ""
 
-  - id: "S6-07"
-    name: "Re-validation playtest — verify Sprint 5 legibility fixes"
-    file: "production/playtests/"
+  - id: "S7-08"
+    name: "ADR-0005 fix — move PranaGrid into IsometricRoom.tscn SubSceneContainer (AV-4)"
+    file: "src/scenes/"
     priority: should-have
     status: backlog
     owner: ""
@@ -87,8 +97,38 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "S6-08"
-    name: "Isometric visual pass — player/enemy placeholder art + lighting tweak (carryover S5-09)"
+  - id: "S7-09"
+    name: "WaveManager public signal fix — connect to all_waves_cleared signal instead of private method (AV-5)"
+    file: "src/systems/wave_manager.gd"
+    priority: should-have
+    status: backlog
+    owner: ""
+    estimate_days: 0.5
+    blocker: ""
+    completed: ""
+
+  - id: "S7-10"
+    name: "Re-validation playtest — verify Sprint 5 legibility fixes (carryover S6-07)"
+    file: "production/playtests/"
+    priority: should-have
+    status: backlog
+    owner: ""
+    estimate_days: 1.0
+    blocker: "Requires non-developer tester"
+    completed: ""
+
+  - id: "S7-11"
+    name: "Tech debt constants migration — log/migrate 8 unlisted hardcoded constants from deep audit 1.7"
+    file: "docs/tech-debt-register.md"
+    priority: should-have
+    status: backlog
+    owner: ""
+    estimate_days: 1.0
+    blocker: ""
+    completed: ""
+
+  - id: "S7-12"
+    name: "Isometric visual pass — binary decision AND action (4th deferral not permitted)"
     file: "assets/art/"
     priority: nice-to-have
     status: backlog
@@ -97,12 +137,42 @@ stories:
     blocker: ""
     completed: ""
 
-  - id: "S6-09"
-    name: "Audio System SFX pool + event dispatch (only if S6-06 done)"
-    file: "production/epics/audio-system/"
+  - id: "S7-13"
+    name: "player_controller.is_alive() fix — return real HP state (W-1 latent bug)"
+    file: "src/gameplay/player_controller.gd"
     priority: nice-to-have
     status: backlog
     owner: ""
-    estimate_days: 2.0
-    blocker: "S6-06"
+    estimate_days: 0.5
+    blocker: ""
+    completed: ""
+
+  - id: "S7-14"
+    name: "ADR-0002 errata — Godot 4.6 class_name constraint correction (AV-6)"
+    file: "docs/architecture/adr-0002-autoload-architecture.md"
+    priority: nice-to-have
+    status: backlog
+    owner: ""
+    estimate_days: 0.25
+    blocker: ""
+    completed: ""
+
+  - id: "S7-15"
+    name: "TR-PG-001 registry text fix — 'Sprite2D cursor' -> 'Control overlay'"
+    file: "docs/tech-debt-register.md"
+    priority: nice-to-have
+    status: backlog
+    owner: ""
+    estimate_days: 0.25
+    blocker: ""
+    completed: ""
+
+  - id: "S7-16"
+    name: "SEM duplicate() optimization — remove per-tick array allocation from _physics_process (PERF-W1)"
+    file: "src/systems/status_effects_manager.gd"
+    priority: nice-to-have
+    status: backlog
+    owner: ""
+    estimate_days: 0.5
+    blocker: ""
     completed: ""
