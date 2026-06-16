@@ -69,13 +69,13 @@ stories:
 
   - id: "S7-06"
     name: "Audio System — /create-stories + AS-001 (Autoload #5) + AS-002 (4-bus) + AS-003 (play_event stub)"
-    file: "production/epics/audio-system/"
+    file: "src/audio/audio_system.gd"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 2.5
-    blocker: "S7-01"
-    completed: ""
+    blocker: ""
+    completed: "2026-06-16"
 
   - id: "S7-07"
     name: "SC&E ADR-0004 fix — combination_resolution create_timer() → float accumulator (AV-1)"
