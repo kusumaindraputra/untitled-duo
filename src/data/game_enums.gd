@@ -47,7 +47,7 @@ enum RunOutcome   { NONE = 0, WIN = 1, LOSS = 2 }
 
 # ── Enemy archetypes ──────────────────────────────────────────────────────────
 ## Broad behavioural category that governs an enemy's AI profile.
-enum EnemyArchetype { SEEKER = 0, RUSHER = 1, SWARMER = 2, BOSS = 3 }
+enum EnemyArchetype { SEEKER = 0, RUSHER = 1, SWARMER = 2, BOSS = 3, SHOOTER = 4 }
 
 # ── Enemy AI state ────────────────────────────────────────────────────────────
 ## Per-enemy state machine node. STUNNED maps to BaseStatus.STUN but is distinct

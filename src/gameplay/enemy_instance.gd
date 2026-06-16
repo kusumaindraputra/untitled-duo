@@ -33,12 +33,20 @@ var _death_fallback_active: bool = false
 ## Remaining seconds before queue_free() fires in the fallback path (Story 004).
 var _death_fallback_timer: float = 0.0
 
+## Float accumulator for SHOOTER shoot interval (S8-05, ADR-0004 pattern).
+var _shoot_timer: float = 0.0
+
 ## Minimum seconds between contact damage events (design/gdd/enemy-ai.md Tuning Knobs).
 ## Must remain >= 0.3s — H&D i-frame guarantee depends on this (Enemy AI Dep. #3).
 const ENEMY_MIN_CONTACT_INTERVAL: float = 0.3
 
 ## Seconds before queue_free() fires when no "death" animation is available (AC-EAI-29).
 const BASE_DEATH_DURATION: float = 0.7
+
+## SHOOTER archetype — minimum distance maintained from Fayde (S8-05).
+const KEEP_DISTANCE: float = 150.0
+## SHOOTER archetype — seconds between projectile shots (S8-05).
+const SHOOT_INTERVAL: float = 2.0
 
 # ── Built-in virtual methods ──────────────────────────────────────────────────
 
@@ -132,8 +140,11 @@ func _physics_process(delta: float) -> void:
 	if raw_dir.length() >= 0.01:
 		_dir_last_valid = raw_dir.normalized()
 
-	velocity = _dir_last_valid * _move_speed
-	move_and_slide()
+	if _archetype == GameEnums.EnemyArchetype.SHOOTER:
+		_tick_shooter(delta)
+	else:
+		velocity = _dir_last_valid * _move_speed
+		move_and_slide()
 
 	# Contact repeat timer — ADR-0004 float accumulator. Fires repeat damage while
 	# Fayde stays inside the hit zone. Timer is armed by _on_hitarea_body_entered
@@ -181,6 +192,33 @@ func apply_speed_modifier(_multiplier: float) -> void:
 	pass
 
 
+# ── Private helpers ───────────────────────────────────────────────────────────
+
+## SHOOTER archetype tick — maintains distance, accumulates shoot timer (S8-05).
+func _tick_shooter(delta: float) -> void:
+	var dist: float = global_position.distance_to(_fayde_ref.global_position)
+	if dist < KEEP_DISTANCE:
+		velocity = -_dir_last_valid * _move_speed
+	else:
+		velocity = Vector2.ZERO
+	move_and_slide()
+	_shoot_timer += delta
+	if _shoot_timer >= SHOOT_INTERVAL:
+		_shoot_timer -= SHOOT_INTERVAL
+		_fire_projectile()
+
+
+## Spawns a Projectile aimed at the last known Fayde direction (S8-05).
+## Guards against missing parent (headless test context).
+func _fire_projectile() -> void:
+	if get_parent() == null:
+		return
+	var proj: Projectile = Projectile.new()
+	get_parent().add_child(proj)
+	proj.global_position = global_position
+	proj.launch(_dir_last_valid, _base_damage)
+
+
 ## Required by ADR-0011 — stub; fully implemented in Story 005.
 ## SEM calls this on Stun/Stagger apply.
 func apply_stun(_duration: float) -> void:
@@ -200,6 +238,7 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	velocity = Vector2.ZERO
 	_fayde_in_contact = false
 	_contact_timer = 0.0
+	_shoot_timer = 0.0
 
 
 ## Responds to H&D's enemy_killed signal (AC-EAI-15, 16, 28, 29).

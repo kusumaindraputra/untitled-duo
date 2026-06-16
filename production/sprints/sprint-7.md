@@ -3,6 +3,7 @@
 > **Stage**: Production — Feature layer entry
 > **Generated**: 2026-06-16
 > **Review Mode**: lean
+> **Status**: CLOSED 2026-06-16 — 14/16 stories done; S7-02 and S7-10 carried to Sprint 8 (human-gated)
 
 ## Sprint Goal
 

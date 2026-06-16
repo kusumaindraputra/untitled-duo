@@ -61,11 +61,11 @@ stories:
     name: "Shooter enemy + Projectile system"
     file: "src/gameplay/enemy_instance.gd"
     priority: must-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 1.5
-    blocker: "S8-04"
-    completed: ""
+    blocker: ""
+    completed: "2026-06-16"
 
   - id: "S8-06"
     name: "ADR-0013 live gamepad gate (carryover S7-02)"

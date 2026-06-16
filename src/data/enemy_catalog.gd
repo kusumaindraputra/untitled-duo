@@ -31,6 +31,7 @@ const _ENTRY_FILES: Array[String] = [
 	"enemy_charger.tres",
 	"enemy_cluster.tres",
 	"enemy_warped_warden.tres",
+	"enemy_rifter.tres",
 ]
 
 # ── Private state ─────────────────────────────────────────────────────────────
@@ -186,6 +187,13 @@ func _make_stub(index: int) -> EnemyType:
 			stub.base_hp = 50
 			stub.base_move_speed = 40.0
 			stub.base_damage = 3.0
+		4:  # Rifter — ranged shooter
+			stub.name = "Rifter"
+			stub.archetype = GameEnums.EnemyArchetype.SHOOTER
+			stub.debug_color = Color(0.2, 0.4, 1.0)      # blue
+			stub.base_hp = 8
+			stub.base_move_speed = 35.0
+			stub.base_damage = 1.5
 		_:
 			stub.name = "EnemyStub_%d" % index
 			stub.archetype = GameEnums.EnemyArchetype.SEEKER
@@ -206,7 +214,7 @@ func _make_stub(index: int) -> EnemyType:
 ##   - Advisory: if status == ACTIVE, wave_threat_value should be non-null
 func _validate_all() -> void:
 	var archetype_min: int = GameEnums.EnemyArchetype.SEEKER
-	var archetype_max: int = GameEnums.EnemyArchetype.BOSS
+	var archetype_max: int = GameEnums.EnemyArchetype.SHOOTER
 
 	for entry: EnemyType in _types.values():
 		if entry == null:
