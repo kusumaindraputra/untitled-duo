@@ -1,6 +1,6 @@
 # Status Effects
 
-> **Status**: In Review (revised 2026-05-29)
+> **Status**: Approved (2026-06-16)
 > **Author**: Kusuma Putra + Claude Code Game Studios
 > **Last Updated**: 2026-05-29
 > **Implements Pillar**: Pillar 2 (Power is Earned Through Understanding), Pillar 3 (Chaos Has Consequences)

@@ -1,8 +1,8 @@
 # Spell Casting & Effects
 
-> **Status**: In Review (revised 2026-05-29)
+> **Status**: Approved (2026-06-16)
 > **Author**: Kusuma Putra + Claude Code Game Studios
-> **Last Updated**: 2026-05-29 (round-3 revision — B-1/B-2 + R-1..R-6 resolved)
+> **Last Updated**: 2026-06-16 (GDD-B1: approved; GDD-B2: apply_status 4-arg signature corrected; GDD-B3: PranaGrid dependency added)
 > **Implements Pillar**: Pillar 2 (Power is Earned Through Understanding), Pillar 3 (Chaos Has Consequences)
 
 ## Overview
@@ -119,7 +119,7 @@ Step 10 health_and_damage.apply_damage(target, raw_damage, null, DamageSource.DI
 
 > **⚠ EA&W migration note**: At MVP, remove Step 9 and pass `DamageClass` as the `element` parameter to `apply_damage`. H&D queries EA&W for the multiplier. SC&E stops owning the affiliation check.
 
-**8. Status effect application.** After each hit, SC&E calls `apply_status(target, status_id, effective_duration)` for the primary type's `base_status` and any active non-primary status effects. At FP scope:
+**8. Status effect application.** After each hit, SC&E calls `apply_status(target, status_id, effective_duration, spell_base_damage)` for the primary type's `base_status` and any active non-primary status effects. For BURN, `spell_base_damage = raw_damage` (Step 4 value, before elemental multiplier) — this drives Burn tick damage in StatusEffectsManager. For all other statuses, `spell_base_damage = 0.0`. At FP scope:
 
 > **FP scope note:** At FP, all status rows below are **field-write stubs only** — no Enemy AI behavior reads these fields at FP scope, and StatusEffectsManager is not wired to them. Status effects have no visible in-game effect at FP. The field writes exist to reserve the interface for MVP wiring. Shatter (Step 5) and Blind bonus (Step 7) are inert at FP — `StatusEffectsManager` returns unchanged values.
 
@@ -127,7 +127,7 @@ Step 10 health_and_damage.apply_damage(target, raw_damage, null, DamageSource.DI
 |--------|-------------|
 | `STATUS_FREEZE` | Sets `target.status_freeze_timer = effective_duration`. At FP: stub only — Enemy AI does not read this field; Shatter (Step 5) is inert. At MVP: `apply_status(target, STATUS_FREEZE, effective_duration)` via StatusEffectsManager; Shatter via `check_and_apply_shatter`. |
 | `STATUS_STUN` | Sets `target.status_stun_timer = effective_duration`. Enemy AI `_is_attacking` flag is not defined at FP — qualifying interrupts never occur; Follow-Through window (Step 6) does not activate at FP. At MVP: `apply_status(target, STATUS_STUN, effective_duration)`. |
-| `STATUS_BURN` | Sets `target.status_burned = true`. No tick damage at FP — stub only. Status Effects GDD implements ticks at MVP. |
+| `STATUS_BURN` | Sets `target.status_burned = true`. No tick damage at FP — stub only. Status Effects GDD implements ticks at MVP. At MVP: `apply_status(target, STATUS_BURN, duration, raw_damage)` — must pass `raw_damage` (Step 4 value) as 4th arg; default `0.0` results in 0 tick damage. |
 | `STATUS_BLIND` | Sets `target.status_blinded_timer = effective_duration`. Enemy AI miss chance not enforced at FP — stub only. Blind bonus (Step 7) is inert at FP. |
 | `STATUS_REGEN` | Sets `fayde.status_regen_timer = effective_duration`. No tick healing at FP — stub only. |
 | `STATUS_STAGGER` | Voidblue T2 only. At FP: Sets `target.status_stagger_timer = STAGGER_DURATION`. At MVP: `apply_status(target, STATUS_STAGGER, effective_duration)` via StatusEffectsManager (stub — duration tracking + movement interrupt via `apply_stun`). |
@@ -496,6 +496,7 @@ SC&E computes these before each `apply_status()` call:
 | 5 | **Prana Data (#4)** | `PranaCatalog.get_type(id).damage_class` for elemental affiliation inline check | Hard (FP) |
 | 6 | **Enemy instances** | `global_position`, `prana_affiliation`, `status_*` fields, `_is_attacking` flag | Hard |
 | 7 | **Audio System (#29)** | `play_event(&"sfx_cast_[type_name]")`, `play_event(&"sfx_cast_miss")` | Soft (graceful no-op if absent) |
+| 8 | **Prana Grid (#1)** | Indirect — SC&E receives `SpellEffect` from CR which reads `committed_fragments` from PranaGrid. PranaGrid must be in the scene (via `prana_grid` group) before `combat_started` for CR to resolve the payload. SC&E has no direct PranaGrid API call. | Indirect (via CR) |
 
 ### Systems That Depend On SC&E
 

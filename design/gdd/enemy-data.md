@@ -1,8 +1,8 @@
 # Enemy Data
 
-> **Status**: In Design
+> **Status**: Approved (2026-06-16)
 > **Author**: Kusuma Putra + Claude Code Game Studios
-> **Last Updated**: 2026-05-23
+> **Last Updated**: 2026-06-16 (GDD-B4: PROVISIONAL tag removed — H&D GDD now Approved; drop values remain provisional pending Prana Drop/Loot GDD)
 > **Implements Pillar**: Pillar 2 (Power is Earned Through Understanding), Pillar 4 (Depth Over Breadth)
 
 ## Overview
@@ -67,7 +67,7 @@ Players do not engage with Enemy Data as a system. They engage with enemy types 
 
 6. **Catalog extensibility**: New entries are always appended. Existing IDs are never reassigned or removed; deprecated entries use `status = inactive`.
 
-7. **Provisional flag**: All numeric stat values (`base_hp`, `base_damage`, `base_move_speed`) are provisional until the **Health & Damage GDD** is authored. Drop values (`drop_rate`) are provisional until the **Prana Drop / Loot GDD** is authored. Registry entries for these constants are flagged provisional and will be updated when those GDDs are designed.
+7. **Provisional flag**: Base stat values (`base_hp`, `base_damage`, `base_move_speed`) are confirmed — Health & Damage GDD is Approved (2026-06-16). Drop values (`drop_rate`, `drop_prana_type`) remain provisional until the **Prana Drop / Loot GDD** is authored (Vertical Slice scope).
 
 ---
 
@@ -75,12 +75,12 @@ Players do not engage with Enemy Data as a system. They engage with enemy types 
 
 | ID | Name | Archetype | Prana Affiliation | `base_hp` | `base_damage` | `base_move_speed` | `drop_prana_type` | `drop_rate` | `wave_threat_value` | Sprite Size | Status |
 |----|------|-----------|-------------------|-----------|---------------|-------------------|-------------------|-------------|---------------------|-------------|--------|
-| 0 | **Drifter** | Seeker | Shadow (Voidblue) | *20* | *8.0* | *80 px/s* | Voidblue (ID 1) | *0.50* | 1 | 16×16 px | active |
-| 1 | **Charger** | Rusher | Ice (Deepfrost) | *35* | *20.0* | *50 px/s (base)* | Deepfrost (ID 3) | *0.40* | 2 | 12×20 px | active |
-| 2 | **Cluster** | Swarmer | Lightning (Stormgold) | *12* | *4.0* | *70 px/s* | Stormgold (ID 2) | *0.60* | 1 | 24×24 px | active |
-| 3 | **Warped Warden** | Boss | null | *500* | *25.0* | *40 px/s* | null | null | null | 48×48 px | vs_scope |
+| 0 | **Drifter** | Seeker | Shadow (Voidblue) | 20 | 8.0 | 80 px/s | Voidblue (ID 1) | *0.50* | 1 | 16×16 px | active |
+| 1 | **Charger** | Rusher | Ice (Deepfrost) | 35 | 20.0 | 50 px/s (base) | Deepfrost (ID 3) | *0.40* | 2 | 12×20 px | active |
+| 2 | **Cluster** | Swarmer | Lightning (Stormgold) | 12 | 4.0 | 70 px/s | Stormgold (ID 2) | *0.60* | 1 | 24×24 px | active |
+| 3 | **Warped Warden** | Boss | null | 500 | 25.0 | 40 px/s | null | null | null | 48×48 px | vs_scope |
 
-*Italicized values are provisional — subject to revision after Health & Damage GDD and Prana Drop / Loot GDD are complete.*
+*Drop values (`drop_rate`, `drop_prana_type`) remain provisional — subject to revision after Prana Drop / Loot GDD is authored. Base stat values are confirmed.*
 
 ---
 
@@ -107,7 +107,7 @@ Enemy Data has no runtime states. It is a static catalog — nothing transitions
 
 ## Formulas
 
-> **Ownership note — provisional:** All numeric values in this section (`base_hp`, `base_damage`, `base_move_speed`) are provisional until the **Health & Damage GDD** is authored. Do not treat these values as authoritative balance targets until that GDD is complete and reviewed.
+> **Ownership note:** Base stat values (`base_hp`, `base_damage`, `base_move_speed`) are confirmed — Health & Damage GDD is Approved (2026-06-16). Drop values (`drop_rate`) remain provisional pending Prana Drop / Loot GDD (VS scope).
 
 ### Cross-System Formula: Effective Move Speed Under Slow
 
