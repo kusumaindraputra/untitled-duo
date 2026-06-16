@@ -21,11 +21,11 @@ stories:
     name: "Run /qa-plan sprint — Sprint 7 QA plan (DAY 1 GATE)"
     file: "production/qa/"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-16"
 
   - id: "S7-02"
     name: "ADR-0013 live gamepad gate — fill prana-grid-gamepad-adr0013.md (6 mandatory checks)"
@@ -41,11 +41,11 @@ stories:
     name: "GDD Feature-layer gate — close GDD-B1 through GDD-B5 (apply_status fix, SC&E header, Enemy Data, GameEnums)"
     file: "src/systems/spell_casting_effects.gd"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-06-16"
 
   - id: "S7-04"
     name: "SpellVFX ADR-0015 — document pooling strategy, Autoload position, layer assignment"
