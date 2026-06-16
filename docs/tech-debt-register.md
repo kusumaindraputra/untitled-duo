@@ -123,3 +123,12 @@ accepts rather than fixes immediately. Format: `[date] (story): description`.
 
 - **2026-06-15** (Story 002 — CombatHUD Zone Colors / S5-05 Dash feedback): `# TODO(l10n): localize before shipping` at `src/ui/combat_hud.gd:73`. Hardcoded string that needs localization before any release build. Required action: replace with `tr("KEY")` call when the localization epic begins.
   **→ SCHEDULED (Localization epic / pre-ship)** — Not in scope for First Playable or Sprint 6; deferred to localization pass before any public release build.
+
+- **2026-06-16** (Deep audit 1.7 — S7-11): `PRIMARY_T1_MAX = 2`, `PRIMARY_T2_MAX = 5`, `ADJ_ECHO_DELAY = 0.8` are hardcoded `const` values in `src/systems/combination_resolution.gd`. These govern tier boundaries and echo timing and should live in an external config resource. Required action: migrate to `CombinationResolutionData` (or shared tuning resource) before the CombinationResolution epic closes. Bundle with PlayerStats/EnemyStats/SEM/SpellCastingData migration.
+  **→ SCHEDULED (pre-CR epic close)** — CombinationResolutionData resource migration; same wave as other gameplay-constant migrations.
+
+- **2026-06-16** (Deep audit 1.7 — S7-11): `CAST_LOCK_DURATION = 0.12` and `ASHFIRE_CAST_LOCK_DURATION = 0.20` are hardcoded `const` values in `src/systems/spell_casting_effects.gd`. Inline cast-range magic numbers `80.0` (non-null spell) and `150.0` (null spell) at lines 403–404 also unlisted. Required action: migrate to `SpellCastingData` resource alongside `ATTACK_DATA` and `BASE_SPELL_DAMAGE` already tracked in the pre-SC&E epic close entry above.
+  **→ SCHEDULED (pre-SC&E epic close)** — Bundle with existing SpellCastingData migration.
+
+- **2026-06-16** (Deep audit 1.7 — S7-11): `HEAVY_HIT_THRESHOLD = 15`, `FAYDE_HP_CRITICAL_CAREFUL = 0.40`, `FAYDE_HP_CRITICAL_DESPERATE = 0.20`, `FIRST_RUN_DAMAGE_MULTIPLIER = 0.5` are hardcoded `const` values in `src/systems/health_and_damage.gd`. Violates gameplay-code.md rule. Required action: create a `HealthAndDamageData` resource (`.tres`) and migrate these constants before the HealthAndDamage epic closes. Bundle with PlayerStats migration.
+  **→ SCHEDULED (pre-H&D epic close)** — HealthAndDamageData resource migration; same wave as PlayerStats/EnemyStats migrations.

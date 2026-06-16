@@ -121,11 +121,11 @@ stories:
     name: "Tech debt constants migration — log/migrate 8 unlisted hardcoded constants from deep audit 1.7"
     file: "docs/tech-debt-register.md"
     priority: should-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-06-16"
 
   - id: "S7-12"
     name: "Isometric visual pass — binary decision AND action (4th deferral not permitted)"
@@ -141,38 +141,38 @@ stories:
     name: "player_controller.is_alive() fix — return real HP state (W-1 latent bug)"
     file: "src/gameplay/player_controller.gd"
     priority: nice-to-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-16"
 
   - id: "S7-14"
     name: "ADR-0002 errata — Godot 4.6 class_name constraint correction (AV-6)"
     file: "docs/architecture/adr-0002-autoload-architecture.md"
     priority: nice-to-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 0.25
     blocker: ""
-    completed: ""
+    completed: "2026-06-16"
 
   - id: "S7-15"
     name: "TR-PG-001 registry text fix — 'Sprite2D cursor' -> 'Control overlay'"
     file: "docs/tech-debt-register.md"
     priority: nice-to-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 0.25
     blocker: ""
-    completed: ""
+    completed: "2026-06-16"
 
   - id: "S7-16"
     name: "SEM duplicate() optimization — remove per-tick array allocation from _physics_process (PERF-W1)"
     file: "src/systems/status_effects_manager.gd"
     priority: nice-to-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-16"
