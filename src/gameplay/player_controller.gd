@@ -1,7 +1,8 @@
 ## player_controller.gd — Fayde's CharacterBody2D controller.
-## Layer: Core | Stories: PC-001–PC-004, S5-05 — Skeleton, state machine, WASD movement,
+## Layer: Core | Stories: PC-001–PC-004, S5-05, S8-02 — Skeleton, state machine, WASD movement,
 ##   friction, dash system, I-frame, interface getters, footstep shuffle-bag, audio events,
-##   dash_cooldown_changed signal (CombatHUD discoverability).
+##   dash_cooldown_changed signal (CombatHUD discoverability), collision layer setup,
+##   dash pass-through (collision_mask toggle), i-frame blink visual.
 class_name PlayerController
 extends CharacterBody2D
 
@@ -27,6 +28,17 @@ const DASH_COOLDOWN: float = 2.0
 const FOOTSTEP_INTERVAL_SEC: float = 0.38           # activated: Story PC-004
 const FOOTSTEP_VELOCITY_THRESHOLD: float = 10.0     # activated: Story PC-004
 
+## Collision layer bits (S8-02, GDD: "enemies occupy a separate collision layer").
+## Layer 1 (bit 0, value 1): World/Walls — TileMapLayer, StaticBody2D arenas.
+## Layer 2 (bit 1, value 2): Player.
+## Layer 4 (bit 2, value 4): Enemies.
+const COLLISION_LAYER_PLAYER: int = 2
+const COLLISION_MASK_NORMAL: int = 5   # bits 0+2: collides with walls (1) + enemies (4)
+const COLLISION_MASK_DASHING: int = 1  # bit 0 only: collides with walls, passes through enemies
+
+## Modulate alpha oscillation interval during i-frames — ~8 blinks/sec at 60fps.
+const BLINK_INTERVAL: float = 0.06
+
 # ── Private variables ─────────────────────────────────────────────────────────
 
 var _controller_state: ControllerState = ControllerState.DISABLED
@@ -35,6 +47,7 @@ var _last_facing_dir: Vector2 = Vector2.RIGHT
 var _dash_duration_timer: float = 0.0  # countdown; > 0.0 means currently dashing
 var _dash_cooldown_timer: float = 0.0  # countdown; > 0.0 means on cooldown
 var _cast_beam_timer: float = 0.0     # countdown; > 0.0 means cast beam visible (debug)
+var _blink_timer: float = 0.0         # counts up; toggles modulate.a every BLINK_INTERVAL
 
 ## AudioSystem Autoload reference; null-safe — set in _ready(), overridable for tests.
 ## Variant (not Node) intentional — allows MockAudioSystem injection without Node inheritance.
@@ -55,6 +68,8 @@ func _ready() -> void:
 	HealthAndDamage.player_died.connect(_on_player_died)
 	SpellCastingEffects.cast_hit_started.connect(_on_cast_hit_started)
 	audio_system = get_node_or_null("/root/AudioSystem")
+	collision_layer = COLLISION_LAYER_PLAYER
+	collision_mask = COLLISION_MASK_NORMAL
 	if VELOCITY_SNAP_THRESHOLD >= FOOTSTEP_VELOCITY_THRESHOLD:
 		push_error("VELOCITY_SNAP_THRESHOLD (%f) must be < FOOTSTEP_VELOCITY_THRESHOLD (%f)" % [
 			VELOCITY_SNAP_THRESHOLD, FOOTSTEP_VELOCITY_THRESHOLD])
@@ -81,6 +96,17 @@ func _physics_process(delta: float) -> void:
 	if _cast_beam_timer > 0.0:
 		_cast_beam_timer -= delta
 
+	# ── I-frame blink (S8-02) ────────────────────────────────────────────────────
+	if _is_invincible:
+		_blink_timer += delta
+		if _blink_timer >= BLINK_INTERVAL:
+			_blink_timer -= BLINK_INTERVAL
+			modulate.a = 0.25 if modulate.a > 0.5 else 1.0
+	else:
+		if modulate.a != 1.0:
+			modulate.a = 1.0
+		_blink_timer = 0.0
+
 	if _controller_state == ControllerState.DISABLED:
 		velocity = Vector2.ZERO
 		return
@@ -106,6 +132,7 @@ func _physics_process(delta: float) -> void:
 			_controller_state = ControllerState.DASHING
 			_dash_duration_timer = DASH_DURATION
 			_is_invincible = true
+			collision_mask = COLLISION_MASK_DASHING
 			if audio_system != null:
 				audio_system.play_event(&"sfx_fayde_dash")
 			dash_cooldown_changed.emit(false)
@@ -116,6 +143,7 @@ func _physics_process(delta: float) -> void:
 		if _dash_duration_timer <= 0.0:
 			_controller_state = ControllerState.ENABLED
 			_is_invincible = false
+			collision_mask = COLLISION_MASK_NORMAL
 			_dash_cooldown_timer = DASH_COOLDOWN
 
 	# ── Dash cooldown countdown (unconditional) ───────────────────────────────
@@ -215,6 +243,9 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	_controller_state = ControllerState.DISABLED
 	velocity = Vector2.ZERO
 	_is_invincible = false
+	collision_mask = COLLISION_MASK_NORMAL
+	modulate.a = 1.0
+	_blink_timer = 0.0
 	_dash_duration_timer = 0.0
 	_dash_cooldown_timer = 0.0
 	dash_cooldown_changed.emit(true)

@@ -1,5 +1,5 @@
 ## enemy_instance.gd — Enemy AI controller for a single enemy instance.
-## Layer: Gameplay | Stories: EAI-001 (skeleton), EAI-002 (FP movement), EAI-003 (contact attack), EAI-004 (death).
+## Layer: Gameplay | Stories: EAI-001 (skeleton), EAI-002 (FP movement), EAI-003 (contact attack), EAI-004 (death), S8-02 (collision layer 4).
 ## Implements: design/gdd/enemy-ai.md (AC-EAI-01–06, AC-EAI-07–09, AC-EAI-10–14, AC-EAI-15–17, AC-EAI-18, AC-EAI-19, AC-EAI-28, AC-EAI-29)
 class_name EnemyInstance
 extends CharacterBody2D
@@ -69,6 +69,10 @@ func _setup_collision_nodes() -> void:
 	root_shape.name = "CollisionShape2D"
 	root_shape.shape = body_circle
 	add_child(root_shape)
+	# Enemies on layer 4 (bit 2), mask walls (layer 1, bit 0) only.
+	# Player dash pass-through works by removing layer 4 from player's mask (S8-02).
+	collision_layer = 4
+	collision_mask = 1
 	var hit_circle := CircleShape2D.new()
 	hit_circle.radius = 12.0
 	var hit_shape := CollisionShape2D.new()
