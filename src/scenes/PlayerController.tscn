@@ -19,3 +19,4 @@ radius = 8.0
 color = Color(1, 1, 1, 1)
 
 [node name="Camera2D" type="Camera2D" parent="."]
+zoom = Vector2(2, 2)
