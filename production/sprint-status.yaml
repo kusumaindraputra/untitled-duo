@@ -131,11 +131,11 @@ stories:
     name: "Isometric visual pass — binary decision AND action (4th deferral not permitted)"
     file: "assets/art/"
     priority: nice-to-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 2.0
     blocker: ""
-    completed: ""
+    completed: "2026-06-16"
 
   - id: "S7-13"
     name: "player_controller.is_alive() fix — return real HP state (W-1 latent bug)"
