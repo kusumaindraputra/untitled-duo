@@ -86,8 +86,9 @@ func _ready() -> void:
 	collision_mask = COLLISION_MASK_NORMAL
 	if is_instance_valid(_iso_char):
 		_iso_char.configure({
-			"idle": "warrior_armed_idle",
-			"walk": "warrior_armed_walk",
+			"idle": "fayde_idle",
+			"walk": "fayde_walk",
+			"cast": "fayde_cast",
 		})
 		_iso_char.play_anim("idle")
 	if VELOCITY_SNAP_THRESHOLD >= FOOTSTEP_VELOCITY_THRESHOLD:
