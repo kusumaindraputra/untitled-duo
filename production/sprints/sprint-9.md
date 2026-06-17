@@ -1,12 +1,16 @@
 # Sprint 9 — 2026-07-29 to 2026-08-11
 
-> **Stage**: Production — Feature layer implementation (Status Effects + Spell Casting)
+> **Stage**: Production — Close carryovers + production tracking backfill
 > **Generated**: 2026-06-17
 > **Review Mode**: lean
 
 ## Sprint Goal
 
-Close the two human-gated carryovers (gamepad + playtest), confirm Sprint 8 game feel in Godot, and begin implementing the Feature layer: StatusEffectsManager skeleton and SpellEffect resource as the foundation for all combat mechanics.
+Close three long-running human-gated carryovers, confirm Sprint 8 game feel in Godot, and backfill production tracking so the system reflects what is actually built — enabling accurate next-phase planning.
+
+## Background
+
+Sprint 9 planning audit (2026-06-17) revealed that **all epics in the epics index are implemented** — test files exist for every system. However, ~30+ story files were never stamped with test evidence, epic EPIC.md files still show "Status: Ready", and the epic index is stale. The production tracking state does not reflect the implementation state. This sprint corrects that.
 
 ## Capacity
 
@@ -23,27 +27,25 @@ Close the two human-gated carryovers (gamepad + playtest), confirm Sprint 8 game
 | S9-01 | **Manual validation in Godot — Sprint 8 DoD gate** (task 0 — no new stories begin until this passes) | 0.5 | Godot open | Dash blink visual confirmed; arena walls contain player; enemy colors differentiated; Rifter fires + projectile despawns on hit/range |
 | S9-02 | **ADR-0013 live gamepad gate** (3rd carry — HARD DEADLINE) | 0.5 | Physical gamepad | 6 mandatory checks in `production/qa/evidence/prana-grid-gamepad-adr0013.md` filled; verdict PASS or FAIL documented; if no gamepad → binary decision: acquire OR close ADR-0013 as "theoretical only" |
 | S9-03 | **Re-validation playtest** (3rd carry — HARD DEADLINE) | 1.0 | Non-developer tester | Playtest session documented in `production/playtests/`; legibility verdict CONFIRMED or STILL PARTIAL; if no tester → formal descope note in playtest register |
-| S9-04 | **SEM-001**: StatusEffectsManager skeleton + Burn DoT | 1.5 | None | Autoload #7 registers; `apply_status(enemy, BURN, 2.0, 20.0)` creates one StatusInstance; tick fires at 0.5s with 1.6 damage; expiry removes instance; re-apply refreshes; dead/player/zero-duration guards; unit tests AC-SE-01/02/03/04/09/11/20 pass |
-| S9-05 | **SCE-001**: SpellEffect resource skeleton + state machine | 1.0 | None | `SpellEffect` resource exists; SCE Autoload #9 registers; IDLE → READY on `combo_resolved`; `preparation_started` resets state; invalid primary_type guard; unit tests AC-SC-01/06/24 pass |
+| S9-04 | **Story file backfill pass** — stamp all implemented-but-unstamped story files as Complete | 1.5 | None | All story files with existing test evidence have `Status: Complete` and `Test Evidence: [x]` filled in; covers ~30 story files across HealthDamage, PlayerController, EnemyInstance, CombatHUD, CombinationResolution-005, GameStateSceneFlow-002/003, PranaGrid-001/005, WaveManager-003 |
+| S9-05 | **Epic index + EPIC.md backfill** — update epic status fields and `production/epics/index.md` | 0.5 | S9-04 | All fully-implemented epics show `Status: Complete` in their EPIC.md and in the index; index `Last Updated` refreshed |
 
-**Must Have total: ~4.5 days**
+**Must Have total: ~4.0 days**
 
 ### Should Have
 
 | ID | Task | Est. Days | Dependencies | Acceptance Criteria |
 |----|------|-----------|--------------|---------------------|
-| S9-06 | **SEM-002**: Freeze + Regen effects | 1.0 | S9-04 | `apply_status(enemy, FREEZE, ...)` slows movement speed to 0; `apply_status(fayde, REGEN, ...)` calls H&D.apply_heal() at tick; all SEM-002 ACs pass |
-| S9-07 | **SEM-003**: Stub effects — Blind, Stun, Chill, Stagger | 1.0 | S9-04 | All 4 stubs apply without crash; placeholder effect logged; ACs pass; ready for full impl in later sprint |
-| S9-08 | **SCE-002**: Cast chain timing + input loop | 1.5 | S9-05 | `_process()` accumulates delta; cast input in READY state fires chain; `chain_index_changed` emits; `cast_hit_started` emits; float accumulator pattern (no Timer nodes); unit tests pass |
+| S9-06 | **Milestone review** — assess current state against First Playable exit criteria now that tracking is accurate | 0.5 | S9-04, S9-05 | `production/milestones/first-playable.md` exit criteria reviewed; each hard criterion marked PASS/FAIL based on implemented code; verdict documented |
+| S9-07 | **Next-phase epic creation** — run `/create-epics layer:feature` for any remaining non-trivial features (Audio SFX wiring, result screen, run management UI, wave variety) | 2.0 | S9-06 | At least one new epic created for the next implementation phase; stories created and ready |
 
-**Should Have total: 3.5 days (Must Have + Should Have = 8.0d — within 11d capacity)**
+**Should Have total: 2.5 days (Must Have + Should Have = 6.5d — well within 11d capacity)**
 
 ### Nice to Have
 
 | ID | Task | Est. Days | Dependencies | Acceptance Criteria |
 |----|------|-----------|--------------|---------------------|
-| S9-09 | **SEM-004**: Kill cleanup + phase clear | 1.0 | S9-04 | `enemy_killed` signal clears all instances for that target; `preparation_started` clears all active statuses; integration test with SEM + H&D |
-| S9-10 | **SCE-003**: FP damage formula + targeting | 2.0 | S9-05, S9-04 | `intersect_ray()` hits primary target; damage formula applied via H&D; `apply_status` called via SEM; `spell_hit_element` emitted; unit tests AC-SC formula ACs pass |
+| S9-08 | **QA plan for next implementation sprint** — once S9-07 creates new stories, generate `/qa-plan` for those | 0.5 | S9-07 | `production/qa/qa-plan-sprint-9-*.md` or sprint-10 plan exists |
 
 ---
 
@@ -60,16 +62,15 @@ Close the two human-gated carryovers (gamepad + playtest), confirm Sprint 8 game
 
 | Risk | Probability | Impact | Mitigation |
 |------|------------|--------|------------|
-| Gamepad still unavailable | High | Low | Do the binary decision (acquire / close gate) during S9-01 session; no more deferral |
-| Playtest tester still not booked | Medium | Medium | Book before sprint starts, not during. Unavailability → descope + formal note |
-| SEM ↔ SCE coupling causes test ordering issues | Low | Low | SEM-001 and SCE-001 are skeletons; no cross-calls until SCE-003. Test each in isolation |
-| Manual validation reveals a visual bug in S8 features | Low | Medium | Reserve debug time from buffer; fix before starting S9-04 |
+| Gamepad still unavailable | High | Low | Binary decision required: acquire OR formally close gate |
+| Story backfill reveals a genuinely unimplemented story | Low | Medium | Treat as new Must Have story; add to this sprint before closing |
+| Milestone review reveals unmet hard exit criteria | Medium | High | Surface as blocker for next phase planning; do not advance to next milestone |
 
 ---
 
 ## Dependencies on External Factors
 
-- S9-01 requires Godot editor open (local session)
+- S9-01 requires Godot editor open
 - S9-02 requires a physical gamepad
 - S9-03 requires a non-developer tester
 
@@ -78,13 +79,12 @@ Close the two human-gated carryovers (gamepad + playtest), confirm Sprint 8 game
 ## Definition of Done for Sprint 9
 
 - [ ] S9-01: Manual validation complete — all S8 visual features confirmed in Godot
-- [ ] S9-02: ADR-0013 gate filled OR formally closed (no more "evidence file blank")
+- [ ] S9-02: ADR-0013 gate filled OR formally closed — no more "evidence file blank"
 - [ ] S9-03: Playtest documented OR formally descoped — no 4th carry
-- [ ] S9-04 + S9-05: SEM-001 and SCE-001 unit tests passing headless
-- [ ] All new Logic/Integration stories have passing unit tests
-- [ ] No S1 or S2 bugs in delivered features
-- [ ] `sprint-status.yaml` updated after every story close (lesson from S8-01 gap)
+- [ ] S9-04: All implemented story files stamped as Complete with test evidence filled
+- [ ] S9-05: Epic index and EPIC.md files reflect actual implementation state
+- [ ] `sprint-status.yaml` up to date after every story close
 
 ---
 
-> ⚠️ **No QA Plan yet**: Run `/qa-plan sprint` before starting S9-04. S9-01/02/03 can begin immediately — they are validation tasks, not new implementation.
+> ⚠️ **QA Plan**: S9-01/02/03 are validation tasks — no QA plan needed for them. S9-04/05/06 are tracking/docs tasks. QA plan required only if S9-07 creates new implementation stories.

@@ -10,7 +10,7 @@
 #   blocked        ↔  Blocked
 
 sprint: 9
-goal: "Close human-gated carryovers (gamepad + playtest), confirm S8 game feel in Godot, begin Feature layer: StatusEffectsManager + SpellEffect resource"
+goal: "Close carryovers (gamepad + playtest + manual validation), backfill production tracking to reflect actual implementation state, assess milestone readiness"
 start: "2026-07-29"
 end: "2026-08-11"
 generated: "2026-06-17"
@@ -48,8 +48,8 @@ stories:
     completed: ""
 
   - id: "S9-04"
-    name: "SEM-001: StatusEffectsManager skeleton + Burn DoT"
-    file: "production/epics/status-effects/story-001-sem-skeleton-burn-dot.md"
+    name: "Story file backfill — stamp all implemented-but-unstamped story files"
+    file: "production/epics/"
     priority: must-have
     status: ready-for-dev
     owner: ""
@@ -58,61 +58,41 @@ stories:
     completed: ""
 
   - id: "S9-05"
-    name: "SCE-001: SpellEffect resource skeleton + state machine"
-    file: "production/epics/spell-casting-effects/story-001-spell-effect-resource-skeleton.md"
+    name: "Epic index + EPIC.md backfill — update status fields to Complete"
+    file: "production/epics/index.md"
     priority: must-have
-    status: ready-for-dev
+    status: backlog
     owner: ""
-    estimate_days: 1.0
-    blocker: ""
+    estimate_days: 0.5
+    blocker: "S9-04"
     completed: ""
 
   - id: "S9-06"
-    name: "SEM-002: Freeze + Regen effects"
-    file: "production/epics/status-effects/story-002-sem-freeze-regen.md"
+    name: "Milestone review — assess First Playable exit criteria"
+    file: "production/milestones/first-playable.md"
     priority: should-have
     status: backlog
     owner: ""
-    estimate_days: 1.0
-    blocker: "S9-04"
+    estimate_days: 0.5
+    blocker: "S9-04, S9-05"
     completed: ""
 
   - id: "S9-07"
-    name: "SEM-003: Stub effects — Blind, Stun, Chill, Stagger"
-    file: "production/epics/status-effects/story-003-sem-stub-effects.md"
+    name: "Next-phase epic creation — /create-epics for remaining features"
+    file: "production/epics/"
     priority: should-have
-    status: backlog
-    owner: ""
-    estimate_days: 1.0
-    blocker: "S9-04"
-    completed: ""
-
-  - id: "S9-08"
-    name: "SCE-002: Cast chain timing + input loop"
-    file: "production/epics/spell-casting-effects/story-002-cast-chain-timing.md"
-    priority: should-have
-    status: backlog
-    owner: ""
-    estimate_days: 1.5
-    blocker: "S9-05"
-    completed: ""
-
-  - id: "S9-09"
-    name: "SEM-004: Kill cleanup + phase clear"
-    file: "production/epics/status-effects/story-004-sem-kill-phase-cleanup.md"
-    priority: nice-to-have
-    status: backlog
-    owner: ""
-    estimate_days: 1.0
-    blocker: "S9-04"
-    completed: ""
-
-  - id: "S9-10"
-    name: "SCE-003: FP damage formula + targeting"
-    file: "production/epics/spell-casting-effects/story-003-fp-damage-formula.md"
-    priority: nice-to-have
     status: backlog
     owner: ""
     estimate_days: 2.0
-    blocker: "S9-05, S9-04"
+    blocker: "S9-06"
+    completed: ""
+
+  - id: "S9-08"
+    name: "QA plan for next implementation sprint (if S9-07 creates stories)"
+    file: "production/qa/"
+    priority: nice-to-have
+    status: backlog
+    owner: ""
+    estimate_days: 0.5
+    blocker: "S9-07"
     completed: ""
