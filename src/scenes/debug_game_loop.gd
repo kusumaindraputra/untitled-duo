@@ -45,6 +45,7 @@ func _register_input_actions() -> void:
 	_ensure_joypad_action(&"prana_place", JOY_BUTTON_A)
 	_ensure_joypad_action(&"prana_clear", JOY_BUTTON_B)
 	_ensure_joypad_action(&"prana_confirm", JOY_BUTTON_Y)
+	_ensure_key_action(&"prana_confirm", KEY_ENTER)
 	_ensure_joypad_action(&"prana_type_cycle", JOY_BUTTON_RIGHT_SHOULDER)
 
 

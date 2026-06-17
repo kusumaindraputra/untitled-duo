@@ -126,6 +126,10 @@ func _input(event: InputEvent) -> void:
 		_cursor_visible = false
 		if _gamepad_cursor != null:
 			_gamepad_cursor.visible = false
+	# Keyboard confirm bypass — works regardless of _cursor_visible (Enter key via debug_game_loop).
+	if _state == State.ARRANGEMENT and event.is_action_just_pressed(&"prana_confirm"):
+		_on_confirm_pressed()
+		return
 	if not (_cursor_visible and _state == State.ARRANGEMENT):
 		return
 	if event.is_action_just_pressed(&"ui_left"):
