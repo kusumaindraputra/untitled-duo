@@ -43,7 +43,6 @@ const _DEBRIS_POSITIONS: Array = [Vector2(80, -55), Vector2(-100, 25), Vector2(4
 
 func _ready() -> void:
 	_build_floor()
-	_build_wall_visuals()
 	_build_navigation()
 	_build_debris_obstacles()
 
@@ -68,20 +67,6 @@ func get_spawn_markers() -> Array[Vector2]:
 
 # ── Private ───────────────────────────────────────────────────────────────────
 
-## Draws a debug Line2D diamond matching the isometric arena boundary.
-## Removed when real wall art replaces the physics-only collision shapes.
-func _build_wall_visuals() -> void:
-	var line := Line2D.new()
-	line.points = PackedVector2Array([
-		Vector2(_WALL_HALF_X, 0), Vector2(0, _WALL_HALF_Y),
-		Vector2(-_WALL_HALF_X, 0), Vector2(0, -_WALL_HALF_Y), Vector2(_WALL_HALF_X, 0)
-	])
-	line.width = 2.0
-	line.default_color = Color(0.8, 0.6, 0.2, 0.9)
-	line.z_index = 100
-	add_child(line)
-
-
 ## Adds a NavigationRegion2D covering the diamond tile area.
 ## Enemies can query NavigationServer2D for pathfinding within this region.
 func _build_navigation() -> void:
@@ -101,8 +86,11 @@ func _build_navigation() -> void:
 
 
 ## Loads the floor tile texture, registers it as a TileSetAtlasSource,
-## and fills a square grid of floor tiles centred on the room origin.
+## and fills a diamond-shaped grid of floor tiles centred on the room origin.
+## Diamond filter: |tx-ty|/x_radius + |tx+ty|/y_radius ≤ 1 maps exactly to
+## the screen-space diamond defined by SegmentShape2D wall bounds.
 func _build_floor() -> void:
+	_tile_map.clear()
 	if not _tile_map.tile_set.has_source(_FLOOR_SOURCE_ID):
 		var tex: Texture2D = load(_FLOOR_TILE_PATH) as Texture2D
 		if tex == null:
@@ -113,17 +101,15 @@ func _build_floor() -> void:
 		atlas.texture_region_size = Vector2i(64, 32)
 		atlas.create_tile(_FLOOR_ATLAS_COORD)
 		_tile_map.tile_set.add_source(atlas, _FLOOR_SOURCE_ID)
-	# Isometric projection: tile (tx, ty) has center at screen ((tx-ty)*32, (tx+ty)*16).
-	# Rectangle filter: fill every tile whose screen center falls inside the wall diamond axes.
-	# x_radius = WALL_HALF_X / TILE_X_STEP = 256/32 = 8 → covers |tx-ty| ≤ 8
-	# y_radius = WALL_HALF_Y / TILE_Y_STEP = 192/16 = 12 → covers |tx+ty| ≤ 12
-	# Corner tiles extend slightly outside the diamond wall collision — players and enemies
-	# cannot reach those corners because the SegmentShape2D walls block them.
+	# Isometric projection: tile (tx, ty) → screen ((tx-ty)*32, (tx+ty)*16).
+	# Diamond filter: |screen_x|/WALL_HALF_X + |screen_y|/WALL_HALF_Y ≤ 1
+	# → |tx-ty|/8 + |tx+ty|/12 ≤ 1  (x_radius=8, y_radius=12)
 	var x_radius: int = _WALL_HALF_X / _TILE_X_STEP   # 256/32 = 8
 	var y_radius: int = _WALL_HALF_Y / _TILE_Y_STEP   # 192/16 = 12
 	for tx: int in range(-_FLOOR_RADIUS, _FLOOR_RADIUS + 1):
 		for ty: int in range(-_FLOOR_RADIUS, _FLOOR_RADIUS + 1):
-			if abs(tx - ty) <= x_radius and abs(tx + ty) <= y_radius:
+			var norm: float = float(abs(tx - ty)) / float(x_radius) + float(abs(tx + ty)) / float(y_radius)
+			if norm <= 1.0:
 				_tile_map.set_cell(Vector2i(tx, ty), _FLOOR_SOURCE_ID, _FLOOR_ATLAS_COORD)
 
 
