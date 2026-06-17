@@ -35,7 +35,7 @@ const FOOTSTEP_VELOCITY_THRESHOLD: float = 10.0     # activated: Story PC-004
 ## Layer 4 (bit 3, value  8): Projectiles (Rifter shots).
 ## Layer 5 (bit 4, value 16): Half-cover debris — blocks movement, not Prana/projectiles.
 const COLLISION_LAYER_PLAYER: int = 2
-const COLLISION_MASK_NORMAL: int = 17  # bits 0+4: walls (1) + debris (16) — enemies excluded (Hades-like pass-through; damage via HitArea)
+const COLLISION_MASK_NORMAL: int = 21  # bits 0+2+4: walls (1) + enemies (4) + debris (16)
 const COLLISION_MASK_DASHING: int = 1  # bit 0 only: walls only — dash passes through enemies and debris
 
 ## Modulate alpha oscillation interval during i-frames — ~8 blinks/sec at 60fps.
