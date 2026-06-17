@@ -273,6 +273,9 @@ func _show_wave_preview() -> void:
 		var spread: Vector2 = Vector2(cos(spawn_idx * 2.4), sin(spawn_idx * 2.4)) * jitter
 		var enemy: EnemyInstance = enemy_scene.instantiate() as EnemyInstance
 		add_child(enemy)
+		# _ready() adds to "enemy" group — remove immediately so spell targeting and
+		# separation steering cannot find this preview node (it's not in H&D registry).
+		enemy.remove_from_group(&"enemy")
 		# Neutralize after _ready() wired signals and collision nodes.
 		enemy.process_mode = Node.PROCESS_MODE_DISABLED
 		enemy.collision_layer = 0
