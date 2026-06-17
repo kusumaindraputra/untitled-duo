@@ -56,6 +56,10 @@ var _swarmer_angle: float = 0.0
 ## Active Tween for attack/telegraph modulate pulse. Null when idle.
 var _vfx_tween: Tween = null
 
+## IsoCharacter sprite component — auto-set from scene tree.
+@onready var _iso_char: Node = $IsoCharacter
+var _last_anim: String = ""
+
 ## Minimum seconds between contact damage events (design/gdd/enemy-ai.md Tuning Knobs).
 ## Must remain >= 0.3s — H&D i-frame guarantee depends on this (Enemy AI Dep. #3).
 const ENEMY_MIN_CONTACT_INTERVAL: float = 0.3
@@ -97,6 +101,13 @@ func _ready() -> void:
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	HealthAndDamage.enemy_killed.connect(_on_enemy_killed)
 	_fayde_ref = get_tree().get_first_node_in_group(&"player") as Node2D
+	# Configure IsoCharacter with skeleton animations.
+	if is_instance_valid(_iso_char):
+		_iso_char.configure({
+			"walk": "skeleton_default_walk",
+			"death": "skeleton_special_death",
+		})
+		_iso_char.play_anim("walk")
 	# Enemies are spawned inside WaveManager._on_combat_started, so they always
 	# miss the combat_started signal. Self-activate when spawned mid-combat.
 	if GameStateManager.get_active_state() == GameEnums.GameState.COMBAT_PHASE:
@@ -198,6 +209,10 @@ func _physics_process(delta: float) -> void:
 			_tick_swarmer(delta)
 		_:
 			_tick_seeker(delta)
+
+	# ── IsoCharacter sprite sync ──────────────────────────────────────────────
+	if is_instance_valid(_iso_char) and _iso_char._initialized:
+		_iso_char.set_facing(_dir_last_valid)
 
 	# Contact repeat timer — ADR-0004 float accumulator. Fires repeat damage while
 	# Fayde stays inside the hit zone. Timer is armed by _on_hitarea_body_entered
@@ -434,7 +449,16 @@ func _on_enemy_killed(instance_id: int, _type_id: int, _prana_affiliation: GameE
 	_stop_attack_vfx()
 	$HitArea.monitoring = false
 
-	if $AnimationPlayer.has_animation(&"death"):
+	# Play IsoCharacter death animation if available; use fallback timer for cleanup.
+	var has_iso_death: bool = false
+	if is_instance_valid(_iso_char) and _iso_char._initialized:
+		if _iso_char.has_anim("death"):
+			_iso_char.play_anim("death")
+			has_iso_death = true
+
+	if has_iso_death:
+		_start_death_fallback_timer()
+	elif $AnimationPlayer.has_animation(&"death"):
 		$AnimationPlayer.play(&"death")
 		$AnimationPlayer.animation_finished.connect(
 			_on_death_animation_finished, CONNECT_ONE_SHOT)

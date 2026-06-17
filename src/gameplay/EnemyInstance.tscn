@@ -1,12 +1,19 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/enemy_instance.gd" id="1_ei"]
 [ext_resource type="Script" path="res://src/scenes/debug_circle_2d.gd" id="2_dbg"]
+[ext_resource type="Script" path="res://src/characters/iso_character.gd" id="3_iso"]
 
 [node name="EnemyInstance" type="CharacterBody2D"]
 script = ExtResource("1_ei")
+
+[node name="IsoCharacter" type="Node2D" parent="."]
+script = ExtResource("3_iso")
+base_path = "res://assets/art/characters/skeleton/"
+sprite_scale = Vector2(0.35, 0.35)
 
 [node name="DebugCircle" type="Node2D" parent="."]
 script = ExtResource("2_dbg")
 radius = 8.0
 color = Color(1, 0.2, 0.2, 1)
+visible = false

@@ -65,7 +65,9 @@ var _footstep_bag: Array[StringName] = []
 var _last_footstep_played: StringName = &""
 
 @onready var _camera: Camera2D = $Camera2D
+@onready var _iso_char: Node = $IsoCharacter
 var _zoom_tween: Tween = null
+var _last_anim: String = ""
 
 # ── Built-in virtual methods ──────────────────────────────────────────────────
 
@@ -82,6 +84,12 @@ func _ready() -> void:
 	audio_system = get_node_or_null("/root/AudioSystem")
 	collision_layer = COLLISION_LAYER_PLAYER
 	collision_mask = COLLISION_MASK_NORMAL
+	if is_instance_valid(_iso_char):
+		_iso_char.configure({
+			"idle": "warrior_armed_idle",
+			"walk": "warrior_armed_walk",
+		})
+		_iso_char.play_anim("idle")
 	if VELOCITY_SNAP_THRESHOLD >= FOOTSTEP_VELOCITY_THRESHOLD:
 		push_error("VELOCITY_SNAP_THRESHOLD (%f) must be < FOOTSTEP_VELOCITY_THRESHOLD (%f)" % [
 			VELOCITY_SNAP_THRESHOLD, FOOTSTEP_VELOCITY_THRESHOLD])
@@ -172,6 +180,15 @@ func _physics_process(delta: float) -> void:
 		_footstep_timer -= FOOTSTEP_INTERVAL_SEC  # decrement not reset — ADR-0004
 		if _controller_state == ControllerState.ENABLED and velocity.length() > FOOTSTEP_VELOCITY_THRESHOLD:
 			_fire_footstep()
+
+	# ── IsoCharacter sprite sync ──────────────────────────────────────────────
+	if is_instance_valid(_iso_char) and _iso_char._initialized:
+		_iso_char.set_facing(_last_facing_dir)
+		var speed: float = velocity.length()
+		var wanted: String = "walk" if speed > FOOTSTEP_VELOCITY_THRESHOLD else "idle"
+		if wanted != _last_anim:
+			_last_anim = wanted
+			_iso_char.play_anim(wanted)
 
 	move_and_slide()
 
