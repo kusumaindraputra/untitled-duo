@@ -41,8 +41,9 @@ const DEFAULT_FPS: float = 8.0
 @export var base_path: String = ""
 
 ## Scale factor applied to the AnimatedSprite2D. Tune for arena size match.
-## Demo sprites are 256×256; 0.35 gives ~90px sprite at 1× zoom.
-@export var sprite_scale: Vector2 = Vector2(0.35, 0.35)
+## Lords Of Pain sprites: visible art ~60px within 256×256 canvas. Scale 1.0 gives
+## ~60px character = 1× tile width (64px), correct isometric proportion at 2× zoom.
+@export var sprite_scale: Vector2 = Vector2(1.5, 1.5)
 
 ## Vertical offset in pixels to align feet with the node origin.
 ## Positive = move sprite up, negative = move sprite down.
@@ -141,10 +142,9 @@ func _draw() -> void:
 func _create_sprite() -> void:
 	_sprite = AnimatedSprite2D.new()
 	_sprite.name = "IsoSprite"
-	# Demo sprites are 256×256. centered=true places origin at texture center (128,128).
-	# offset (0, 0) = center of sprite at node origin. Character art sits roughly in the
-	# middle of the 256×256 canvas, so this naturally places feet near the node position.
-	# sprite_scale is an @export tunable — try 0.35–0.50 for good visibility at 2× camera zoom.
+	# Lords Of Pain sprites: 256×256 canvas, but visible art is only ~60px wide (25% of canvas).
+	# centered=true places canvas center (128,128) at node origin. Feet sit ~7px below origin.
+	# Use foot_offset to fine-tune ground alignment. sprite_scale 1.0 gives ~1× tile width.
 	_sprite.centered = true
 	_sprite.offset = Vector2.ZERO
 	_sprite.scale = sprite_scale
