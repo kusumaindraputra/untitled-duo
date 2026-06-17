@@ -252,34 +252,50 @@ func _spawn_wave() -> void:
 	_wave_state = WaveState.WAVE_ACTIVE
 
 
-## Creates semi-transparent Polygon2D circles at each projected spawn position,
-## colored by enemy type, so the player can see what's coming during preparation.
+## Instantiates the actual enemy scenes at projected spawn positions during preparation.
+## Enemies are neutralized (no physics, no combat, no HitArea) and rendered at 50% alpha
+## so the player sees exactly which enemies will spawn where.
 ## Mirrors the same position distribution as _spawn_wave() so previews match actual spawns.
 func _show_wave_preview() -> void:
 	_clear_wave_preview()
 	var markers: Array[Node2D] = _get_spawn_markers()
 	if markers.is_empty():
 		return
-	var pts: PackedVector2Array = PackedVector2Array()
-	const SEGMENTS: int = 20
-	const RADIUS: float = 18.0
-	for i: int in range(SEGMENTS):
-		var a: float = i * TAU / SEGMENTS
-		pts.append(Vector2(cos(a), sin(a)) * RADIUS)
 	var spawn_idx: int = 0
 	for entry: Dictionary in _wave_composition:
-		var et: EnemyType = EnemyCatalog.get_type(entry["type_id"])
-		var tint: Color = et.debug_color if et != null else Color.WHITE
+		var enemy_scene: PackedScene = entry["scene"] as PackedScene
+		if enemy_scene == null:
+			spawn_idx += 1
+			continue
 		var base_pos: Vector2 = markers[spawn_idx % markers.size()].global_position
 		var wrap_lap: int = spawn_idx / markers.size()
 		var jitter: float = 12.0 if wrap_lap > 0 else 0.0
 		var spread: Vector2 = Vector2(cos(spawn_idx * 2.4), sin(spawn_idx * 2.4)) * jitter
-		var poly := Polygon2D.new()
-		poly.polygon = pts
-		poly.color = Color(tint.r, tint.g, tint.b, 0.45)
-		poly.global_position = base_pos + spread
-		add_child(poly)
-		_preview_nodes.append(poly)
+		var enemy: EnemyInstance = enemy_scene.instantiate() as EnemyInstance
+		add_child(enemy)
+		# Neutralize after _ready() wired signals and collision nodes.
+		enemy.process_mode = Node.PROCESS_MODE_DISABLED
+		enemy.collision_layer = 0
+		enemy.collision_mask = 0
+		var hit_area: Area2D = enemy.get_node_or_null("HitArea") as Area2D
+		if hit_area != null:
+			hit_area.monitoring = false
+			hit_area.monitorable = false
+		enemy.init(entry["type_id"])   # colors DebugCircle, sets archetype — no H&D registration
+		enemy.modulate.a = 0.5
+		enemy.global_position = base_pos + spread
+		# Name label above the enemy so the player knows which type is spawning where.
+		var et: EnemyType = EnemyCatalog.get_type(entry["type_id"])
+		if et != null:
+			var lbl := Label.new()
+			lbl.text = et.name
+			lbl.add_theme_font_size_override("font_size", 14)
+			lbl.position = Vector2(-30.0, -26.0)
+			lbl.size = Vector2(60.0, 18.0)
+			lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			lbl.modulate = Color(et.debug_color.r, et.debug_color.g, et.debug_color.b, 1.0)
+			enemy.add_child(lbl)
+		_preview_nodes.append(enemy)
 		spawn_idx += 1
 
 
