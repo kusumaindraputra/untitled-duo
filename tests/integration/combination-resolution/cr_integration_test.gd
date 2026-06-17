@@ -233,11 +233,11 @@ func test_echo_timer_cancelled_by_preparation_started_no_echo_fires() -> void:
 
 	# Start the echo timer
 	cr._on_combat_started(false)
-	assert_bool(cr._echo_timer != null).is_true()
+	assert_bool(cr._echo_elapsed >= 0.0).is_true()
 
 	# Cancel via preparation_started before the delay elapses
 	cr._on_preparation_started(0, 1)
-	assert_bool(cr._echo_timer == null).is_true()
+	assert_bool(cr._echo_elapsed < 0.0).is_true()
 
 	# Wait past the full delay window — echo must not fire
 	await get_tree().create_timer(ADJ_ECHO_DELAY + 0.1).timeout
