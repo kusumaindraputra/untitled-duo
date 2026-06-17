@@ -47,6 +47,11 @@ var _stun_timer: float = 0.0
 ## Must remain >= 0.3s — H&D i-frame guarantee depends on this (Enemy AI Dep. #3).
 const ENEMY_MIN_CONTACT_INTERVAL: float = 0.3
 
+## Radius within which a nearby enemy generates a push force (pixels).
+const SEPARATION_RADIUS: float = 28.0
+## Scales the raw separation sum into a pixel/s force added to the chase velocity.
+const SEPARATION_STRENGTH: float = 80.0
+
 ## Seconds before queue_free() fires when no "death" animation is available (AC-EAI-29).
 const BASE_DEATH_DURATION: float = 0.7
 
@@ -161,7 +166,8 @@ func _physics_process(delta: float) -> void:
 	if _archetype == GameEnums.EnemyArchetype.SHOOTER:
 		_tick_shooter(delta)
 	else:
-		velocity = _dir_last_valid * _move_speed * _speed_modifier
+		var sep: Vector2 = _compute_separation()
+		velocity = (_dir_last_valid * _move_speed + sep) * _speed_modifier
 		move_and_slide()
 
 	# Contact repeat timer — ADR-0004 float accumulator. Fires repeat damage while
@@ -212,13 +218,34 @@ func apply_speed_modifier(multiplier: float) -> void:
 
 # ── Private helpers ───────────────────────────────────────────────────────────
 
+## Sums repulsion vectors from all live enemies within SEPARATION_RADIUS.
+## Inverse-linear weight: neighbours at distance 0 push at full strength, at SEPARATION_RADIUS push at 0.
+## Returns Vector2.ZERO outside the scene tree (safe in headless unit tests).
+func _compute_separation() -> Vector2:
+	if not is_inside_tree():
+		return Vector2.ZERO
+	var force: Vector2 = Vector2.ZERO
+	for node: Node in get_tree().get_nodes_in_group(&"enemy"):
+		if node == self:
+			continue
+		var other := node as EnemyInstance
+		if other == null or other._state == EnemyState.DEAD:
+			continue
+		var offset: Vector2 = global_position - other.global_position
+		var dist: float = offset.length()
+		if dist < SEPARATION_RADIUS and dist > 0.001:
+			force += offset.normalized() * (1.0 - dist / SEPARATION_RADIUS)
+	return force * SEPARATION_STRENGTH
+
+
 ## SHOOTER archetype tick — maintains distance, accumulates shoot timer (S8-05).
 func _tick_shooter(delta: float) -> void:
 	var dist: float = global_position.distance_to(_fayde_ref.global_position)
+	var sep: Vector2 = _compute_separation()
 	if dist < KEEP_DISTANCE:
-		velocity = -_dir_last_valid * _move_speed * _speed_modifier
+		velocity = (-_dir_last_valid * _move_speed + sep) * _speed_modifier
 	else:
-		velocity = Vector2.ZERO
+		velocity = sep * _speed_modifier
 	move_and_slide()
 	_shoot_timer += delta
 	if _shoot_timer >= SHOOT_INTERVAL:
