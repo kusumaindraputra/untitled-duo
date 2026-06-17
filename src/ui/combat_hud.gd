@@ -503,6 +503,11 @@ func _on_combat_started(_is_boss: bool = false) -> void:
 		_dash_hint_label.visible = true
 	if _dash_cooldown_icon != null:
 		_dash_cooldown_icon.visible = true
+	# Show the chain dots immediately so the cast-flash is visible on the first cast.
+	# _rebuild_dots with 1 gray dot = "ready to cast" baseline indicator.
+	if chain_dots_container.get_child_count() == 0:
+		_rebuild_dots(0, 1)
+	chain_dots_container.visible = true
 
 
 ## Handles chain_index_changed from SpellCastingEffects.
@@ -525,7 +530,7 @@ func _rebuild_dots(active_index: int, count: int) -> void:
 			active_color = prana_type.color
 	for i: int in range(count):
 		var dot := ColorRect.new()
-		dot.custom_minimum_size = Vector2(6.0, 6.0)
+		dot.custom_minimum_size = Vector2(10.0, 10.0)
 		dot.color = active_color if i == active_index else Color("#888888")
 		chain_dots_container.add_child(dot)
 

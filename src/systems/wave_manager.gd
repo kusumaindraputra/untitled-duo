@@ -48,17 +48,19 @@ enum WaveState {
 # ── FP Composition Constants (Story 002 — TR-WES-002) ─────────────────────────
 ## Enemy counts for the First Pass single-wave encounter.
 ## Tuning knobs: adjust here to retune without touching logic.
-## GDD Formula 1 threat values: Drifter=1, Charger=2, Cluster=1
-## Total threat budget: (3×1) + (2×2) + (5×1) = 12
+## GDD Formula 1 threat values: Drifter=1, Charger=2, Cluster=1, Rifter=1
+## Total threat budget: (3×1) + (2×2) + (5×1) + (2×1) = 14
 
 const FP_DRIFTER_COUNT: int = 3
 const FP_CHARGER_COUNT: int = 2
 const FP_CLUSTER_COUNT: int = 5
+const FP_RIFTER_COUNT: int = 2
 
 ## EnemyCatalog type IDs for the FP encounter enemies.
 const FP_DRIFTER_ID: int = 0
 const FP_CHARGER_ID: int = 1
 const FP_CLUSTER_ID: int = 2
+const FP_RIFTER_ID: int = 4
 
 # ── Exports ───────────────────────────────────────────────────────────────────
 
@@ -175,6 +177,7 @@ func _build_wave_composition() -> void:
 		{ "type_id": FP_DRIFTER_ID, "count": FP_DRIFTER_COUNT },
 		{ "type_id": FP_CHARGER_ID, "count": FP_CHARGER_COUNT },
 		{ "type_id": FP_CLUSTER_ID, "count": FP_CLUSTER_COUNT },
+		{ "type_id": FP_RIFTER_ID, "count": FP_RIFTER_COUNT },
 	]
 	for group: Dictionary in fp_entries:
 		var et: EnemyType = EnemyCatalog.get_type(group.type_id)

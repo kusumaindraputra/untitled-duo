@@ -19,9 +19,11 @@ extends Node2D
 const _FLOOR_TILE_PATH: String = "res://assets/art/tiles/iso_floor_stone.png"
 const _FLOOR_SOURCE_ID: int = 0
 const _FLOOR_ATLAS_COORD: Vector2i = Vector2i(0, 0)
-## Radius in tiles from origin. 10 tiles covers ±320 px screen-x, ±160 px screen-y
-## per step — enough to enclose all spawn markers and player start position.
+## Scan radius. Must be >= max(|tx-ty|, |tx+ty|) needed to fill the arena.
 const _FLOOR_RADIUS: int = 10
+## Arena wall half-extents in screen pixels — match SegmentShape2D in IsometricRoom.tscn.
+const _WALL_HALF_X: int = 256
+const _WALL_HALF_Y: int = 192
 
 # ── @onready ──────────────────────────────────────────────────────────────────
 
@@ -82,6 +84,9 @@ func _build_floor() -> void:
 		atlas.texture_region_size = Vector2i(64, 32)
 		atlas.create_tile(_FLOOR_ATLAS_COORD)
 		_tile_map.tile_set.add_source(atlas, _FLOOR_SOURCE_ID)
+	# Isometric projection: tile (tx, ty) has center at screen ((tx-ty)*32, (tx+ty)*16).
+	# Only place tiles whose center falls within the arena wall bounds.
 	for tx: int in range(-_FLOOR_RADIUS, _FLOOR_RADIUS + 1):
 		for ty: int in range(-_FLOOR_RADIUS, _FLOOR_RADIUS + 1):
-			_tile_map.set_cell(Vector2i(tx, ty), _FLOOR_SOURCE_ID, _FLOOR_ATLAS_COORD)
+			if abs(tx - ty) * 32 <= _WALL_HALF_X and abs(tx + ty) * 16 <= _WALL_HALF_Y:
+				_tile_map.set_cell(Vector2i(tx, ty), _FLOOR_SOURCE_ID, _FLOOR_ATLAS_COORD)
