@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://src/scenes/isometric_room.gd" id="1_IsometricRoom"]
 [ext_resource type="PackedScene" uid="uid://b_prana_grid" path="res://src/ui/PranaGrid.tscn" id="2_pg"]
-[ext_resource type="Texture2D" path="res://assets/art/tiles/iso_floor_purple.png" id="3_tile"]
+[ext_resource type="Texture2D" path="res://assets/art/tiles/iso_floor_stone2.png" id="3_tile"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_floor"]
 texture = ExtResource("3_tile")

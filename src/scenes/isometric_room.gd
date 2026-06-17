@@ -16,15 +16,16 @@
 class_name IsometricRoom
 extends Node2D
 
-const _FLOOR_TILE_PATH: String = "res://assets/art/tiles/iso_floor_purple.png"
+const _FLOOR_TILE_PATH: String = "res://assets/art/tiles/iso_floor_stone2.png"
 const _FLOOR_SOURCE_ID: int = 0
 const _FLOOR_ATLAS_COORD: Vector2i = Vector2i(0, 0)
-## Scan radius. Must be >= max(x_radius, y_radius) = max(16, 20).
-const _FLOOR_RADIUS: int = 22
+## Scan radius. Must be >= max(x_radius, y_radius) = max(13, 16).
+const _FLOOR_RADIUS: int = 18
 ## Arena diamond half-extents in screen pixels.
-## x_radius = 512/32 = 16 tiles wide, y_radius = 320/16 = 20 tiles deep.
-const _WALL_HALF_X: int = 512
-const _WALL_HALF_Y: int = 320
+## Full diamond 832×512 — fits in prep viewport (1152×648) with ~160px margin each side.
+## x_radius = 416/32 = 13 tiles wide, y_radius = 256/16 = 16 tiles deep.
+const _WALL_HALF_X: int = 416
+const _WALL_HALF_Y: int = 256
 ## Screen pixels per tile isometric axis unit (tile_size = 64x32 → half = 32x16).
 const _TILE_X_STEP: int = 32
 const _TILE_Y_STEP: int = 16
