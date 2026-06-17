@@ -107,11 +107,12 @@ func _grid_with_centre(frag: PranaFragment) -> Array:
 
 # ── getter-length: committed_fragments always length 9 ────────────────────────
 
-## GIVEN slot 4 = Ashfire (type_id 0), all others empty
+## GIVEN only slot 4 = Ashfire (type_id 0), all others explicitly cleared
 ## WHEN arrangement confirmed
 ## THEN get_committed_fragments().size() == 9; slot 4 non-null; other slots null
 func test_prana_grid_getter_returns_length_9_with_only_centre_filled() -> void:
 	var pg := _make_pg()
+	pg.clear_all()         # clear Ashfire defaults; only centre will be filled
 	pg._place_token(4, 0)
 	pg._on_confirm_pressed()
 
@@ -300,11 +301,12 @@ func test_cr_second_wave_reflects_new_arrangement() -> void:
 
 # ── null-slots safety: only slot 4 filled ────────────────────────────────────
 
-## GIVEN PranaGrid confirmed with only slot 4 = Voidblue (type_id 1); 8 null slots
+## GIVEN only slot 4 = Voidblue (type_id 1); 8 null slots (explicitly cleared)
 ## WHEN CR resolves via committed_fragments
 ## THEN no crash; primary_type == 1; null slots are skipped cleanly
 func test_null_slots_do_not_crash_cr_resolution() -> void:
 	var pg := _make_pg()
+	pg.clear_all()         # clear Ashfire defaults so 8 slots remain null
 	pg._place_token(4, 1)  # Voidblue centre only
 	pg._on_confirm_pressed()
 
