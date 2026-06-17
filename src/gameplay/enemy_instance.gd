@@ -4,10 +4,10 @@
 class_name EnemyInstance
 extends CharacterBody2D
 
-## Story-local state enum — only CHASING and DEAD are needed at this story scope.
+## Story-local state enum. STUNNED added when apply_stun/apply_speed_modifier landed.
 ## The full GameEnums.EnemyState (IDLE, PURSUING, ATTACKING, STUNNED, DEAD) gates
-## in at Story 002+ when per-archetype tick functions are implemented.
-enum EnemyState { CHASING = 0, DEAD = 1 }
+## in at a later story when archetype tick functions are formalised.
+enum EnemyState { CHASING = 0, DEAD = 1, STUNNED = 2 }
 
 # ── Private state ─────────────────────────────────────────────────────────────
 
@@ -35,6 +35,13 @@ var _death_fallback_timer: float = 0.0
 
 ## Float accumulator for SHOOTER shoot interval (S8-05, ADR-0004 pattern).
 var _shoot_timer: float = 0.0
+
+## Speed multiplier applied by StatusEffectsManager (Freeze = 0.50, Chill = 0.85).
+## Restored to 1.0 by SEM on status expiry or wave clear.
+var _speed_modifier: float = 1.0
+
+## Countdown to stun expiry (ADR-0011). Positive = STUNNED; managed in _physics_process.
+var _stun_timer: float = 0.0
 
 ## Minimum seconds between contact damage events (design/gdd/enemy-ai.md Tuning Knobs).
 ## Must remain >= 0.3s — H&D i-frame guarantee depends on this (Enemy AI Dep. #3).
@@ -128,6 +135,15 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector2.ZERO
 		return
 
+	# STUNNED: count down timer, zero velocity, skip movement and contact damage.
+	if _state == EnemyState.STUNNED:
+		_stun_timer -= delta
+		if _stun_timer <= 0.0:
+			_state = EnemyState.CHASING
+		velocity = Vector2.ZERO
+		move_and_slide()
+		return
+
 	# Re-resolve Fayde ref if lost between frames (AC-EAI-27).
 	# is_inside_tree() guard prevents get_tree() null crash in unit tests where
 	# the node is exercised without being added to the scene tree.
@@ -145,7 +161,7 @@ func _physics_process(delta: float) -> void:
 	if _archetype == GameEnums.EnemyArchetype.SHOOTER:
 		_tick_shooter(delta)
 	else:
-		velocity = _dir_last_valid * _move_speed
+		velocity = _dir_last_valid * _move_speed * _speed_modifier
 		move_and_slide()
 
 	# Contact repeat timer — ADR-0004 float accumulator. Fires repeat damage while
@@ -188,10 +204,10 @@ func is_alive() -> bool:
 	return _state != EnemyState.DEAD
 
 
-## Required by ADR-0011 — stub; fully implemented in Story 005.
-## SEM calls this on Freeze/Chill apply and expiry.
-func apply_speed_modifier(_multiplier: float) -> void:
-	pass
+## Required by ADR-0011 (StatusEffectsManager API Contract).
+## SEM calls this on Freeze/Chill apply and on status expiry to restore full speed.
+func apply_speed_modifier(multiplier: float) -> void:
+	_speed_modifier = multiplier
 
 
 # ── Private helpers ───────────────────────────────────────────────────────────
@@ -200,7 +216,7 @@ func apply_speed_modifier(_multiplier: float) -> void:
 func _tick_shooter(delta: float) -> void:
 	var dist: float = global_position.distance_to(_fayde_ref.global_position)
 	if dist < KEEP_DISTANCE:
-		velocity = -_dir_last_valid * _move_speed
+		velocity = -_dir_last_valid * _move_speed * _speed_modifier
 	else:
 		velocity = Vector2.ZERO
 	move_and_slide()
@@ -221,10 +237,11 @@ func _fire_projectile() -> void:
 	proj.launch(_dir_last_valid, _base_damage)
 
 
-## Required by ADR-0011 — stub; fully implemented in Story 005.
-## SEM calls this on Stun/Stagger apply.
-func apply_stun(_duration: float) -> void:
-	pass
+## Required by ADR-0011 (StatusEffectsManager API Contract).
+## SEM calls this on Stun/Stagger apply. Re-entrant: resets timer on stun refresh.
+func apply_stun(duration: float) -> void:
+	_state = EnemyState.STUNNED
+	_stun_timer = duration
 
 # ── Signal handlers ───────────────────────────────────────────────────────────
 
@@ -241,6 +258,10 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	_fayde_in_contact = false
 	_contact_timer = 0.0
 	_shoot_timer = 0.0
+	_speed_modifier = 1.0
+	_stun_timer = 0.0
+	if _state == EnemyState.STUNNED:
+		_state = EnemyState.CHASING
 
 
 ## Responds to H&D's enemy_killed signal (AC-EAI-15, 16, 28, 29).

@@ -24,6 +24,9 @@ const TYPE_NAMES: Array[String] = ["ASH", "VOID", "STRM", "DEEP", "VERD"]
 ## Prana type index (0–4). Set by PranaGrid._create_ui_nodes() before add_child().
 var type_id: int = -1
 
+## Grid reference wired by PranaGrid._create_ui_nodes(). Null in drag-only contexts.
+var _prana_grid: PranaGrid = null
+
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(56.0, 56.0)
@@ -43,6 +46,17 @@ func _ready() -> void:
 	label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(label)
+
+
+## Left-click fills all 9 grid slots with this token's type via PranaGrid.fill_all().
+## Drag still works for individual slot placement (see _get_drag_data).
+func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton \
+			and event.pressed \
+			and event.button_index == MOUSE_BUTTON_LEFT:
+		if _prana_grid != null:
+			_prana_grid.fill_all(type_id)
+			accept_event()
 
 
 ## Returns drag payload { "type_id": int } consumed by PranaGridSlot._drop_data().

@@ -48,8 +48,13 @@ class MockHealthAndDamage:
 
 
 ## Passthrough SEM stub: check_and_apply_shatter returns base_damage unchanged;
-## has_status always returns false. Used for tests that do not test Shatter.
+## has_status always returns false. Records apply_status calls for assertion.
 class MockStatusEffectsPassthrough:
+	var apply_status_calls: Array = []
+
+	func apply_status(_target: Node, status_type: GameEnums.BaseStatus, duration: float, spell_base_damage: float = 0.0) -> void:
+		apply_status_calls.append({"status_type": status_type, "duration": duration, "spell_base_damage": spell_base_damage})
+
 	func check_and_apply_shatter(_target: Node, base_damage: float) -> float:
 		return base_damage
 
@@ -60,6 +65,9 @@ class MockStatusEffectsPassthrough:
 ## Shatter SEM stub: check_and_apply_shatter returns base_damage × 1.25 unconditionally.
 ## Used by AC-SC-14 to simulate a Frozen target without needing a real SEM registry.
 class MockStatusEffectsShatter:
+	func apply_status(_target: Node, _status_type: GameEnums.BaseStatus, _duration: float, _spell_base: float = 0.0) -> void:
+		pass
+
 	func check_and_apply_shatter(_target: Node, base_damage: float) -> float:
 		return base_damage * 1.25
 
@@ -325,14 +333,15 @@ func test_sce_ashfire_t1_vs_fire_affiliated_enemy_doubles_damage_to_50() -> void
 	_teardown_sce(sce)
 
 
-# ── AC-SC-19: Formula 7 FP status stubs — default durations ─────────────────
+# ── AC-SC-19: Status effects applied via SEM — default durations ─────────────
 
 ## GIVEN Deepfrost T1, empty aggregate; MockEnemy target
 ## WHEN _fire_attack(0) called
-## THEN target.status_freeze_timer == 2.0
-func test_sce_deepfrost_t1_writes_freeze_timer_2_seconds() -> void:
+## THEN SEM.apply_status(FREEZE, 2.0) called once
+func test_sce_deepfrost_t1_applies_freeze_status_2_seconds() -> void:
 	var hd := MockHealthAndDamage.new()
-	var sce = _make_sce(hd)
+	var sem := MockStatusEffectsPassthrough.new()
+	var sce = _make_sce(hd, sem)
 	var se := _make_spell_effect(3, 1, 0.80)  # Deepfrost T1
 	var enemy := MockEnemy.new()
 	add_child(enemy)
@@ -341,7 +350,9 @@ func test_sce_deepfrost_t1_writes_freeze_timer_2_seconds() -> void:
 
 	sce._fire_attack(0)
 
-	assert_float(enemy.status_freeze_timer).is_equal_approx(2.0, 0.001)
+	assert_int(sem.apply_status_calls.size()).is_equal(1)
+	assert_int(sem.apply_status_calls[0]["status_type"]).is_equal(GameEnums.BaseStatus.FREEZE)
+	assert_float(sem.apply_status_calls[0]["duration"]).is_equal_approx(2.0, 0.001)
 
 	remove_child(enemy)
 	enemy.free()
@@ -350,10 +361,11 @@ func test_sce_deepfrost_t1_writes_freeze_timer_2_seconds() -> void:
 
 ## GIVEN Stormgold T1, empty aggregate; MockEnemy target
 ## WHEN _fire_attack(0) called
-## THEN target.status_stun_timer == 0.8
-func test_sce_stormgold_t1_writes_stun_timer_0_8_seconds() -> void:
+## THEN SEM.apply_status(STUN, 0.8) called once
+func test_sce_stormgold_t1_applies_stun_status_0_8_seconds() -> void:
 	var hd := MockHealthAndDamage.new()
-	var sce = _make_sce(hd)
+	var sem := MockStatusEffectsPassthrough.new()
+	var sce = _make_sce(hd, sem)
 	var se := _make_spell_effect(2, 1, 1.15)  # Stormgold T1
 	var enemy := MockEnemy.new()
 	add_child(enemy)
@@ -362,7 +374,9 @@ func test_sce_stormgold_t1_writes_stun_timer_0_8_seconds() -> void:
 
 	sce._fire_attack(0)
 
-	assert_float(enemy.status_stun_timer).is_equal_approx(0.8, 0.001)
+	assert_int(sem.apply_status_calls.size()).is_equal(1)
+	assert_int(sem.apply_status_calls[0]["status_type"]).is_equal(GameEnums.BaseStatus.STUN)
+	assert_float(sem.apply_status_calls[0]["duration"]).is_equal_approx(0.8, 0.001)
 
 	remove_child(enemy)
 	enemy.free()
@@ -462,14 +476,15 @@ func test_sce_ash_crit_suppressed_at_second_attack_index_1() -> void:
 	_teardown_sce(sce)
 
 
-# ── AC-SC-25: Formula 7 with stat bonuses ────────────────────────────────────
+# ── AC-SC-25: Status effects with stat bonuses ────────────────────────────────
 
 ## GIVEN Deepfrost T1, aggregate={"FROST_FREEZE_DUR": 0.5}
 ## WHEN _fire_attack(0) called
-## THEN target.status_freeze_timer == 2.5
-func test_sce_deepfrost_t1_with_freeze_dur_bonus_writes_2_5_seconds() -> void:
+## THEN SEM.apply_status(FREEZE, 2.5) called once
+func test_sce_deepfrost_t1_with_freeze_dur_bonus_applies_2_5_seconds() -> void:
 	var hd := MockHealthAndDamage.new()
-	var sce = _make_sce(hd)
+	var sem := MockStatusEffectsPassthrough.new()
+	var sce = _make_sce(hd, sem)
 	var se := _make_spell_effect(3, 1, 0.80, 1, {&"FROST_FREEZE_DUR": 0.5})
 	var enemy := MockEnemy.new()
 	add_child(enemy)
@@ -478,7 +493,9 @@ func test_sce_deepfrost_t1_with_freeze_dur_bonus_writes_2_5_seconds() -> void:
 
 	sce._fire_attack(0)
 
-	assert_float(enemy.status_freeze_timer).is_equal_approx(2.5, 0.001)
+	assert_int(sem.apply_status_calls.size()).is_equal(1)
+	assert_int(sem.apply_status_calls[0]["status_type"]).is_equal(GameEnums.BaseStatus.FREEZE)
+	assert_float(sem.apply_status_calls[0]["duration"]).is_equal_approx(2.5, 0.001)
 
 	remove_child(enemy)
 	enemy.free()
@@ -487,10 +504,11 @@ func test_sce_deepfrost_t1_with_freeze_dur_bonus_writes_2_5_seconds() -> void:
 
 ## GIVEN Stormgold T1, aggregate={"STORM_STUN_DUR": 0.4}
 ## WHEN _fire_attack(0) called
-## THEN target.status_stun_timer == 1.2
-func test_sce_stormgold_t1_with_stun_dur_bonus_writes_1_2_seconds() -> void:
+## THEN SEM.apply_status(STUN, 1.2) called once
+func test_sce_stormgold_t1_with_stun_dur_bonus_applies_1_2_seconds() -> void:
 	var hd := MockHealthAndDamage.new()
-	var sce = _make_sce(hd)
+	var sem := MockStatusEffectsPassthrough.new()
+	var sce = _make_sce(hd, sem)
 	var se := _make_spell_effect(2, 1, 1.15, 1, {&"STORM_STUN_DUR": 0.4})
 	var enemy := MockEnemy.new()
 	add_child(enemy)
@@ -499,7 +517,9 @@ func test_sce_stormgold_t1_with_stun_dur_bonus_writes_1_2_seconds() -> void:
 
 	sce._fire_attack(0)
 
-	assert_float(enemy.status_stun_timer).is_equal_approx(1.2, 0.001)
+	assert_int(sem.apply_status_calls.size()).is_equal(1)
+	assert_int(sem.apply_status_calls[0]["status_type"]).is_equal(GameEnums.BaseStatus.STUN)
+	assert_float(sem.apply_status_calls[0]["duration"]).is_equal_approx(1.2, 0.001)
 
 	remove_child(enemy)
 	enemy.free()

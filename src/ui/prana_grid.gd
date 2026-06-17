@@ -44,6 +44,10 @@ var _slots: Array[Variant] = []
 ## Read-only by convention — CombinationResolution and SCE access via getter (TR-PG-002).
 var _committed_fragments: Array[PranaFragment] = []
 
+## Type last chosen via fill_all(). Persists across waves so prep auto-fills.
+## 0 = Ashfire (default). Reset to 0 only at run start (not wave start).
+var _last_fill_type_id: int = 0
+
 ## Countdown timer for the centre-slot error flash indicator (AC-PG-05).
 ## Counts down in _process(). Zero means no flash is active.
 var _error_flash_timer: float = 0.0
@@ -153,11 +157,24 @@ func _process(delta: float) -> void:
 				_error_label.visible = false
 
 
-## Pre-fills all 9 slots with Ashfire (type_id 0) and enters ARRANGEMENT state.
-## Player can still rearrange or clear before confirming.
+## Fills all 9 slots with [param type_id] during ARRANGEMENT state.
+## Remembers the choice in [member _last_fill_type_id] for the next wave's auto-fill.
+## No-op outside ARRANGEMENT — grid must be in prep phase.
+func fill_all(type_id: int) -> void:
+	if _state != State.ARRANGEMENT:
+		return
+	_last_fill_type_id = type_id
+	_slots.fill(type_id)
+	for i in _slot_nodes.size():
+		(_slot_nodes[i] as PranaGridSlot).refresh(type_id)
+	_update_confirm_button()
+
+
+## Pre-fills all 9 slots with the last chosen type and enters ARRANGEMENT state.
+## On the very first wave _last_fill_type_id is 0 (Ashfire default).
 ## Called on every new wave start, from any prior state.
 func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) -> void:
-	_slots.fill(0)  # 0 = Ashfire — default pre-fill for all waves
+	_slots.fill(_last_fill_type_id)
 	_committed_fragments.fill(null)
 	_state = State.ARRANGEMENT
 	if _compact_indicator != null:
@@ -165,7 +182,7 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	if _grid_panel != null:
 		_grid_panel.visible = true
 	for i in _slot_nodes.size():
-		(_slot_nodes[i] as PranaGridSlot).refresh(0)  # 0 = Ashfire
+		(_slot_nodes[i] as PranaGridSlot).refresh(_last_fill_type_id)
 	_update_confirm_button()
 	visible = true
 
@@ -320,7 +337,7 @@ func _create_ui_nodes() -> void:
 	layout.add_child(header)
 
 	var hint := Label.new()
-	hint.text = "Drag tokens to slots  •  Right-click to clear  •  Slot 4 = centre (required)"
+	hint.text = "Click a type to fill all  •  Right-click slot to clear  •  Then Confirm"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	layout.add_child(hint)
@@ -357,6 +374,7 @@ func _create_ui_nodes() -> void:
 	for type_id in 5:
 		var token := PranaTypeToken.new()
 		token.type_id = type_id
+		token._prana_grid = self
 		selector.add_child(token)
 
 	# Buttons row

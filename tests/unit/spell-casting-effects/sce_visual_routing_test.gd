@@ -63,6 +63,9 @@ class MockHealthAndDamage:
 
 ## Passthrough SEM stub — check_and_apply_shatter returns base unchanged; has_status false.
 class MockStatusEffectsPassthrough:
+	func apply_status(_target: Node, _status_type: GameEnums.BaseStatus, _duration: float, _spell_base: float = 0.0) -> void:
+		pass
+
 	func check_and_apply_shatter(_target: Node, base_damage: float) -> float:
 		return base_damage
 
@@ -73,13 +76,10 @@ class MockStatusEffectsPassthrough:
 ## Minimal enemy node required for _fire_attack() _override_target path.
 class MockEnemy extends Node2D:
 	var prana_affiliation: GameEnums.DamageClass = GameEnums.DamageClass.NONE
-	var status_freeze_timer: float = 0.0
-	var status_stun_timer: float = 0.0
-	var status_burned: bool = false
-	var status_blinded_timer: float = 0.0
-	var status_stagger_timer: float = 0.0
 
 	func is_alive() -> bool: return true
+	func apply_speed_modifier(_mult: float) -> void: pass
+	func apply_stun(_duration: float) -> void: pass
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

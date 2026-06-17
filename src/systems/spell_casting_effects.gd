@@ -313,6 +313,7 @@ func _fire_attack(attack_index: int) -> void:
 
 	# Step 4 — core damage.
 	var raw: float = eff_base * eff_mod * tier_mod
+	var step4_raw: float = raw  # captured before Steps 5-7 for Burn DoT base (GDD Rule 8)
 
 	# Step 5 — Shatter (ADR-0011): delegates to SEM.
 	# At FP: check_and_apply_shatter returns raw unchanged (has_status returns false for stubs).
@@ -354,30 +355,30 @@ func _fire_attack(attack_index: int) -> void:
 	# Emit spell_hit_element for CombatHUD damage-number coloring (GDD Rule 1, B-1).
 	spell_hit_element.emit(target, pt)
 
-	# FP status field-write stubs (GDD Rule 8 — field writes only; SEM not wired at FP).
-	_apply_fp_status_stubs(target, pt, se)
+	# Apply primary type's status effect via StatusEffectsManager (ADR-0011).
+	_apply_status_effects(target, pt, se, step4_raw)
 
 
-## Writes FP status stub fields to [param target] per GDD Rule 8 Formula 7.
-##
-## These are field-write stubs only — no Enemy AI behavior reads them at FP scope,
-## and StatusEffectsManager is not wired to them. They reserve the interface for MVP.
-## Uses target.set() to avoid GDScript type errors on nodes without these fields.
-func _apply_fp_status_stubs(target: Node, pt: int, se: SpellEffect) -> void:
+## Applies the primary Prana type's status via StatusEffectsManager (ADR-0011).
+## [param step4_raw] is the Step-4 core damage (before Shatter/Follow-Through) —
+## used as spell_base_damage for Burn DoT tick calculations (GDD Rule 8).
+## Verdant Regen targets _fayde_ref (not the enemy); guarded for null in tests.
+func _apply_status_effects(target: Node, pt: int, se: SpellEffect, step4_raw: float) -> void:
 	match pt:
-		0:  # Ashfire — STATUS_BURN stub
-			target.set(&"status_burned", true)
-		1:  # Voidblue — STATUS_BLIND stub
-			var blind_dur: float = 2.0 + se.aggregate_stat_bonus.get(&"VOID_BLIND_DUR", 0.0)
-			target.set(&"status_blinded_timer", blind_dur)
-		2:  # Stormgold — STATUS_STUN stub
-			var stun_dur: float = 0.8 + se.aggregate_stat_bonus.get(&"STORM_STUN_DUR", 0.0)
-			target.set(&"status_stun_timer", stun_dur)
-		3:  # Deepfrost — STATUS_FREEZE stub
-			var freeze_dur: float = 2.0 + se.aggregate_stat_bonus.get(&"FROST_FREEZE_DUR", 0.0)
-			target.set(&"status_freeze_timer", freeze_dur)
-		4:  # Verdant — STATUS_REGEN stub (applies to Fayde, not target; field reserved for MVP)
-			pass  # Regen is on Fayde — handled by Verdant NP rules (not in FP scope at Story 003)
+		0:  # Ashfire — Burn DoT; step4_raw drives tick magnitude.
+			_status_effects.apply_status(target, GameEnums.BaseStatus.BURN, 2.0, step4_raw)
+		1:  # Voidblue — Blind.
+			var dur: float = 2.0 + se.aggregate_stat_bonus.get(&"VOID_BLIND_DUR", 0.0)
+			_status_effects.apply_status(target, GameEnums.BaseStatus.BLIND, dur)
+		2:  # Stormgold — Stun. SEM calls target.apply_stun(dur) → STUNNED state.
+			var dur: float = 0.8 + se.aggregate_stat_bonus.get(&"STORM_STUN_DUR", 0.0)
+			_status_effects.apply_status(target, GameEnums.BaseStatus.STUN, dur)
+		3:  # Deepfrost — Freeze. SEM calls target.apply_speed_modifier(0.50).
+			var dur: float = 2.0 + se.aggregate_stat_bonus.get(&"FROST_FREEZE_DUR", 0.0)
+			_status_effects.apply_status(target, GameEnums.BaseStatus.FREEZE, dur)
+		4:  # Verdant — Regen on Fayde (not on the enemy target).
+			if _fayde_ref != null:
+				_status_effects.apply_status(_fayde_ref, GameEnums.BaseStatus.REGENERATE, 3.0)
 
 
 ## Stub for tier_attack_modifier == 0.0 secondary effects (Verdant T2 shield pulse,
