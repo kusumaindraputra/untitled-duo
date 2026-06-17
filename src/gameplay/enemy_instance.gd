@@ -87,6 +87,8 @@ func _setup_collision_nodes() -> void:
 	hit_shape.shape = hit_circle
 	var hit_area := Area2D.new()
 	hit_area.name = "HitArea"
+	hit_area.collision_layer = 0  # sensor only — not on any layer
+	hit_area.collision_mask = 2   # detect player body (COLLISION_LAYER_PLAYER = 2)
 	hit_area.add_child(hit_shape)
 	add_child(hit_area)
 	var anim_player := AnimationPlayer.new()

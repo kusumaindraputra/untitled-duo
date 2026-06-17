@@ -32,6 +32,7 @@ const _FLOOR_RADIUS: int = 10
 
 func _ready() -> void:
 	_build_floor()
+	_build_wall_visuals()
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
@@ -53,6 +54,20 @@ func get_spawn_markers() -> Array[Vector2]:
 	return markers
 
 # ── Private ───────────────────────────────────────────────────────────────────
+
+## Draws a debug Line2D rectangle matching the SegmentShape2D arena walls (S8-03).
+## Removed when real wall art replaces the physics-only collision shapes.
+func _build_wall_visuals() -> void:
+	var line := Line2D.new()
+	line.points = PackedVector2Array([
+		Vector2(-256, -192), Vector2(256, -192),
+		Vector2(256, 192), Vector2(-256, 192), Vector2(-256, -192)
+	])
+	line.width = 2.0
+	line.default_color = Color(0.8, 0.6, 0.2, 0.9)
+	line.z_index = 100
+	add_child(line)
+
 
 ## Loads the floor tile texture, registers it as a TileSetAtlasSource,
 ## and fills a square grid of floor tiles centred on the room origin.
