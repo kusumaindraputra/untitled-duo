@@ -114,6 +114,26 @@ func _build_floor() -> void:
 			var norm: float = float(abs(tx - ty)) / float(x_radius) + float(abs(tx + ty)) / float(y_radius)
 			if norm <= 1.0:
 				_tile_map.set_cell(Vector2i(tx, ty), _FLOOR_SOURCE_ID, _FLOOR_ATLAS_COORD)
+	# Flood-fill from origin — remove any tile not 4-connected to the main body.
+	# Tip tiles at norm==1.0 can be isolated singletons in the staggered grid.
+	var all_cells: Dictionary = {}
+	for c: Vector2i in _tile_map.get_used_cells():
+		all_cells[c] = true
+	var visited: Dictionary = {}
+	var queue: Array[Vector2i] = [Vector2i(0, 0)]
+	var dirs: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	while not queue.is_empty():
+		var cell: Vector2i = queue.pop_back()
+		if visited.has(cell) or not all_cells.has(cell):
+			continue
+		visited[cell] = true
+		for d: Vector2i in dirs:
+			var nb: Vector2i = cell + d
+			if all_cells.has(nb) and not visited.has(nb):
+				queue.append(nb)
+	for c: Vector2i in all_cells:
+		if not visited.has(c):
+			_tile_map.erase_cell(c)
 
 
 ## Repositions Marker2D children under SpawnMarkers to tile centers that are
@@ -137,6 +157,7 @@ func _place_spawn_markers() -> void:
 	var target_angles: Array[float] = [0.0, TAU / 3.0, 2.0 * TAU / 3.0]
 	var markers: Array[Node] = _spawn_markers.get_children()
 	var used_cells: Dictionary = {}
+	var placed_positions: Array[Vector2] = []
 	for i: int in range(min(markers.size(), target_angles.size())):
 		if not (markers[i] is Marker2D):
 			continue
@@ -146,7 +167,15 @@ func _place_spawn_markers() -> void:
 		for c: Vector2i in cells:
 			if used_cells.has(c):
 				continue
-			var offset: Vector2 = _tile_map.map_to_local(c) - centroid
+			var pos: Vector2 = _tile_map.map_to_local(c)
+			var too_close: bool = false
+			for placed: Vector2 in placed_positions:
+				if pos.distance_to(placed) < 80.0:
+					too_close = true
+					break
+			if too_close:
+				continue
+			var offset: Vector2 = pos - centroid
 			var dist: float = offset.length()
 			if dist < 32.0:
 				continue
@@ -156,7 +185,9 @@ func _place_spawn_markers() -> void:
 				best_score = score
 				best_cell = c
 		used_cells[best_cell] = true
-		(markers[i] as Marker2D).position = _tile_map.map_to_local(best_cell)
+		var best_pos: Vector2 = _tile_map.map_to_local(best_cell)
+		placed_positions.append(best_pos)
+		(markers[i] as Marker2D).position = best_pos
 
 
 ## Builds the arena collision boundary directly from the filled floor tiles so the
