@@ -53,6 +53,9 @@ var _rusher_charge_dir: Vector2 = Vector2.ZERO
 ## Current orbit angle (radians) for SWARMER. Randomised per instance in init().
 var _swarmer_angle: float = 0.0
 
+## Active Tween for attack/telegraph modulate pulse. Null when idle.
+var _vfx_tween: Tween = null
+
 ## Minimum seconds between contact damage events (design/gdd/enemy-ai.md Tuning Knobs).
 ## Must remain >= 0.3s — H&D i-frame guarantee depends on this (Enemy AI Dep. #3).
 const ENEMY_MIN_CONTACT_INTERVAL: float = 0.3
@@ -285,6 +288,32 @@ func _tick_shooter(delta: float) -> void:
 		_fire_projectile()
 
 
+## Pulsing red modulate — fired when melee contact starts.
+func _start_contact_vfx() -> void:
+	if _vfx_tween:
+		_vfx_tween.kill()
+	_vfx_tween = create_tween().set_loops()
+	_vfx_tween.tween_property(self, "modulate", Color(2.2, 0.3, 0.3), 0.12)
+	_vfx_tween.tween_property(self, "modulate", Color(1.0, 0.55, 0.55), 0.12)
+
+
+## Fast orange flash — fired when RUSHER enters TELEGRAPH (charge wind-up warning).
+func _start_telegraph_vfx() -> void:
+	if _vfx_tween:
+		_vfx_tween.kill()
+	_vfx_tween = create_tween().set_loops()
+	_vfx_tween.tween_property(self, "modulate", Color(2.5, 1.4, 0.1), 0.08)
+	_vfx_tween.tween_property(self, "modulate", Color(0.9, 0.5, 0.1), 0.08)
+
+
+## Kills any active modulate tween and restores white.
+func _stop_attack_vfx() -> void:
+	if _vfx_tween:
+		_vfx_tween.kill()
+		_vfx_tween = null
+	modulate = Color.WHITE
+
+
 ## SEEKER archetype tick — direct chase at full speed (design/gdd/level-generation.md).
 func _tick_seeker(_delta: float) -> void:
 	var sep: Vector2 = _compute_separation()
@@ -304,6 +333,7 @@ func _tick_rusher(delta: float) -> void:
 			if _fayde_ref.global_position.distance_to(global_position) <= RUSHER_CHARGE_RANGE:
 				_rusher_phase = 1
 				_rusher_timer = RUSHER_TELEGRAPH_DURATION
+				_start_telegraph_vfx()
 		1:  # TELEGRAPH — freeze; lock direction at expiry
 			velocity = Vector2.ZERO
 			move_and_slide()
@@ -312,6 +342,10 @@ func _tick_rusher(delta: float) -> void:
 				_rusher_charge_dir = _dir_last_valid
 				_rusher_phase = 2
 				_rusher_timer = RUSHER_CHARGE_DURATION
+				if _vfx_tween:
+					_vfx_tween.kill()
+					_vfx_tween = null
+				modulate = Color(2.5, 0.2, 0.2)
 		2:  # CHARGING — burst in locked direction
 			velocity = (_rusher_charge_dir * _move_speed * RUSHER_CHARGE_SPEED_MULT + sep) * _speed_modifier
 			move_and_slide()
@@ -319,6 +353,10 @@ func _tick_rusher(delta: float) -> void:
 			if _rusher_timer <= 0.0:
 				_rusher_phase = 3
 				_rusher_timer = RUSHER_COOLDOWN_DURATION
+				if _fayde_in_contact:
+					_start_contact_vfx()
+				else:
+					_stop_attack_vfx()
 		3:  # COOLDOWN — only separation force
 			velocity = sep * _speed_modifier
 			move_and_slide()
@@ -376,6 +414,7 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	_stun_timer = 0.0
 	_rusher_phase = 0
 	_rusher_timer = 0.0
+	_stop_attack_vfx()
 	if _state == EnemyState.STUNNED:
 		_state = EnemyState.CHASING
 
@@ -392,6 +431,7 @@ func _on_enemy_killed(instance_id: int, _type_id: int, _prana_affiliation: GameE
 	velocity = Vector2.ZERO
 	_contact_timer = 0.0
 	_fayde_in_contact = false
+	_stop_attack_vfx()
 	$HitArea.monitoring = false
 
 	if $AnimationPlayer.has_animation(&"death"):
@@ -424,6 +464,8 @@ func _on_hitarea_body_entered(body: Node2D) -> void:
 	if _fayde_in_contact:
 		return
 	_fayde_in_contact = true
+	if _archetype != GameEnums.EnemyArchetype.SHOOTER:
+		_start_contact_vfx()
 	HealthAndDamage.apply_damage(
 		body, _base_damage, GameEnums.DamageClass.NONE, GameEnums.DamageSource.CONTACT)
 	_contact_timer = ENEMY_MIN_CONTACT_INTERVAL
@@ -436,3 +478,5 @@ func _on_hitarea_body_exited(body: Node2D) -> void:
 		return
 	_fayde_in_contact = false
 	_contact_timer = 0.0
+	if _archetype != GameEnums.EnemyArchetype.SHOOTER:
+		_stop_attack_vfx()
