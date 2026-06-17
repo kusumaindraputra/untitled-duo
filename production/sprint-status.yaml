@@ -9,80 +9,110 @@
 #   done           ↔  Complete
 #   blocked        ↔  Blocked
 
-sprint: 8
-goal: "Perkuat game feel (dash i-frame, arena bounds, enemy variety + shooter) untuk memvalidasi fun hypothesis pada external playtest"
-start: "2026-07-15"
-end: "2026-07-28"
-generated: "2026-06-16"
-updated: "2026-06-16"
+sprint: 9
+goal: "Close human-gated carryovers (gamepad + playtest), confirm S8 game feel in Godot, begin Feature layer: StatusEffectsManager + SpellEffect resource"
+start: "2026-07-29"
+end: "2026-08-11"
+generated: "2026-06-17"
+updated: "2026-06-17"
 
 stories:
-  - id: "S8-01"
-    name: "Run /qa-plan sprint — Sprint 8 QA plan (DAY 1 GATE)"
-    file: "production/qa/"
+  - id: "S9-01"
+    name: "Manual validation in Godot — Sprint 8 DoD gate"
+    file: "production/qa/evidence/"
     priority: must-have
     status: ready-for-dev
     owner: ""
     estimate_days: 0.5
-    blocker: ""
+    blocker: "Requires Godot editor open"
     completed: ""
 
-  - id: "S8-02"
-    name: "Dash invincibility: pass-through enemy + blinking visual"
-    file: "src/gameplay/player_controller.gd"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 0.5
-    blocker: ""
-    completed: "2026-06-16"
-
-  - id: "S8-03"
-    name: "Arena boundaries — invisible collision walls di IsometricRoom"
-    file: "src/scenes/IsometricRoom.tscn"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 0.25
-    blocker: ""
-    completed: "2026-06-16"
-
-  - id: "S8-04"
-    name: "Enemy color per-archetype — debug_color field di EnemyType"
-    file: "src/data/enemy_type.gd"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 0.25
-    blocker: ""
-    completed: "2026-06-16"
-
-  - id: "S8-05"
-    name: "Shooter enemy + Projectile system"
-    file: "src/gameplay/enemy_instance.gd"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 1.5
-    blocker: ""
-    completed: "2026-06-16"
-
-  - id: "S8-06"
-    name: "ADR-0013 live gamepad gate (carryover S7-02)"
+  - id: "S9-02"
+    name: "ADR-0013 live gamepad gate (3rd carry — HARD DEADLINE)"
     file: "production/qa/evidence/prana-grid-gamepad-adr0013.md"
-    priority: should-have
-    status: backlog
+    priority: must-have
+    status: ready-for-dev
     owner: ""
     estimate_days: 0.5
     blocker: "Requires physical gamepad"
     completed: ""
 
-  - id: "S8-07"
-    name: "Re-validation playtest (carryover S7-10)"
+  - id: "S9-03"
+    name: "Re-validation playtest (3rd carry — HARD DEADLINE)"
     file: "production/playtests/"
+    priority: must-have
+    status: ready-for-dev
+    owner: ""
+    estimate_days: 1.0
+    blocker: "Requires non-developer tester"
+    completed: ""
+
+  - id: "S9-04"
+    name: "SEM-001: StatusEffectsManager skeleton + Burn DoT"
+    file: "production/epics/status-effects/story-001-sem-skeleton-burn-dot.md"
+    priority: must-have
+    status: ready-for-dev
+    owner: ""
+    estimate_days: 1.5
+    blocker: ""
+    completed: ""
+
+  - id: "S9-05"
+    name: "SCE-001: SpellEffect resource skeleton + state machine"
+    file: "production/epics/spell-casting-effects/story-001-spell-effect-resource-skeleton.md"
+    priority: must-have
+    status: ready-for-dev
+    owner: ""
+    estimate_days: 1.0
+    blocker: ""
+    completed: ""
+
+  - id: "S9-06"
+    name: "SEM-002: Freeze + Regen effects"
+    file: "production/epics/status-effects/story-002-sem-freeze-regen.md"
     priority: should-have
     status: backlog
     owner: ""
     estimate_days: 1.0
-    blocker: "Requires non-developer tester"
+    blocker: "S9-04"
+    completed: ""
+
+  - id: "S9-07"
+    name: "SEM-003: Stub effects — Blind, Stun, Chill, Stagger"
+    file: "production/epics/status-effects/story-003-sem-stub-effects.md"
+    priority: should-have
+    status: backlog
+    owner: ""
+    estimate_days: 1.0
+    blocker: "S9-04"
+    completed: ""
+
+  - id: "S9-08"
+    name: "SCE-002: Cast chain timing + input loop"
+    file: "production/epics/spell-casting-effects/story-002-cast-chain-timing.md"
+    priority: should-have
+    status: backlog
+    owner: ""
+    estimate_days: 1.5
+    blocker: "S9-05"
+    completed: ""
+
+  - id: "S9-09"
+    name: "SEM-004: Kill cleanup + phase clear"
+    file: "production/epics/status-effects/story-004-sem-kill-phase-cleanup.md"
+    priority: nice-to-have
+    status: backlog
+    owner: ""
+    estimate_days: 1.0
+    blocker: "S9-04"
+    completed: ""
+
+  - id: "S9-10"
+    name: "SCE-003: FP damage formula + targeting"
+    file: "production/epics/spell-casting-effects/story-003-fp-damage-formula.md"
+    priority: nice-to-have
+    status: backlog
+    owner: ""
+    estimate_days: 2.0
+    blocker: "S9-05, S9-04"
     completed: ""
