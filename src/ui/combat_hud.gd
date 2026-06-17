@@ -208,7 +208,10 @@ func _process(delta: float) -> void:
 	# Chain dot position tracking above Fayde in screen-space (AC-HUD-27, AC-HUD-28, AC-HUD-29)
 	if chain_dots_container.visible and is_instance_valid(fayde_node):
 		var screen_pos: Vector2 = get_viewport().get_canvas_transform() * fayde_node.global_position
-		var dot_x: float = screen_pos.x - chain_dots_container.size.x * 0.5
+		# Use get_minimum_size() not size: size is layout-deferred (starts at 0 until
+		# NOTIFICATION_RESIZED fires); minimum_size is computed immediately from children's
+		# custom_minimum_size, giving stable centering even on the first frame.
+		var dot_x: float = screen_pos.x - chain_dots_container.get_minimum_size().x * 0.5
 		var dot_y: float = maxf(screen_pos.y - DOT_OFFSET_ABOVE_PLAYER, 0.0)
 		chain_dots_container.position = Vector2(dot_x, dot_y)
 
