@@ -41,8 +41,9 @@ interactions, never a large shallow one.
 | 11 | Boss Encounter | Gameplay | Vertical Slice | Not Started | — | Enemy AI, Spell Casting & Effects, Health & Damage, Wave / Encounter System |
 | 12 | Wave / Encounter System *(simplified)* | Gameplay | First Playable | Approved | design/gdd/wave-encounter-system.md | Enemy AI, Enemy Data, Health & Damage, Game State & Scene Flow |
 | 13 | Wave Peek | Gameplay | Vertical Slice | Not Started | — | Wave / Encounter System, Enemy Data, Elemental Affiliation & Weakness, Obstacle System |
-| 14 | Obstacle System | Gameplay | Vertical Slice | Not Started | — | Game State & Scene Flow, Spell Casting & Effects |
-| 15 | Procedural Dungeon Generation | Gameplay | Vertical Slice | Not Started | — | Game State & Scene Flow, Obstacle System, Wave / Encounter System |
+| 14 | Level Generation *(room obstacles + enemy composition)* | Gameplay | First Playable | Draft | design/gdd/level-generation.md | IsometricRoom, Wave / Encounter System, Enemy AI, Enemy Data |
+| 15 | Obstacle System *(full)* | Gameplay | Vertical Slice | Not Started | — | Game State & Scene Flow, Spell Casting & Effects |
+| 16 | Procedural Dungeon Generation | Gameplay | Vertical Slice | Not Started | — | Game State & Scene Flow, Obstacle System, Wave / Encounter System |
 | 16 | Prana Drop / Loot | Economy | Vertical Slice | Not Started | — | Prana Data, Wave / Encounter System, Procedural Dungeon Generation |
 | 17 | Run Management *(simplified)* | Progression | MVP | Approved | design/gdd/run-management.md | Game State & Scene Flow, Wave / Encounter System |
 | 18 | Loadout Slots | Progression | Vertical Slice | Not Started | — | Prana Grid, Combination Resolution |

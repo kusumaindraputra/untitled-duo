@@ -43,6 +43,16 @@ var _speed_modifier: float = 1.0
 ## Countdown to stun expiry (ADR-0011). Positive = STUNNED; managed in _physics_process.
 var _stun_timer: float = 0.0
 
+## RUSHER charge cycle phase (0=APPROACH, 1=TELEGRAPH, 2=CHARGING, 3=COOLDOWN).
+var _rusher_phase: int = 0
+## Countdown for RUSHER phase transitions.
+var _rusher_timer: float = 0.0
+## Locked direction captured at end of RUSHER TELEGRAPH phase.
+var _rusher_charge_dir: Vector2 = Vector2.ZERO
+
+## Current orbit angle (radians) for SWARMER. Randomised per instance in init().
+var _swarmer_angle: float = 0.0
+
 ## Minimum seconds between contact damage events (design/gdd/enemy-ai.md Tuning Knobs).
 ## Must remain >= 0.3s — H&D i-frame guarantee depends on this (Enemy AI Dep. #3).
 const ENEMY_MIN_CONTACT_INTERVAL: float = 0.3
@@ -59,6 +69,18 @@ const BASE_DEATH_DURATION: float = 0.7
 const KEEP_DISTANCE: float = 150.0
 ## SHOOTER archetype — seconds between projectile shots (S8-05).
 const SHOOT_INTERVAL: float = 2.0
+
+## RUSHER archetype — charge cycle constants (design/gdd/level-generation.md).
+const RUSHER_CHARGE_RANGE: float = 180.0
+const RUSHER_APPROACH_SPEED_MULT: float = 0.65
+const RUSHER_TELEGRAPH_DURATION: float = 0.45
+const RUSHER_CHARGE_SPEED_MULT: float = 3.5
+const RUSHER_CHARGE_DURATION: float = 0.55
+const RUSHER_COOLDOWN_DURATION: float = 1.2
+
+## SWARMER archetype — orbit constants (design/gdd/level-generation.md).
+const SWARMER_ORBIT_RADIUS: float = 80.0
+const SWARMER_ORBIT_SPEED: float = 1.4
 
 # ── Built-in virtual methods ──────────────────────────────────────────────────
 
@@ -163,12 +185,15 @@ func _physics_process(delta: float) -> void:
 	if raw_dir.length() >= 0.01:
 		_dir_last_valid = raw_dir.normalized()
 
-	if _archetype == GameEnums.EnemyArchetype.SHOOTER:
-		_tick_shooter(delta)
-	else:
-		var sep: Vector2 = _compute_separation()
-		velocity = (_dir_last_valid * _move_speed + sep) * _speed_modifier
-		move_and_slide()
+	match _archetype:
+		GameEnums.EnemyArchetype.SHOOTER:
+			_tick_shooter(delta)
+		GameEnums.EnemyArchetype.RUSHER:
+			_tick_rusher(delta)
+		GameEnums.EnemyArchetype.SWARMER:
+			_tick_swarmer(delta)
+		_:
+			_tick_seeker(delta)
 
 	# Contact repeat timer — ADR-0004 float accumulator. Fires repeat damage while
 	# Fayde stays inside the hit zone. Timer is armed by _on_hitarea_body_entered
@@ -202,6 +227,12 @@ func init(enemy_type_id: int, catalog: Variant = null) -> void:
 	var debug_circle: Node = get_node_or_null("DebugCircle")
 	if debug_circle != null:
 		debug_circle.set("color", et.debug_color)
+	if _archetype == GameEnums.EnemyArchetype.SWARMER:
+		var rng := RandomNumberGenerator.new()
+		rng.randomize()
+		_swarmer_angle = rng.randf_range(0.0, TAU)
+	_rusher_phase = 0
+	_rusher_timer = 0.0
 
 
 ## Returns true when this enemy is not in the DEAD state.
@@ -253,6 +284,61 @@ func _tick_shooter(delta: float) -> void:
 		_fire_projectile()
 
 
+## SEEKER archetype tick — direct chase at full speed (design/gdd/level-generation.md).
+func _tick_seeker(_delta: float) -> void:
+	var sep: Vector2 = _compute_separation()
+	velocity = (_dir_last_valid * _move_speed + sep) * _speed_modifier
+	move_and_slide()
+
+
+## RUSHER archetype tick — four-phase charge cycle (design/gdd/level-generation.md).
+## Phases: 0=APPROACH (slow chase) → 1=TELEGRAPH (freeze, lock dir) →
+##         2=CHARGING (burst) → 3=COOLDOWN (rest) → 0.
+func _tick_rusher(delta: float) -> void:
+	var sep: Vector2 = _compute_separation()
+	match _rusher_phase:
+		0:  # APPROACH
+			velocity = (_dir_last_valid * _move_speed * RUSHER_APPROACH_SPEED_MULT + sep) * _speed_modifier
+			move_and_slide()
+			if _fayde_ref.global_position.distance_to(global_position) <= RUSHER_CHARGE_RANGE:
+				_rusher_phase = 1
+				_rusher_timer = RUSHER_TELEGRAPH_DURATION
+		1:  # TELEGRAPH — freeze; lock direction at expiry
+			velocity = Vector2.ZERO
+			move_and_slide()
+			_rusher_timer -= delta
+			if _rusher_timer <= 0.0:
+				_rusher_charge_dir = _dir_last_valid
+				_rusher_phase = 2
+				_rusher_timer = RUSHER_CHARGE_DURATION
+		2:  # CHARGING — burst in locked direction
+			velocity = (_rusher_charge_dir * _move_speed * RUSHER_CHARGE_SPEED_MULT + sep) * _speed_modifier
+			move_and_slide()
+			_rusher_timer -= delta
+			if _rusher_timer <= 0.0:
+				_rusher_phase = 3
+				_rusher_timer = RUSHER_COOLDOWN_DURATION
+		3:  # COOLDOWN — only separation force
+			velocity = sep * _speed_modifier
+			move_and_slide()
+			_rusher_timer -= delta
+			if _rusher_timer <= 0.0:
+				_rusher_phase = 0
+
+
+## SWARMER archetype tick — orbits Fayde at SWARMER_ORBIT_RADIUS (design/gdd/level-generation.md).
+## Each instance starts at a random angle (set in init()), spreading multiple Swarmers around Fayde.
+func _tick_swarmer(delta: float) -> void:
+	_swarmer_angle += SWARMER_ORBIT_SPEED * delta
+	var orbit_offset: Vector2 = Vector2(cos(_swarmer_angle), sin(_swarmer_angle)) * SWARMER_ORBIT_RADIUS
+	var target: Vector2 = _fayde_ref.global_position + orbit_offset
+	var to_target: Vector2 = target - global_position
+	var dir: Vector2 = to_target.normalized() if to_target.length() >= 0.01 else _dir_last_valid
+	var sep: Vector2 = _compute_separation()
+	velocity = (dir * _move_speed + sep) * _speed_modifier
+	move_and_slide()
+
+
 ## Spawns a Projectile aimed at the last known Fayde direction (S8-05).
 ## Guards against missing parent (headless test context).
 func _fire_projectile() -> void:
@@ -287,6 +373,8 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	_shoot_timer = 0.0
 	_speed_modifier = 1.0
 	_stun_timer = 0.0
+	_rusher_phase = 0
+	_rusher_timer = 0.0
 	if _state == EnemyState.STUNNED:
 		_state = EnemyState.CHASING
 

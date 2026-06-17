@@ -31,8 +31,15 @@ const _TILE_Y_STEP: int = 16
 const _HALF_COVER_LAYER: int = 16  # bit 4 — Layer 5 in Godot physics layer UI
 const _DEBRIS_RADIUS: float = 20.0
 const _DEBRIS_NAV_RADIUS: float = 25.0
-## Asymmetric debris positions — create routing lanes without blocking spawn markers.
-const _DEBRIS_POSITIONS: Array = [Vector2(80, -55), Vector2(-100, 25), Vector2(45, 85)]
+## Random obstacle placement — tuning knobs from design/gdd/level-generation.md.
+const _DEBRIS_COUNT_MIN: int = 2
+const _DEBRIS_COUNT_MAX: int = 5
+## Inner-zone scale: obstacles placed only within this fraction of the diamond half-extents.
+const _DEBRIS_INNER_SCALE: float = 0.80
+const _DEBRIS_MIN_CENTER_DIST: float = 60.0
+const _DEBRIS_MIN_SPAWN_DIST: float = 80.0
+const _DEBRIS_MIN_BETWEEN_DIST: float = 55.0
+const _DEBRIS_PLACE_ATTEMPTS: int = 60
 
 # ── @onready ──────────────────────────────────────────────────────────────────
 
@@ -252,11 +259,50 @@ func _edge_key(a: Vector2, b: Vector2) -> String:
 	return "%d,%d-%d,%d" % [pa.x, pa.y, pb.x, pb.y]
 
 
+## Returns random obstacle positions satisfying all level-generation.md clearance constraints.
+## Uses rejection sampling (up to _DEBRIS_PLACE_ATTEMPTS per slot). Slots that exhaust all
+## attempts are silently skipped — caller may receive fewer than _DEBRIS_COUNT_MAX positions.
+## Pure function: no @onready access, safe to call before _ready() or in headless tests.
+func _generate_debris_positions(spawn_positions: Array[Vector2]) -> Array[Vector2]:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var count: int = rng.randi_range(_DEBRIS_COUNT_MIN, _DEBRIS_COUNT_MAX)
+	var placed: Array[Vector2] = []
+	var inner_x: float = _WALL_HALF_X * _DEBRIS_INNER_SCALE
+	var inner_y: float = _WALL_HALF_Y * _DEBRIS_INNER_SCALE
+	for _i: int in range(count):
+		for _attempt: int in range(_DEBRIS_PLACE_ATTEMPTS):
+			var x: float = rng.randf_range(-inner_x, inner_x)
+			var y: float = rng.randf_range(-inner_y, inner_y)
+			if absf(x) / float(_WALL_HALF_X) + absf(y) / float(_WALL_HALF_Y) > _DEBRIS_INNER_SCALE:
+				continue
+			var candidate := Vector2(x, y)
+			if candidate.length() < _DEBRIS_MIN_CENTER_DIST:
+				continue
+			var skip: bool = false
+			for sp: Vector2 in spawn_positions:
+				if candidate.distance_to(sp) < _DEBRIS_MIN_SPAWN_DIST:
+					skip = true
+					break
+			if not skip:
+				for p: Vector2 in placed:
+					if candidate.distance_to(p) < _DEBRIS_MIN_BETWEEN_DIST:
+						skip = true
+						break
+			if skip:
+				continue
+			placed.append(candidate)
+			break
+	return placed
+
+
 ## Spawns half-cover debris obstacles (S9-09, design/quick-specs/arena-cover-types.md).
 ## Debris blocks movement (physics layer 16) but not Prana spells or projectiles.
 ## Each debris also has a NavigationObstacle2D for enemy avoidance.
+## Positions are randomised each run via _generate_debris_positions (level-generation.md).
 func _build_debris_obstacles() -> void:
-	for pos: Vector2 in _DEBRIS_POSITIONS:
+	var spawn_positions: Array[Vector2] = get_spawn_markers()
+	for pos: Vector2 in _generate_debris_positions(spawn_positions):
 		var body := StaticBody2D.new()
 		body.name = "Debris"
 		body.position = pos

@@ -45,22 +45,16 @@ enum WaveState {
 	WAVE_COMPLETE = 2 ## All enemies have been killed; wave completion signals have fired.
 }
 
-# ── FP Composition Constants (Story 002 — TR-WES-002) ─────────────────────────
-## Enemy counts for the First Pass single-wave encounter.
-## Tuning knobs: adjust here to retune without touching logic.
-## GDD Formula 1 threat values: Drifter=1, Charger=2, Cluster=1, Rifter=1
-## Total threat budget: (3×1) + (2×2) + (5×1) + (2×1) = 14
-
-const FP_DRIFTER_COUNT: int = 3
-const FP_CHARGER_COUNT: int = 2
-const FP_CLUSTER_COUNT: int = 5
-const FP_RIFTER_COUNT: int = 2
-
-## EnemyCatalog type IDs for the FP encounter enemies.
-const FP_DRIFTER_ID: int = 0
-const FP_CHARGER_ID: int = 1
-const FP_CLUSTER_ID: int = 2
-const FP_RIFTER_ID: int = 4
+# ── Composition Constants (design/gdd/level-generation.md) ───────────────────
+## Threat budget range drawn once per room.
+const THREAT_BUDGET_MIN: int = 10
+const THREAT_BUDGET_MAX: int = 18
+## Threat cost per type ID: SEEKER=1, RUSHER=2, SWARMER=1, SHOOTER=1.
+const _THREAT_COST: Dictionary = { 0: 1, 1: 2, 2: 1, 4: 1 }
+## All available type IDs.
+const _ENEMY_POOL: Array[int] = [0, 1, 2, 4]
+## Type IDs guaranteed to appear at least once (SEEKER + SWARMER).
+const _GUARANTEED_TYPES: Array[int] = [0, 2]
 
 # ── Exports ───────────────────────────────────────────────────────────────────
 
@@ -166,24 +160,39 @@ func _on_enemy_killed(_instance_id: int, _type_id: int,
 
 # ── Internal ──────────────────────────────────────────────────────────────────
 
-## Builds _wave_composition from FP constants and EnemyCatalog scene references.
-## Called from _on_preparation_started() so composition is always fresh at wave start.
-## Story 002 (TR-WES-002): FP encounter is 3 Drifter + 2 Charger + 5 Cluster.
-## Note: EnemyType.scene is null until Story 003 assets land — tests must inject
-## _wave_composition directly with a test fixture scene.
+## Builds _wave_composition using a random threat budget (level-generation.md).
+## Guarantees SEEKER and SWARMER always appear; fills remaining budget randomly.
+## Called from _on_preparation_started() so composition is fresh each room.
+## Tests may inject _wave_composition directly instead of calling this.
 func _build_wave_composition() -> void:
 	_wave_composition.clear()
-	var fp_entries: Array[Dictionary] = [
-		{ "type_id": FP_DRIFTER_ID, "count": FP_DRIFTER_COUNT },
-		{ "type_id": FP_CHARGER_ID, "count": FP_CHARGER_COUNT },
-		{ "type_id": FP_CLUSTER_ID, "count": FP_CLUSTER_COUNT },
-		{ "type_id": FP_RIFTER_ID, "count": FP_RIFTER_COUNT },
-	]
-	for group: Dictionary in fp_entries:
-		var et: EnemyType = EnemyCatalog.get_type(group.type_id)
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var budget: int = rng.randi_range(THREAT_BUDGET_MIN, THREAT_BUDGET_MAX)
+	var type_ids: Array[int] = []
+	for type_id: int in _GUARANTEED_TYPES:
+		type_ids.append(type_id)
+		budget -= _THREAT_COST.get(type_id, 1)
+	while budget >= 1:
+		var affordable: Array[int] = []
+		for tid: int in _ENEMY_POOL:
+			if _THREAT_COST.get(tid, 1) <= budget:
+				affordable.append(tid)
+		if affordable.is_empty():
+			break
+		var pick: int = affordable[rng.randi_range(0, affordable.size() - 1)]
+		type_ids.append(pick)
+		budget -= _THREAT_COST.get(pick, 1)
+	# Seeded Fisher-Yates — avoids first-type bias in spawn order.
+	for i: int in range(type_ids.size() - 1, 0, -1):
+		var j: int = rng.randi_range(0, i)
+		var tmp: int = type_ids[i]
+		type_ids[i] = type_ids[j]
+		type_ids[j] = tmp
+	for type_id: int in type_ids:
+		var et: EnemyType = EnemyCatalog.get_type(type_id)
 		var scene: PackedScene = et.scene if et != null else null
-		for _i: int in range(group.count):
-			_wave_composition.append({ "type_id": group.type_id, "scene": scene })
+		_wave_composition.append({ "type_id": type_id, "scene": scene })
 
 
 ## Returns the ordered array of spawn marker Node2Ds from spawn_points_container.
