@@ -38,11 +38,13 @@ const _DEBRIS_POSITIONS: Array = [Vector2(80, -55), Vector2(-100, 25), Vector2(4
 
 @onready var _spawn_markers: Node2D = $SpawnMarkers
 @onready var _tile_map: TileMapLayer = $TileMapLayer
+@onready var _arena_bounds: StaticBody2D = $ArenaBounds
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 func _ready() -> void:
 	_build_floor()
+	_build_walls()
 	_build_navigation()
 	_build_debris_obstacles()
 
@@ -111,6 +113,68 @@ func _build_floor() -> void:
 			var norm: float = float(abs(tx - ty)) / float(x_radius) + float(abs(tx + ty)) / float(y_radius)
 			if norm <= 1.0:
 				_tile_map.set_cell(Vector2i(tx, ty), _FLOOR_SOURCE_ID, _FLOOR_ATLAS_COORD)
+
+
+## Builds the arena collision boundary directly from the filled floor tiles so the
+## walkable area matches the visible tiles exactly (no walk-on-void, no unreachable tiles).
+##
+## Layout-agnostic: collects all four diamond edges of every filled tile and keeps only
+## those that occur exactly once. Edges shared by two filled tiles occur twice (identical
+## endpoints) and are dropped as interior; single-occurrence edges are the region boundary.
+## This holds for any isometric / staggered TileMapLayer layout — no neighbor assumptions.
+##
+## All boundary edges go into one ConcavePolygonShape2D ("segment soup") on $ArenaBounds.
+## Both PlayerController and EnemyInstance collide with it (physics layer 1).
+func _build_walls() -> void:
+	# Idempotent on scene reload — drop any previously built collision shape.
+	for child: Node in _arena_bounds.get_children():
+		child.free()
+
+	# Tile diamond corners relative to center (tile_size 64×32 → half 32×16).
+	# The visual tile diamond is always tile_size-wide/tall regardless of map layout.
+	var corner_offsets: Array[Vector2] = [
+		Vector2(0, -_TILE_Y_STEP),   # top
+		Vector2(_TILE_X_STEP, 0),    # right
+		Vector2(0, _TILE_Y_STEP),    # bottom
+		Vector2(-_TILE_X_STEP, 0),   # left
+	]
+
+	var edge_count: Dictionary = {}   # canonical edge key → occurrence count
+	var edge_points: Dictionary = {}  # canonical edge key → [Vector2 a, Vector2 b]
+	for cell: Vector2i in _tile_map.get_used_cells():
+		var center: Vector2 = _tile_map.map_to_local(cell)
+		for i: int in range(4):
+			var a: Vector2 = center + corner_offsets[i]
+			var b: Vector2 = center + corner_offsets[(i + 1) % 4]
+			var key: String = _edge_key(a, b)
+			edge_count[key] = int(edge_count.get(key, 0)) + 1
+			if not edge_points.has(key):
+				edge_points[key] = [a, b]
+
+	var segments: PackedVector2Array = PackedVector2Array()
+	for key: String in edge_count:
+		if int(edge_count[key]) == 1:  # boundary edge — bordered by empty space
+			var pair: Array = edge_points[key]
+			segments.append(pair[0] as Vector2)
+			segments.append(pair[1] as Vector2)
+
+	var shape := ConcavePolygonShape2D.new()
+	shape.segments = segments
+	var cshape := CollisionShape2D.new()
+	cshape.shape = shape
+	_arena_bounds.add_child(cshape)
+
+
+## Returns an order-independent key for the edge between integer-rounded points [param a]
+## and [param b], so the same edge collected from two adjacent tiles maps to one key.
+func _edge_key(a: Vector2, b: Vector2) -> String:
+	var pa := Vector2i(roundi(a.x), roundi(a.y))
+	var pb := Vector2i(roundi(b.x), roundi(b.y))
+	if pb.x < pa.x or (pb.x == pa.x and pb.y < pa.y):
+		var tmp: Vector2i = pa
+		pa = pb
+		pb = tmp
+	return "%d,%d-%d,%d" % [pa.x, pa.y, pb.x, pb.y]
 
 
 ## Spawns half-cover debris obstacles (S9-09, design/quick-specs/arena-cover-types.md).
