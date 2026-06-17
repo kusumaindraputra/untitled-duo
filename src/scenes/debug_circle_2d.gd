@@ -59,9 +59,40 @@ func _draw() -> void:
 	var dir: Vector2 = parent.get_facing_direction()
 	var casting: bool = parent.get(&"_cast_beam_timer") > 0.0
 	if casting:
-		draw_line(Vector2.ZERO, dir * 80.0, Color(1.0, 0.8, 0.2, 1.0), 3.0)
+		var prana_type: int = parent.get(&"_cast_prana_type") if parent.get(&"_cast_prana_type") != null else -1
+		_draw_cast_beam(dir, prana_type)
 	else:
 		draw_line(Vector2.ZERO, dir * (_BODY_W * 0.5 + 8.0), Color.YELLOW, 2.0)
+
+
+## Draws a per-prana-type cast beam. Placeholder until real sprites replace this node.
+## DamageClass enum: FIRE=0, SHADOW=1, LIGHTNING=2, ICE=3, NATURE=4.
+func _draw_cast_beam(dir: Vector2, prana_type: int) -> void:
+	match prana_type:
+		0: # Fire — short thick orange-red burst
+			draw_line(Vector2.ZERO, dir * 68.0, Color(1.0, 0.35, 0.05, 1.0), 5.0)
+			draw_line(Vector2.ZERO, dir * 48.0, Color(1.0, 0.75, 0.2, 0.7), 3.0)
+		1: # Shadow — long thin purple ray
+			draw_line(Vector2.ZERO, dir * 95.0, Color(0.45, 0.1, 0.85, 1.0), 2.0)
+			draw_line(Vector2.ZERO, dir * 85.0, Color(0.8, 0.4, 1.0, 0.5), 1.0)
+		2: # Lightning — zigzag bolt
+			var perp: Vector2 = Vector2(-dir.y, dir.x)
+			var pts := PackedVector2Array([
+				Vector2.ZERO,
+				dir * 30.0 + perp * 6.0,
+				dir * 55.0 - perp * 5.0,
+				dir * 100.0,
+			])
+			draw_polyline(pts, Color(1.0, 1.0, 0.1, 1.0), 2.5, true)
+		3: # Ice — medium blue crystalline line
+			draw_line(Vector2.ZERO, dir * 72.0, Color(0.3, 0.75, 1.0, 1.0), 4.0)
+			var perp: Vector2 = Vector2(-dir.y, dir.x)
+			draw_line(dir * 36.0 - perp * 5.0, dir * 36.0 + perp * 5.0, Color(0.7, 0.95, 1.0, 0.9), 2.0)
+		4: # Nature — medium thick green pulse
+			draw_line(Vector2.ZERO, dir * 75.0, Color(0.15, 0.85, 0.25, 1.0), 4.0)
+			draw_line(Vector2.ZERO, dir * 55.0, Color(0.6, 1.0, 0.4, 0.6), 2.0)
+		_: # Unresolved — original gold fallback
+			draw_line(Vector2.ZERO, dir * 80.0, Color(1.0, 0.8, 0.2, 1.0), 3.0)
 
 
 ## Draws a filled ellipse using a polygon approximation.

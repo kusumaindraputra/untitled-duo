@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" path="res://src/scenes/IsometricRoom.tscn" id="3_room"]
 [ext_resource type="PackedScene" path="res://src/scenes/PlayerController.tscn" id="4_player"]
 [ext_resource type="Script" uid="uid://b2mnhwlifl6ew" path="res://src/systems/wave_manager.gd" id="5_wm"]
+
 [node name="main" type="Node" unique_id=1390226147]
 script = ExtResource("1_debug")
 

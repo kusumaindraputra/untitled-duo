@@ -159,6 +159,10 @@ var _cast_flash_timer: float = 0.0
 ## -1 means no spell resolved this combat.
 var _current_primary_type: int = -1
 
+## Active looping tweens for chain dot animations. Indexed parallel to dot children.
+## Killed and cleared in _rebuild_dots before freeing children.
+var _dot_tweens: Array[Tween] = []
+
 
 # ── Built-in virtual methods ──────────────────────────────────────────────────
 
@@ -474,6 +478,10 @@ func _on_run_started() -> void:
 	_hp_timer = 0.0
 	_tint_timer = 0.0
 	_stop_pulse()
+	for tw in _dot_tweens:
+		if is_instance_valid(tw):
+			tw.kill()
+	_dot_tweens.clear()
 	_current_zone = GameEnums.HPZone.FULL
 	hp_bar.value = FAYDE_MAX_HP
 	hp_label.text = "%d / %d" % [FAYDE_MAX_HP, FAYDE_MAX_HP]
@@ -491,6 +499,10 @@ func _on_run_started() -> void:
 ## Handles preparation_started from GameStateManager.
 ## Hides the chain-dot container between waves.
 func _on_preparation_started(_idx: int, _rem: int) -> void:
+	for tw in _dot_tweens:
+		if is_instance_valid(tw):
+			tw.kill()
+	_dot_tweens.clear()
 	chain_dots_container.visible = false
 	_current_primary_type = -1
 	if _dash_hint_label != null:
@@ -521,9 +533,12 @@ func _on_chain_index_changed(combo_idx: int, combo_count: int) -> void:
 
 
 ## Rebuilds chain dot ColorRect children to match current combo state.
-## Uses _current_primary_type (cached from combo_resolved) for active dot color.
-## Inactive dots are always Color("#888888"). Falls back to white if no type cached.
+## Active dot uses per-type size + looping animation. Inactive dots are 8×8 gray.
 func _rebuild_dots(active_index: int, count: int) -> void:
+	for tw in _dot_tweens:
+		if is_instance_valid(tw):
+			tw.kill()
+	_dot_tweens.clear()
 	for child in chain_dots_container.get_children():
 		child.free()
 	var active_color: Color = Color.WHITE
@@ -533,9 +548,62 @@ func _rebuild_dots(active_index: int, count: int) -> void:
 			active_color = prana_type.color
 	for i: int in range(count):
 		var dot := ColorRect.new()
-		dot.custom_minimum_size = Vector2(10.0, 10.0)
-		dot.color = active_color if i == active_index else Color("#888888")
+		var is_active: bool = (i == active_index)
+		if is_active:
+			dot.custom_minimum_size = _get_dot_size_for_type(_current_primary_type)
+			dot.color = active_color
+		else:
+			dot.custom_minimum_size = Vector2(8.0, 8.0)
+			dot.color = Color("#888888")
 		chain_dots_container.add_child(dot)
+		if is_active:
+			_dot_tweens.append(_animate_active_dot(dot, _current_primary_type, active_color))
+		else:
+			_dot_tweens.append(null)
+
+
+## Returns the dot size for the active dot based on prana type visual identity.
+## Each shape encodes the element's nature — bolt=wide/flat, void=tall/narrow, etc.
+func _get_dot_size_for_type(type_id: int) -> Vector2:
+	match type_id:
+		GameEnums.DamageClass.FIRE:      return Vector2(13.0, 13.0)
+		GameEnums.DamageClass.SHADOW:    return Vector2(8.0, 14.0)
+		GameEnums.DamageClass.LIGHTNING: return Vector2(16.0, 7.0)
+		GameEnums.DamageClass.ICE:       return Vector2(11.0, 11.0)
+		GameEnums.DamageClass.NATURE:    return Vector2(12.0, 12.0)
+		_:                               return Vector2(10.0, 10.0)
+
+
+## Creates and returns a looping Tween animating the active dot per prana type.
+## Fire=fast flicker, Shadow=slow pulse, Lightning=strobe, Ice=still, Nature=breathe.
+## Returns null for ICE (no animation — crystallised/frozen feel).
+func _animate_active_dot(dot: ColorRect, type_id: int, base_color: Color) -> Tween:
+	match type_id:
+		GameEnums.DamageClass.FIRE:
+			var tw: Tween = create_tween().set_loops()
+			tw.tween_property(dot, "color:a", 0.55, 0.10)
+			tw.tween_property(dot, "color:a", 1.0,  0.10)
+			return tw
+		GameEnums.DamageClass.SHADOW:
+			var tw: Tween = create_tween().set_loops()
+			tw.tween_property(dot, "color:a", 0.35, 0.55)
+			tw.tween_property(dot, "color:a", 1.0,  0.55)
+			return tw
+		GameEnums.DamageClass.LIGHTNING:
+			var tw: Tween = create_tween().set_loops()
+			tw.tween_property(dot, "color:a", 0.15, 0.06)
+			tw.tween_property(dot, "color:a", 1.0,  0.06)
+			return tw
+		GameEnums.DamageClass.ICE:
+			return null
+		GameEnums.DamageClass.NATURE:
+			var bright: Color = base_color.lightened(0.35)
+			var tw: Tween = create_tween().set_loops()
+			tw.tween_property(dot, "color", bright,     0.45)
+			tw.tween_property(dot, "color", base_color, 0.45)
+			return tw
+		_:
+			return null
 
 
 ## Caches the primary Prana type from a resolved spell for use in chain dot coloring.

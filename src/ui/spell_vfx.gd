@@ -29,6 +29,7 @@ func _ready() -> void:
 	SpellCastingEffects.cast_started.connect(_on_cast_started)
 	SpellCastingEffects.spell_hit_element.connect(_on_spell_hit_element)
 	SpellCastingEffects.cast_hit_started.connect(_on_cast_hit_started)
+	HealthAndDamage.damage_taken.connect(_on_damage_taken)
 	_init_pool()
 
 
@@ -39,6 +40,8 @@ func _exit_tree() -> void:
 		SpellCastingEffects.spell_hit_element.disconnect(_on_spell_hit_element)
 	if SpellCastingEffects.cast_hit_started.is_connected(_on_cast_hit_started):
 		SpellCastingEffects.cast_hit_started.disconnect(_on_cast_hit_started)
+	if HealthAndDamage.damage_taken.is_connected(_on_damage_taken):
+		HealthAndDamage.damage_taken.disconnect(_on_damage_taken)
 
 
 # ── Signal handlers ────────────────────────────────────────────────────────────
@@ -73,6 +76,20 @@ func _on_spell_hit_element(target: Node, prana_type_id: int) -> void:
 ## FP stub — MVP: flash Fayde cast-lock indicator for lock_duration.
 func _on_cast_hit_started(_lock_duration: float) -> void:
 	pass
+
+
+## Flashes the damaged entity: red on player, white on enemy.
+## Fires from HealthAndDamage.damage_taken — zero-allocation hot path via Tween.
+func _on_damage_taken(target: Node, _final_damage: int, _current_hp: int) -> void:
+	if not target is CanvasItem:
+		return
+	var ci: CanvasItem = target as CanvasItem
+	if target.is_in_group(&"player"):
+		var tw: Tween = create_tween()
+		tw.tween_property(ci, "modulate", Color(2.0, 0.25, 0.25, 1.0), 0.0)
+		tw.tween_property(ci, "modulate", Color.WHITE, 0.18)
+	else:
+		_flash_enemy_white(ci)
 
 
 # ── Pool ──────────────────────────────────────────────────────────────────────
@@ -155,3 +172,12 @@ func _apply_burst_shape_params(burst: GPUParticles2D, mat: ParticleProcessMateri
 			mat.spread = 180.0
 			mat.initial_velocity_min = 80.0
 			mat.initial_velocity_max = 120.0
+
+
+## Overbrightens [param ci] to white then returns it to normal over 0.1 s.
+## Called for enemy nodes — reuses any existing modulate without conflict because
+## the tween immediately sets Color.WHITE as its final state.
+func _flash_enemy_white(ci: CanvasItem) -> void:
+	var tw: Tween = create_tween()
+	tw.tween_property(ci, "modulate", Color(3.0, 3.0, 3.0, 1.0), 0.0)
+	tw.tween_property(ci, "modulate", Color.WHITE, 0.10)

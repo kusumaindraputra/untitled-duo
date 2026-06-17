@@ -49,6 +49,7 @@ var _last_facing_dir: Vector2 = Vector2.RIGHT
 var _dash_duration_timer: float = 0.0  # countdown; > 0.0 means currently dashing
 var _dash_cooldown_timer: float = 0.0  # countdown; > 0.0 means on cooldown
 var _cast_beam_timer: float = 0.0     # countdown; > 0.0 means cast beam visible (debug)
+var _cast_prana_type: int = -1        # primary type of last resolved spell; -1 = none
 var _blink_timer: float = 0.0         # counts up; toggles modulate.a every BLINK_INTERVAL
 
 ## AudioSystem Autoload reference; null-safe — set in _ready(), overridable for tests.
@@ -69,6 +70,7 @@ func _ready() -> void:
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	HealthAndDamage.player_died.connect(_on_player_died)
 	SpellCastingEffects.cast_hit_started.connect(_on_cast_hit_started)
+	CombinationResolution.combo_resolved.connect(_on_combo_resolved)
 	audio_system = get_node_or_null("/root/AudioSystem")
 	collision_layer = COLLISION_LAYER_PLAYER
 	collision_mask = COLLISION_MASK_NORMAL
@@ -258,6 +260,10 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 ## TR-PC-007 stub: CAST_LOCKED movement sub-state. Full behaviour in SpellCastingEffects epic.
 func _on_cast_hit_started(_lock_duration: float = 0.0) -> void:
 	_cast_beam_timer = 0.20
+
+
+func _on_combo_resolved(spell_effect: SpellEffect) -> void:
+	_cast_prana_type = spell_effect.primary_type
 
 
 func _on_player_died() -> void:
