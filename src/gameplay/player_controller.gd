@@ -18,9 +18,9 @@ enum ControllerState { DISABLED, ENABLED, DASHING }
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-const MOVE_SPEED: float = 120.0
-const MOVE_ACCELERATION: float = 0.30
-const MOVE_FRICTION: float = 0.25
+const MOVE_SPEED: float = 180.0
+const MOVE_ACCELERATION: float = 0.65
+const MOVE_FRICTION: float = 0.50
 const VELOCITY_SNAP_THRESHOLD: float = 8.0
 const DASH_SPEED: float = 400.0
 const DASH_DURATION: float = 0.15
@@ -28,13 +28,15 @@ const DASH_COOLDOWN: float = 2.0
 const FOOTSTEP_INTERVAL_SEC: float = 0.38           # activated: Story PC-004
 const FOOTSTEP_VELOCITY_THRESHOLD: float = 10.0     # activated: Story PC-004
 
-## Collision layer bits (S8-02, GDD: "enemies occupy a separate collision layer").
-## Layer 1 (bit 0, value 1): World/Walls — TileMapLayer, StaticBody2D arenas.
-## Layer 2 (bit 1, value 2): Player.
-## Layer 4 (bit 2, value 4): Enemies.
+## Collision layer bits (S8-02, S9-09).
+## Layer 1 (bit 0, value  1): World/Walls — TileMapLayer, StaticBody2D arenas.
+## Layer 2 (bit 1, value  2): Player.
+## Layer 3 (bit 2, value  4): Enemies.
+## Layer 4 (bit 3, value  8): Projectiles (Rifter shots).
+## Layer 5 (bit 4, value 16): Half-cover debris — blocks movement, not Prana/projectiles.
 const COLLISION_LAYER_PLAYER: int = 2
-const COLLISION_MASK_NORMAL: int = 5   # bits 0+2: collides with walls (1) + enemies (4)
-const COLLISION_MASK_DASHING: int = 1  # bit 0 only: collides with walls, passes through enemies
+const COLLISION_MASK_NORMAL: int = 21  # bits 0+2+4: walls (1) + enemies (4) + debris (16)
+const COLLISION_MASK_DASHING: int = 1  # bit 0 only: walls only — dash passes through enemies and debris
 
 ## Modulate alpha oscillation interval during i-frames — ~8 blinks/sec at 60fps.
 const BLINK_INTERVAL: float = 0.06

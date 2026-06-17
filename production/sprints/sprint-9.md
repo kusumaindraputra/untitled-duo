@@ -46,6 +46,7 @@ Sprint 9 planning audit (2026-06-17) revealed that **all epics in the epics inde
 | ID | Task | Est. Days | Dependencies | Acceptance Criteria |
 |----|------|-----------|--------------|---------------------|
 | S9-08 | **QA plan for next implementation sprint** — once S9-07 creates new stories, generate `/qa-plan` for those | 0.5 | S9-07 | `production/qa/qa-plan-sprint-9-*.md` or sprint-10 plan exists |
+| S9-09 | **Arena half-cover obstacles** — add half-cover physics layer + 3 debris objects to arena; update collision masks; Prana ray passes through debris | 1.0 | S9-01 | (1) Layer 5 (value 16) in use by ArenaBounds debris nodes; (2) EnemyInstance collision_mask=17; (3) SCE ray mask=5; (4) Player walks into debris and stops; (5) Prana still hits enemies behind debris |
 
 ---
 

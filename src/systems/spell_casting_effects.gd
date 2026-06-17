@@ -403,6 +403,8 @@ func _select_primary_target() -> Node:
 	var cast_range: float = 80.0 if _current_spell_effect != null and _current_spell_effect.primary_type == 0 \
 		else 150.0
 	var query := PhysicsRayQueryParameters2D.create(origin, origin + facing * cast_range)
+	# Mask: walls (1) + enemies (4) = 5. Excludes half-cover debris (16) — Prana passes through.
+	query.collision_mask = 5
 	var result: Dictionary = space.intersect_ray(query)
 	if result.is_empty():
 		return null
