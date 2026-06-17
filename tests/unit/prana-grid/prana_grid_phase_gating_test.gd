@@ -1,9 +1,9 @@
 ## prana_grid_phase_gating_test.gd — Unit tests for PranaGrid phase gating (Story 001, S4-03).
 ##
 ## Coverage:
-##   AC-PG-01a: preparation_started from ARRANGEMENT resets all slots and state
-##   AC-PG-01b: preparation_started from LOCKED resets all slots and state
-##   AC-PG-01c: preparation_started from HIDDEN resets all slots and state
+##   AC-PG-01a: preparation_started from ARRANGEMENT fills all slots with Ashfire default (0)
+##   AC-PG-01b: preparation_started from LOCKED fills all slots with Ashfire default (0)
+##   AC-PG-01c: preparation_started from HIDDEN fills all slots with Ashfire default (0)
 ##   AC-PG-02:  grid_locked sets LOCKED state; second call no crash
 ##   HIDDEN:    grid_hidden sets HIDDEN state from any prior state
 ##   SEQUENCING: grid_locked without arrangement_confirmed logs push_error; still sets LOCKED
@@ -37,12 +37,12 @@ func _fill_slots(pg: PranaGrid, values: Array) -> void:
 	for i in values.size():
 		pg._slots[i] = values[i]
 
-# ── AC-PG-01a: preparation_started from ARRANGEMENT resets all slots ──────────
+# ── AC-PG-01a: preparation_started from ARRANGEMENT fills slots with Ashfire ──
 
 func test_preparation_started_from_arrangement_resets_slots_and_state() -> void:
 	var pg := _make_grid()
 	_init_slots(pg)
-	# Pre-fill some slots to ensure reset clears them
+	# Pre-fill some slots to ensure reset overwrites them
 	_fill_slots(pg, [1, null, 2, null, null, null, 3, null, null])
 	pg._state = PranaGrid.State.ARRANGEMENT
 
@@ -50,11 +50,11 @@ func test_preparation_started_from_arrangement_resets_slots_and_state() -> void:
 
 	assert_int(pg._slots.size()).is_equal(9)
 	for i in pg._slots.size():
-		assert_object(pg._slots[i]).is_null()
+		assert_int(pg._slots[i]).is_equal(0)  # 0 = Ashfire default
 	assert_int(pg._state).is_equal(PranaGrid.State.ARRANGEMENT)
 	pg.free()
 
-# ── AC-PG-01b: preparation_started from LOCKED resets all slots ───────────────
+# ── AC-PG-01b: preparation_started from LOCKED fills slots with Ashfire ───────
 
 func test_preparation_started_from_locked_resets_slots_and_state() -> void:
 	var pg := _make_grid()
@@ -66,11 +66,11 @@ func test_preparation_started_from_locked_resets_slots_and_state() -> void:
 
 	assert_int(pg._slots.size()).is_equal(9)
 	for i in pg._slots.size():
-		assert_object(pg._slots[i]).is_null()
+		assert_int(pg._slots[i]).is_equal(0)  # 0 = Ashfire default
 	assert_int(pg._state).is_equal(PranaGrid.State.ARRANGEMENT)
 	pg.free()
 
-# ── AC-PG-01c: preparation_started from HIDDEN resets all slots ───────────────
+# ── AC-PG-01c: preparation_started from HIDDEN fills slots with Ashfire ───────
 
 func test_preparation_started_from_hidden_resets_slots_and_state() -> void:
 	var pg := _make_grid()
@@ -81,7 +81,7 @@ func test_preparation_started_from_hidden_resets_slots_and_state() -> void:
 
 	assert_int(pg._slots.size()).is_equal(9)
 	for i in pg._slots.size():
-		assert_object(pg._slots[i]).is_null()
+		assert_int(pg._slots[i]).is_equal(0)  # 0 = Ashfire default
 	assert_int(pg._state).is_equal(PranaGrid.State.ARRANGEMENT)
 	pg.free()
 

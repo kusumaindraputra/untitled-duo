@@ -153,10 +153,11 @@ func _process(delta: float) -> void:
 				_error_label.visible = false
 
 
-## Resets all slots to empty and enters ARRANGEMENT state.
+## Pre-fills all 9 slots with Ashfire (type_id 0) and enters ARRANGEMENT state.
+## Player can still rearrange or clear before confirming.
 ## Called on every new wave start, from any prior state.
 func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) -> void:
-	_slots.fill(null)
+	_slots.fill(0)  # 0 = Ashfire — default pre-fill for all waves
 	_committed_fragments.fill(null)
 	_state = State.ARRANGEMENT
 	if _compact_indicator != null:
@@ -164,7 +165,7 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	if _grid_panel != null:
 		_grid_panel.visible = true
 	for i in _slot_nodes.size():
-		(_slot_nodes[i] as PranaGridSlot).refresh(-1)
+		(_slot_nodes[i] as PranaGridSlot).refresh(0)  # 0 = Ashfire
 	_update_confirm_button()
 	visible = true
 
