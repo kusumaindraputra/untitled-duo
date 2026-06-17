@@ -16,14 +16,15 @@
 class_name IsometricRoom
 extends Node2D
 
-const _FLOOR_TILE_PATH: String = "res://assets/art/tiles/iso_floor_stone.png"
+const _FLOOR_TILE_PATH: String = "res://assets/art/tiles/iso_floor_purple.png"
 const _FLOOR_SOURCE_ID: int = 0
 const _FLOOR_ATLAS_COORD: Vector2i = Vector2i(0, 0)
-## Scan radius. Must be >= max(|tx-ty|, |tx+ty|) needed to fill the arena.
-const _FLOOR_RADIUS: int = 10
-## Arena diamond half-extents in screen pixels — match SegmentShape2D in IsometricRoom.tscn.
-const _WALL_HALF_X: int = 256
-const _WALL_HALF_Y: int = 192
+## Scan radius. Must be >= max(x_radius, y_radius) = max(16, 20).
+const _FLOOR_RADIUS: int = 22
+## Arena diamond half-extents in screen pixels.
+## x_radius = 512/32 = 16 tiles wide, y_radius = 320/16 = 20 tiles deep.
+const _WALL_HALF_X: int = 512
+const _WALL_HALF_Y: int = 320
 ## Screen pixels per tile isometric axis unit (tile_size = 64x32 → half = 32x16).
 const _TILE_X_STEP: int = 32
 const _TILE_Y_STEP: int = 16
@@ -101,21 +102,23 @@ func _build_navigation() -> void:
 ## the screen-space diamond defined by SegmentShape2D wall bounds.
 func _build_floor() -> void:
 	_tile_map.clear()
-	if not _tile_map.tile_set.has_source(_FLOOR_SOURCE_ID):
-		var tex: Texture2D = load(_FLOOR_TILE_PATH) as Texture2D
-		if tex == null:
-			push_error("IsometricRoom: floor tile not found at %s" % _FLOOR_TILE_PATH)
-			return
-		var atlas := TileSetAtlasSource.new()
-		atlas.texture = tex
-		atlas.texture_region_size = Vector2i(64, 32)
-		atlas.create_tile(_FLOOR_ATLAS_COORD)
-		_tile_map.tile_set.add_source(atlas, _FLOOR_SOURCE_ID)
+	# Always reload — removes stale baked source from .tscn so the runtime path wins.
+	if _tile_map.tile_set.has_source(_FLOOR_SOURCE_ID):
+		_tile_map.tile_set.remove_source(_FLOOR_SOURCE_ID)
+	var tex: Texture2D = load(_FLOOR_TILE_PATH) as Texture2D
+	if tex == null:
+		push_error("IsometricRoom: floor tile not found at %s" % _FLOOR_TILE_PATH)
+		return
+	var atlas := TileSetAtlasSource.new()
+	atlas.texture = tex
+	atlas.texture_region_size = Vector2i(64, 32)
+	atlas.create_tile(_FLOOR_ATLAS_COORD)
+	_tile_map.tile_set.add_source(atlas, _FLOOR_SOURCE_ID)
 	# Isometric projection: tile (tx, ty) → screen ((tx-ty)*32, (tx+ty)*16).
 	# Diamond filter: |screen_x|/WALL_HALF_X + |screen_y|/WALL_HALF_Y ≤ 1
-	# → |tx-ty|/8 + |tx+ty|/12 ≤ 1  (x_radius=8, y_radius=12)
-	var x_radius: int = _WALL_HALF_X / _TILE_X_STEP   # 256/32 = 8
-	var y_radius: int = _WALL_HALF_Y / _TILE_Y_STEP   # 192/16 = 12
+	# → |tx-ty|/16 + |tx+ty|/20 ≤ 1  (x_radius=16, y_radius=20)
+	var x_radius: int = _WALL_HALF_X / _TILE_X_STEP   # 512/32 = 16
+	var y_radius: int = _WALL_HALF_Y / _TILE_Y_STEP   # 320/16 = 20
 	for tx: int in range(-_FLOOR_RADIUS, _FLOOR_RADIUS + 1):
 		for ty: int in range(-_FLOOR_RADIUS, _FLOOR_RADIUS + 1):
 			var norm: float = float(abs(tx - ty)) / float(x_radius) + float(abs(tx + ty)) / float(y_radius)
