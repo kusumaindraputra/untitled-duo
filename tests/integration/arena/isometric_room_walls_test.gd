@@ -114,3 +114,45 @@ func test_arena_walls_form_watertight_closed_boundary() -> void:
 		vertex_uses[key] = int(vertex_uses.get(key, 0)) + 1
 	for key: String in vertex_uses:
 		assert_int(int(vertex_uses[key]) % 2).is_equal(0)
+
+
+## ── Spawn marker placement tests ──────────────────────────────────────────────
+
+## GIVEN the arena loads, THEN all Marker2D spawn points sit exactly on a tile
+## center — so enemies always spawn inside the walkable area.
+func test_spawn_markers_all_land_on_tile_centers() -> void:
+	var room := _make_room()
+	var tilemap: TileMapLayer = room.get_node("TileMapLayer")
+	var spawn_node: Node2D = room.get_node("SpawnMarkers")
+
+	var tile_centers: Dictionary = {}
+	for c: Vector2i in tilemap.get_used_cells():
+		var p: Vector2 = tilemap.map_to_local(c)
+		tile_centers["%d_%d" % [roundi(p.x), roundi(p.y)]] = true
+
+	for child: Node in spawn_node.get_children():
+		if not (child is Marker2D):
+			continue
+		var pos: Vector2 = (child as Marker2D).position
+		var key: String = "%d_%d" % [roundi(pos.x), roundi(pos.y)]
+		assert_bool(tile_centers.has(key)) \
+			.override_failure_message("Marker '%s' at %s is not on a tile center" % [child.name, pos]) \
+			.is_true()
+
+
+## GIVEN the arena loads, THEN the 3 spawn markers are at least 64 px apart from
+## each other — prevents enemies clustering at a single choke-point on spawn.
+func test_spawn_markers_are_spread_apart() -> void:
+	var room := _make_room()
+	var spawn_node: Node2D = room.get_node("SpawnMarkers")
+	var positions: Array[Vector2] = []
+	for child: Node in spawn_node.get_children():
+		if child is Marker2D:
+			positions.append((child as Marker2D).position)
+
+	assert_int(positions.size()).is_greater_equal(2)
+	for i: int in range(positions.size()):
+		for j: int in range(i + 1, positions.size()):
+			assert_float(positions[i].distance_to(positions[j])) \
+				.override_failure_message("Markers %d and %d are too close: %.1f px" % [i, j, positions[i].distance_to(positions[j])]) \
+				.is_greater(64.0)

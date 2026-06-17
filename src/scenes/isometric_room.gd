@@ -44,6 +44,7 @@ const _DEBRIS_POSITIONS: Array = [Vector2(80, -55), Vector2(-100, 25), Vector2(4
 
 func _ready() -> void:
 	_build_floor()
+	_place_spawn_markers()
 	_build_walls()
 	_build_navigation()
 	_build_debris_obstacles()
@@ -113,6 +114,49 @@ func _build_floor() -> void:
 			var norm: float = float(abs(tx - ty)) / float(x_radius) + float(abs(tx + ty)) / float(y_radius)
 			if norm <= 1.0:
 				_tile_map.set_cell(Vector2i(tx, ty), _FLOOR_SOURCE_ID, _FLOOR_ATLAS_COORD)
+
+
+## Repositions Marker2D children under SpawnMarkers to tile centers that are
+## guaranteed inside the walkable area.  This runs after _build_floor() so
+## get_used_cells() is always authoritative — no hardcoded positions needed.
+##
+## Strategy: find the screen-space centroid of all filled tiles, then assign
+## each of the 3 markers to the best tile for a target angle (0°, 120°, 240°).
+## "Best" = furthest from centroid that still lies within ±45° of the target,
+## scored as: distance – angular_deviation * 80.
+func _place_spawn_markers() -> void:
+	var cells: Array[Vector2i] = _tile_map.get_used_cells()
+	if cells.is_empty():
+		return
+
+	var centroid: Vector2 = Vector2.ZERO
+	for c: Vector2i in cells:
+		centroid += _tile_map.map_to_local(c)
+	centroid /= float(cells.size())
+
+	var target_angles: Array[float] = [0.0, TAU / 3.0, 2.0 * TAU / 3.0]
+	var markers: Array[Node] = _spawn_markers.get_children()
+	var used_cells: Dictionary = {}
+	for i: int in range(min(markers.size(), target_angles.size())):
+		if not (markers[i] is Marker2D):
+			continue
+		var target: float = target_angles[i]
+		var best_cell: Vector2i = Vector2i.ZERO
+		var best_score: float = -INF
+		for c: Vector2i in cells:
+			if used_cells.has(c):
+				continue
+			var offset: Vector2 = _tile_map.map_to_local(c) - centroid
+			var dist: float = offset.length()
+			if dist < 32.0:
+				continue
+			var ang_diff: float = absf(angle_difference(atan2(offset.y, offset.x), target))
+			var score: float = dist - ang_diff * 80.0
+			if score > best_score:
+				best_score = score
+				best_cell = c
+		used_cells[best_cell] = true
+		(markers[i] as Marker2D).position = _tile_map.map_to_local(best_cell)
 
 
 ## Builds the arena collision boundary directly from the filled floor tiles so the
