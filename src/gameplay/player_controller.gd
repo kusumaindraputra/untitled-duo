@@ -41,6 +41,11 @@ const COLLISION_MASK_DASHING: int = 1  # bit 0 only: walls only — dash passes 
 ## Modulate alpha oscillation interval during i-frames — ~8 blinks/sec at 60fps.
 const BLINK_INTERVAL: float = 0.06
 
+## Camera zoom levels: zoomed-out during preparation so all spawn markers are visible.
+const ZOOM_COMBAT: Vector2 = Vector2(2.0, 2.0)
+const ZOOM_PREP: Vector2 = Vector2(1.0, 1.0)
+const ZOOM_TWEEN_DURATION: float = 0.35
+
 # ── Private variables ─────────────────────────────────────────────────────────
 
 var _controller_state: ControllerState = ControllerState.DISABLED
@@ -58,6 +63,9 @@ var audio_system: Variant = null
 var _footstep_timer: float = 0.0
 var _footstep_bag: Array[StringName] = []
 var _last_footstep_played: StringName = &""
+
+@onready var _camera: Camera2D = $Camera2D
+var _zoom_tween: Tween = null
 
 # ── Built-in virtual methods ──────────────────────────────────────────────────
 
@@ -241,6 +249,7 @@ func _compute_steps_per_second() -> float:
 
 func _on_combat_started(_is_boss: bool = false) -> void:
 	_controller_state = ControllerState.ENABLED
+	_tween_zoom(ZOOM_COMBAT)
 
 
 func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) -> void:
@@ -255,6 +264,7 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	dash_cooldown_changed.emit(true)
 	_footstep_timer = 0.0
 	_footstep_bag.clear()
+	_tween_zoom(ZOOM_PREP)
 
 
 ## TR-PC-007 stub: CAST_LOCKED movement sub-state. Full behaviour in SpellCastingEffects epic.
@@ -264,6 +274,13 @@ func _on_cast_hit_started(_lock_duration: float = 0.0) -> void:
 
 func _on_combo_resolved(spell_effect: SpellEffect) -> void:
 	_cast_prana_type = spell_effect.primary_type
+
+
+func _tween_zoom(target: Vector2) -> void:
+	if _zoom_tween:
+		_zoom_tween.kill()
+	_zoom_tween = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_zoom_tween.tween_property(_camera, "zoom", target, ZOOM_TWEEN_DURATION)
 
 
 func _on_player_died() -> void:

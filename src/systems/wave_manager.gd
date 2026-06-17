@@ -94,6 +94,10 @@ var _enemies_total: int = 0
 ## Populated in _on_preparation_started() from FP constants.
 var _wave_composition: Array[Dictionary] = []
 
+## Preview Polygon2D nodes shown at projected spawn positions during preparation.
+## Cleared and freed when combat starts.
+var _preview_nodes: Array[Node2D] = []
+
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 func _ready() -> void:
@@ -130,6 +134,7 @@ func _on_preparation_started(_wave_index: int, _waves_remaining: int) -> void:
 	_enemies_total = 0
 	_wave_state = WaveState.IDLE
 	_build_wave_composition()
+	_show_wave_preview()
 
 
 ## Handles combat phase start.
@@ -140,6 +145,7 @@ func _on_combat_started(is_boss: bool) -> void:
 	if is_boss:
 		push_warning("WaveManager: combat_started(is_boss:true) received while wave active — FP scope guard")
 		return
+	_clear_wave_preview()
 	_spawn_wave()
 
 
@@ -240,7 +246,46 @@ func _spawn_wave() -> void:
 	if _enemies_total == 0:
 		push_error("WaveManager: no enemies spawned — wave vacuously complete")
 		_wave_state = WaveState.WAVE_COMPLETE
-		all_waves_cleared.emit()     
+		all_waves_cleared.emit()
 		boss_defeated.emit()
 		return
 	_wave_state = WaveState.WAVE_ACTIVE
+
+
+## Creates semi-transparent Polygon2D circles at each projected spawn position,
+## colored by enemy type, so the player can see what's coming during preparation.
+## Mirrors the same position distribution as _spawn_wave() so previews match actual spawns.
+func _show_wave_preview() -> void:
+	_clear_wave_preview()
+	var markers: Array[Node2D] = _get_spawn_markers()
+	if markers.is_empty():
+		return
+	var pts: PackedVector2Array = PackedVector2Array()
+	const SEGMENTS: int = 20
+	const RADIUS: float = 18.0
+	for i: int in range(SEGMENTS):
+		var a: float = i * TAU / SEGMENTS
+		pts.append(Vector2(cos(a), sin(a)) * RADIUS)
+	var spawn_idx: int = 0
+	for entry: Dictionary in _wave_composition:
+		var et: EnemyType = EnemyCatalog.get_type(entry["type_id"])
+		var tint: Color = et.debug_color if et != null else Color.WHITE
+		var base_pos: Vector2 = markers[spawn_idx % markers.size()].global_position
+		var wrap_lap: int = spawn_idx / markers.size()
+		var jitter: float = 12.0 if wrap_lap > 0 else 0.0
+		var spread: Vector2 = Vector2(cos(spawn_idx * 2.4), sin(spawn_idx * 2.4)) * jitter
+		var poly := Polygon2D.new()
+		poly.polygon = pts
+		poly.color = Color(tint.r, tint.g, tint.b, 0.45)
+		poly.global_position = base_pos + spread
+		add_child(poly)
+		_preview_nodes.append(poly)
+		spawn_idx += 1
+
+
+## Frees all preview nodes created by _show_wave_preview().
+func _clear_wave_preview() -> void:
+	for node: Node2D in _preview_nodes:
+		if is_instance_valid(node):
+			node.queue_free()
+	_preview_nodes.clear()
