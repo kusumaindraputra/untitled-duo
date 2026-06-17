@@ -266,7 +266,12 @@ func _compute_steps_per_second() -> float:
 
 func _on_combat_started(_is_boss: bool = false) -> void:
 	_controller_state = ControllerState.ENABLED
-	_tween_zoom(ZOOM_COMBAT)
+	# Snap zoom instantly — tweening back while player is already mobile creates a
+	# disorienting "position jump" effect. Zoom-out to prep is still tweened.
+	if _zoom_tween:
+		_zoom_tween.kill()
+		_zoom_tween = null
+	_camera.zoom = ZOOM_COMBAT
 
 
 func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) -> void:
