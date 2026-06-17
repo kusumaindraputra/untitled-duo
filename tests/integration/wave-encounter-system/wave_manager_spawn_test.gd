@@ -258,6 +258,43 @@ func test_all_enemies_spawn_via_modulo_wrap_when_fewer_markers() -> void:
 	_teardown_wm(wm)
 
 
+## GIVEN 3 markers and 12 enemies (full FP composition including Rifter),
+## WHEN _on_combat_started(false) is called,
+## THEN every enemy's global_position is within 12 px of its base marker —
+##      proving the spread cap prevents out-of-bounds spawns regardless of lap count.
+func test_spawn_spread_never_exceeds_12px_from_marker() -> void:
+	var wm: WaveManager = _make_wm()
+	var spawn_container: Node = _make_spawn_container(3)
+	wm.spawn_points_container = spawn_container
+	# Build full 12-enemy composition matching _build_wave_composition() output.
+	var comp: Array[Dictionary] = []
+	for _i: int in range(WaveManager.FP_DRIFTER_COUNT):
+		comp.append({ "type_id": WaveManager.FP_DRIFTER_ID, "scene": _TEST_SCENE })
+	for _i: int in range(WaveManager.FP_CHARGER_COUNT):
+		comp.append({ "type_id": WaveManager.FP_CHARGER_ID, "scene": _TEST_SCENE })
+	for _i: int in range(WaveManager.FP_CLUSTER_COUNT):
+		comp.append({ "type_id": WaveManager.FP_CLUSTER_ID, "scene": _TEST_SCENE })
+	for _i: int in range(WaveManager.FP_RIFTER_COUNT):
+		comp.append({ "type_id": WaveManager.FP_RIFTER_ID, "scene": _TEST_SCENE })
+	wm._wave_composition = comp
+
+	var markers: Array[Node] = spawn_container.get_children()
+	wm._on_combat_started(false)
+
+	var enemies: Array[Node] = wm.get_children()
+	assert_int(enemies.size()).is_equal(12)
+	for i: int in range(enemies.size()):
+		var enemy: Node2D = enemies[i] as Node2D
+		var base_pos: Vector2 = (markers[i % markers.size()] as Node2D).global_position
+		var dist: float = enemy.global_position.distance_to(base_pos)
+		assert_float(dist) \
+			.override_failure_message("Enemy %d spread=%.4fpx exceeds 12px cap" % [i, dist]) \
+			.is_less_equal(12.01)  # 0.01 tolerance for cos/sin float rounding
+
+	_teardown_container(spawn_container)
+	_teardown_wm(wm)
+
+
 ## Edge case: zero markers → _enemies_total=0, _wave_state=WAVE_COMPLETE, signals fire.
 func test_zero_markers_triggers_vacuous_complete_and_clears_signals() -> void:
 	var wm: WaveManager = _make_wm()

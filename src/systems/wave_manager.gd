@@ -219,9 +219,10 @@ func _spawn_wave() -> void:
 		add_child(enemy)
 		var base_pos: Vector2 = markers[spawn_idx % markers.size()].global_position
 		var wrap_lap: int = spawn_idx / markers.size()
-		var spread: Vector2 = Vector2(
-			cos(spawn_idx * 2.4) * 24.0 * wrap_lap,
-			sin(spawn_idx * 2.4) * 24.0 * wrap_lap)
+		# Cap jitter at 12 px — tile center is ≥14 px from its nearest wall edge,
+		# so enemies never spawn outside the walkable area regardless of direction.
+		var jitter: float = 12.0 if wrap_lap > 0 else 0.0
+		var spread: Vector2 = Vector2(cos(spawn_idx * 2.4), sin(spawn_idx * 2.4)) * jitter
 		enemy.global_position = base_pos + spread
 		enemy.init(entry["type_id"])
 		spawn_idx += 1
