@@ -114,15 +114,16 @@ func _build_floor() -> void:
 		atlas.create_tile(_FLOOR_ATLAS_COORD)
 		_tile_map.tile_set.add_source(atlas, _FLOOR_SOURCE_ID)
 	# Isometric projection: tile (tx, ty) has center at screen ((tx-ty)*32, (tx+ty)*16).
-	# Diamond filter: tile visual edge (not center) must stay within wall diamond.
-	# Each tile extends ±TILE_X_STEP in x and ±TILE_Y_STEP in y from its center.
-	# So the max safe center radius = WALL_HALF - 1 tile step in each axis.
-	# Minkowski sum: center_diamond + tile_diamond = wall_diamond → exact visual fit.
-	var x_radius: int = (_WALL_HALF_X - _TILE_X_STEP) / _TILE_X_STEP   # (256-32)/32 = 7
-	var y_radius: int = (_WALL_HALF_Y - _TILE_Y_STEP) / _TILE_Y_STEP   # (192-16)/16 = 11
+	# Rectangle filter: fill every tile whose screen center falls inside the wall diamond axes.
+	# x_radius = WALL_HALF_X / TILE_X_STEP = 256/32 = 8 → covers |tx-ty| ≤ 8
+	# y_radius = WALL_HALF_Y / TILE_Y_STEP = 192/16 = 12 → covers |tx+ty| ≤ 12
+	# Corner tiles extend slightly outside the diamond wall collision — players and enemies
+	# cannot reach those corners because the SegmentShape2D walls block them.
+	var x_radius: int = _WALL_HALF_X / _TILE_X_STEP   # 256/32 = 8
+	var y_radius: int = _WALL_HALF_Y / _TILE_Y_STEP   # 192/16 = 12
 	for tx: int in range(-_FLOOR_RADIUS, _FLOOR_RADIUS + 1):
 		for ty: int in range(-_FLOOR_RADIUS, _FLOOR_RADIUS + 1):
-			if float(abs(tx - ty)) / x_radius + float(abs(tx + ty)) / y_radius <= 1.0:
+			if abs(tx - ty) <= x_radius and abs(tx + ty) <= y_radius:
 				_tile_map.set_cell(Vector2i(tx, ty), _FLOOR_SOURCE_ID, _FLOOR_ATLAS_COORD)
 
 
