@@ -19,29 +19,31 @@ extends Node2D
 const _FLOOR_TILE_PATH: String = "res://assets/art/tiles/iso_floor_stone2.png"
 const _FLOOR_SOURCE_ID: int = 0
 const _FLOOR_ATLAS_COORD: Vector2i = Vector2i(0, 0)
-## Scan radius. Must be >= max(x_radius, y_radius) = max(13, 16).
-const _FLOOR_RADIUS: int = 18
+## Scan radius. Must be >= max(x_radius, y_radius) = max(20, 24).
+const _FLOOR_RADIUS: int = 26
 ## Arena diamond half-extents in screen pixels.
-## Full diamond 832×512 — fits in prep viewport (1152×648) with ~160px margin each side.
-## x_radius = 416/32 = 13 tiles wide, y_radius = 256/16 = 16 tiles deep.
-const _WALL_HALF_X: int = 416
-const _WALL_HALF_Y: int = 256
+## Full diamond 1280×768 game-px. At combat zoom 1.5×: visible 768×432 — Fayde (~64px)
+## occupies ~15% of height, matching Hades character-to-room scale ratio.
+## At prep zoom 0.55×: full arena visible with ~400px border.
+## x_radius = 640/32 = 20 tiles wide, y_radius = 384/16 = 24 tiles deep.
+const _WALL_HALF_X: int = 640
+const _WALL_HALF_Y: int = 384
 ## Screen pixels per tile isometric axis unit (tile_size = 64x32 → half = 32x16).
 const _TILE_X_STEP: int = 32
 const _TILE_Y_STEP: int = 16
 ## Half-cover debris: blocks movement, not Prana/projectiles (S9-09, design/quick-specs/arena-cover-types.md).
 const _HALF_COVER_LAYER: int = 16  # bit 4 — Layer 5 in Godot physics layer UI
-const _DEBRIS_RADIUS: float = 20.0
-const _DEBRIS_NAV_RADIUS: float = 25.0
+const _DEBRIS_RADIUS: float = 22.0
+const _DEBRIS_NAV_RADIUS: float = 28.0
 ## Random obstacle placement — tuning knobs from design/gdd/level-generation.md.
-const _DEBRIS_COUNT_MIN: int = 2
-const _DEBRIS_COUNT_MAX: int = 5
+const _DEBRIS_COUNT_MIN: int = 5
+const _DEBRIS_COUNT_MAX: int = 9
 ## Inner-zone scale: obstacles placed only within this fraction of the diamond half-extents.
-const _DEBRIS_INNER_SCALE: float = 0.80
-const _DEBRIS_MIN_CENTER_DIST: float = 60.0
-const _DEBRIS_MIN_SPAWN_DIST: float = 80.0
-const _DEBRIS_MIN_BETWEEN_DIST: float = 55.0
-const _DEBRIS_PLACE_ATTEMPTS: int = 60
+const _DEBRIS_INNER_SCALE: float = 0.82
+const _DEBRIS_MIN_CENTER_DIST: float = 90.0
+const _DEBRIS_MIN_SPAWN_DIST: float = 110.0
+const _DEBRIS_MIN_BETWEEN_DIST: float = 75.0
+const _DEBRIS_PLACE_ATTEMPTS: int = 80
 
 # ── @onready ──────────────────────────────────────────────────────────────────
 
@@ -324,16 +326,43 @@ func _build_debris_obstacles() -> void:
 		nav_obstacle.avoidance_enabled = true
 		body.add_child(nav_obstacle)
 
-		# Debug visual — replaced by art at VS scope.
-		var poly := Polygon2D.new()
-		var pts: PackedVector2Array = PackedVector2Array()
-		var steps: int = 8
-		for i: int in range(steps):
-			var angle: float = (float(i) / steps) * TAU
-			pts.append(Vector2(cos(angle), sin(angle)) * _DEBRIS_RADIUS)
-		poly.polygon = pts
-		poly.color = Color(0.55, 0.40, 0.25, 0.85)
-		poly.z_index = 5
-		body.add_child(poly)
+		# Isometric rock silhouette — diamond base with raised top mass.
+		# Three layered Polygon2D simulate a chunky rock in isometric view.
+		var r: float = _DEBRIS_RADIUS
+		# Shadow footprint (dark diamond on floor)
+		var shadow := Polygon2D.new()
+		shadow.polygon = PackedVector2Array([
+			Vector2(0, -r * 0.45), Vector2(r * 0.85, 0),
+			Vector2(0, r * 0.45), Vector2(-r * 0.85, 0),
+		])
+		shadow.color = Color(0.10, 0.08, 0.07, 0.60)
+		shadow.z_index = 4
+		body.add_child(shadow)
+		# Main rock body (mid-grey stone mass)
+		var rock := Polygon2D.new()
+		rock.polygon = PackedVector2Array([
+			Vector2(-r * 0.30, -r * 1.10),
+			Vector2( r * 0.30, -r * 1.10),
+			Vector2( r * 0.80, -r * 0.30),
+			Vector2( r * 0.65,  r * 0.20),
+			Vector2( r * 0.00,  r * 0.42),
+			Vector2(-r * 0.65,  r * 0.20),
+			Vector2(-r * 0.80, -r * 0.30),
+		])
+		rock.color = Color(0.42, 0.38, 0.34, 1.0)
+		rock.z_index = 5
+		body.add_child(rock)
+		# Top face highlight (lighter patch on top of rock)
+		var top := Polygon2D.new()
+		top.polygon = PackedVector2Array([
+			Vector2(-r * 0.20, -r * 1.05),
+			Vector2( r * 0.20, -r * 1.05),
+			Vector2( r * 0.45, -r * 0.55),
+			Vector2( r * 0.00, -r * 0.40),
+			Vector2(-r * 0.45, -r * 0.55),
+		])
+		top.color = Color(0.62, 0.57, 0.51, 1.0)
+		top.z_index = 6
+		body.add_child(top)
 
 		add_child(body)

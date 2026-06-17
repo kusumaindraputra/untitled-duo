@@ -41,9 +41,11 @@ const COLLISION_MASK_DASHING: int = 1  # bit 0 only: walls only — dash passes 
 ## Modulate alpha oscillation interval during i-frames — ~8 blinks/sec at 60fps.
 const BLINK_INTERVAL: float = 0.06
 
-## Camera zoom levels: zoomed-out during preparation so all spawn markers are visible.
-const ZOOM_COMBAT: Vector2 = Vector2(2.0, 2.0)
-const ZOOM_PREP: Vector2 = Vector2(1.0, 1.0)
+## Camera zoom levels.
+## COMBAT 1.5×: visible 768×432 game-px, Fayde occupies ~15% height (Hades-like scale).
+## PREP 0.55×: visible 2094×1178 game-px, shows full 1280×768 arena with ~400px margin.
+const ZOOM_COMBAT: Vector2 = Vector2(1.5, 1.5)
+const ZOOM_PREP: Vector2 = Vector2(0.55, 0.55)
 const ZOOM_TWEEN_DURATION: float = 0.35
 
 # ── Private variables ─────────────────────────────────────────────────────────
