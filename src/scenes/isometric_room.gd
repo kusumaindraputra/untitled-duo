@@ -57,15 +57,16 @@ func get_spawn_markers() -> Array[Vector2]:
 ## Loads the floor tile texture, registers it as a TileSetAtlasSource,
 ## and fills a square grid of floor tiles centred on the room origin.
 func _build_floor() -> void:
-	var tex: Texture2D = load(_FLOOR_TILE_PATH) as Texture2D
-	if tex == null:
-		push_error("IsometricRoom: floor tile not found at %s" % _FLOOR_TILE_PATH)
-		return
-	var atlas := TileSetAtlasSource.new()
-	atlas.texture = tex
-	atlas.texture_region_size = Vector2i(64, 32)
-	atlas.create_tile(_FLOOR_ATLAS_COORD)
-	_tile_map.tile_set.add_source(atlas, _FLOOR_SOURCE_ID)
+	if not _tile_map.tile_set.has_source(_FLOOR_SOURCE_ID):
+		var tex: Texture2D = load(_FLOOR_TILE_PATH) as Texture2D
+		if tex == null:
+			push_error("IsometricRoom: floor tile not found at %s" % _FLOOR_TILE_PATH)
+			return
+		var atlas := TileSetAtlasSource.new()
+		atlas.texture = tex
+		atlas.texture_region_size = Vector2i(64, 32)
+		atlas.create_tile(_FLOOR_ATLAS_COORD)
+		_tile_map.tile_set.add_source(atlas, _FLOOR_SOURCE_ID)
 	for tx: int in range(-_FLOOR_RADIUS, _FLOOR_RADIUS + 1):
 		for ty: int in range(-_FLOOR_RADIUS, _FLOOR_RADIUS + 1):
 			_tile_map.set_cell(Vector2i(tx, ty), _FLOOR_SOURCE_ID, _FLOOR_ATLAS_COORD)

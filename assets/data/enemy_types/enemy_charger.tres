@@ -16,5 +16,6 @@ drop_prana_type = 3
 drop_rate = 0.4
 wave_threat_value = 2
 sprite_size = Vector2i(12, 20)
+debug_color = Color(1, 0.5, 0, 1)
 status = 0
 scene = ExtResource("2_scene")

@@ -49,4 +49,4 @@ func _init_buses() -> void:
 ## Stub — full dispatch pending AudioEventRegistry implementation.
 ## [param event_id] StringName key into AudioEventRegistry.
 func play_event(event_id: StringName) -> void:
-	push_error("AudioSystem.play_event: registry not yet implemented — event '%s' ignored." % event_id)
+	push_warning("AudioSystem.play_event: registry not yet implemented — event '%s' ignored." % event_id)
