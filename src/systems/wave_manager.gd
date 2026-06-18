@@ -56,6 +56,19 @@ const _ENEMY_POOL: Array[int] = [0, 1, 2, 4]
 ## Type IDs guaranteed to appear at least once (SEEKER + SWARMER).
 const _GUARANTEED_TYPES: Array[int] = [0, 2]
 
+## FP spawn type IDs — match EnemyCatalog stub indices (pre-Story-003 assets).
+const FP_DRIFTER_ID: int = 0
+const FP_CHARGER_ID: int = 1
+const FP_CLUSTER_ID: int = 2
+const FP_RIFTER_ID: int = 4
+
+## FP per-type spawn counts: Drifter×3 + Charger×2 + Cluster×5 + Rifter×2 = 12 enemies.
+## Threat budget: (3×1)+(2×2)+(5×1)+(2×1) = 14 — within THREAT_BUDGET_MAX=18.
+const FP_DRIFTER_COUNT: int = 3
+const FP_CHARGER_COUNT: int = 2
+const FP_CLUSTER_COUNT: int = 5
+const FP_RIFTER_COUNT: int = 2
+
 # ── Exports ───────────────────────────────────────────────────────────────────
 
 ## Container node whose Node2D children define spawn positions.
