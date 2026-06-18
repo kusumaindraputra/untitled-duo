@@ -198,6 +198,8 @@ func apply_status(
 			target.apply_stun(actual_duration)
 		GameEnums.BaseStatus.STAGGER:
 			target.apply_stun(STAGGER_DURATION)
+	if target.has_method(&"apply_status_visual"):
+		target.apply_status_visual(status_type, actual_duration)
 
 
 ## Removes all active StatusInstances for [param target_id] without emitting
@@ -312,6 +314,8 @@ func _expire_status(instance: StatusInstance) -> void:
 		GameEnums.BaseStatus.CHILL:
 			if is_instance_valid(instance.target):
 				instance.target.apply_speed_modifier(1.0)
+	if is_instance_valid(instance.target) and instance.target.has_method(&"clear_status_visual"):
+		instance.target.clear_status_visual(instance.status_type)
 
 
 # ── Private — helpers ─────────────────────────────────────────────────────────

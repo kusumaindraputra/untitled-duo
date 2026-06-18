@@ -56,6 +56,10 @@ var _swarmer_angle: float = 0.0
 ## Active Tween for attack/telegraph modulate pulse. Null when idle.
 var _vfx_tween: Tween = null
 
+## Active Tween for status effect color (Freeze=icy-blue, Burn=ember, Chill=light-blue).
+## Separate from _vfx_tween so contact/telegraph and status visuals coexist.
+var _status_tween: Tween = null
+
 ## IsoCharacter sprite component — auto-set from scene tree.
 @onready var _iso_char: Node = $IsoCharacter
 var _last_anim: String = ""
@@ -352,6 +356,47 @@ func request_hit_flash() -> void:
 	modulate = Color(3.0, 3.0, 3.0, 1.0)
 	var tw: Tween = create_tween()
 	tw.tween_property(self, "modulate", Color.WHITE, 0.10)
+
+
+## Applies a status effect color tint to communicate active status to the player.
+## Called via duck-typing from StatusEffectsManager.apply_status().
+## Freeze=icy-blue, Burn=ember orange flicker, Chill=light blue, Stagger=hit flash.
+func apply_status_visual(status_type: GameEnums.BaseStatus, duration: float) -> void:
+	if _status_tween:
+		_status_tween.kill()
+		_status_tween = null
+	match status_type:
+		GameEnums.BaseStatus.FREEZE:
+			modulate = Color(0.5, 0.8, 1.4, 1.0)
+			_status_tween = create_tween()
+			_status_tween.tween_interval(maxf(duration - 0.15, 0.0))
+			_status_tween.tween_property(self, "modulate", Color.WHITE, 0.15)
+		GameEnums.BaseStatus.BURN:
+			_status_tween = create_tween().set_loops()
+			_status_tween.tween_property(self, "modulate", Color(1.6, 0.5, 0.1, 1.0), 0.15)
+			_status_tween.tween_property(self, "modulate", Color(1.2, 0.4, 0.1, 1.0), 0.15)
+		GameEnums.BaseStatus.CHILL:
+			modulate = Color(0.8, 0.9, 1.2, 1.0)
+			_status_tween = create_tween()
+			_status_tween.tween_interval(maxf(duration - 0.15, 0.0))
+			_status_tween.tween_property(self, "modulate", Color.WHITE, 0.15)
+		GameEnums.BaseStatus.STAGGER:
+			request_hit_flash()
+
+
+## Clears the status effect tint when a status expires.
+## Called via duck-typing from StatusEffectsManager._expire_status().
+func clear_status_visual(status_type: GameEnums.BaseStatus) -> void:
+	if _status_tween:
+		_status_tween.kill()
+		_status_tween = null
+	# Only reset to white if the expiring type was the one last applied
+	# (a newer status may have already overridden with its own tint).
+	match status_type:
+		GameEnums.BaseStatus.FREEZE, GameEnums.BaseStatus.BURN, GameEnums.BaseStatus.CHILL:
+			if modulate != Color.WHITE:
+				var tw: Tween = create_tween()
+				tw.tween_property(self, "modulate", Color.WHITE, 0.15)
 
 
 ## SEEKER archetype tick — direct chase at full speed (design/gdd/level-generation.md).
