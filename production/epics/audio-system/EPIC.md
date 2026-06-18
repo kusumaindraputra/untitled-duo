@@ -44,7 +44,14 @@ This epic is complete when:
 - SFX pool eviction policy verified: pool exhaustion with mixed priority levels produces correct eviction order
 - Volume clamp invariants verified: `set_music_volume()` rejects values above -3.0 dB; `set_amb_volume()` rejects above -10.0 dB
 
-## Next Step
+## Stories
 
-Run `/create-stories audio-system` to break this epic into implementable stories.
-**Note**: Defer this epic until after First Playable gameplay loop (Prana Grid, Combination Resolution, Spell Casting) is validated.
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | [Foundation — Resource Classes + AudioSystem Scaffold](story-001-foundation-scaffold.md) | Logic | Ready | ADR-0012 |
+| 002 | [SFX Pool + play_event() Dispatch](story-002-sfx-pool-dispatch.md) | Logic | Ready | ADR-0012 |
+| 003 | [Music State Machine — Core Transitions + Crossfade](story-003-music-fsm-core.md) | Logic | Ready | ADR-0012 |
+| 004 | [DYING State + END Auto-Transition](story-004-dying-end-autotransition.md) | Logic | Ready | ADR-0012 |
+| 005 | [Ambient Layer](story-005-ambient-layer.md) | Logic | Ready | ADR-0012 |
+| 006 | [Stinger API + Music Ducking](story-006-stinger-music-ducking.md) | Logic | Ready | ADR-0012 |
+| 007 | [Volume Control + Formula 2](story-007-volume-control.md) | Logic | Ready | ADR-0012 |
