@@ -16,7 +16,7 @@ var _dummy_stream: AudioStreamGenerator = null
 const _TEST_EVENT: StringName = &"_test_event_foundation"
 
 
-func before_each() -> void:
+func before_test() -> void:
 	_dummy_stream = AudioStreamGenerator.new()
 	var data := AudioEventData.new()
 	data.stream = _dummy_stream
@@ -25,7 +25,7 @@ func before_each() -> void:
 	AudioSystem._validated_events[_TEST_EVENT] = data
 
 
-func after_each() -> void:
+func after_test() -> void:
 	AudioSystem._validated_events.erase(_TEST_EVENT)
 	_dummy_stream = null
 	# Reset pool slots that may have received the dummy stream.

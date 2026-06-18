@@ -41,9 +41,13 @@ var _stinger_player: AudioStreamPlayer = null
 ## 24-slot SFX pool. PROCESS_MODE_PAUSABLE (TR-AS-002, TR-AS-005).
 var _sfx_pool: Array[AudioStreamPlayer] = []
 
-## Per-slot timestamps for priority eviction (TR-AS-012).
+## Per-slot play timestamps for priority eviction (TR-AS-012).
 ## 0 = never played — makes never-played slots appear oldest and evict first.
-var _sfx_timestamps: Array[int] = []
+var _timestamps: Array[int] = []
+
+## Per-slot priority mirrors the event priority at time of assignment.
+## Parallel to _sfx_pool. Initialised to 0 (LOW). Updated on every slot assignment.
+var _slot_priorities: Array[int] = []
 
 ## Validated event map. Populated from AudioEventRegistry.tres at startup.
 ## Invalid entries are skipped or clamped; all play_event() calls use this map.
@@ -117,8 +121,10 @@ func _create_stinger_player() -> void:
 
 
 func _create_sfx_pool() -> void:
-	_sfx_timestamps.resize(SFX_POOL_SIZE)
-	_sfx_timestamps.fill(0)
+	_timestamps.resize(SFX_POOL_SIZE)
+	_timestamps.fill(0)
+	_slot_priorities.resize(SFX_POOL_SIZE)
+	_slot_priorities.fill(0)
 	for i: int in range(SFX_POOL_SIZE):
 		var player := AudioStreamPlayer.new()
 		player.name = "SFX_%02d" % i
@@ -151,20 +157,21 @@ func _load_event_registry() -> void:
 
 ## Routes [param event_name] to the correct player based on AudioEventData.bus.
 ## SFX → pool (PAUSABLE); UI → dedicated UI player (ALWAYS); AMB → push_error.
-## Unregistered events log push_error() and return — no crash.
-## Full eviction algorithm: Story 002. Story 001 uses first-free-slot dispatch.
+## Unregistered or unknown-bus events log push_error() and return — no crash.
 func play_event(event_name: StringName) -> void:
 	if not _validated_events.has(event_name):
 		push_error("AudioSystem: play_event('%s') — event not registered." % event_name)
 		return
 	var data: AudioEventData = _validated_events[event_name]
-	if data.bus == BUS_AMB:
-		push_error("AudioSystem: play_event('%s') targets BUS_AMB — use play_ambient() instead." % event_name)
-		return
-	if data.bus == BUS_UI:
-		_play_on_ui_player(data)
-		return
-	_play_on_sfx_pool(data)
+	match data.bus:
+		BUS_SFX:
+			_assign_sfx_pool_slot(data)
+		BUS_UI:
+			_play_on_ui_player(data)
+		BUS_AMB:
+			push_error("AudioSystem: play_event('%s') targets BUS_AMB — use play_ambient() instead." % event_name)
+		_:
+			push_error("AudioSystem: Unknown bus '%s' for event '%s'." % [data.bus, event_name])
 
 
 ## Stubs for future stories (Story 005, 006, 007).
@@ -192,16 +199,44 @@ func _play_on_ui_player(data: AudioEventData) -> void:
 	_ui_player.play()
 
 
-## Assigns stream to the first free pool slot (Story 002 replaces with priority eviction).
-func _play_on_sfx_pool(data: AudioEventData) -> void:
+## Assigns stream to the first free pool slot.
+## When all 24 slots are playing, evicts the lowest-priority oldest slot (TR-AS-012).
+func _assign_sfx_pool_slot(data: AudioEventData) -> void:
+	# Step 1: find first non-playing slot.
 	for i: int in range(SFX_POOL_SIZE):
-		var player: AudioStreamPlayer = _sfx_pool[i]
-		if not player.playing:
-			player.stream = data.stream
-			player.play()
-			_sfx_timestamps[i] = Time.get_ticks_msec()
+		if not _sfx_pool[i].playing:
+			_sfx_pool[i].stream = data.stream
+			_sfx_pool[i].play()
+			_timestamps[i] = Time.get_ticks_msec()
+			_slot_priorities[i] = data.priority
 			return
-	# All slots busy — evict slot 0 as fallback (Story 002 replaces with priority eviction).
-	_sfx_pool[0].stream = data.stream
-	_sfx_pool[0].play()
-	_sfx_timestamps[0] = Time.get_ticks_msec()
+	# Step 2: all slots occupied — evict by priority tier, oldest first.
+	var target: int = _find_eviction_target(data.priority)
+	_sfx_pool[target].stop()
+	_sfx_pool[target].stream = data.stream
+	_sfx_pool[target].play()
+	_timestamps[target] = Time.get_ticks_msec()
+	_slot_priorities[target] = data.priority
+
+
+## Returns the index of the slot to evict.
+## Algorithm: scan priority tiers LOW→NORMAL→HIGH; within a tier pick the smallest timestamp.
+## Always returns a valid index — falls back to 0 if all tiers fail (should not occur).
+func _find_eviction_target(_incoming_priority: int) -> int:
+	for tier: int in [0, 1, 2]:
+		var oldest_idx: int = -1
+		var oldest_ts: int = 2147483647  # INT_MAX — any real timestamp will be smaller.
+		for i: int in range(SFX_POOL_SIZE):
+			if _slot_priorities[i] == tier and _timestamps[i] < oldest_ts:
+				oldest_ts = _timestamps[i]
+				oldest_idx = i
+		if oldest_idx >= 0:
+			return oldest_idx
+	return 0  # Fallback: should never reach.
+
+# ── Test accessors ────────────────────────────────────────────────────────────
+
+## Sets the timestamp for slot [param idx] — used by sfx_pool_test.gd to establish
+## deterministic eviction order without requiring real-time play() calls (AC-AS-06).
+func _set_slot_timestamp(idx: int, ticks: int) -> void:
+	_timestamps[idx] = ticks

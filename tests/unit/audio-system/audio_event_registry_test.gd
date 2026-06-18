@@ -17,7 +17,7 @@ extends GdUnitTestSuite
 const _TEST_EVENT: StringName = &"_test_event_registry_suite"
 
 
-func before_each() -> void:
+func before_test() -> void:
 	# Register a minimal test event for tests that need a valid event.
 	var data := AudioEventData.new()
 	data.bus = &"SFX"
@@ -26,7 +26,7 @@ func before_each() -> void:
 	AudioSystem._validated_events[_TEST_EVENT] = data
 
 
-func after_each() -> void:
+func after_test() -> void:
 	AudioSystem._validated_events.erase(_TEST_EVENT)
 	# Clear any stream that may have been assigned to pool slot 0 during tests.
 	if not AudioSystem._sfx_pool.is_empty():

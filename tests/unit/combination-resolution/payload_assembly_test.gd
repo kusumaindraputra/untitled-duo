@@ -39,7 +39,7 @@ var _orig_ashfire_modifier: float
 var _orig_ashfire_status: int
 
 
-func before_each() -> void:
+func before_test() -> void:
 	var catalog: Node = get_tree().root.get_node_or_null("PranaCatalog")
 	if catalog == null or catalog._types.size() < 5:
 		return
@@ -55,7 +55,7 @@ func before_each() -> void:
 	catalog._types[0].base_status          = GameEnums.BaseStatus.BURN
 
 
-func after_each() -> void:
+func after_test() -> void:
 	var catalog: Node = get_tree().root.get_node_or_null("PranaCatalog")
 	if catalog == null or catalog._types.size() < 5:
 		return

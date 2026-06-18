@@ -1,12 +1,12 @@
 # Story 002: SFX Pool + play_event() Dispatch
 
 > **Epic**: Audio System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Logic
 > **Estimate**: 3h
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: 2026-06-18
+> **Last Updated**: 2026-06-19
 
 ## Context
 
@@ -207,7 +207,7 @@ Update `_slot_priorities[idx] = event.priority` alongside `_timestamps[idx]`.
 **Story Type**: Logic
 **Required evidence**: `tests/unit/audio/sfx_pool_test.gd` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] `tests/unit/audio/sfx_pool_test.gd` — 747 tests total, 0 failures (2026-06-19)
 
 ---
 
