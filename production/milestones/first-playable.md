@@ -95,6 +95,51 @@ The First Playable playtest exists to validate or falsify this hypothesis. Evide
 
 ---
 
+## Milestone Review — S9-06 (2026-06-18)
+
+**Reviewer**: Claude Code (S9-06 task)
+**Review type**: Code implementation audit — verifies what has been implemented, not runtime behavior
+
+### Hard Criteria Assessment
+
+| # | Criterion | Status | Evidence |
+|---|-----------|--------|----------|
+| 1 | Launch game → main.tscn loads without errors | **PENDING** | S9-01 manual gate (Godot editor required) |
+| 2 | Preparation Phase: Prana grid arrangeable | **IMPL ✓** | PranaGrid epic Complete (5 stories); debug_game_loop starts PREPARATION_PHASE |
+| 3 | Combat Phase starts: 10 enemies spawn simultaneously | **IMPL ✓** | WaveManager Complete (4 stories); spawn_points_container wired in debug_game_loop |
+| 4 | Enemies move toward Fayde via direct vector movement | **IMPL ✓** | EnemyInstance CHASING state Complete (6 stories) |
+| 5 | Fayde casts spell and deals damage to enemies | **IMPL ✓** | SpellCastingEffects Complete (5 stories) + HealthAndDamage Complete |
+| 6 | Elemental 2× affiliation bonus applies | **IMPL ✓** | CombinationResolution Complete (6 stories) — affiliation multiplier in damage formula |
+| 7 | Enemies deal contact damage; HP bar updates real-time | **IMPL ✓** | EnemyInstance + HealthAndDamage + CombatHUD all Complete |
+| 8 | 0 HP → DEAD state → result screen loads | **IMPL ✓** | GSM.trigger_player_death() → DEATH_SCREEN; debug_game_loop._on_run_ended(false) shows "YOU DIED" overlay |
+| 9 | All enemies killed → all_waves_cleared → result screen | **IMPL ✓** | WaveManager + RunManagement Complete; _on_run_ended(true) shows "YOU WIN" overlay |
+| 10 | No infinite loop / softlock / crash during full run | **PENDING** | S9-01 manual gate (runtime behavior — cannot verify from code) |
+| 11 | All Must Have unit/integration tests pass headless | **PASS ✓** | 703 tests, 0 failures, 0 orphans — verified 2026-06-18 |
+
+### Advisory Criteria Assessment
+
+| Criterion | Status |
+|-----------|--------|
+| Freeze (Status Effects) implemented → Shatter fires | **IMPL ✓** — StatusEffects Complete (Freeze + Burn both implemented) |
+| Combination Resolution implemented → full grid combo resolves | **IMPL ✓** — CombinationResolution Complete (6 stories) |
+
+### Verdict
+
+**Implementation: COMPLETE.** All code for First Playable requirements is written and unit-tested.  
+**Milestone status: PENDING S9-01 + S9-03.**
+
+Two hard criteria (1 and 10) require runtime validation in the Godot editor (S9-01). The playtest
+validation criteria all require a non-developer tester (S9-03). Both carry over from Sprint 8 as
+hard deadlines.
+
+Once S9-01 passes (launch + full run without crash) and S9-03 playtest completes, the First Playable
+milestone can be formally declared and `gate-check production` run.
+
+**Exceeded scope**: Prana Grid (originally deferred as HIGH risk in FP scope) is fully implemented.
+Advisory items (Status Effects, Combination Resolution) are also Complete — not just advisory.
+
+---
+
 ## What Comes After
 
 Once First Playable is validated:
