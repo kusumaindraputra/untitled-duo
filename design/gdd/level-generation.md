@@ -26,16 +26,16 @@ peek together, not the one who memorised one strategy.
 
 ### Obstacle Placement
 
-1. Each room generates between `_DEBRIS_COUNT_MIN` and `_DEBRIS_COUNT_MAX` (default 2–5)
+1. Each room generates between `_DEBRIS_COUNT_MIN` and `_DEBRIS_COUNT_MAX` (default 5–9)
    half-cover debris obstacles with a fresh RNG seed per run.
-2. Valid placement zone: inside the **inner 80 %** of the arena diamond
-   (`|x|/256 + |y|/192 ≤ _DEBRIS_INNER_SCALE`). The outer 20 % border is reserved for
+2. Valid placement zone: inside the **inner 82 %** of the arena diamond
+   (`|x|/640 + |y|/384 ≤ _DEBRIS_INNER_SCALE`). The outer 18 % border is reserved for
    approach lanes and wall clearance.
 3. Hard clearance constraints (rejection sampling):
-   - ≥ `_DEBRIS_MIN_CENTER_DIST` (60 px) from the arena origin (player start area).
-   - ≥ `_DEBRIS_MIN_SPAWN_DIST` (80 px) from every spawn marker global position.
-   - ≥ `_DEBRIS_MIN_BETWEEN_DIST` (55 px) between any two obstacles.
-4. Each obstacle slot tries up to `_DEBRIS_PLACE_ATTEMPTS` (60) random candidates. Slots
+   - ≥ `_DEBRIS_MIN_CENTER_DIST` (90 px) from the arena origin (player start area).
+   - ≥ `_DEBRIS_MIN_SPAWN_DIST` (110 px) from every spawn marker global position.
+   - ≥ `_DEBRIS_MIN_BETWEEN_DIST` (75 px) between any two obstacles.
+4. Each obstacle slot tries up to `_DEBRIS_PLACE_ATTEMPTS` (80) random candidates. Slots
    that exhaust all attempts are silently skipped — room may have fewer than the target count.
 5. Obstacles block movement (physics layer `_HALF_COVER_LAYER`) but **not** Prana spells or
    projectiles (half-cover contract from `design/quick-specs/arena-cover-types.md`).
@@ -92,7 +92,7 @@ toward the orbit target; separation force applied as normal.
 **Diamond containment (inner zone)**
 ```
 valid = |x| / WALL_HALF_X + |y| / WALL_HALF_Y  ≤  _DEBRIS_INNER_SCALE
-WALL_HALF_X = 256, WALL_HALF_Y = 192, _DEBRIS_INNER_SCALE = 0.80
+WALL_HALF_X = 640, WALL_HALF_Y = 384, _DEBRIS_INNER_SCALE = 0.82
 ```
 
 **Threat budget fill**
@@ -150,13 +150,13 @@ All constants live in the source file listed — change there to retune without 
 
 | Constant | Default | Effect |
 |----------|---------|--------|
-| `_DEBRIS_COUNT_MIN` | 2 | Minimum obstacles per room |
-| `_DEBRIS_COUNT_MAX` | 5 | Maximum obstacles per room |
-| `_DEBRIS_INNER_SCALE` | 0.80 | Inner zone fraction (0.8 = inner 80 % of diamond) |
-| `_DEBRIS_MIN_CENTER_DIST` | 60 px | Clearance from arena origin |
-| `_DEBRIS_MIN_SPAWN_DIST` | 80 px | Clearance from spawn markers |
-| `_DEBRIS_MIN_BETWEEN_DIST` | 55 px | Minimum gap between obstacles |
-| `_DEBRIS_PLACE_ATTEMPTS` | 60 | Rejection sample limit per slot |
+| `_DEBRIS_COUNT_MIN` | 5 | Minimum obstacles per room |
+| `_DEBRIS_COUNT_MAX` | 9 | Maximum obstacles per room |
+| `_DEBRIS_INNER_SCALE` | 0.82 | Inner zone fraction (0.82 = inner 82 % of diamond) |
+| `_DEBRIS_MIN_CENTER_DIST` | 90 px | Clearance from arena origin |
+| `_DEBRIS_MIN_SPAWN_DIST` | 110 px | Clearance from spawn markers |
+| `_DEBRIS_MIN_BETWEEN_DIST` | 75 px | Minimum gap between obstacles |
+| `_DEBRIS_PLACE_ATTEMPTS` | 80 | Rejection sample limit per slot |
 
 **`src/systems/wave_manager.gd`**
 
@@ -182,7 +182,7 @@ All constants live in the source file listed — change there to retune without 
 
 | ID | Criterion | Test Type |
 |----|-----------|-----------|
-| AC-LG-01 | Obstacle count is between 2 and 5 each run | Logic (unit) |
+| AC-LG-01 | Obstacle count is between 5 and 9 each run | Logic (unit) |
 | AC-LG-02 | No obstacle within 60 px of arena origin | Logic (unit) |
 | AC-LG-03 | No obstacle within 80 px of any spawn marker | Logic (unit) |
 | AC-LG-04 | No two obstacles within 55 px of each other | Logic (unit) |

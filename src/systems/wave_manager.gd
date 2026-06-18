@@ -46,14 +46,12 @@ enum WaveState {
 }
 
 # ── Composition Constants (design/gdd/level-generation.md) ───────────────────
-## Threat budget range drawn once per room.
+## Deprecated: prefer enemy_pool_config resource (LD-03).
+## Kept for backward compat — tests reference THREAT_BUDGET_MIN/MAX directly.
 const THREAT_BUDGET_MIN: int = 10
 const THREAT_BUDGET_MAX: int = 18
-## Threat cost per type ID: SEEKER=1, RUSHER=2, SWARMER=1, SHOOTER=1.
 const _THREAT_COST: Dictionary = { 0: 1, 1: 2, 2: 1, 4: 1 }
-## All available type IDs.
 const _ENEMY_POOL: Array[int] = [0, 1, 2, 4]
-## Type IDs guaranteed to appear at least once (SEEKER + SWARMER).
 const _GUARANTEED_TYPES: Array[int] = [0, 2]
 
 ## FP spawn type IDs — match EnemyCatalog stub indices (pre-Story-003 assets).
@@ -75,6 +73,11 @@ const FP_RIFTER_COUNT: int = 2
 ## Set in the arena scene inspector. Each child's global_position is used at
 ## spawn time (not cached — markers may not be in the world during _ready()).
 @export var spawn_points_container: Node
+
+## Enemy composition parameters. Set in the scene inspector to override per-layer
+## defaults. Falls back to a default EnemyPoolConfig (10–18 budget, all 4 archetypes,
+## SEEKER + SWARMER guaranteed). (LD-03)
+@export var enemy_pool_config: EnemyPoolConfig = null
 
 # ── Signals ───────────────────────────────────────────────────────────────────
 
@@ -179,29 +182,46 @@ func _on_enemy_killed(_instance_id: int, _type_id: int,
 
 # ── Internal ──────────────────────────────────────────────────────────────────
 
+## Returns the active enemy pool config, loading defaults on first access. (LD-03)
+## Scene authors override via the @export enemy_pool_config in the inspector.
+func _get_pool_config() -> EnemyPoolConfig:
+	if enemy_pool_config == null:
+		enemy_pool_config = EnemyPoolConfig.new()
+	return enemy_pool_config
+
+
 ## Builds _wave_composition using a random threat budget (level-generation.md).
 ## Guarantees SEEKER and SWARMER always appear; fills remaining budget randomly.
 ## Called from _on_preparation_started() so composition is fresh each room.
 ## Tests may inject _wave_composition directly instead of calling this.
-func _build_wave_composition() -> void:
+## Reads composition parameters from enemy_pool_config resource (LD-03).
+##
+## [param seed] RNG seed. -1 (default): randomize from system entropy.
+##  >= 0: deterministic output — same seed always produces the same composition.
+##  Tests can assert exact compositions via seed injection. (LD-05)
+func _build_wave_composition(seed: int = -1) -> void:
 	_wave_composition.clear()
+	var cfg: EnemyPoolConfig = _get_pool_config()
 	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	var budget: int = rng.randi_range(THREAT_BUDGET_MIN, THREAT_BUDGET_MAX)
+	if seed >= 0:
+		rng.seed = seed
+	else:
+		rng.randomize()
+	var budget: int = rng.randi_range(cfg.threat_budget_min, cfg.threat_budget_max)
 	var type_ids: Array[int] = []
-	for type_id: int in _GUARANTEED_TYPES:
+	for type_id: int in cfg.guaranteed_types:
 		type_ids.append(type_id)
-		budget -= _THREAT_COST.get(type_id, 1)
+		budget -= cfg.threat_cost.get(type_id, 1)
 	while budget >= 1:
 		var affordable: Array[int] = []
-		for tid: int in _ENEMY_POOL:
-			if _THREAT_COST.get(tid, 1) <= budget:
+		for tid: int in cfg.enemy_pool:
+			if cfg.threat_cost.get(tid, 1) <= budget:
 				affordable.append(tid)
 		if affordable.is_empty():
 			break
 		var pick: int = affordable[rng.randi_range(0, affordable.size() - 1)]
 		type_ids.append(pick)
-		budget -= _THREAT_COST.get(pick, 1)
+		budget -= cfg.threat_cost.get(pick, 1)
 	# Seeded Fisher-Yates — avoids first-type bias in spawn order.
 	for i: int in range(type_ids.size() - 1, 0, -1):
 		var j: int = rng.randi_range(0, i)

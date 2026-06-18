@@ -36,14 +36,19 @@ const _HALF_COVER_LAYER: int = 16  # bit 4 — Layer 5 in Godot physics layer UI
 const _DEBRIS_RADIUS: float = 22.0
 const _DEBRIS_NAV_RADIUS: float = 28.0
 ## Random obstacle placement — tuning knobs from design/gdd/level-generation.md.
+## Deprecated: prefer obstacle_config resource (LD-02). Kept for test backward compat.
 const _DEBRIS_COUNT_MIN: int = 5
 const _DEBRIS_COUNT_MAX: int = 9
-## Inner-zone scale: obstacles placed only within this fraction of the diamond half-extents.
 const _DEBRIS_INNER_SCALE: float = 0.82
 const _DEBRIS_MIN_CENTER_DIST: float = 90.0
 const _DEBRIS_MIN_SPAWN_DIST: float = 110.0
 const _DEBRIS_MIN_BETWEEN_DIST: float = 75.0
 const _DEBRIS_PLACE_ATTEMPTS: int = 80
+
+## Obstacle placement parameters. Set in the scene inspector to override per-template
+## defaults. Falls back to a default ObstacleConfig (5–9 obstacles, inner 82 % diamond,
+## 90/110/75 px clearances, 80 attempts). (LD-02)
+@export var obstacle_config: ObstacleConfig = null
 
 # ── @onready ──────────────────────────────────────────────────────────────────
 
@@ -265,34 +270,53 @@ func _edge_key(a: Vector2, b: Vector2) -> String:
 	return "%d,%d-%d,%d" % [pa.x, pa.y, pb.x, pb.y]
 
 
+## Returns the active obstacle config, loading defaults on first access. (LD-02)
+## Template authors override via the @export obstacle_config in the inspector.
+func _get_obstacle_config() -> ObstacleConfig:
+	if obstacle_config == null:
+		obstacle_config = ObstacleConfig.new()
+	return obstacle_config
+
+
 ## Returns random obstacle positions satisfying all level-generation.md clearance constraints.
-## Uses rejection sampling (up to _DEBRIS_PLACE_ATTEMPTS per slot). Slots that exhaust all
-## attempts are silently skipped — caller may receive fewer than _DEBRIS_COUNT_MAX positions.
+## Uses rejection sampling (up to obstacle_config.place_attempts per slot). Slots that exhaust
+## all attempts are silently skipped — caller may receive fewer than count_max positions.
 ## Pure function: no @onready access, safe to call before _ready() or in headless tests.
-func _generate_debris_positions(spawn_positions: Array[Vector2]) -> Array[Vector2]:
+##
+## Reads obstacle parameters from obstacle_config resource (LD-02).
+##
+## [param zone_check] Optional validity Callable (Vector2) -> bool. Default: inner-diamond
+##  check using obstacle_config.inner_scale. Inject a custom check for template-specific valid zones.
+## [param sample_half_x] X half-extent for random candidate generation. Default (< 0):
+##  falls back to _WALL_HALF_X * obstacle_config.inner_scale.
+## [param sample_half_y] Y half-extent for random candidate generation. Default (< 0):
+##  falls back to _WALL_HALF_Y * obstacle_config.inner_scale.
+func _generate_debris_positions(spawn_positions: Array[Vector2], zone_check: Callable = Callable(), sample_half_x: float = -1.0, sample_half_y: float = -1.0) -> Array[Vector2]:
+	var cfg: ObstacleConfig = _get_obstacle_config()
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
-	var count: int = rng.randi_range(_DEBRIS_COUNT_MIN, _DEBRIS_COUNT_MAX)
+	var count: int = rng.randi_range(cfg.count_min, cfg.count_max)
 	var placed: Array[Vector2] = []
-	var inner_x: float = _WALL_HALF_X * _DEBRIS_INNER_SCALE
-	var inner_y: float = _WALL_HALF_Y * _DEBRIS_INNER_SCALE
+	var _valid: Callable = zone_check if zone_check.is_valid() else func(pos: Vector2) -> bool: return absf(pos.x) / float(_WALL_HALF_X) + absf(pos.y) / float(_WALL_HALF_Y) <= cfg.inner_scale
+	var sx: float = sample_half_x if sample_half_x > 0.0 else _WALL_HALF_X * cfg.inner_scale
+	var sy: float = sample_half_y if sample_half_y > 0.0 else _WALL_HALF_Y * cfg.inner_scale
 	for _i: int in range(count):
-		for _attempt: int in range(_DEBRIS_PLACE_ATTEMPTS):
-			var x: float = rng.randf_range(-inner_x, inner_x)
-			var y: float = rng.randf_range(-inner_y, inner_y)
-			if absf(x) / float(_WALL_HALF_X) + absf(y) / float(_WALL_HALF_Y) > _DEBRIS_INNER_SCALE:
+		for _attempt: int in range(cfg.place_attempts):
+			var x: float = rng.randf_range(-sx, sx)
+			var y: float = rng.randf_range(-sy, sy)
+			if not _valid.call(Vector2(x, y)):
 				continue
 			var candidate := Vector2(x, y)
-			if candidate.length() < _DEBRIS_MIN_CENTER_DIST:
+			if candidate.length() < cfg.min_center_dist:
 				continue
 			var skip: bool = false
 			for sp: Vector2 in spawn_positions:
-				if candidate.distance_to(sp) < _DEBRIS_MIN_SPAWN_DIST:
+				if candidate.distance_to(sp) < cfg.min_spawn_dist:
 					skip = true
 					break
 			if not skip:
 				for p: Vector2 in placed:
-					if candidate.distance_to(p) < _DEBRIS_MIN_BETWEEN_DIST:
+					if candidate.distance_to(p) < cfg.min_between_dist:
 						skip = true
 						break
 			if skip:
