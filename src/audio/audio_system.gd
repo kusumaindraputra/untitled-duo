@@ -1,54 +1,53 @@
 ## audio_system.gd — AudioSystem Autoload #5.
 ## Sole audio service for all gameplay systems (ADR-0012).
 ##
-## SFX pool: 8 round-robin AudioStreamPlayer nodes on the SFX bus.
-## Music: single dedicated AudioStreamPlayer on the Music bus with looping.
-## Event registry: hardcoded StringName → path. Missing assets are silent (no crash).
-##
-## Registration: Autoload #5 in project.godot (after SceneManager at #4).
-## No class_name — Godot 4.6 rejects class_name matching the Autoload node name.
 ## Access: AudioSystem.play_event(&"event_name")
+## No class_name — Godot 4 parse error when class_name matches Autoload node name.
 ##
-## ADR: ADR-0012 (AudioSystem Implementation Contract)
+## 30 managed AudioStreamPlayer nodes — all created in _ready():
+##   Music A/B    × 2  —  PROCESS_MODE_ALWAYS,   BUS_MUSIC
+##   Ambient A/B  × 2  —  PROCESS_MODE_ALWAYS,   BUS_AMB
+##   UI           × 1  —  PROCESS_MODE_ALWAYS,   BUS_UI
+##   Stinger      × 1  —  PROCESS_MODE_ALWAYS,   BUS_SFX  (non-pooled)
+##   SFX pool    × 24  —  PROCESS_MODE_PAUSABLE, BUS_SFX
+##
+## ADR: adr-0012-audio-system-implementation-contract.md
 extends Node
 
+# ── Bus constants — sole definitions in the codebase (TR-AS-001) ──────────────
 
-## Bus name constants — sole definitions in the project. No other file may define
-## these bus names independently (ADR-0012 Forbidden Patterns).
+const BUS_MASTER: StringName = &"Master"
 const BUS_MUSIC: StringName = &"Music"
 const BUS_SFX: StringName = &"SFX"
 const BUS_UI: StringName = &"UI"
 const BUS_AMB: StringName = &"AMB"
 
-## Number of pooled SFX players. 8 slots support simultaneous spell hits + footsteps + UI.
-const SFX_POOL_SIZE: int = 8
+## Pre-instantiated SFX pool node count (TR-AS-002, ADR-0012).
+const SFX_POOL_SIZE: int = 24
 
-## Event ID → resource path mapping. Entries with missing files play silence (null-safe).
-const _EVENT_REGISTRY: Dictionary = {
-	&"sfx_fayde_dash":        "res://assets/audio/sfx/fayde_dash.ogg",
-	&"sfx_fayde_footstep_a":  "res://assets/audio/sfx/fayde_footstep_a.ogg",
-	&"sfx_fayde_footstep_b":  "res://assets/audio/sfx/fayde_footstep_b.ogg",
-	&"sfx_fayde_footstep_c":  "res://assets/audio/sfx/fayde_footstep_c.ogg",
-	&"sfx_spell_hit":         "res://assets/audio/sfx/spell_hit.ogg",
-	&"sfx_enemy_death":       "res://assets/audio/sfx/enemy_death.ogg",
-	&"sfx_player_damaged":    "res://assets/audio/sfx/player_damaged.ogg",
-	&"music_combat_loop":     "res://assets/audio/music/combat_loop.ogg",
-}
+## AudioEventRegistry resource path (ADR-0012 — no hardcoded event data in GDScript).
+const _REGISTRY_PATH: String = "res://assets/data/audio_event_registry.tres"
 
-## Cached AudioStream resources. Populated lazily on first play_event() call per event.
-## Null value means asset file does not exist or failed to load — play silently.
-var _stream_cache: Dictionary = {}
+# ── Managed nodes — created in _ready(), never scene-wired ───────────────────
 
-## SFX pool — SFX_POOL_SIZE AudioStreamPlayer nodes allocated in _ready().
+## Music crossfade pair [A, B]. PROCESS_MODE_ALWAYS (TR-AS-005).
+var _music_players: Array[AudioStreamPlayer] = []
+## Ambient crossfade pair [A, B]. PROCESS_MODE_ALWAYS (TR-AS-005).
+var _ambient_players: Array[AudioStreamPlayer] = []
+## Dedicated UI player. PROCESS_MODE_ALWAYS (TR-AS-005).
+var _ui_player: AudioStreamPlayer = null
+## Non-pooled stinger player. PROCESS_MODE_ALWAYS, BUS_SFX (TR-AS-011).
+var _stinger_player: AudioStreamPlayer = null
+## 24-slot SFX pool. PROCESS_MODE_PAUSABLE (TR-AS-002, TR-AS-005).
 var _sfx_pool: Array[AudioStreamPlayer] = []
-## Round-robin index into _sfx_pool.
-var _sfx_next: int = 0
 
-## Dedicated music player (looping).
-var _music_player: AudioStreamPlayer = null
-## Event ID of the currently playing music track. Empty = nothing playing.
-var _current_music_event: StringName = &""
+## Per-slot timestamps for priority eviction (TR-AS-012).
+## 0 = never played — makes never-played slots appear oldest and evict first.
+var _sfx_timestamps: Array[int] = []
 
+## Validated event map. Populated from AudioEventRegistry.tres at startup.
+## Invalid entries are skipped or clamped; all play_event() calls use this map.
+var _validated_events: Dictionary[StringName, AudioEventData] = {}
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
@@ -57,108 +56,152 @@ func _ready() -> void:
 		push_error("AudioSystem: GameStateManager must be initialized before AudioSystem (ADR-0012).")
 		return
 	_init_buses()
-	_init_sfx_pool()
-	_init_music_player()
-
+	_create_music_players()
+	_create_ambient_players()
+	_create_ui_player()
+	_create_stinger_player()
+	_create_sfx_pool()
+	_load_event_registry()
+	# GSM signal connections: Story 003
 
 # ── Bus setup ─────────────────────────────────────────────────────────────────
 
-## Ensures the 4 buses (Music, SFX, UI, AMB) exist under Master.
-## Idempotent — safe to call if buses were pre-configured in the bus layout file.
-## New buses route to Master by default (Godot 4 AudioServer behavior).
+## Creates the 5 audio buses if not already present in Project Settings.
+## Idempotent — safe to call when buses pre-exist (editor-configured or prior _ready()).
 func _init_buses() -> void:
 	for bus_name: StringName in [BUS_MUSIC, BUS_SFX, BUS_UI, BUS_AMB]:
 		if AudioServer.get_bus_index(bus_name) == -1:
 			var idx: int = AudioServer.bus_count
 			AudioServer.add_bus(idx)
 			AudioServer.set_bus_name(idx, bus_name)
+			AudioServer.set_bus_send(idx, BUS_MASTER)
+
+# ── Node creation ─────────────────────────────────────────────────────────────
+
+func _create_music_players() -> void:
+	var names: Array[StringName] = [&"MusicA", &"MusicB"]
+	for i: int in range(2):
+		var player := AudioStreamPlayer.new()
+		player.name = names[i]
+		player.bus = BUS_MUSIC
+		player.process_mode = Node.PROCESS_MODE_ALWAYS
+		call_deferred("add_child", player)
+		_music_players.append(player)
 
 
-## Creates SFX_POOL_SIZE AudioStreamPlayer nodes on the SFX bus.
-func _init_sfx_pool() -> void:
-	var sfx_bus_idx: int = AudioServer.get_bus_index(BUS_SFX)
-	var sfx_bus_name: StringName = BUS_SFX if sfx_bus_idx != -1 else &"Master"
+func _create_ambient_players() -> void:
+	var names: Array[StringName] = [&"AmbientA", &"AmbientB"]
+	for i: int in range(2):
+		var player := AudioStreamPlayer.new()
+		player.name = names[i]
+		player.bus = BUS_AMB
+		player.process_mode = Node.PROCESS_MODE_ALWAYS
+		call_deferred("add_child", player)
+		_ambient_players.append(player)
+
+
+func _create_ui_player() -> void:
+	_ui_player = AudioStreamPlayer.new()
+	_ui_player.name = &"UIPlayer"
+	_ui_player.bus = BUS_UI
+	_ui_player.process_mode = Node.PROCESS_MODE_ALWAYS
+	call_deferred("add_child", _ui_player)
+
+
+func _create_stinger_player() -> void:
+	_stinger_player = AudioStreamPlayer.new()
+	_stinger_player.name = &"StingerPlayer"
+	_stinger_player.bus = BUS_SFX
+	_stinger_player.process_mode = Node.PROCESS_MODE_ALWAYS
+	call_deferred("add_child", _stinger_player)
+
+
+func _create_sfx_pool() -> void:
+	_sfx_timestamps.resize(SFX_POOL_SIZE)
+	_sfx_timestamps.fill(0)
 	for i: int in range(SFX_POOL_SIZE):
 		var player := AudioStreamPlayer.new()
-		player.name = "SFX_%d" % i
-		player.bus = sfx_bus_name
-		add_child(player)
+		player.name = "SFX_%02d" % i
+		player.bus = BUS_SFX
+		player.process_mode = Node.PROCESS_MODE_PAUSABLE
+		call_deferred("add_child", player)
 		_sfx_pool.append(player)
 
+# ── Registry loading ──────────────────────────────────────────────────────────
 
-## Creates a single looping AudioStreamPlayer on the Music bus.
-func _init_music_player() -> void:
-	var music_bus_idx: int = AudioServer.get_bus_index(BUS_MUSIC)
-	var music_bus_name: StringName = BUS_MUSIC if music_bus_idx != -1 else &"Master"
-	_music_player = AudioStreamPlayer.new()
-	_music_player.name = "MusicPlayer"
-	_music_player.bus = music_bus_name
-	add_child(_music_player)
-
+func _load_event_registry() -> void:
+	var registry: AudioEventRegistry = load(_REGISTRY_PATH) as AudioEventRegistry
+	if registry == null:
+		push_error("AudioSystem: AudioEventRegistry not found at '%s' — all play_event() calls will be no-ops." % _REGISTRY_PATH)
+		return
+	for event_name: StringName in registry.events:
+		var data: AudioEventData = registry.events[event_name]
+		if not data is AudioEventData:
+			push_error("AudioSystem: event '%s' is not AudioEventData — skipped." % event_name)
+			continue
+		if data.priority < 0 or data.priority > 2:
+			push_error("AudioSystem: event '%s' priority %d out of range — clamped to NORMAL (1)." % [event_name, data.priority])
+			var clamped: AudioEventData = data.duplicate_deep() as AudioEventData
+			clamped.priority = 1
+			_validated_events[event_name] = clamped
+		else:
+			_validated_events[event_name] = data
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-## Routes [param event_id] to the correct player.
-## Music events (prefix "music_") go to the dedicated music player with looping.
-## SFX events go to the round-robin pool.
-## Silent no-op when the asset file is missing — no crash, no log spam.
-func play_event(event_id: StringName) -> void:
-	var stream: AudioStream = _get_stream(event_id)
-	if stream == null:
-		return  # Asset missing or unknown event — silent
-
-	if str(event_id).begins_with("music_"):
-		_play_music(event_id, stream)
-	else:
-		_play_sfx(stream)
-
-
-## Stops the currently playing music track, if any.
-func stop_music() -> void:
-	if _music_player != null:
-		_music_player.stop()
-	_current_music_event = &""
-
-
-# ── Private ───────────────────────────────────────────────────────────────────
-
-## Returns the AudioStream for [param event_id], loading it on first access.
-## Returns null if the event is unknown or the asset file is missing.
-func _get_stream(event_id: StringName) -> AudioStream:
-	if _stream_cache.has(event_id):
-		return _stream_cache[event_id]
-
-	if not _EVENT_REGISTRY.has(event_id):
-		_stream_cache[event_id] = null
-		return null
-
-	var path: String = _EVENT_REGISTRY[event_id]
-	if not ResourceLoader.exists(path):
-		_stream_cache[event_id] = null
-		return null
-
-	var loaded: Resource = load(path)
-	var stream: AudioStream = loaded as AudioStream
-	_stream_cache[event_id] = stream  # null if cast failed (wrong asset type)
-	return stream
-
-
-## Assigns stream to the next pool slot and plays it (round-robin).
-## Interrupts the oldest sound if all 8 slots are active simultaneously.
-func _play_sfx(stream: AudioStream) -> void:
-	var player: AudioStreamPlayer = _sfx_pool[_sfx_next]
-	_sfx_next = (_sfx_next + 1) % SFX_POOL_SIZE
-	player.stream = stream
-	player.play()
-
-
-## Plays or restarts a music track with looping enabled.
-## No-ops if the same track is already playing to prevent restart-on-loop.
-func _play_music(event_id: StringName, stream: AudioStream) -> void:
-	if _current_music_event == event_id and _music_player.playing:
+## Routes [param event_name] to the correct player based on AudioEventData.bus.
+## SFX → pool (PAUSABLE); UI → dedicated UI player (ALWAYS); AMB → push_error.
+## Unregistered events log push_error() and return — no crash.
+## Full eviction algorithm: Story 002. Story 001 uses first-free-slot dispatch.
+func play_event(event_name: StringName) -> void:
+	if not _validated_events.has(event_name):
+		push_error("AudioSystem: play_event('%s') — event not registered." % event_name)
 		return
-	_music_player.stream = stream
-	if _music_player.stream is AudioStreamOggVorbis:
-		(_music_player.stream as AudioStreamOggVorbis).loop = true
-	_music_player.play()
-	_current_music_event = event_id
+	var data: AudioEventData = _validated_events[event_name]
+	if data.bus == BUS_AMB:
+		push_error("AudioSystem: play_event('%s') targets BUS_AMB — use play_ambient() instead." % event_name)
+		return
+	if data.bus == BUS_UI:
+		_play_on_ui_player(data)
+		return
+	_play_on_sfx_pool(data)
+
+
+## Stubs for future stories (Story 005, 006, 007).
+func play_ambient(_event_name: StringName) -> void:
+	pass  # Story 005
+
+
+func stop_ambient() -> void:
+	pass  # Story 005
+
+
+func play_stinger(_event_name: StringName) -> void:
+	pass  # Story 006
+
+
+func stop_stinger() -> void:
+	pass  # Story 006
+
+# ── Private dispatch ──────────────────────────────────────────────────────────
+
+func _play_on_ui_player(data: AudioEventData) -> void:
+	if _ui_player == null:
+		return
+	_ui_player.stream = data.stream
+	_ui_player.play()
+
+
+## Assigns stream to the first free pool slot (Story 002 replaces with priority eviction).
+func _play_on_sfx_pool(data: AudioEventData) -> void:
+	for i: int in range(SFX_POOL_SIZE):
+		var player: AudioStreamPlayer = _sfx_pool[i]
+		if not player.playing:
+			player.stream = data.stream
+			player.play()
+			_sfx_timestamps[i] = Time.get_ticks_msec()
+			return
+	# All slots busy — evict slot 0 as fallback (Story 002 replaces with priority eviction).
+	_sfx_pool[0].stream = data.stream
+	_sfx_pool[0].play()
+	_sfx_timestamps[0] = Time.get_ticks_msec()

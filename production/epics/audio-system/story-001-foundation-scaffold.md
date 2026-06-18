@@ -1,7 +1,7 @@
 # Story 001: Foundation — Resource Classes + AudioSystem Scaffold
 
 > **Epic**: Audio System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Logic
 > **Estimate**: 3h
@@ -171,7 +171,7 @@ This is an editor-side configuration step, not code. Document in test setup.
 **Story Type**: Logic
 **Required evidence**: `tests/unit/audio/audio_system_foundation_test.gd` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] `tests/unit/audio/audio_system_foundation_test.gd` — 730 tests total, 0 failures (2026-06-18)
 
 ---
 
