@@ -3,7 +3,7 @@
 > **Layer**: Feature
 > **GDD**: design/gdd/wave-encounter-system.md
 > **Architecture Module**: `src/systems/wave_manager.gd`
-> **Status**: Ready
+> **Status**: Complete
 > **Stories**: 4 stories created 2026-06-06
 
 ## Overview

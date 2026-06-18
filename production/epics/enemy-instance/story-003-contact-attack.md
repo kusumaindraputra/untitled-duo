@@ -127,7 +127,7 @@ if _fayde_in_contact and _contact_timer > 0.0:
 **Story Type**: Logic
 **Required evidence**: `tests/unit/enemy-instance/contact_attack_test.gd` — must pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — see Completion Notes
 
 ---
 

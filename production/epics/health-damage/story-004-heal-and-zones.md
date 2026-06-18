@@ -158,7 +158,7 @@ func _check_hp_zone_change() -> void:
 **Story Type**: Logic
 **Required evidence**: `tests/unit/health-damage/heal_and_zones_test.gd` — must pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — see Completion Notes
 
 ---
 

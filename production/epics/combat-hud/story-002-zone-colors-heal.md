@@ -154,7 +154,7 @@ func is_pulse_active() -> bool:
 **Required evidence**: `production/qa/evidence/combat-hud-zones-evidence.md` + sign-off (ADVISORY)
 Unit tests in `tests/unit/combat-hud/combat_hud_test.gd` strongly recommended.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — see Completion Notes
 
 ---
 

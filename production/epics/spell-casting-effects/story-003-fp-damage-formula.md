@@ -285,7 +285,7 @@ _fire_attack(current_index)
 **Story Type**: Logic
 **Required evidence**: `tests/unit/spell-casting-effects/damage_formula_test.gd` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — see Completion Notes
 
 ---
 

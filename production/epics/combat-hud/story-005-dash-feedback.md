@@ -185,7 +185,7 @@ dash_cooldown_changed.emit(true)  # ready for next wave
 **Required evidence**: `production/qa/evidence/sprint-5-dash-feedback-evidence.md` — screenshots + discoverability test result (ADVISORY gate)
 **Automated tests**: `tests/unit/combat-hud/combat_hud_dash_test.gd` — must pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — see Completion Notes
 
 ---
 

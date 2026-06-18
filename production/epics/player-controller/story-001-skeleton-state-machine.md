@@ -148,7 +148,7 @@ func _physics_process(delta: float) -> void:
 **Required evidence**: `tests/unit/player-controller/player_controller_state_test.gd` — must pass headless
 *(Unit directory used per project convention — GDUnit4 integration tests run in same harness)*
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — see Completion Notes
 
 ---
 

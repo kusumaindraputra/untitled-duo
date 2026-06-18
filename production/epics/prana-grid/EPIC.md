@@ -3,7 +3,7 @@
 > **Layer**: Core
 > **GDD**: design/gdd/prana-grid.md
 > **Architecture Module**: `src/ui/prana_grid.gd` (CanvasLayer 1 inside IsometricRoom.tscn)
-> **Status**: Ready
+> **Status**: Complete
 > **Stories**: 4 stories created
 
 ## Overview

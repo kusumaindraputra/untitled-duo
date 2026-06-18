@@ -3,7 +3,7 @@
 > **Layer**: Foundation
 > **GDD**: design/gdd/prana-data.md
 > **Architecture Module**: GameEnums + PranaCatalog
-> **Status**: Ready
+> **Status**: Complete
 > **Stories**: 4 stories created
 
 ## Overview

@@ -121,7 +121,7 @@ func _on_enemy_killed(instance_id: int, type_id: int,
 **Required evidence**:
 - Logic: `tests/unit/wave-encounter-system/wave_manager_kill_tracking_test.gd` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — see Completion Notes
 
 ---
 

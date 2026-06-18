@@ -3,7 +3,7 @@
 > **Layer**: Core
 > **GDD**: design/gdd/enemy-ai.md
 > **Architecture Module**: `src/enemies/enemy_instance.gd`
-> **Status**: Ready
+> **Status**: Complete (story-006 visual/feel advisory — QA evidence pending)
 > **Stories**: 6 stories created 2026-05-31
 
 ## Overview

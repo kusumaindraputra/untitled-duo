@@ -3,7 +3,7 @@
 > **Layer**: Core
 > **GDD**: design/gdd/combination-resolution.md
 > **Architecture Module**: `src/systems/combination_resolution.gd` (Autoload #8)
-> **Status**: Ready
+> **Status**: Complete
 > **Stories**: 6 stories created 2026-06-10
 
 ## Overview

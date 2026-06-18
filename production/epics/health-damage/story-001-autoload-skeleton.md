@@ -155,7 +155,7 @@ func _on_run_started() -> void:
 **Story Type**: Logic
 **Required evidence**: `tests/unit/health-damage/health_damage_skeleton_test.gd` — must exist and pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — see Completion Notes
 
 ---
 

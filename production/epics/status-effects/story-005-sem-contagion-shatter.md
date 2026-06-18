@@ -159,7 +159,7 @@ func _try_burn_contagion(dying_pos: Vector2, original_spell_base: float) -> void
 **Story Type**: Logic
 **Required evidence**: `tests/unit/status-effects/sem_contagion_shatter_test.gd` — must exist and pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — see Completion Notes
 
 ---
 

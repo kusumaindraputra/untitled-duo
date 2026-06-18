@@ -166,7 +166,7 @@ func _collect_adjacency_effects(fragments: Array) -> Array:
 **Story Type**: Logic
 **Required evidence**: `tests/unit/combination-resolution/adjacency_resolution_test.gd` — must exist and pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — see Completion Notes
 
 ---
 

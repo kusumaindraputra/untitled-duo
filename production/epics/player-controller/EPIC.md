@@ -3,7 +3,7 @@
 > **Layer**: Core
 > **GDD**: design/gdd/player-controller.md
 > **Architecture Module**: `src/gameplay/player_controller.gd`
-> **Status**: Ready
+> **Status**: Complete
 > **Stories**: 4 stories created 2026-05-31
 
 ## Overview

@@ -3,7 +3,7 @@
 > **Layer**: Core
 > **GDD**: design/gdd/status-effects.md
 > **Architecture Module**: `src/systems/status_effects_manager.gd` (Autoload #7)
-> **Status**: Ready
+> **Status**: Complete
 > **Stories**: 5 stories created — 2026-06-04
 
 ## Overview

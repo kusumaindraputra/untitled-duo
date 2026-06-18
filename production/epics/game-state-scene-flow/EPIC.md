@@ -3,7 +3,7 @@
 > **Layer**: Foundation
 > **GDD**: design/gdd/game-state-scene-flow.md
 > **Architecture Module**: GameStateManager + SceneManager + IsometricRoom
-> **Status**: Ready — ⚠️ HIGH ENGINE RISK: IsometricRoom TileMapLayer isometric unverified in Godot 4.6 (ADR-0001). Run validation test project before scheduling IsometricRoom stories.
+> **Status**: Complete
 > **Stories**: 3 stories
 
 ## Stories

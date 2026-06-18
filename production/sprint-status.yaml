@@ -14,7 +14,7 @@ goal: "Close carryovers (gamepad + playtest + manual validation), backfill produ
 start: "2026-07-29"
 end: "2026-08-11"
 generated: "2026-06-17"
-updated: "2026-06-17"
+updated: "2026-06-18"
 
 stories:
   - id: "S9-01"
@@ -51,21 +51,21 @@ stories:
     name: "Story file backfill — stamp all implemented-but-unstamped story files"
     file: "production/epics/"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-18"
 
   - id: "S9-05"
     name: "Epic index + EPIC.md backfill — update status fields to Complete"
     file: "production/epics/index.md"
     priority: must-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: "S9-04"
-    completed: ""
+    completed: "2026-06-18"
 
   - id: "S9-06"
     name: "Milestone review — assess First Playable exit criteria"

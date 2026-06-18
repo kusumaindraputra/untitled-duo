@@ -187,7 +187,7 @@ Fayde reference: create a `MockFayde` that is `add_to_group(&"player")`. Use `hu
 **Required evidence**: `production/qa/evidence/combat-hud-skeleton-evidence.md` + sign-off (ADVISORY)
 Unit tests in `tests/unit/combat-hud/combat_hud_test.gd` are strongly recommended but ADVISORY for UI stories.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — see Completion Notes
 
 ---
 

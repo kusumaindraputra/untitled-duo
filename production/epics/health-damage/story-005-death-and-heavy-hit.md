@@ -147,7 +147,7 @@ signal player_hp_zone_changed(zone: GameEnums.HPZone)
 **Story Type**: Logic
 **Required evidence**: `tests/unit/health-damage/death_and_heavy_hit_test.gd` — must pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — see Completion Notes
 
 ---
 

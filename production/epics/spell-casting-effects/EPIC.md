@@ -3,7 +3,7 @@
 > **Layer**: Core
 > **GDD**: design/gdd/spell-casting-effects.md
 > **Architecture Module**: `src/systems/spell_casting_effects.gd` (Autoload #9)
-> **Status**: Ready
+> **Status**: Complete
 > **Stories**: 4 stories (created 2026-06-06)
 
 ## Overview

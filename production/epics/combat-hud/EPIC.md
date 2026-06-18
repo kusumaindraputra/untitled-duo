@@ -3,7 +3,7 @@
 > **Layer**: Presentation
 > **GDD**: design/gdd/combat-hud.md
 > **Architecture Module**: `src/ui/combat_hud.gd` + `src/scenes/CombatHUD.tscn`
-> **Status**: Ready
+> **Status**: Complete
 > **Stories**: 4 stories created 2026-06-06
 
 ## Overview

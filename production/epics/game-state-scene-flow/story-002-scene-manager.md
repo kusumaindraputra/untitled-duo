@@ -135,7 +135,7 @@ func change_room(scene: PackedScene) -> void:
 **Story Type**: Integration
 **Required evidence**: `tests/integration/game-state-scene-flow/scene_manager_test.gd` — must exist and all tests pass; plus AC-08 manual walkthrough doc at `production/qa/evidence/scene-manager-hud-walkthrough.md`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — see Completion Notes
 
 ---
 

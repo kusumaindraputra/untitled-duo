@@ -153,7 +153,7 @@ func _get_current_hp(target: Node) -> float:
 **Story Type**: Logic
 **Required evidence**: `tests/unit/health-damage/apply_damage_pipeline_test.gd` — must pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — see Completion Notes
 
 ---
 

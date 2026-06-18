@@ -118,7 +118,7 @@ Key decisions:
 **Required evidence**: `production/qa/evidence/sprint-5-prana-visuals-evidence.md` — screenshot/screen-recording per type + discoverability test result (ADVISORY gate)
 **Automated test**: `tests/unit/spell-casting-effects/sce_visual_routing_test.gd` — must pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — see Completion Notes
 
 ---
 

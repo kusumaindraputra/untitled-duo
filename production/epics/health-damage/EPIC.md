@@ -3,7 +3,7 @@
 > **Layer**: Core
 > **GDD**: design/gdd/health-damage.md
 > **Architecture Module**: `src/systems/health_and_damage.gd` (Autoload #6)
-> **Status**: Ready
+> **Status**: Complete
 > **Stories**: 5 stories created 2026-05-31
 
 ## Overview

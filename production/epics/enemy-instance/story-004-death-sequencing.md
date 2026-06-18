@@ -144,7 +144,7 @@ func _physics_process(delta: float) -> void:
 **Required evidence**: `tests/unit/enemy-instance/death_sequencing_test.gd` — must pass headless
 *(Note: Visual/Feel aspects of death animation (frames, timing) tested in Story 006)*
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — see Completion Notes
 
 ---
 

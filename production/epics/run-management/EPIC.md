@@ -3,7 +3,7 @@
 > **Layer**: Feature
 > **GDD**: design/gdd/run-management.md
 > **Architecture Module**: `src/systems/run_manager.gd`
-> **Status**: Ready
+> **Status**: Complete
 > **Stories**: 2 stories created 2026-06-06
 
 ## Overview

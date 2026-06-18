@@ -141,7 +141,7 @@ func force_end_iframe_window() -> void:
 **Story Type**: Logic
 **Required evidence**: `tests/unit/health-damage/iframe_window_test.gd` — must pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — see Completion Notes
 
 ---
 

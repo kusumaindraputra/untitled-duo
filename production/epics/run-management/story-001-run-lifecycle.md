@@ -1,7 +1,7 @@
 # Story 001: RunManager Autoload — Run Lifecycle and get_run_data()
 
 > **Epic**: RunManagement
-> **Status**: Done
+> **Status**: Complete
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: ~1.5 hours

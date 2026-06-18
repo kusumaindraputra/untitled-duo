@@ -185,7 +185,7 @@ static func slot_col(index: int) -> int:
 **Story Type**: Logic
 **Required evidence**: `tests/unit/prana-grid/prana_grid_phase_gating_test.gd` — must exist and pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — see Completion Notes
 
 ---
 

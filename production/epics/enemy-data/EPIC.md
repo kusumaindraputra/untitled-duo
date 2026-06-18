@@ -3,7 +3,7 @@
 > **Layer**: Foundation
 > **GDD**: design/gdd/enemy-data.md
 > **Architecture Module**: EnemyCatalog
-> **Status**: Ready
+> **Status**: Complete
 > **Stories**: 3 stories
 
 ## Stories

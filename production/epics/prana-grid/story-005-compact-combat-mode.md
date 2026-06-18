@@ -158,7 +158,7 @@ func _update_compact_dots() -> void:
 **Required evidence**: `production/qa/evidence/sprint-5-compact-grid-evidence.md` + screenshot (ADVISORY)
 **Automated tests**: `tests/unit/prana-grid/prana_grid_compact_test.gd` — must pass headless
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — see Completion Notes
 
 ---
 
