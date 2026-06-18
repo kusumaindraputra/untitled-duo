@@ -1,9 +1,8 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/player_controller.gd" id="1_pc"]
 [ext_resource type="Script" path="res://src/scenes/debug_circle_2d.gd" id="2_dbg"]
 [ext_resource type="Script" path="res://src/characters/iso_character.gd" id="3_iso"]
-[ext_resource type="Script" path="res://src/gameplay/spell_vfx.gd" id="4_vfx"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_1"]
 radius = 8.0
@@ -26,8 +25,9 @@ script = ExtResource("2_dbg")
 radius = 8.0
 color = Color(1, 1, 1, 1)
 
-[node name="SpellVFX" type="Node2D" parent="."]
-script = ExtResource("4_vfx")
+[node name="SpellVFX" type="AnimatedSprite2D" parent="."]
+visible = false
+centered = true
 
 [node name="Camera2D" type="Camera2D" parent="."]
 zoom = Vector2(2, 2)

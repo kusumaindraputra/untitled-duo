@@ -141,6 +141,68 @@ func test_swarmer_orbit_angle_advances_per_frame() -> void:
 	assert_float(swarmer._swarmer_angle).is_equal_approx(expected, 0.001)
 
 
+# ── AC-LG-07: RUSHER impact detection — charge ends on contact ─────────────────
+
+## GIVEN RUSHER in CHARGING phase (phase 2), Fayde in HitArea contact
+## WHEN _physics_process is called
+## THEN _rusher_phase transitions to COOLDOWN (3) and velocity is away from Fayde
+func test_rusher_charging_ends_early_on_fayde_contact() -> void:
+	var rusher := _make_enemy(GameEnums.EnemyArchetype.RUSHER)
+	auto_free(rusher)
+	rusher.global_position = Vector2.ZERO
+	rusher._fayde_ref = _make_fayde_at(Vector2(30.0, 0.0))
+	auto_free(rusher._fayde_ref)
+	rusher._rusher_phase = 2  # CHARGING
+	rusher._rusher_timer = 999.0  # won't expire on its own
+	rusher._rusher_charge_dir = Vector2.RIGHT
+	rusher._fayde_in_contact = true  # simulating body_entered signal
+
+	rusher._physics_process(DELTA)
+
+	# Must transition to COOLDOWN immediately.
+	assert_int(rusher._rusher_phase).is_equal(3)
+	# Recoil: velocity must push away from Fayde (who is to the right, velocity.x < 0).
+	assert_float(rusher.velocity.x).is_less(0.0)
+
+
+## GIVEN RUSHER in CHARGING phase, NOT in contact with Fayde
+## WHEN _physics_process is called (timer won't expire)
+## THEN _rusher_phase stays 2 (CHARGING)
+func test_rusher_charging_persists_without_fayde_contact() -> void:
+	var rusher := _make_enemy(GameEnums.EnemyArchetype.RUSHER)
+	auto_free(rusher)
+	rusher.global_position = Vector2.ZERO
+	rusher._fayde_ref = _make_fayde_at(Vector2(200.0, 0.0))
+	auto_free(rusher._fayde_ref)
+	rusher._rusher_phase = 2
+	rusher._rusher_timer = 999.0
+	rusher._rusher_charge_dir = Vector2.RIGHT
+	rusher._fayde_in_contact = false
+
+	rusher._physics_process(DELTA)
+
+	assert_int(rusher._rusher_phase).is_equal(2)
+
+
+## GIVEN RUSHER in CHARGING phase, NO contact, timer expires
+## WHEN _physics_process is called
+## THEN _rusher_phase transitions to COOLDOWN (3) normally
+func test_rusher_charging_completes_on_timer_expiry() -> void:
+	var rusher := _make_enemy(GameEnums.EnemyArchetype.RUSHER)
+	auto_free(rusher)
+	rusher.global_position = Vector2.ZERO
+	rusher._fayde_ref = _make_fayde_at(Vector2(200.0, 0.0))
+	auto_free(rusher._fayde_ref)
+	rusher._rusher_phase = 2
+	rusher._rusher_timer = DELTA  # expires this frame
+	rusher._rusher_charge_dir = Vector2.RIGHT
+	rusher._fayde_in_contact = false
+
+	rusher._physics_process(DELTA)
+
+	assert_int(rusher._rusher_phase).is_equal(3)
+
+
 # ── Preparation reset: RUSHER phase resets to APPROACH ───────────────────────
 
 ## GIVEN RUSHER in mid-charge (phase 2)

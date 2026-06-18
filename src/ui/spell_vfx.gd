@@ -121,9 +121,17 @@ func _on_spell_hit_element(target: Node, prana_type_id: int) -> void:
 	_start_shake(amplify)
 
 
-## FP stub — MVP: flash Fayde cast-lock indicator for lock_duration.
+## Tints Fayde blue-grey for _lock_duration seconds to signal post-hit movement dampening.
+## Uses color tween (alpha stays 1.0) so PlayerController alpha-reset does not interfere.
 func _on_cast_hit_started(_lock_duration: float) -> void:
-	pass
+	if get_tree() == null:
+		return
+	var player: Node = get_tree().get_first_node_in_group(&"player")
+	if player == null or not player is CanvasItem:
+		return
+	var tween: Tween = create_tween()
+	tween.tween_property(player as CanvasItem, "modulate", Color(0.7, 0.7, 1.1, 1.0), 0.0)
+	tween.tween_property(player as CanvasItem, "modulate", Color.WHITE, _lock_duration)
 
 
 ## Tracks chain state so _on_spell_hit_element can detect and amplify the final attack.

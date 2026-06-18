@@ -126,27 +126,30 @@ func _input(event: InputEvent) -> void:
 		_cursor_visible = false
 		if _gamepad_cursor != null:
 			_gamepad_cursor.visible = false
+	# Motion events have no "just pressed" state — skip all action checks.
+	if event is InputEventMouseMotion or event is InputEventJoypadMotion:
+		return
 	# Keyboard confirm bypass — works regardless of _cursor_visible (Enter key via debug_game_loop).
-	if _state == State.ARRANGEMENT and event.is_action_just_pressed(&"prana_confirm"):
+	if _state == State.ARRANGEMENT and Input.is_action_just_pressed(&"prana_confirm"):
 		_on_confirm_pressed()
 		return
 	if not (_cursor_visible and _state == State.ARRANGEMENT):
 		return
-	if event.is_action_just_pressed(&"ui_left"):
+	if Input.is_action_just_pressed(&"ui_left"):
 		_navigate_gamepad(Vector2i(-1, 0))
-	elif event.is_action_just_pressed(&"ui_right"):
+	elif Input.is_action_just_pressed(&"ui_right"):
 		_navigate_gamepad(Vector2i(1, 0))
-	elif event.is_action_just_pressed(&"ui_up"):
+	elif Input.is_action_just_pressed(&"ui_up"):
 		_navigate_gamepad(Vector2i(0, -1))
-	elif event.is_action_just_pressed(&"ui_down"):
+	elif Input.is_action_just_pressed(&"ui_down"):
 		_navigate_gamepad(Vector2i(0, 1))
-	elif event.is_action_just_pressed(&"prana_type_cycle"):
+	elif Input.is_action_just_pressed(&"prana_type_cycle"):
 		_cycle_selected_type()
-	elif event.is_action_just_pressed(&"prana_place"):
+	elif Input.is_action_just_pressed(&"prana_place"):
 		_gamepad_place()
-	elif event.is_action_just_pressed(&"prana_clear"):
+	elif Input.is_action_just_pressed(&"prana_clear"):
 		_gamepad_clear()
-	elif event.is_action_just_pressed(&"prana_confirm"):
+	elif Input.is_action_just_pressed(&"prana_confirm"):
 		_on_confirm_pressed()
 
 

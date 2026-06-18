@@ -22,15 +22,14 @@ extends Node2D
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-## 16 compass directions in counter-clockwise order starting from E (0°).
+## 8 compass directions in counter-clockwise order starting from E (0°).
+## Lords Of Pain convention: E=screen-up, S=screen-right, W=screen-down, N=screen-left
+## (see set_facing for the -PI/2 offset that compensates for this).
 const DIR_KEYS: Array[String] = [
-	"E", "NEE", "NE", "NNE",
-	"N", "NNW", "NW", "NWW",
-	"W", "SWW", "SW", "SSW",
-	"S", "SSE", "SE", "SEE",
+	"E", "NE", "N", "NW", "W", "SW", "S", "SE",
 ]
 
-const DIR_STEP: float = TAU / 16.0  # 22.5°
+const DIR_STEP: float = TAU / 8.0  # 45°
 
 ## Default animation speed (frames per second) for sprite cycles.
 const DEFAULT_FPS: float = 8.0
@@ -95,14 +94,15 @@ func configure(anim_map: Dictionary) -> void:
 
 
 ## Sets the character facing direction from a movement vector.
-## Snaps to the nearest 16-point compass direction.
+## Snaps to the nearest 8-point compass direction.
 func set_facing(direction: Vector2) -> void:
 	if direction.length_squared() < 0.0001:
 		return
-	# Convert Godot Y-down atan2 to compass angle (Y-up).
-	# atan2(-y, x) gives standard math CCW from +X, where +X=E, +Y=N.
-	var angle: float = fposmod(atan2(-direction.y, direction.x), TAU)
-	var idx: int = roundi(angle / DIR_STEP) % 16
+	# Convert Godot Y-down atan2 to compass angle, then offset -90° to match
+	# the Lords Of Pain sprite convention: E=screen-up, S=screen-right,
+	# W=screen-down, N=screen-left (90° CCW from standard compass in screen space).
+	var angle: float = fposmod(atan2(-direction.y, direction.x) - PI / 2.0, TAU)
+	var idx: int = roundi(angle / DIR_STEP) % DIR_KEYS.size()
 	var new_dir: String = DIR_KEYS[idx]
 	if new_dir != _current_dir:
 		_current_dir = new_dir

@@ -2,6 +2,7 @@
 
 *Created: 2026-05-21*
 *Updated: 2026-06-11 — ADR-0001 (Isometric 2D View, Accepted 2026-05-26) applied: top-down perspective replaced with isometric dimetric; sprite height targets updated to 32–48px; tile resolution updated to 64×32px; FFT/Disgaea added as isometric reference (Section 9, Reference 6).*
+*Updated: 2026-06-18 — Full art style overhaul: Lords Of Pain 3D-rendered sprites replaced with HD-2D illustrated approach (Octopath Traveler visual target). Character sprites now 128×256 px illustrated, linear filter. Sprite directions reduced from 16 to 8. Fayde confirmed male. AI production pipeline added (Section 10).*
 *Status: Complete*
 
 > **Art Director Sign-Off (AD-ART-BIBLE)**: Skipped — Lean review mode.
@@ -343,9 +344,10 @@ Every Prana slot displays a small icon that is silhouette-readable without color
 **Archetype direction:** Discoverer, not fighter. Silhouette reads "child carrying something slightly too big for them." Power was inherited, not trained for.
 
 **Proportions:**
-- Chibi-adjacent, not comedic: head-to-body ratio ~1:2.5 at sprite scale. Slightly large head aids expression readability.
-- Compact oval body with one clear vertical accent (tall collar, hood peak, or held rod). This accent is the silhouette anchor distinguishing Fayde from all enemy types.
-- No exaggerated musculature. Slender, slightly uncertain limbs. Power lives in hands and mind.
+- Cool stylized, not chibi: head-to-body ratio ~1:4 at sprite scale. Head slightly larger than realistic — reads as "young" without "comedic."
+- Lean, wiry build — not muscular but not frail. The contrast between "looks like a kid, fights like a force of nature" is the player fantasy.
+- One clear vertical accent (tall collar, hood peak, or held focus item) anchoring the silhouette above all enemy types.
+- Fayde is male. Design vocabulary is androgynous-lean but default pronoun is he/him.
 
 **Costume / design vocabulary:**
 - Layered travelling clothes: tunic/shirt beneath a longish coat or robe falling to mid-calf at sprite scale.
@@ -355,13 +357,13 @@ Every Prana slot displays a small icon that is silhouette-readable without color
 
 **All-ages approachability:** Default expression is curious or slightly worried, never aggressive. No sharp silhouette angles except the vertical accent. No realistic weapon silhouettes. No exposed skin beyond face and hands.
 
-**Camera distance readability (isometric dimetric, 32–48px native — non-negotiable):**
-1. Vertical accent (hood/collar peak or held item upright)
-2. Coat/robe hem — single-pixel-wide dark line separating from legs
-3. Face dot cluster — two-pixel eyes minimum
+**Camera distance readability (isometric dimetric, 128×256 px illustrated — non-negotiable):**
+1. Vertical accent (hood/collar peak or held item upright) — readable at 25% scale
+2. Coat/robe hem — clear separation from legs even at small in-game size
+3. Face expression — readable at 50% scale; subtleties are a bonus at full portrait size
 4. Hand position — forward/outward when casting, tucked at idle
 
-All costume detail (pouches, clasps, stitching) exists only in portrait/promo art.
+All fine costume detail (pouches, clasps, stitching) readable at game distance — this is a key advantage of the higher resolution approach over pixel art.
 
 ### 5.2 Enemy Design Rules Per Archetype
 
@@ -440,34 +442,39 @@ The bloom beat is critical. Defeat reads as "transformation or dispersal," not d
 
 **Design for game distance first.** Portrait detail is a bonus, never a driver.
 
-**Two-distance rule:** Every sprite designed for (1) game distance — native res, isometric dimetric camera (~26.57° angle, 2:1 tile ratio per ADR-0001); and (2) portrait/detail distance — 4–8x upscale in menus or promo art. Details that only read at portrait distance must not drive the game-distance silhouette.
+**Two-distance rule:** Every sprite designed for (1) game distance — displayed in-scene at ~50% of native resolution, isometric dimetric camera (~26.57° angle, 2:1 tile ratio per ADR-0001); and (2) portrait/detail distance — full-res in menus or promo art.
 
-**Target sprite resolutions:**
+**Sprite direction count: 8 directions** — N, NE, E, SE, S, SW, W, NW. 16-direction production is deferred (too costly for solo dev at this resolution). 8-direction is the Hades standard and sufficient for the movement system.
 
-All sprites are drawn from the isometric dimetric angle (~26.57°). Heights below are measured vertically in screen space, consistent with the 32–48px sprite target from ADR-0001. Validate silhouette readability against a 64×32px floor tile before art production begins (Reference 6).
+**Target sprite resolutions (HD-2D illustrated — not pixel art):**
 
-| Entity | Native Sprite Size |
-|--------|-------------------|
-| Fayde (The Cipher) | 16×32 px |
-| Drifter | 16×24 px |
-| Charger | 12×32 px |
-| Cluster | 24×32 px |
-| Boss | 48×64 px |
+All sprites rendered from the isometric dimetric angle (~26.57°). Validate silhouette readability against a 64×32px floor tile before art production begins (Reference 6).
 
-All sprites snap to an 8px position grid.
+| Entity | Native Sprite Size | In-Scene Display |
+|--------|--------------------|-----------------|
+| Fayde (The Cipher) | 128×256 px | ~64×128 px at 0.5× scale |
+| Drifter | 64×96 px | ~48×72 px |
+| Charger | 48×128 px | ~36×96 px |
+| Cluster | 96×128 px | ~72×96 px |
+| Boss | 192×256 px | fills arena visual anchor |
 
 **Must read at game distance (non-negotiable):**
 - Fayde: vertical accent, coat/leg boundary, hand position
 - Drifter: horizontal spread wider than player, soft edge
-- Charger: taller than wide, ≥2 visible spike angles, hard edges
+- Charger: taller than wide, visible spike silhouette
 - Cluster: distinct core circle + ≥2 orbiting shapes with visible gap
 - Boss: no axis of symmetry, broken-Prana mark as darker central shape
 
-**Pixel art rendering rules:**
+**Illustrated rendering rules (character sprites):**
+- Anti-aliasing permitted — these are illustrated sprites, not pixel art.
+- Bold outline: 2–3px, color = darkened version of dominant sprite color. Keeps sprites readable against the environment.
+- Shadow: flat shadow ellipse beneath each entity. No dynamic lighting on character sprite layers — lighting lives in the environment layer.
+- No strict palette cap — but keep color count restrained (≤16 per character) for visual consistency across 8 directions.
+
+**Tile rendering rules (environment only — unchanged):**
 - No anti-aliasing. Hard pixel boundaries.
-- Palette limit: player = 8 colors max (incl. transparency), standard enemy = 6 colors, boss = 12 colors.
-- Outline: 1px, color = darkened version of dominant sprite color (~30% luminance of base). Not black — keeps sprites from looking pasted onto the background.
-- Shadow: flat shadow ellipse beneath each entity (2px opacity blob). No dynamic lighting on sprite layers — lighting lives in the environment layer.
+- Palette limit: E1–E7 only per tile.
+- Nearest filter on Godot import (§8.3).
 
 ---
 
@@ -651,8 +658,8 @@ Transitions are measured, not flashy. Dungeon instruments move with purpose.
 
 | Asset Type | Source Format | Export Format | Notes |
 |-----------|--------------|--------------|-------|
-| Sprite sheets | ASEPRITE / layered PSB | PNG (lossless, RGBA) | Never JPEG |
-| Tileset textures | ASEPRITE / layered | PNG (lossless) | 16×16 px per tile |
+| Character sprites | Midjourney → Krita (cutout + cleanup) | PNG (lossless, RGBA) | Never JPEG; one file per direction per animation state |
+| Tileset textures | ASEPRITE / layered | PNG (lossless) | 64×32 px isometric tile; pixel art workflow |
 | UI elements | ASEPRITE / layered | PNG (lossless, RGBA) | Premultiplied alpha off |
 | Background / parallax art | Layered | PNG (lossless) | Separate from interactive layers |
 | Music | DAW project | OGG Vorbis (quality 6–7) | Godot's native streaming format |
@@ -692,13 +699,15 @@ assets/
 
 **Non-negotiable — verify on every imported texture:**
 
-| Setting | Required Value | Reason |
-|---------|---------------|--------|
-| Filter | **Nearest** | Linear = blurred pixels; destroys pixel art |
-| Mipmaps | **Off** | Mipmaps + Nearest creates visible artifacts at non-native scale |
-| Compress | **Lossless** (or VRAM Lossless) | Lossy compression degrades Prana jewel-tone precision |
-| Repeat | **Off** (unless tile explicitly repeats) | Prevents edge bleeding |
-| sRGB | **Enabled** for color textures | Correct color space for jewel tones |
+**Two import profiles — apply by asset type:**
+
+| Setting | Character Sprites | Environment Tiles | Reason |
+|---------|------------------|-------------------|--------|
+| Filter | **Linear** | **Nearest** | Linear for illustrated art; Nearest preserves pixel tile edges |
+| Mipmaps | **Off** | **Off** | Both: visible artifacts at non-native scale |
+| Compress | **Lossless** | **Lossless** | Lossy degrades jewel-tone precision |
+| Repeat | **Off** | **Off** (unless explicit tileable) | Prevents edge bleed |
+| sRGB | **Enabled** | **Enabled** | Correct color space throughout |
 
 **Atlas policy:** Character animation sprites packed into SpriteFrames atlas. Sprites sharing a draw-call context share a texture atlas (e.g., all 5 Prana particle types in one VFX atlas). Required to stay within the 200 draw-call budget.
 
@@ -735,21 +744,21 @@ assets/
 
 (Complements Section 5.4 LOD Philosophy)
 
-| Entity | Native Size | Atlas Policy | Palette Cap |
-|--------|-------------|--------------|-------------|
-| Fayde | 16×32 px | Player atlas | 8 colors |
-| Enemy Drifter | 16×24 px | Enemy atlas (all standard enemies) | 6 colors |
-| Enemy Charger | 12×32 px | Enemy atlas | 6 colors |
-| Enemy Cluster | 24×32 px | Enemy atlas | 6 colors |
-| Boss (Warped Warden) | 48×64 px | Boss-solo atlas | 12 colors |
-| Prana particles | ≤ 16×16 px per frame | VFX atlas (per Prana type) | 4 colors |
-| UI elements | Powers of 2, ≤ 256 px | UI atlas | Full palette (no cap) |
-| Environment tiles | 64×32 px | Per-tier tileset atlas | 7 colors (E1–E7) |
+| Entity | Native Size | Atlas Policy | Notes |
+|--------|-------------|--------------|-------|
+| Fayde | 128×256 px | Player atlas | Illustrated; linear filter |
+| Enemy Drifter | 64×96 px | Enemy atlas (all standard enemies) | Illustrated; linear filter |
+| Enemy Charger | 48×128 px | Enemy atlas | Illustrated; linear filter |
+| Enemy Cluster | 96×128 px | Enemy atlas | Illustrated; linear filter |
+| Boss (Warped Warden) | 192×256 px | Boss-solo atlas | Illustrated; linear filter |
+| Prana particles | ≤ 32×32 px per frame | VFX atlas (per Prana type) | Pixel art OK for VFX; Nearest filter |
+| UI elements | Powers of 2, ≤ 256 px | UI atlas | Full palette; linear filter |
+| Environment tiles | 64×32 px | Per-tier tileset atlas | Pixel art; Nearest filter; E1–E7 only |
 
-**Pixel art rendering rules (from Section 5.4):**
-- No anti-aliasing anywhere — hard pixel boundaries
-- 1px outline per sprite: darkened version of dominant sprite color (~30% luminance), not black
-- Flat shadow ellipse beneath entities (2px opacity blob) — no dynamic lighting on sprite layers
+**Rendering rules (from Section 5.4):**
+- Character sprites: anti-aliasing allowed, linear filter, bold 2–3px outline
+- Environment tiles: no anti-aliasing, Nearest filter, 1px darkened outline
+- Flat shadow ellipse beneath all entities — no dynamic lighting on sprite layers
 
 ---
 
@@ -767,9 +776,13 @@ Five references. Each specifies exactly what to take, what to avoid, and the dis
 - Atmospheric depth through layer separation — foreground action stays vivid; background breathes with haze and diffusion.
 
 **What to avoid:**
-- The HD-2D 3D depth and parallax technique — we are flat 2D on the Compatibility renderer.
 - Baroque, ornate UI frames and heavy chrome — The Last Cipher's UI is practical dungeon-artifact styling.
 - Character-driven cutscene narrative structure — our world breathes through environmental fragments.
+- Octopath's specific character proportions (stocky heroic adult) — Fayde is lean, young, stylized cool.
+
+**What to embrace (revised from earlier "avoid"):**
+- The HD-2D visual hierarchy: illustrated character sprites that feel brighter and more alive than the world around them. The background environment stays muted and atmospheric; Fayde and Prana effects own all the visual energy. This IS the technique.
+- Layer depth through CanvasModulate tinting on background layers (simulate atmospheric haze without a 3D engine).
 
 **Rule:** The environment is negative space. Prana effects and Fayde are the signal.
 
@@ -779,7 +792,7 @@ Five references. Each specifies exactly what to take, what to avoid, and the dis
 
 **What to take:**
 - "Something ancient was here" environmental language — sparse props, readable silhouettes, a world with history that never explains itself outright. The player constructs meaning from visual evidence.
-- Protagonist-as-glowing-anomaly: the Drifter's bright outline stands out from everything around them. Fayde should achieve this via her Prana-cast glow — the only saturated presence in the arena when no spell is being cast.
+- Protagonist-as-glowing-anomaly: the Drifter's bright outline stands out from everything around them. Fayde should achieve this via his Prana-cast glow — the only saturated presence in the arena when no spell is being cast.
 - Zone color temperature shifts that establish location without a map marker or text label.
 
 **What to avoid:**
@@ -830,14 +843,14 @@ Five references. Each specifies exactly what to take, what to avoid, and the dis
 **What to take:**
 - Expressiveness at micro resolution: Madeline's sprite is small but emotional state reads in every pose. Fayde must meet this bar — every animation frame carries meaning.
 - Accessible visual feedback for success/failure — no ambiguity about what just happened. Celeste's defeat sequence (bloom → dissolve) is clear, fast, and age-appropriate. Directly models our 3-stage defeat protocol (Section 5.3).
-- "Small sprite, full personality" pixel art philosophy: exaggeration in service of readability.
+- "Small sprite, full personality" philosophy: at game display size, every pose must carry meaning even at 50% of native resolution. The principle scales — exaggeration in service of readability holds at any resolution.
 
 **What to avoid:**
 - Platformer spatial logic — not relevant to top-down.
 - Pink/pastel palette — lighter and more cheerful than our aesthetic target.
 - Fast-restart death loop — roguelike run loss has different emotional weight; our defeat sequence is longer and more deliberate.
 
-**Rule:** At 16px, every animation frame is a word. Write precisely.
+**Rule:** At game distance, every animation frame is a word. Write precisely.
 
 ---
 
@@ -853,8 +866,97 @@ Five references. Each specifies exactly what to take, what to avoid, and the dis
 
 **What to avoid:**
 - FFT's specific art aesthetic (Western-fantasy armour, painted portrait cutscenes) — The Last Cipher uses its own environment and character vocabulary from this art bible.
-- Disgaea's extreme chibi proportions (head-to-body ratio closer to 1:1) — our target is the 1:2.5 ratio specified in Section 5.1.
+- Disgaea's extreme chibi proportions (head-to-body ratio closer to 1:1) — our target is the 1:4 ratio specified in Section 5.1 (cool stylized, not chibi).
 - Chess-grid tactical room layouts — our dungeon is irregular organic stone (Section 6.3), not symmetric tactical maps.
 - FFT's high-contrast blue sky / outdoor lighting — our palette is dungeon earth tones (E1–E7) with jewel-tone magic.
 
-**Rule:** 64×32px floor tile + 32–48px character height is the proven readable isometric ratio. Ground-contact shadow is mandatory — it is what makes characters read as *on* the floor rather than *above* it.
+**Rule:** 64×32px floor tile + character displayed at ~64–128px in-scene height is the readable isometric ratio for HD-2D illustrated style. Ground-contact shadow is mandatory — it is what makes characters read as *on* the floor rather than *above* it.
+
+---
+
+## 10. AI Production Pipeline (HD-2D Illustrated)
+
+*Added 2026-06-18 — replaces Aseprite-only workflow for character sprites.*
+
+### 10.1 Philosophy
+
+AI generation (Midjourney) handles concept art and direction reference. Final sprites are AI-generated images cleaned up in Krita. This is a legitimate production pipeline for illustrated (non-pixel) character art in a solo-dev project.
+
+Environment tiles remain hand-authored pixel art in Aseprite — AI generation is not appropriate for tile-based pixel art that must snap to a strict grid and palette.
+
+### 10.2 Character Sprite Workflow
+
+**Step 1 — Establish Fayde's Design Sheet**
+
+Generate a character concept sheet in Midjourney before producing any directional sprites. Lock the design before generating 8 directions.
+
+```
+Prompt template:
+character concept sheet, boy age 10-12, futuristic underground scrap yard,
+dark hair, layered practical clothing (tunic + long coat), glowing teal energy
+in hands, front view + 3/4 view + side view, white background,
+2D illustrated game art style, Octopath Traveler proportions, clean lineart,
+anime-adjacent, cel-shaded, --ar 16:9
+```
+
+**Step 2 — Lock the Design**
+Select one generation. Save as `assets/art/characters/fayde/fayde_reference.png`. This is the canonical design. All future generations must match it.
+
+**Step 3 — Generate 8 Directional Sprites**
+Use Midjourney's `--cref [URL of fayde_reference.png]` (Character Reference) to maintain consistency across all 8 directions.
+
+Direction order to generate: E (facing right), NE, N (facing up/away), NW, W (facing left), SW, S (facing toward camera), SE.
+
+```
+Prompt template per direction:
+[character description from Step 1], [direction] view,
+walking pose, full body, white background, same character as reference,
+2D illustrated game art, clean lineart, --cref [ref_url] --cw 80
+```
+
+**Step 4 — Cutout and Cleanup (Krita)**
+1. Open generated image in Krita
+2. Use `Contiguous Selection` + `Grow Selection` to isolate character from white background
+3. Add alpha channel, delete background
+4. Adjust levels if color drift from reference
+5. Export as PNG lossless RGBA
+
+**Step 5 — Sprite Assembly**
+Load cutout into Godot AnimatedSprite2D / IsoCharacter node. Verify:
+- Ground contact shadow is drawn separately as a Polygon2D beneath the sprite
+- Scale in-scene to ~50% of native resolution (128px sprite → ~64px in-scene)
+- Check silhouette readability at game camera zoom (1.5×)
+
+### 10.3 Animation States Per Character
+
+For the MVP, generate these animation states for Fayde:
+
+| State | Frames per Direction | Notes |
+|-------|---------------------|-------|
+| idle | 2–3 | Subtle sway, weight shift |
+| walk | 4 | Coat trail on frame 3 |
+| cast | 3 | Wind-up → release → recovery |
+| hit | 2 | Body contracts inward |
+| defeat | 3 | Crumple → freeze (bloom + dissolve is code-driven) |
+
+Total: 8 directions × 5 states × ~3 frames avg = ~120 images. Generate in batches per state.
+
+### 10.4 Consistency Checklist (per direction batch)
+
+Before committing sprites to the project:
+- [ ] Same hair color and style across all 8 directions
+- [ ] Same coat length and silhouette
+- [ ] Prana glow color consistent (teal — matches Prana color system)
+- [ ] Ground-contact point at the same pixel position relative to sprite bottom
+- [ ] Outline weight visually consistent across directions
+
+If a direction fails the checklist, re-generate that direction with stronger `--cref` weight (`--cw 90`).
+
+### 10.5 Tools
+
+| Tool | Role | Cost |
+|------|------|------|
+| Midjourney v6+ | Generation | Paid subscription |
+| Krita | Cutout, cleanup, frame tweaks | Free |
+| Aseprite | Environment tiles only | One-time purchase |
+| Godot AnimatedSprite2D + IsoCharacter.gd | Assembly + playback | Free (engine) |

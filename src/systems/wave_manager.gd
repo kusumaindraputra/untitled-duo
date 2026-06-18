@@ -316,8 +316,12 @@ func _show_wave_preview() -> void:
 
 
 ## Frees all preview nodes created by _show_wave_preview().
+## Uses remove_child() + free() (synchronous) instead of queue_free() (deferred)
+## so that get_child_count() reflects the true child count immediately after this
+## call returns. Required for deterministic integration test assertions.
 func _clear_wave_preview() -> void:
 	for node: Node2D in _preview_nodes:
 		if is_instance_valid(node):
-			node.queue_free()
+			remove_child(node)
+			node.free()
 	_preview_nodes.clear()

@@ -1,0 +1,38 @@
+[gd_scene format=3 uid="uid://bh7nk4rqavx2m"]
+
+[ext_resource type="Script" uid="uid://d4fn6m8kp2qw3" path="res://src/scenes/training_room.gd" id="1_tr"]
+[ext_resource type="PackedScene" path="res://src/scenes/CombatHUD.tscn" id="2_hud"]
+[ext_resource type="PackedScene" path="res://src/scenes/IsometricRoom.tscn" id="3_room"]
+[ext_resource type="PackedScene" path="res://src/scenes/PlayerController.tscn" id="4_player"]
+
+[node name="TrainingRoom" type="Node" unique_id=1497514341]
+script = ExtResource("1_tr")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1833961860]
+process_mode = 3
+layer = 10
+
+[node name="CombatHUD" parent="CanvasLayer" unique_id=505281393 instance=ExtResource("2_hud")]
+layout_mode = 3
+anchors_preset = 0
+
+[node name="TrainingLabel" type="Label" parent="CanvasLayer" unique_id=2070136094]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -200.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 72.0
+grow_horizontal = 0
+grow_vertical = 0
+text = "TRAINING ROOM
+Tab — re-edit prana
+R — reload scene"
+horizontal_alignment = 2
+
+[node name="SubSceneRoot" type="Node2D" parent="." unique_id=1019472388]
+
+[node name="IsometricRoom" parent="SubSceneRoot" unique_id=592974883 instance=ExtResource("3_room")]
+
+[node name="PlayerController" parent="." unique_id=1588085355 instance=ExtResource("4_player")]

@@ -11,9 +11,9 @@ script = ExtResource("1_ei")
 script = ExtResource("3_iso")
 base_path = "res://assets/art/characters/skeleton/"
 sprite_scale = Vector2(1.5, 1.5)
+visible = false
 
 [node name="DebugCircle" type="Node2D" parent="."]
 script = ExtResource("2_dbg")
 radius = 8.0
 color = Color(1, 0.2, 0.2, 1)
-visible = false

@@ -100,11 +100,11 @@ const ASHFIRE_CAST_LOCK_DURATION: float = 0.20
 const COMBO_CONTINUATION_WINDOW: float = 2.0
 
 ## Base knockback distance in pixels per hit. Multiplied by tier_attack_modifier.
-## Tuning knob: safe range 4–20. At 12, Ashfire T3 eruption pushes 12×1.50=18px.
-const KNCKBACK_BASE: float = 12.0
+## Tuning knob: 60 gives ~1 character-width slide; T3 eruption pushes 60×1.50=90px.
+const KNCKBACK_BASE: float = 60.0
 
 ## Maximum knockback distance in pixels (hard cap regardless of modifier).
-const KNCKBACK_MAX: float = 20.0
+const KNCKBACK_MAX: float = 90.0
 
 ## Input buffer window in seconds — early SPACE press within this window still fires.
 const INPUT_BUFFER_WINDOW: float = 0.15
@@ -420,7 +420,8 @@ func _apply_knockback(target: Node, tier_mod: float) -> void:
 	var distance: float = minf(KNCKBACK_BASE * tier_mod, KNCKBACK_MAX)
 	if distance <= 0.0:
 		return
-	var dir: Vector2 = target.global_position.direction_to(_fayde_ref.global_position) if target is Node2D \
+	# Direction FROM Fayde TO target = away from Fayde. direction_to gives from→to vector.
+	var dir: Vector2 = _fayde_ref.global_position.direction_to(target.global_position) if target is Node2D \
 		else Vector2.RIGHT
 	# Duck-type: call apply_knockback if the method exists (works for EnemyInstance, DummyEnemy, MockEnemy).
 	if target.has_method(&"apply_knockback"):
