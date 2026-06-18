@@ -448,10 +448,10 @@ func _on_combat_started(_is_boss: bool) -> void:
 ## Rejects payloads with primary_type == -1 via push_error — stays IDLE.
 func _on_combo_resolved(spell_effect: SpellEffect) -> void:
 	if spell_effect == null:
-		push_error("SpellCastingEffects: combo_resolved received null SpellEffect. Staying IDLE.")
+		push_warning("SpellCastingEffects: combo_resolved received null SpellEffect. Staying IDLE.")
 		return
 	if spell_effect.primary_type == GameEnums.DamageClass.NONE:
-		push_error("SpellCastingEffects: combo_resolved received invalid SpellEffect (primary_type == NONE). Staying IDLE.")
+		push_warning("SpellCastingEffects: combo_resolved received invalid SpellEffect (primary_type == NONE). Staying IDLE.")
 		return
 	# Allow through if _in_combat (set by SCE's own handler) OR if GSM is already
 	# in COMBAT_PHASE. The latter handles the case where CR fires combo_resolved

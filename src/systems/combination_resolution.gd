@@ -189,7 +189,7 @@ func _resolve(fragments: Array) -> SpellEffect:
 	# Determine primary type from centre slot.
 	var centre: PranaFragment = fragments[4] if fragments.size() > 4 else null
 	if centre == null:
-		push_error("CombinationResolution: slot 4 is null — cannot resolve primary type")
+		push_warning("CombinationResolution: slot 4 is null — cannot resolve primary type")
 		effect.primary_type = -1
 		return effect
 
