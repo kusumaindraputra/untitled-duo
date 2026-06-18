@@ -579,9 +579,7 @@ Two permanent zones, one conditional zone:
 │  [HEALTH BAR ──────────]      [WAVE COUNTER · · · ]  │  ← Top strip (permanent)
 │                                                       │
 │                  GAME WORLD                           │
-│                                       ┌────────────┐  │
-│                           [WAVE PEEK  │            │  │  ← Right panel (prep phase only)
-│                             PANEL]   └────────────┘  │
+│                                                       │
 │  [STATUS EFFECTS ○○○○]          [PRANA GRID PANEL]   │  ← Bottom strip (permanent)
 └──────────────────────────────────────────────────────┘
 ```
@@ -594,20 +592,18 @@ Two permanent zones, one conditional zone:
 
 **Top-right — Wave Counter:** "Wave 2 / 5" label in warm off-white `#D4C9B8` on E1 panel. Small. Enemy type composition of the current wave shown as 8×8 px archetype silhouette icons — no text.
 
-**Conditional — Wave Peek Panel (Preparation Phase only):** Slides in from screen-right at Preparation Phase start; slides out when Combat Phase begins (0.3s transition). Shows upcoming enemies by archetype silhouette + Prana affiliation color per slot. This is the largest single HUD element during Preparation — information is the product of this phase.
-
 ### 7.3 Typography
 
 No decorative fonts. The UI is Fayde's practical interface with an ancient dungeon.
 
 - **Font type:** Pixel-art bitmap font, 8px base unit. No anti-aliasing, no sub-pixel rendering.
 - **Scale:** 8px or 16px (2× scale) only. No odd intermediate scaling — pixel alignment must be maintained.
-- **Color:** `#D4C9B8` warm off-white for all static labels. Prana colors for value highlights only (damage numbers, elemental labels in Wave Peek).
+- **Color:** `#D4C9B8` warm off-white for all static labels. Prana colors for value highlights only (damage numbers).
 - **Damage numbers:** Float up 8–12 px from sprite center, fade over 0.5s. Color = casting Prana type. 1.5× scale on critical. Same bitmap font — no decorative numerals.
 
 **Three-level hierarchy only:**
 1. **Screen titles / critical alerts** — 16px: wave clear banner, defeat screen label
-2. **HUD labels / tooltip headers** — 8px at 2× display: Prana type names in Wave Peek
+2. **HUD labels / tooltip headers** — 8px at 2× display: Prana type names in grid selector
 3. **Small counters / durations** — 8px: wave number, status duration ticks
 
 ### 7.4 Iconography Style
@@ -618,7 +614,7 @@ All icons are flat silhouettes: dark icon on color-filled background. No outline
 |-------------|-----------|--------------|-------------|
 | Prana icons in grid | 8×8 px | 16×16 px (2×) | Section 4.5 icon set |
 | Status effect icons | 12×12 px | 12×12 px (1×) | Effect silhouette (snowflake, flame, etc.) |
-| Enemy type in Wave Counter / Wave Peek | 8×8 px | 8×8 px (1×) | Archetype silhouette (flat/tall/orbit) |
+| Enemy type in Wave Counter | 8×8 px | 8×8 px (1×) | Archetype silhouette (flat/tall/orbit) |
 
 **No photorealistic or illustrated icons.** All icons are silhouettes consistent with pixel art register.
 
@@ -628,8 +624,6 @@ Transitions are measured, not flashy. Dungeon instruments move with purpose.
 
 | UI Event | Animation | Duration |
 |----------|-----------|----------|
-| Wave Peek panel enter | Slide from right | 0.3s ease-out |
-| Wave Peek panel exit | Slide to right | 0.3s ease-in |
 | Prana grid dim (combat start) | Fade to 60% opacity | 0.3s (synchronised with ambient dim) |
 | Prana grid brighten (prep start) | Fade to 100% opacity | 0.3s |
 | Status effect applied | Icon drops in from above its slot | 0.2s |
@@ -825,7 +819,7 @@ Five references. Each specifies exactly what to take, what to avoid, and the dis
 *Cited in prototype REPORT.md as the closest mechanical analog to the Preparation Phase.*
 
 **What to take:**
-- Pre-combat information architecture: hand/deck display, enemy intent display. The clarity of "here is what is coming; here is what you have" in one screen before the fight. This is the direct model for our Wave Peek panel (System #13).
+- Pre-combat information architecture: hand/deck display, enemy intent display. The clarity of "here is what is coming; here is what you have" in one screen before the fight — in our game, enemies visible in the arena during Preparation Phase serve this role directly.
 - Color-coded action semantics: color represents category of effect. Maps to Prana-as-color-identity (Sections 2.1 and 4.2).
 - Run summary design: the post-run screen shows the shape of your decisions. Our Run Summary Screen (System #23) should meet this bar.
 

@@ -87,7 +87,6 @@ This system succeeds when a player can describe what they did and why: *"The Clu
 | **Enemy Data** | Reads `PackedScene` references and validates `status = active` before spawning; reads `enemy_type_id` to pass to `init()` | Enemy Data → Wave System |
 | **Enemy AI** | Instantiates and inits each enemy node via `add_child()` + `init(enemy_type_id)`; Enemy AI activates on spawn and handles all behavior | Wave System → Enemy AI (init only) |
 | **Health & Damage** | Listens for `enemy_killed(instance_id, type_id, prana_affiliation)` to decrement `_enemies_alive` | H&D → Wave System |
-| **Wave Peek** (VS) | Wave Peek reads wave composition data from Wave System during `PREPARATION_PHASE` to display the preview panel | Wave System → Wave Peek *(VS scope only)* |
 
 *Specialist agents not consulted — lean mode. Review manually before production.*
 
@@ -192,8 +191,7 @@ This formula is **not implemented at FP**. It is documented here so the Wave Sys
 | # | System | What it needs from Wave System | Bidirectional contract |
 |---|--------|-------------------------------|----------------------|
 | 5 | **Game State & Scene Flow** | `wave_cleared` (more waves remain → PREP), `all_waves_cleared` (final wave done → boss phase), `boss_defeated` (boss done → RUN_SUMMARY) | Wave System is the sole emitter; GS&SF must declare Wave System as a dependency. Signal timing is synchronous — no deferred or async emit. |
-| 6 | **Wave Peek** (#13, VS) | Wave composition data during PREPARATION_PHASE — which enemy types and counts to display in the preview panel | Wave Peek GDD must declare Wave System as a dependency. Interface TBD in Wave Peek GDD. |
-| 7 | **Boss Encounter** (#11, VS) | Wave System provides the boss wave trigger (`combat_started(is_boss: true)`) path and boss win/loss signals | Boss Encounter GDD must declare Wave System and GS&SF as dependencies. |
+| 6 | **Boss Encounter** (#11, VS) | Wave System provides the boss wave trigger (`combat_started(is_boss: true)`) path and boss win/loss signals | Boss Encounter GDD must declare Wave System and GS&SF as dependencies. |
 | 8 | **Run Management** (#17, MVP) | Listens for `wave_ended` (if multi-wave at MVP) and `room_cleared` from GS&SF (downstream of `boss_defeated`) to record run progress | Run Management's dependency is on GS&SF signals, not Wave System signals directly — indirect dependency. |
 | 9 | **Difficulty Tiers** (#20, Alpha) | At Alpha, difficulty modifiers will adjust `WAVE_THREAT_BUDGET` and composition weights — accessed via tuning knob interface | Difficulty Tiers GDD must declare Wave System as a dependency when authored. |
 

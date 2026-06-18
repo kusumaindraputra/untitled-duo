@@ -13,13 +13,13 @@
 
 The Last Cipher's HUD philosophy is **minimal but present**: only what the player must have in peripheral awareness is always visible. The game world owns ≥80% of screen area at all times. The Prana grid and HP bar are the two permanent anchors — everything else appears only when the current phase or game state makes it genuinely necessary.
 
-This philosophy has a direct relationship with the two-phase combat loop. During **Preparation Phase**, the HUD earns its maximum real estate: the Prana grid is the active decision surface, the Wave Peek panel slides in with enemy information, the player is thinking. During **Combat Phase**, the HUD recedes: the grid dims and locks, the Wave Peek disappears, the arena takes over. Floating damage numbers appear transiently above hit targets, then vanish. No element competes with the action.
+This philosophy has a direct relationship with the two-phase combat loop. During **Preparation Phase**, the HUD earns its maximum real estate: the Prana grid is the active decision surface, enemies are visible in the arena at their starting positions, and the player is thinking. During **Combat Phase**, the HUD recedes: the grid dims and locks, the arena takes over. Floating damage numbers appear transiently above hit targets, then vanish. No element competes with the action.
 
 The visual language follows the Art Bible directive: HUD chrome is carved from the same stone as the dungeon — E1 dark fills, E7 warm lantern accents, rounded stone shapes. Not a floating overlay; not a sci-fi readout. An instrument panel built into the dungeon wall, discovered rather than imposed.
 
-**Density covenant:** All permanent HUD elements combined must occupy ≤20% of screen area during Combat Phase. Preparation Phase may use more real estate due to the Wave Peek panel, but the core UI (HP + grid) cannot exceed 20%.
+**Density covenant:** All permanent HUD elements combined must occupy ≤20% of screen area during Combat Phase. Preparation Phase expands the grid with the Type Selector, but the core UI (HP + grid) cannot exceed 20%.
 
-**Scope covenant (First Playable):** At First Playable, the HUD is: HP bar + damage numbers + cast chain dots + Prana grid. Status effect icons and Wave Counter are designed here but deferred to MVP implementation. Wave Peek panel is designed here but implementation follows the Wave/Encounter System epic.
+**Scope covenant (First Playable):** At First Playable, the HUD is: HP bar + damage numbers + cast chain dots + Prana grid. Status effect icons and Wave Counter are designed here but deferred to MVP implementation.
 
 ---
 
@@ -39,8 +39,7 @@ Every piece of information the HUD must communicate during an active run, drawn 
 | 6 | Cast chain dot indicator (position in cast sequence) | Combat HUD, Spell Casting & Effects |
 | 7 | Prana Type Selector — available types for drag/placement | Prana Grid |
 | 8 | Confirm / Clear All action buttons | Prana Grid |
-| 9 | Wave Peek panel — incoming enemy types + elemental affinities | Wave/Encounter System |
-| 10 | Wave Counter (`Wave 2 / 5`) | Art Bible §7 |
+| 9 | Wave Counter (`Wave 2 / 5`) | Art Bible §7 |
 | 11 | Active status effects on Fayde — icon + duration | Status Effects |
 | 12 | Memo companion hints | Game Concept (Core Loop) |
 
@@ -61,8 +60,7 @@ Every piece of information the HUD must communicate during an active run, drawn 
 | 5 | Floating damage numbers | **Contextual** | Combat Phase only — transient, world-space, auto-expire |
 | 6 | Cast chain dots | **Contextual** | Combat Phase only, and only when a spell has been cached by SC&E |
 | 7 | Prana Type Selector + action buttons | **Contextual** | Preparation Phase only — hidden when `combat_started` fires |
-| 8 | Wave Peek panel | **Contextual** | Preparation Phase only — slides in from screen-right at Preparation Phase start; slides out at Combat Phase start |
-| 9 | Wave Counter | **Contextual** | Active run only — visible in top-right from `run_started` to `run_ended`; hidden on Main Menu / Death Screen / Run Summary |
+| 8 | Wave Counter | **Contextual** | Active run only — visible in top-right from `run_started` to `run_ended`; hidden on Main Menu / Death Screen / Run Summary |
 | 10 | Active status effects | **Contextual** | Visible only when ≥1 status effects are active on Fayde; hidden when none are active |
 | 11 | Memo hints | **On Demand** | Screen-edge notification (IP-12) — auto-surfaced by game event, auto-dismisses; never blocks gameplay |
 
@@ -70,9 +68,8 @@ Every piece of information the HUD must communicate during an active run, drawn 
 
 **Scope notes:**
 - Items 5, 6: First Playable scope — specified in Combat HUD GDD.
-- Items 7, 8: First Playable scope — Prana Grid panel and Wave Peek panel.
+- Items 7, 8: First Playable scope — Prana Grid panel and Type Selector.
 - Items 9, 10 (Wave Counter, Status Effects): Designed here; deferred to **MVP implementation** scope.
-- Item 8 (Wave Peek): Designed here; implementation follows **Wave/Encounter System epic**.
 - Item 11 (Memo hints): Designed here; implementation follows **Companion/Narrative epic**.
 
 ---
@@ -88,11 +85,10 @@ PREPARATION PHASE
 ┌───────────────────────────────────────────────────────────────────────┐
 │ [Zone A: HP ████████ 72/100  ● ○ ○]        [Zone B: Wave 2/5 ■■■□□]  │
 │                                                                       │
-│                        GAME WORLD                                     │
-│                  (isometric arena — ≥80%)             ┌────────────┐  │
-│                                                       │  Zone E    │  │
-│                                                       │  Wave Peek │  │
-│ [Zone C: Status ○○○○]   [Zone D: SELECTOR][PRANA GRID]│            │  │
+│                    GAME WORLD (enemies visible at start positions)    │
+│                        (isometric arena — ≥80%)                       │
+│                                                                       │
+│ [Zone C: Status ○○○○]   [Zone D: SELECTOR][PRANA GRID]               │
 └───────────────────────────────────────────────────────────────────────┘
 
 COMBAT PHASE
@@ -114,23 +110,21 @@ COMBAT PHASE
 | B | **Top-right** | Wave Counter (`Wave 2 / 5`) | Active run — from `run_started` to run end (MVP scope) | ~160px × ~40px |
 | C | **Bottom-left** | Active status effect icons + duration rings | Visible when ≥1 effect active on Fayde (MVP scope) | ~96px × ~24px per row; max 4 icons |
 | D | **Bottom-right** | Type Selector (left, Prep only) + Prana Grid (always) | Grid always; Type Selector + Confirm/Clear buttons collapse on `combat_started` | Grid: ≤216×216px; Selector: ~40px wide |
-| E | **Right panel** | Wave Peek (enemy archetypes + elemental affinities) | Preparation Phase only — slides in from screen-right 0.3s ease-out on `preparation_started`; slides out 0.3s ease-in on `combat_started` | ≤288px × up to 60% screen height |
-| F | **World overlay** | Floating damage numbers | Combat Phase — transient, world-space, auto-expire after 0.8s | Per-label ~40×20px; pool cap = 12 |
+| E | **World overlay** | Floating damage numbers | Combat Phase — transient, world-space, auto-expire after 0.8s | Per-label ~40×20px; pool cap = 12 |
 
 ### Footprint Accounting (1920×1080)
 
 | Phase | Active Zones | Est. Screen Coverage |
 |-------|-------------|---------------------|
 | Combat (permanent) | A + B + D (grid only) + C (when active) | ~4–5% |
-| Preparation (maximum) | A + B + C + D (full) + E (Wave Peek) | ~11–12% |
+| Preparation (maximum) | A + B + C + D (full) | ~7–8% |
 
 Both well within the 20% density covenant from HUD Philosophy.
 
 ### Zone Rules
 
 - **Zone A must never overlap Zone D.** These are the two permanent anchors — mutual exclusion is a hard constraint.
-- **Zone E may temporarily overlap Zone D's right edge** during Preparation Phase — accepted at First Playable scope. Zone E must not overlap Zone A (top-left).
-- **Zone F (floating labels) may overlap any zone.** They are world-space transients and appear where hits occur — overlap with the Prana Grid is accepted per Combat HUD GDD §Rule 8.
+- **Zone E (floating labels) may overlap any zone.** They are world-space transients and appear where hits occur — overlap with the Prana Grid is accepted per Combat HUD GDD §Rule 8.
 - **Scale at non-1080p:** Use Godot anchor presets and `CanvasLayer` stretch. No hardcoded pixel positions — all element sizes scale proportionally with viewport size.
 
 ---
@@ -251,25 +245,7 @@ The game's primary decision surface. ≤216×216px for the grid; Type Selector (
 
 ---
 
-### Zone E: Right Panel — Wave Peek *(Preparation Phase only)*
-
-- Slides in from screen-right on `preparation_started`: 0.3s, TRANS_CUBIC / EASE_OUT (per IP Animation Standards).
-- Slides out to screen-right on `combat_started`: 0.3s, TRANS_CUBIC / EASE_IN.
-- Panel width: ≤288px. Height: scales to wave enemy count.
-- Background: E1 Dungeon Stone `#3A3530`, E7 `#8E7358` border accent. Pixel art styled.
-
-**Content per enemy slot:**
-- Archetype silhouette icon (8×8px): Drifter = wide flat shape, Charger = tall narrow spike, Cluster = central circle + orbiting dots.
-- Prana affiliation color band (8px tall) beneath the icon: the enemy's elemental type color from the Prana palette. Neutral-affiliation enemies: E6 Atmosphere Haze `#1B1B22` band (void = no affiliation).
-- No text labels — shape + color band is the complete communication.
-
-**Data contract:** Wave/Encounter System provides the enemy list (archetype + affiliation per slot). This spec defines presentation; Wave/Encounter GDD defines the data. See Open Questions for the unresolved contract.
-
-**Deferred to Wave/Encounter System epic** for implementation.
-
----
-
-### Zone F: World Overlay — Floating Damage Numbers (IP-02) *(Combat Phase only)*
+### Zone E: World Overlay — Floating Damage Numbers (IP-02) *(Combat Phase only)*
 
 - `Label` nodes parented to the HUD `CanvasLayer` (layer 10). Spawned at the hit target's `global_position` converted to viewport coordinates via `get_viewport().get_canvas_transform()`.
 - **Color encoding:**
@@ -292,8 +268,8 @@ All HUD state changes are driven by `GameStateManager` and system signals. The H
 | Signal / Trigger | HUD Changes |
 |---|---|
 | `run_started` | HP bar resets to FAYDE_MAX_HP immediately (no tween). Zone → FULL. Chain dots hidden. All active damage labels freed. Wave Counter appears. Status effect icons clear. |
-| `preparation_started` | Type Selector, Confirm, Clear All appear. Grid resets to 100% opacity, all slots empty. Gamepad cursor resets to slot 0. Wave Peek slides in from screen-right (0.3s TRANS_CUBIC / EASE_OUT). Chain dots hidden. |
-| `grid_locked` + `combat_started` | Type Selector, Confirm, Clear All hide. Grid dims to 70% opacity (IP-09). Gamepad cursor hides. Wave Peek slides out to screen-right (0.3s TRANS_CUBIC / EASE_IN). Chain dots become active (shown on first `chain_index_changed` received). |
+| `preparation_started` | Type Selector, Confirm, Clear All appear. Grid resets to 100% opacity, all slots empty. Gamepad cursor resets to slot 0. Chain dots hidden. |
+| `grid_locked` + `combat_started` | Type Selector, Confirm, Clear All hide. Grid dims to 70% opacity (IP-09). Gamepad cursor hides. Chain dots become active (shown on first `chain_index_changed` received). |
 | `player_hp_zone_changed(CAREFUL)` | HP bar fill and numeric label → amber `#FFA500` (instantaneous transition). Pulse animation stops if active. |
 | `player_hp_zone_changed(DESPERATE)` | HP bar fill and numeric label → red `#FF3333` (instantaneous). Looping scale pulse begins (1.0→1.03→1.0, 0.8s cycle). |
 | `player_hp_zone_changed(FULL)` | HP bar fill and numeric label → warm white `#F5F0E8` / white `#FFFFFF` (instantaneous). Pulse animation stops if active. |
@@ -308,8 +284,8 @@ All HUD state changes are driven by `GameStateManager` and system signals. The H
 
 | Phase | Active Zones | Dominant Visual Element |
 |-------|-------------|------------------------|
-| Preparation | A + B + C (active) + D (full) + E | Prana Grid (decision surface) + Wave Peek |
-| Combat | A + B + C (active) + D (locked) + F (transient) | Game world + floating numbers |
+| Preparation | A + B + C (active) + D (full) | Prana Grid (decision surface) + arena view |
+| Combat | A + B + C (active) + D (locked) + E (transient) | Game world + floating numbers |
 | Run end / menus | None | — |
 
 ---
@@ -326,7 +302,6 @@ All HUD state changes are driven by `GameStateManager` and system signals. The H
 |-------------|---------------|---------|
 | HP bar (A1), chain dots (A3), damage numbers (F) | Display only — no interaction | Same |
 | Wave Counter (B), Status Effects (C) | Display only | Same |
-| Wave Peek panel (E) | Display only — auto-slides on phase signals | Same |
 | **Type Selector (D2)** | 5 draggable token icons — drag initiates IP-05 Drag-and-Drop | Replaced by Type Indicator widget; Left/Right shoulder buttons cycle types (IP-06) |
 | **Grid slots (D1)** | Left-click to drop dragged token onto slot; right-click to remove token; drag-over targets show highlight | D-pad / left stick cursor (IP-07); South button to place; dedicated Remove button (binding: Input Map GDD) |
 | **Confirm button (D3)** | Click or Enter key | South face button (binding: Input Map GDD) |
@@ -348,10 +323,9 @@ No formal accessibility tier has been committed (`design/accessibility-requireme
 | Element | Accessibility Method | Status |
 |---------|---------------------|--------|
 | Prana type tokens (grid + selector) | Icon silhouette (8×8px) + color — mandatory per Art Bible §4.5 | ✓ Covered |
-| Archetype icons (Wave Peek, Wave Counter) | Shape silhouette (Drifter/Charger/Cluster distinctly readable) | ✓ Covered |
+| Archetype icons (Wave Counter) | Shape silhouette (Drifter/Charger/Cluster distinctly readable) | ✓ Covered |
 | Status effect icons | Prana type silhouette shape + color background | ✓ Covered |
 | Damage numbers | Position at hit target is the primary context; color is supplementary | ✓ Covered |
-| Wave Peek | Archetype shape (primary) + affiliation color band (secondary) | ✓ Covered |
 | All interactive elements | Fully reachable via keyboard (arrow keys, Tab, Enter) and gamepad. No hover-only interactions. | ✓ Covered |
 | Screen reader | Not supported at First Playable scope | Known gap — deferred |
 
@@ -388,13 +362,6 @@ THEN HP bar node is visible; bar fill fraction equals `FAYDE_MAX_HP / FAYDE_MAX_
 GIVEN Fayde at HP 45 (FULL zone)
 WHEN `damage_taken` reduces HP to 38 (crossing the 40% CAREFUL threshold)
 THEN HP bar fill color == `#FFA500` (amber) AND numeric label color == `#FFA500` in the same frame — no transition delay
-
-**AC-HUD-S03 [M]** — Wave Peek slides in/out on phase signals within 0.3s
-GIVEN an active run
-WHEN `preparation_started` fires
-THEN Wave Peek panel is fully visible on-screen within 0.3s
-WHEN `combat_started` fires
-THEN Wave Peek panel is fully off-screen within 0.3s
 
 **AC-HUD-S04 [U]** — Type Selector, Confirm, and Clear All are hidden after combat_started
 GIVEN Preparation Phase (Type Selector visible, Confirm + Clear All visible)
@@ -436,16 +403,13 @@ THEN HP bar has visibly pulsed (scale 1.0→1.03→1.0 cycle); pulse stops when 
 
 ## Open Questions
 
-1. **Wave Peek data contract** — The Wave Peek panel displays enemy types + affinities during Preparation. The data source is the Wave/Encounter System, whose GDD is currently "Designed (not Approved)." The data contract (signal name, payload format, timing) must be agreed between Wave/Encounter System GDD and this HUD spec before Wave Peek implementation can begin. *Owner: Wave/Encounter System GDD update. Priority: MVP.*
-
-2. **Accessibility tier not formally defined** — `design/accessibility-requirements.md` does not exist. The pre-production gate check flags accessibility requirements as a blocker. WCAG-AA is the recommended baseline. Run `/gate-check pre-production` to verify whether this remains a blocking issue. *Owner: UX team. Priority: before Vertical Slice.*
+1. **Accessibility tier not formally defined** — `design/accessibility-requirements.md` does not exist. The pre-production gate check flags accessibility requirements as a blocker. WCAG-AA is the recommended baseline. Run `/gate-check pre-production` to verify whether this remains a blocking issue. *Owner: UX team. Priority: before Vertical Slice.*
 
 3. **Input Map GDD not authored** — Several HUD elements defer exact gamepad/keyboard bindings to an Input Map GDD (Confirm button South face, Clear All binding, Remove binding for gamepad). This GDD must be authored before HUD stories can be marked implementation-ready. *Owner: QQ-06 in session state. Priority: before HUD epic implementation sprint.*
 
-4. **Player journey map missing** — `design/player-journey.md` does not exist. HUD decisions (especially zone density philosophy and wave peek content) were made without player journey context. Consider authoring a player journey map after this spec is approved. Template at `.claude/docs/templates/player-journey.md` (if exists). *Owner: UX session.*
+4. **Player journey map missing** — `design/player-journey.md` does not exist. HUD decisions (especially zone density philosophy) were made without player journey context. Consider authoring a player journey map after this spec is approved. Template at `.claude/docs/templates/player-journey.md` (if exists). *Owner: UX session.*
 
 5. **Wave Counter and Status Effects implementation scope** — Items B (Wave Counter) and C (Status Effects) are designed in this spec but deferred to MVP implementation. They are not in the current sprint. When the MVP sprint is planned, these elements need corresponding implementation stories. *Owner: Producer / sprint planning.*
 
 6. **Art director sign-off on HP zone colors** — CAREFUL `#FFA500` (amber) and DESPERATE `#FF3333` (red) are specified in the Combat HUD GDD but require art-director sign-off before production to confirm they are visually distinct from all 5 Prana type colors and from each other. *Owner: art-director review before HUD implementation begins.*
 
-7. **Wave Peek enemy ordering** — This spec says "group same archetype types" as a placeholder. Exact ordering within the panel (e.g., threat level, spawn order, archetype grouping) must be defined when the Wave/Encounter System GDD is approved. *Owner: Wave/Encounter System GDD.*

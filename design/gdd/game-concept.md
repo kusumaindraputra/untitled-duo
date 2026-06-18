@@ -219,7 +219,7 @@ A player who collects them gains everything emotionally.
 
 ### Key Player Behaviors (Emergent)
 
-- Players will study the wave peek before committing to a Prana arrangement
+- Players will read the arena — enemy positions and types visible in Preparation — before committing to a Prana arrangement
 - Players will develop intuitions about elemental matchups and revisit them when enemies change
 - Players will notice Memo's hints accumulating — and start forming theories
 - Players will replay runs specifically to find memory fragments they missed
@@ -246,9 +246,7 @@ A player who collects them gains everything emotionally.
 Every room runs as two distinct phases:
 
 **Preparation Phase (5–15 sec):**
-Wave peek activates → Fayde sees enemy types, their current elemental affinity this
-wave, and obstacle positions → drag Prana types into the 3×3 grid to exploit
-weaknesses → confirm and begin combat.
+Enemies are visible in the arena in their starting positions → Fayde reads enemy types, their elemental affinities, and obstacle positions → drag Prana types into the 3×3 grid to exploit weaknesses → confirm and begin combat.
 
 **Combat Phase (15–30 sec):**
 Move and dodge → cast the pre-arranged Prana combination → reposition around
@@ -369,12 +367,12 @@ for memory and loss.
 
 ## MVP Definition
 
-**Core hypothesis:** Players find the two-phase loop (peek wave → arrange Prana →
+**Core hypothesis:** Players find the two-phase loop (read arena → arrange Prana →
 fight) intrinsically satisfying, and the mystery of Fayde's identity creates
 genuine narrative pull even within a single run.
 
 **Required for MVP:**
-1. Preparation Phase: wave peek with enemy elemental affinity display
+1. Preparation Phase: enemies visible in arena with elemental affinity indicators
 2. Drag-and-drop Prana grid (3×3) with center-slot combo detection
 3. 5 Prana types with at least 5 meaningful combinations
 4. 3 robot enemy types with distinct archetypes and elemental affinities

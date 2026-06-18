@@ -146,7 +146,7 @@ tradeoffs have legible, permanent consequences for the rest of the run.*
 | State | Description | Scope | Prana Grid | Movement | Enemy AI |
 |-------|-------------|-------|-----------|----------|----------|
 | `MAIN_MENU` | Title screen; no run active | MVP | Inactive | Inactive | Inactive |
-| `PREPARATION_PHASE` | Wave peek active; player arranges Prana grid | MVP | **Editable** | Disabled | Inactive |
+| `PREPARATION_PHASE` | Enemy positions and layout visible; player arranges Prana grid | MVP | **Editable** | Disabled | Inactive |
 | `COMBAT_PHASE` | Active combat; Prana grid locked to confirmed loadout. `combat_started` payload: `is_boss: false` for regular waves, `is_boss: true` for boss combat. | MVP | Locked (visible) | **Active** | **Active** |
 | `PAUSED` | Game paused; overlay over active state; `_previous_state` stored | MVP | Unchanged | Disabled | Paused |
 | `RUN_SUMMARY` | Post-run stats screen (win) | MVP | Inactive | Inactive | Inactive |

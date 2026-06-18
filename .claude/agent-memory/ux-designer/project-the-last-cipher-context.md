@@ -20,7 +20,7 @@ All-ages (7+). Accessible to children, deep enough for adults. Solo developer (K
 - No touch support
 
 ## Core Loop
-Preparation Phase (wave peek, arrange Prana grid 3x3) → Combat Phase (move, dodge, cast). Decision happens before combat with full information. Execution tests positioning, not UI management under pressure.
+Preparation Phase (enemies visible in arena at start positions, arrange Prana grid 3x3) → Combat Phase (move, dodge, cast). Decision happens before combat with full information. Execution tests positioning, not UI management under pressure.
 
 ## Game Pillars (UX-relevant)
 - Pillar 3: Chaos Has Consequences — "If Fayde dies and cannot understand why, that is a design failure." Every system must communicate cause clearly.

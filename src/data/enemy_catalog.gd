@@ -209,7 +209,7 @@ func _make_stub(index: int) -> EnemyType:
 ##
 ## Checks per entry:
 ##   - id >= 0 (negative IDs are invalid)
-##   - name is non-empty (empty names fail Wave Peek display)
+##   - name is non-empty
 ##   - archetype is within the EnemyArchetype enum range
 ##   - Advisory: if status == ACTIVE, wave_threat_value should be non-null
 func _validate_all() -> void:

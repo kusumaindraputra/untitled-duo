@@ -40,7 +40,6 @@ interactions, never a large shallow one.
 | 10 | Elemental Affiliation & Weakness *(simplified)* | Gameplay | First Playable | Inlined | — (2× check inlined into SC&E at FP; extract to own GDD at MVP when resist/immune/UI needed) | Enemy Data, Prana Data, Spell Casting & Effects, Health & Damage |
 | 11 | Boss Encounter | Gameplay | Vertical Slice | Not Started | — | Enemy AI, Spell Casting & Effects, Health & Damage, Wave / Encounter System |
 | 12 | Wave / Encounter System *(simplified)* | Gameplay | First Playable | Approved | design/gdd/wave-encounter-system.md | Enemy AI, Enemy Data, Health & Damage, Game State & Scene Flow |
-| 13 | Wave Peek | Gameplay | Vertical Slice | Not Started | — | Wave / Encounter System, Enemy Data, Elemental Affiliation & Weakness, Obstacle System |
 | 14 | Level Generation *(room obstacles + enemy composition)* | Gameplay | First Playable | Draft | design/gdd/level-generation.md | IsometricRoom, Wave / Encounter System, Enemy AI, Enemy Data |
 | 15 | Obstacle System *(full)* | Gameplay | Vertical Slice | Not Started | — | Game State & Scene Flow, Spell Casting & Effects |
 | 16 | Procedural Dungeon Generation | Gameplay | Vertical Slice | Not Started | — | Game State & Scene Flow, Obstacle System, Wave / Encounter System |
@@ -59,7 +58,7 @@ interactions, never a large shallow one.
 | 28 | Save / Load | Persistence | Vertical Slice | Not Started | — | — |
 | 29 | Audio System | Audio | Vertical Slice | Approved | design/gdd/audio-system.md | — |
 | 30 | Game Feel / Juice | Gameplay | Vertical Slice | Not Started | — | Game State & Scene Flow, Audio System |
-| 31 | Tutorial / Onboarding | Meta | Vertical Slice | Not Started | — | Prana Grid, Combination Resolution, Spell Casting & Effects, Wave / Encounter System, Wave Peek, Run Management |
+| 31 | Tutorial / Onboarding | Meta | Vertical Slice | Not Started | — | Prana Grid, Combination Resolution, Spell Casting & Effects, Wave / Encounter System, Run Management |
 
 > **Simplified scope notes**:
 > - **Spell Casting & Effects** (FP): hanya deal damage + efek visual minimal; status effects, VFX penuh, dan juice menyusul di MVP/VS
@@ -77,7 +76,7 @@ interactions, never a large shallow one.
 | Category | Description | Systems in The Last Cipher |
 |----------|-------------|---------------------|
 | **Core** | Foundation systems everything depends on | Game State & Scene Flow, Player Controller |
-| **Gameplay** | The systems that make the game fun | Prana Grid, Combination Resolution, Spell Casting & Effects, Health & Damage, Status Effects, Enemy AI, Elemental Affiliation & Weakness, Boss Encounter, Wave / Encounter System, Wave Peek, Obstacle System, Procedural Dungeon Generation, Game Feel / Juice |
+| **Gameplay** | The systems that make the game fun | Prana Grid, Combination Resolution, Spell Casting & Effects, Health & Damage, Status Effects, Enemy AI, Elemental Affiliation & Weakness, Boss Encounter, Wave / Encounter System, Obstacle System, Procedural Dungeon Generation, Game Feel / Juice |
 | **Data** | Pure data definitions consumed by gameplay systems | Prana Data, Enemy Data |
 | **Economy** | Resource creation and consumption | Prana Drop / Loot |
 | **Progression** | How the player grows over time | Run Management, Loadout Slots, Meta-Progression, Difficulty Tiers |
@@ -95,7 +94,7 @@ interactions, never a large shallow one.
 |------|------------|------------------|---------|----------------|
 | **First Playable** | Minimum to test the core hypothesis in a single hardcoded arena: is the two-phase Preparation + Combat loop fun? Does elemental affiliation create meaningful decisions? | First internal playtest | 12 | Design NOW |
 | **MVP** | Shippable to players (itch.io / Steam demo): adds run lifecycle, main menu, and basic status effects above First Playable | Public demo / itch.io | 3 | Design AFTER FP |
-| **Vertical Slice** | One complete polished area — boss, dungeon generation, wave peek, audio, juice, loot, meta-progression | Demo / press build | 11 | Design THIRD |
+| **Vertical Slice** | One complete polished area — boss, dungeon generation, audio, juice, loot, meta-progression | Demo / press build | 10 | Design THIRD |
 | **Alpha** | All mechanical scope present in rough form — difficulty tiers, narrative | Alpha milestone | 2 | Design as reached |
 | **Full Vision** | Polish and content scale-up (5 layers, 20+ Prana types, full lore) | Beta / Release | — | Design as needed |
 
@@ -129,8 +128,7 @@ Systems sorted by dependency order — design and build from top to bottom.
 2. Elemental Affiliation & Weakness — depends on: Enemy Data, Prana Data, Spell Casting & Effects, Health & Damage
 3. Obstacle System — depends on: Game State & Scene Flow, Spell Casting & Effects
 4. Boss Encounter — depends on: Enemy AI, Spell Casting & Effects, Health & Damage, Wave / Encounter System
-5. Wave Peek — depends on: Wave / Encounter System, Enemy Data, Elemental Affiliation & Weakness, Obstacle System
-6. Procedural Dungeon Generation — depends on: Game State & Scene Flow, Obstacle System, Wave / Encounter System
+5. Procedural Dungeon Generation — depends on: Game State & Scene Flow, Obstacle System, Wave / Encounter System
 7. Prana Drop / Loot — depends on: Prana Data, Wave / Encounter System, Procedural Dungeon Generation
 8. Run Management — depends on: Game State & Scene Flow, Wave / Encounter System
 9. Loadout Slots — depends on: Prana Grid, Combination Resolution
@@ -149,7 +147,7 @@ Systems sorted by dependency order — design and build from top to bottom.
 
 ### Polish Layer (depends on everything)
 
-1. Tutorial / Onboarding — depends on: Prana Grid, Combination Resolution, Spell Casting & Effects, Wave / Encounter System, Wave Peek, Run Management
+1. Tutorial / Onboarding — depends on: Prana Grid, Combination Resolution, Spell Casting & Effects, Wave / Encounter System, Run Management
 
 **Bottleneck systems** (high dependent count — design with extra care): Game State &
 Scene Flow, Prana Data, Health & Damage, Prana Grid, Spell Casting & Effects, Wave /
@@ -194,7 +192,6 @@ Encounter System, Run Management.
 |-------|--------|----------|-------|-------------|
 | 16 | Audio System | Vertical Slice | Foundation | S |
 | 17 | Obstacle System | Vertical Slice | Feature | M |
-| 18 | Wave Peek | Vertical Slice | Feature | M |
 | 19 | Prana Drop / Loot | Vertical Slice | Economy | M |
 | 20 | Boss Encounter | Vertical Slice | Feature | L |
 | 21 | Procedural Dungeon Generation | Vertical Slice | Feature | L |

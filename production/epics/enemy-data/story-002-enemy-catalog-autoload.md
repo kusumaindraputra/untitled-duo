@@ -94,7 +94,7 @@ func get_spawnable_types() -> Array[EnemyType]:
 
 **`_validate_all()` startup checks** (use `push_error()` — not `assert()`):
 - `entry.id >= 0` — negative IDs are invalid
-- `entry.name != ""` — empty names fail Wave Peek display
+- `entry.name != ""` — empty names are invalid
 - Valid `archetype` value (in EnemyArchetype enum range)
 - If `status == ACTIVE`: `wave_threat_value != null` is advisory (boss is vs_scope, not active)
 

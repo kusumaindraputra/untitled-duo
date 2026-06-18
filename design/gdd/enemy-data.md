@@ -9,7 +9,7 @@
 
 Enemy Data is the canonical data layer that defines all enemy types in The Last Cipher. It holds the intrinsic, immutable properties of each enemy type — name, archetype class, elemental affiliation, base stats (HP, movement speed, attack damage), Prana drop reference, sprite dimensions, and wave threat value — as read-only definitions that every other system treats as ground truth. No consuming system may define its own enemy type properties or alias type names; all enemy identity originates here.
 
-The five primary consumers are: **Enemy AI** (archetype routing for behavior tree selection), **Elemental Affiliation & Weakness** (`prana_affiliation` as the lookup key for damage multiplier calculation), **Wave / Encounter System** (threat value and spawn weight for wave composition), **Prana Drop / Loot** (`drop_prana_type` and `drop_rate` for post-kill loot), and **Wave Peek** (archetype and affiliation for the preparation-phase preview panel).
+The four primary consumers are: **Enemy AI** (archetype routing for behavior tree selection), **Elemental Affiliation & Weakness** (`prana_affiliation` as the lookup key for damage multiplier calculation), **Wave / Encounter System** (threat value and spawn weight for wave composition), and **Prana Drop / Loot** (`drop_prana_type` and `drop_rate` for post-kill loot).
 
 At MVP scope, Enemy Data defines exactly three enemy types: Drifter, Charger, and Cluster. A stub definition for the Warped Warden boss is included at Vertical Slice scope and will ship `inactive` at MVP. The data structure must accommodate future enemy types without modifying existing IDs — all existing IDs are stable; new entries are always appended.
 
@@ -17,7 +17,7 @@ Targeting shape, movement logic, aggro radius, and attack patterns are explicitl
 
 ## Player Fantasy
 
-Enemy Data is infrastructure the player never sees directly. Its fantasy is experienced one layer up: the moment a player glances at the Wave Peek panel, sees a Charger and a Cluster in the same wave, and shifts their grid arrangement in the preparation phase without thinking — because they have internalized what those archetypes do and which Prana they're weak to.
+Enemy Data is infrastructure the player never sees directly. Its fantasy is experienced one layer up: the moment a player enters Preparation Phase, sees a Charger and a Cluster positioned in the arena, and shifts their grid arrangement without thinking — because they have internalized what those archetypes do and which Prana they're weak to.
 
 The design goal of this system is *legible threat*. A well-designed enemy catalog should become transparent to an experienced player: the archetype names, affiliation colors, and movement patterns should collapse into pure recognition after a few runs. Pillar 2 ("Power is Earned Through Understanding") lives here at the data level — every property in this catalog should be discoverable through play, not tooltips.
 
@@ -100,7 +100,6 @@ Enemy Data has no runtime states. It is a static catalog — nothing transitions
 | **Elemental Affiliation & Weakness** | `id`, `prana_affiliation` | `prana_affiliation` is the lookup key for the weakness multiplier table; `null` affiliation → 1.0× multiplier for all incoming Prana types |
 | **Wave / Encounter System** | `id`, `wave_threat_value`, `status` | Wave budgeting uses `wave_threat_value`; only `active` entries are spawnable |
 | **Prana Drop / Loot** | `id`, `drop_prana_type`, `drop_rate` | Drop logic reads these fields per enemy type; `null` drop fields = no drop event |
-| **Wave Peek** | `id`, `name`, `prana_affiliation` | Preview panel shows enemy name and affiliation color (art bible §4.2 color for that DamageClass) |
 | **Health & Damage** | `base_hp`, `base_damage` | Uses these as initial values at spawn; subsequent damage tracked by Health & Damage's own state |
 
 *Specialist agents not consulted — lean mode. Review manually before production.*
@@ -160,7 +159,7 @@ If Wave / Encounter System fails to filter `vs_scope` entries and spawns a Warpe
 
 **3. Lookup of an `inactive` entry**
 
-If a consuming system requests an entry whose `status` is `inactive`, the catalog returns the definition but the requesting system must treat it as not found for gameplay purposes. `inactive` entries are present for ID stability only — they must never be instantiated or displayed. Systems that enumerate the catalog for gameplay (Wave / Encounter System, Wave Peek) must exclude `inactive` entries in the same filter pass as `vs_scope`.
+If a consuming system requests an entry whose `status` is `inactive`, the catalog returns the definition but the requesting system must treat it as not found for gameplay purposes. `inactive` entries are present for ID stability only — they must never be instantiated or displayed. Systems that enumerate the catalog for gameplay (Wave / Encounter System) must exclude `inactive` entries in the same filter pass as `vs_scope`.
 
 **4. Unknown ID lookup**
 
@@ -192,7 +191,6 @@ The Warped Warden's `base_hp` and `base_damage` values are provisional. If Boss 
 | **Elemental Affiliation & Weakness** | `prana_affiliation` per enemy type as the lookup key into the weakness multiplier table | Elemental Affiliation & Weakness must declare Enemy Data as a dependency |
 | **Wave / Encounter System** | `wave_threat_value`, `status` — wave composition reads these to select and budget spawns | Wave / Encounter System must declare Enemy Data as a dependency |
 | **Prana Drop / Loot** | `drop_prana_type`, `drop_rate` — determines what drops and how often after enemy death | Prana Drop / Loot must declare Enemy Data as a dependency |
-| **Wave Peek** | `name`, `prana_affiliation` — preview panel display during Preparation phase | Wave Peek must declare Enemy Data as a dependency |
 | **Health & Damage** | `base_hp`, `base_damage` — initial values at spawn; Health & Damage tracks state from there | Health & Damage must declare Enemy Data as a dependency |
 
 ### Enemy Data's Own Dependencies
@@ -240,7 +238,7 @@ All numeric values in Enemy Data are data-driven — they live in the catalog an
 Enemy Data is a pure data catalog — it has no direct visual or audio output. Requirements belong to consuming systems:
 
 - **Sprite dimensions**: `sprite_size` values defined here lock the art pipeline. See art bible §3 (sprite standards) and §4 (enemy visual direction). The art team reads these values as authoritative pixel budgets.
-- **Affiliation color**: `prana_affiliation` maps to art bible §4.2 Prana colors. Wave Peek renders affiliation using those colors; Enemy Data declares only which affiliation applies.
+- **Affiliation color**: `prana_affiliation` maps to art bible §4.2 Prana colors. Enemy Data declares only which affiliation applies; consuming systems handle color rendering.
 - **Animation**: Enemy animation frames and frame timing are owned by Enemy AI, not Enemy Data.
 - **Audio**: Enemy sound cues are owned by the Audio System and Enemy AI. Enemy Data declares no audio events.
 
@@ -248,7 +246,6 @@ Enemy Data is a pure data catalog — it has no direct visual or audio output. R
 
 Enemy Data is not directly rendered. UI requirements belong to consuming systems:
 
-- **Wave Peek**: Reads `name` and `prana_affiliation` for the preparation-phase preview panel. Wave Peek GDD owns the display spec.
 - **Debug / editor tooling**: A read-only catalog inspector may be useful during development. This is a tools concern, not a player-facing UI requirement.
 
 ## Acceptance Criteria

@@ -73,15 +73,14 @@ Setiap task punya ID, estimated effort, dependency, dan acceptance criteria.
 | **LD-19** | Implement `DungeonGenerator` orchestrator | M (1.5d) | LD-17, LD-18, LD-15 | Wire PathBuilder + RoomSelector + TemplateRoom; generate full layer; emit `layer_generated` signal |
 | **LD-20** | Implement room transition system | M (1d) | LD-19 | Corridor/transition between rooms; door trigger; camera transition; enemy cleanup on exit; preserve Fayde state |
 
-### Fase 3c: Wave Peek & Anchor Objects
+### Fase 3c: Anchor Objects
 
 | ID | Task | Effort | Depends On | AC |
 |----|------|--------|------------|-----|
-| **LD-21** | Implement Wave Peek preview panel | M (2d) | LD-15, SCE system | UI panel during prep: enemy types with elemental affinity, spawn marker highlight, obstacle highlight; read from WaveManager composition |
 | **LD-22** | Implement `AnchorObject` resource + placement | M (1d) | LD-10, LD-15 | `.tres` resource: visual description, trigger condition, memory ID; placed in Memory Chamber rooms by RoomPopulator |
 | **LD-23** | Implement memory fragment trigger system | M (1.5d) | LD-22 | Fayde proximity → Memo dialog → memory fragment fires; integration with narrative system; one-shot per run |
 
-**Fase 3 total**: ~15.5 hari | **Gate**: full procedural dungeon playable — branch, pick path, clear rooms, reach boss
+**Fase 3 total**: ~13.5 hari | **Gate**: full procedural dungeon playable — branch, pick path, clear rooms, reach boss
 
 ---
 
@@ -92,7 +91,7 @@ Setiap task punya ID, estimated effort, dependency, dan acceptance criteria.
 | **LD-24** | Implement obstacle palette per layer | S (1d) | LD-11, LD-15 | Each layer loads its own obstacle config; Layer 1 = rusted barrels + scrap piles (half-cover); Layer 2 = + conveyor belts (full-cover line shapes) |
 | **LD-25** | Author Layer 2 templates | M (2d) | LD-14, LD-11 | 5-7 Layer 2 templates: corridor shapes, choke points; registered in template pool with layer tag |
 | **LD-26** | Implement layer transition visual + mechanical | M (1.5d) | LD-19, LD-11 | Layer boss → next layer; visual transition (fade, new tileset); enemy palette switch; difficulty ramp |
-| **LD-27** | Playtest + tuning: Layer 1 pacing & room readability | S (0.5d) | LD-19, LD-21 | Internal playtest session; document: prep readability per template, combat pacing, difficulty curve feedback |
+| **LD-27** | Playtest + tuning: Layer 1 pacing & room readability | S (0.5d) | LD-19 | Internal playtest session; document: prep readability per template, combat pacing, difficulty curve feedback |
 | **LD-28** | Playtest + tuning: Layer 1 → 2 transition feel | S (0.5d) | LD-26 | Internal playtest; document: transition clarity, difficulty jump appropriateness |
 
 **Fase 4 total**: ~5.5 hari | **Gate**: dua layer procedural dungeon dengan identitas berbeda, memory anchor objects berfungsi
@@ -123,7 +122,6 @@ LD-10                                                      │
                                 LD-19 ──→ LD-20           │
                                                ┊           │
                                                ┊──→ Fase 3c
-                                                    LD-15 ──→ LD-21
                                                     LD-15 ──→ LD-22 ──→ LD-23
                                                                            ┊
                                                                            ┊──→ Fase 4
@@ -143,9 +141,9 @@ LD-10                                                      │
 | Fase 2 — Preparation | LD-06 → LD-11 | 5d | Paper design |
 | Fase 3a — Template System | LD-12 → LD-15 | 5.5d | VS core |
 | Fase 3b — Dungeon Generator | LD-16 → LD-20 | 6d | VS core |
-| Fase 3c — Wave Peek & Anchors | LD-21 → LD-23 | 4.5d | VS core |
+| Fase 3c — Anchor Objects | LD-22 → LD-23 | 2.5d | VS core |
 | Fase 4 — Polish | LD-24 → LD-28 | 5.5d | MVP polish |
-| **Total** | **28 tasks** | **~28.75 hari** | FP → MVP |
+| **Total** | **27 tasks** | **~26.75 hari** | FP → MVP |
 
 > **Solo dev note**: 28.75 hari ≈ 6 minggu kalender dengan 5 hari kerja/minggu, atau ~8-10 minggu dengan overhead sprint rituals dan bug fixing. Fase 1 bisa dikerjakan segera; Fase 2 bisa parallel dengan Sprint 10–11.
 
