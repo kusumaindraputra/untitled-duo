@@ -593,8 +593,14 @@ func test_chain_dots_advance_active_dot_on_second_chain_index_changed() -> void:
 	assert_int(hud.chain_dots_container.get_child_count()).is_equal(2)
 	var dot0: ColorRect = hud.chain_dots_container.get_child(0)
 	var dot1: ColorRect = hud.chain_dots_container.get_child(1)
+	# dot1 is the active dot (index 1): full prana color + animation
 	assert_bool(dot1.color == PranaCatalog.get_type(0).color).is_true()
-	assert_bool(dot0.color == Color("#888888")).is_true()
+	# dot0 is the completed dot (index 0): dimmed prana color (50% alpha trail marker)
+	var ashfire_color: Color = PranaCatalog.get_type(0).color
+	assert_bool(dot0.color.r == ashfire_color.r).is_true()
+	assert_bool(dot0.color.g == ashfire_color.g).is_true()
+	assert_bool(dot0.color.b == ashfire_color.b).is_true()
+	assert_bool(dot0.color.a < 1.0).is_true()  # dimmed
 
 	_teardown_hud(hud)
 

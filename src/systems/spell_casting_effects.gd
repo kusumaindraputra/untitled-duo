@@ -99,6 +99,27 @@ const ASHFIRE_CAST_LOCK_DURATION: float = 0.20
 ## Seconds the player has to press the next chain attack before the chain resets. (TR-SC-002)
 const COMBO_CONTINUATION_WINDOW: float = 2.0
 
+## Base knockback distance in pixels per hit. Multiplied by tier_attack_modifier.
+## Tuning knob: safe range 4–20. At 12, Ashfire T3 eruption pushes 12×1.50=18px.
+const KNCKBACK_BASE: float = 12.0
+
+## Maximum knockback distance in pixels (hard cap regardless of modifier).
+const KNCKBACK_MAX: float = 20.0
+
+## Input buffer window in seconds — early SPACE press within this window still fires.
+const INPUT_BUFFER_WINDOW: float = 0.15
+
+## Cone spread angle in degrees for melee-range types (Ashfire).
+## Wider cone compensates for the short 80px range — melee should feel forgiving.
+const CONE_ANGLE_MELEE: float = 90.0
+
+## Cone spread angle in degrees for ranged types (all non-Ashfire).
+## Narrower cone requires more precise facing at 150px range.
+const CONE_ANGLE_RANGED: float = 45.0
+
+## Number of arc segments used to approximate the cone for intersect_shape queries.
+const CONE_ARC_SEGMENTS: int = 8
+
 ## Reference damage constant for all spell calculations (GDD Formula 1).
 ## Tuning knob: safe range 10–30. At 20, Ashfire T1 deals round(20×1.25×1.00)=25.
 const BASE_SPELL_DAMAGE: float = 20.0
@@ -178,6 +199,12 @@ var _cast_lock_timer: float = 0.0
 ## Counts down between chain presses; resets to COMBO_CONTINUATION_WINDOW on each cast. (ADR-0004, TR-SC-002)
 var _combo_window_timer: float = 0.0
 
+## True when the player pressed cast during cast lock — buffered for INPUT_BUFFER_WINDOW seconds.
+var _buffer_pressed: bool = false
+
+## Countdown for the input buffer. Positive = buffer active; expires at 0.
+var _buffer_timer: float = 0.0
+
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
@@ -218,25 +245,46 @@ func _exit_tree() -> void:
 # ── Frame update ──────────────────────────────────────────────────────────────
 
 ## Drives all SC&E float accumulator timers per ADR-0004.
-## Handles CAST_LOCKED expiry, combo window expiry, and cast input polling. (TR-SC-002)
+## Handles CAST_LOCKED expiry, combo window expiry, input buffer, and cast input polling. (TR-SC-002)
 func _process(delta: float) -> void:
+	# ── Input buffer countdown ─────────────────────────────────────────────────
+	if _buffer_timer > 0.0:
+		_buffer_timer -= delta
+		if _buffer_timer <= 0.0:
+			_buffer_timer = 0.0
+			_buffer_pressed = false
+
 	if _cast_lock_timer > 0.0:
 		_cast_lock_timer -= delta
 		if _cast_lock_timer <= 0.0:
 			_cast_lock_timer = 0.0
 			if _state == SCEState.CAST_LOCKED:
 				_state = SCEState.CHAINING if _combo_index > 0 else SCEState.READY
+			# Auto-fire if input was buffered during lock
+			if _buffer_pressed and _state != SCEState.IDLE:
+				_buffer_pressed = false
+				_buffer_timer = 0.0
+				_trigger_cast()
+				return
 
 	if _state == SCEState.CHAINING:
 		_combo_window_timer -= delta
 		if _combo_window_timer <= 0.0:
 			# Combo window expired — reset chain to READY
 			_combo_index = 0
+			_buffer_pressed = false
+			_buffer_timer = 0.0
 			_state = SCEState.READY
 			chain_index_changed.emit(0, _current_spell_effect.combo_attack_count if _current_spell_effect else 0)
 
-	if (_state == SCEState.READY or _state == SCEState.CHAINING) and _cast_lock_timer <= 0.0:
-		if Input.is_action_just_pressed(&"cast"):
+	# ── Cast input polling ────────────────────────────────────────────────────
+	# Buffer early presses during cast lock; process normally when ready.
+	if Input.is_action_just_pressed(&"cast"):
+		if _cast_lock_timer > 0.0:
+			# Buffer this press — it fires when lock expires
+			_buffer_pressed = true
+			_buffer_timer = INPUT_BUFFER_WINDOW
+		elif _state == SCEState.READY or _state == SCEState.CHAINING:
 			_trigger_cast()
 
 
@@ -358,6 +406,26 @@ func _fire_attack(attack_index: int) -> void:
 	# Apply primary type's status effect via StatusEffectsManager (ADR-0011).
 	_apply_status_effects(target, pt, se, step4_raw)
 
+	# Combo game feel: push the target away from Fayde on each successful hit.
+	if _fayde_ref != null:
+		_apply_knockback(target, tier_mod)
+
+
+## Applies a knockback push to [param target] away from Fayde.
+## Distance scales with tier_attack_modifier, capped at KNCKBACK_MAX.
+## No-op if target lacks the apply_knockback duck-type method.
+func _apply_knockback(target: Node, tier_mod: float) -> void:
+	if _fayde_ref == null:
+		return
+	var distance: float = minf(KNCKBACK_BASE * tier_mod, KNCKBACK_MAX)
+	if distance <= 0.0:
+		return
+	var dir: Vector2 = target.global_position.direction_to(_fayde_ref.global_position) if target is Node2D \
+		else Vector2.RIGHT
+	# Duck-type: call apply_knockback if the method exists (works for EnemyInstance, DummyEnemy, MockEnemy).
+	if target.has_method(&"apply_knockback"):
+		target.apply_knockback(dir, distance)
+
 
 ## Applies the primary Prana type's status via StatusEffectsManager (ADR-0011).
 ## [param step4_raw] is the Step-4 core damage (before Shatter/Follow-Through) —
@@ -390,8 +458,9 @@ func _fire_secondary_effect(pt: int, tier: int, attack_index: int) -> void:
 	)
 
 
-## Selects a primary target via physics ray cast (real game only — headless-incompatible).
-## Returns null if no enemy is hit within cast range or if the player node is missing.
+## Selects a primary target via cone overlap query (replaces raycast for combo game feel).
+## Ashfire uses CONE_ANGLE_MELEE (90°) at 80px range; all other types use CONE_ANGLE_RANGED (45°) at 150px.
+## Returns the nearest enemy within the cone, or null if none found.
 ## Tests bypass this entirely via _override_target.
 func _select_primary_target() -> Node:
 	if _fayde_ref == null:
@@ -401,18 +470,47 @@ func _select_primary_target() -> Node:
 	var space: PhysicsDirectSpaceState2D = get_viewport().get_world_2d().direct_space_state
 	var origin: Vector2 = _fayde_ref.global_position
 	var facing: Vector2 = _fayde_ref.get_facing_direction() if _fayde_ref.has_method(&"get_facing_direction") else Vector2.RIGHT
-	var cast_range: float = 80.0 if _current_spell_effect != null and _current_spell_effect.primary_type == 0 \
-		else 150.0
-	var query := PhysicsRayQueryParameters2D.create(origin, origin + facing * cast_range)
-	# Mask: walls (1) + enemies (4) = 5. Excludes half-cover debris (16) — Prana passes through.
-	query.collision_mask = 5
-	var result: Dictionary = space.intersect_ray(query)
-	if result.is_empty():
+	var is_melee: bool = _current_spell_effect != null and _current_spell_effect.primary_type == 0
+	var cast_range: float = 80.0 if is_melee else 150.0
+	var cone_angle: float = CONE_ANGLE_MELEE if is_melee else CONE_ANGLE_RANGED
+
+	# Build a ConvexPolygonShape2D approximating a cone sector in the facing direction.
+	# Points: origin (0,0) + arc points spread across cone_angle, centred on facing.
+	var half_angle: float = deg_to_rad(cone_angle * 0.5)
+	var base_angle: float = facing.angle()
+	var points: PackedVector2Array = PackedVector2Array()
+	points.append(Vector2.ZERO)  # cone tip at origin
+	for i in range(CONE_ARC_SEGMENTS + 1):
+		var t: float = float(i) / float(CONE_ARC_SEGMENTS)
+		var a: float = base_angle - half_angle + t * half_angle * 2.0
+		points.append(Vector2.from_angle(a) * cast_range)
+	var cone_shape := ConvexPolygonShape2D.new()
+	cone_shape.points = points
+
+	# Offset the query transform to Fayde's world position.
+	var query_transform := Transform2D(0.0, origin)
+	var query := PhysicsShapeQueryParameters2D.new()
+	query.shape = cone_shape
+	query.transform = query_transform
+	query.collision_mask = 5  # walls (1) + enemies (4)
+	query.collide_with_bodies = true
+	query.collide_with_areas = false
+
+	var results: Array[Dictionary] = space.intersect_shape(query)
+	if results.is_empty():
 		return null
-	var collider: Node = result.get("collider")
-	if collider != null and collider.is_in_group(&"enemy"):
-		return collider
-	return null
+
+	# Return the nearest enemy (by distance from Fayde).
+	var nearest: Node = null
+	var nearest_dist: float = INF
+	for result in results:
+		var collider: Node = result.get("collider")
+		if collider != null and collider.is_in_group(&"enemy"):
+			var dist: float = origin.distance_squared_to((collider as Node2D).global_position)
+			if dist < nearest_dist:
+				nearest_dist = dist
+				nearest = collider
+	return nearest
 
 
 # ── Public API ────────────────────────────────────────────────────────────────

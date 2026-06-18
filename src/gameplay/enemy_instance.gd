@@ -266,6 +266,19 @@ func apply_speed_modifier(multiplier: float) -> void:
 	_speed_modifier = multiplier
 
 
+## Pushes this enemy away from [param direction] by [param distance] pixels over 0.1s.
+## Called by SpellCastingEffects after each successful spell hit for combo game feel.
+## Uses a position tween with EASE_OUT — the enemy slides back then continues its AI
+## movement on the next physics frame after the tween completes.
+func apply_knockback(direction: Vector2, distance: float) -> void:
+	if _state == EnemyState.DEAD:
+		return
+	var offset: Vector2 = direction.normalized() * distance
+	var target_pos: Vector2 = global_position + offset
+	var tw: Tween = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(self, "global_position", target_pos, 0.10)
+
+
 # ── Private helpers ───────────────────────────────────────────────────────────
 
 ## Sums repulsion vectors from all live enemies within SEPARATION_RADIUS.
@@ -329,6 +342,18 @@ func _stop_attack_vfx() -> void:
 	modulate = Color.WHITE
 
 
+## Overbright-white flash on successful spell hit.
+## Kills _vfx_tween so the looping contact/telegraph pulse does not immediately
+## override the flash — called via duck-typing from SpellVFX._on_damage_taken.
+func request_hit_flash() -> void:
+	if _vfx_tween:
+		_vfx_tween.kill()
+		_vfx_tween = null
+	modulate = Color(3.0, 3.0, 3.0, 1.0)
+	var tw: Tween = create_tween()
+	tw.tween_property(self, "modulate", Color.WHITE, 0.10)
+
+
 ## SEEKER archetype tick — direct chase at full speed (design/gdd/level-generation.md).
 func _tick_seeker(_delta: float) -> void:
 	var sep: Vector2 = _compute_separation()
@@ -365,13 +390,22 @@ func _tick_rusher(delta: float) -> void:
 			velocity = (_rusher_charge_dir * _move_speed * RUSHER_CHARGE_SPEED_MULT + sep) * _speed_modifier
 			move_and_slide()
 			_rusher_timer -= delta
+			# Impact detection: end charge early on contact to prevent sticking (S9-09).
+			# Recoil pushes the RUSHER away from Fayde at 2× base speed so it doesn't
+			# sit on top of the player dealing repeat contact damage for the full charge window.
+			if _fayde_in_contact:
+				_rusher_phase = 3
+				_rusher_timer = RUSHER_COOLDOWN_DURATION
+				var away: Vector2 = global_position.direction_to(_fayde_ref.global_position)
+				velocity = -away * _move_speed * 2.0
+				move_and_slide()
+				_start_contact_vfx()
+				return
 			if _rusher_timer <= 0.0:
 				_rusher_phase = 3
 				_rusher_timer = RUSHER_COOLDOWN_DURATION
-				if _fayde_in_contact:
-					_start_contact_vfx()
-				else:
-					_stop_attack_vfx()
+				# _fayde_in_contact is false here — guarded by early return above.
+				_stop_attack_vfx()
 		3:  # COOLDOWN — only separation force
 			velocity = sep * _speed_modifier
 			move_and_slide()

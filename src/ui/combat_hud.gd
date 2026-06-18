@@ -163,6 +163,11 @@ var _current_primary_type: int = -1
 ## Killed and cleared in _rebuild_dots before freeing children.
 var _dot_tweens: Array[Tween] = []
 
+## Combo counter label that appears above chain dots when chain_index >= 2.
+## Shows "2x", "3x" with a pop-in animation; auto-fades after 0.6s.
+var _combo_counter_label: Label = null
+var _combo_counter_tween: Tween = null
+
 
 # ── Built-in virtual methods ──────────────────────────────────────────────────
 
@@ -290,6 +295,12 @@ func _create_ui_nodes() -> void:
 	_dash_cooldown_icon.color.a = 1.0
 	_dash_cooldown_icon.visible = false
 	add_child(_dash_cooldown_icon)
+
+	_combo_counter_label = Label.new()
+	_combo_counter_label.visible = false
+	_combo_counter_label.add_theme_font_size_override(&"font_size", 18)
+	_combo_counter_label.position = Vector2(8, 128)
+	add_child(_combo_counter_label)
 
 
 ## Starts a float-accumulator HP bar animation toward [param target] hp value.
@@ -488,6 +499,8 @@ func _on_run_started() -> void:
 	hp_bar.modulate = HP_COLOR_FULL
 	hp_label.add_theme_color_override(&"font_color", HP_COLOR_LABEL_FULL)
 	chain_dots_container.visible = false
+	if is_instance_valid(_combo_counter_label):
+		_combo_counter_label.visible = false
 	if _dash_hint_label != null:
 		_dash_hint_label.visible = false
 	if _dash_cooldown_icon != null:
@@ -505,7 +518,8 @@ func _on_preparation_started(_idx: int, _rem: int) -> void:
 	_dot_tweens.clear()
 	chain_dots_container.visible = false
 	_current_primary_type = -1
-	if _dash_hint_label != null:
+	if is_instance_valid(_combo_counter_label):
+		_combo_counter_label.visible = false
 		_dash_hint_label.visible = false
 	if _dash_cooldown_icon != null:
 		_dash_cooldown_icon.color.a = 1.0
@@ -527,13 +541,35 @@ func _on_combat_started(_is_boss: bool = false) -> void:
 
 ## Handles chain_index_changed from SpellCastingEffects.
 ## Shows chain dots and rebuilds them for the current combo state.
+## Spawns a "2x", "3x" combo counter label when the chain advances beyond the first hit.
 func _on_chain_index_changed(combo_idx: int, combo_count: int) -> void:
 	chain_dots_container.visible = true
 	_rebuild_dots(combo_idx, combo_count)
+	# Combo counter: show "2x", "3x" on chain advance beyond first hit.
+	if combo_idx >= 2 and is_instance_valid(_combo_counter_label):
+		_combo_counter_label.text = "%dx" % combo_idx
+		_combo_counter_label.visible = true
+		# Per-type color for the counter text.
+		if _current_primary_type >= 0:
+			var prana_type := PranaCatalog.get_type(_current_primary_type)
+			if prana_type != null:
+				_combo_counter_label.add_theme_color_override(&"font_color", prana_type.color)
+		# Pop-in animation: scale 0.8 → 1.2 → 1.0 + fade out after 0.6s.
+		if _combo_counter_tween:
+			_combo_counter_tween.kill()
+		_combo_counter_label.scale = Vector2(0.8, 0.8)
+		_combo_counter_label.modulate.a = 1.0
+		_combo_counter_tween = create_tween()
+		_combo_counter_tween.tween_property(_combo_counter_label, "scale", Vector2(1.2, 1.2), 0.10)
+		_combo_counter_tween.tween_property(_combo_counter_label, "scale", Vector2(1.0, 1.0), 0.15)
+		_combo_counter_tween.tween_interval(0.35)
+		_combo_counter_tween.tween_property(_combo_counter_label, "modulate:a", 0.0, 0.15)
 
 
 ## Rebuilds chain dot ColorRect children to match current combo state.
-## Active dot uses per-type size + looping animation. Inactive dots are 8×8 gray.
+## Active dot uses per-type size + looping animation.
+## Completed dots (before active) show a dimmed prana color — the trail you've left.
+## Future dots (after active) are 8×8 gray — still waiting to be filled.
 func _rebuild_dots(active_index: int, count: int) -> void:
 	for tw in _dot_tweens:
 		if is_instance_valid(tw):
@@ -541,25 +577,31 @@ func _rebuild_dots(active_index: int, count: int) -> void:
 	_dot_tweens.clear()
 	for child in chain_dots_container.get_children():
 		child.free()
-	var active_color: Color = Color.WHITE
+	var type_color: Color = Color.WHITE
 	if _current_primary_type >= 0:
 		var prana_type := PranaCatalog.get_type(_current_primary_type)
 		if prana_type != null:
-			active_color = prana_type.color
+			type_color = prana_type.color
 	for i: int in range(count):
 		var dot := ColorRect.new()
 		var is_active: bool = (i == active_index)
+		var is_completed: bool = (i < active_index)
 		if is_active:
 			dot.custom_minimum_size = _get_dot_size_for_type(_current_primary_type)
-			dot.color = active_color
+			dot.color = type_color
+			_dot_tweens.append(_animate_active_dot(dot, _current_primary_type, type_color))
+		elif is_completed:
+			# Completed dot: prana color, slightly dimmed, no animation — solid trail marker.
+			dot.custom_minimum_size = Vector2(6.0, 6.0)
+			dot.color = type_color
+			dot.color.a = 0.5
+			_dot_tweens.append(null)
 		else:
+			# Future dot: gray, empty — waiting to be filled.
 			dot.custom_minimum_size = Vector2(8.0, 8.0)
 			dot.color = Color("#888888")
-		chain_dots_container.add_child(dot)
-		if is_active:
-			_dot_tweens.append(_animate_active_dot(dot, _current_primary_type, active_color))
-		else:
 			_dot_tweens.append(null)
+		chain_dots_container.add_child(dot)
 
 
 ## Returns the dot size for the active dot based on prana type visual identity.

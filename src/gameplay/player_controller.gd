@@ -41,6 +41,10 @@ const COLLISION_MASK_DASHING: int = 1  # bit 0 only: walls only — dash passes 
 ## Modulate alpha oscillation interval during i-frames — ~8 blinks/sec at 60fps.
 const BLINK_INTERVAL: float = 0.06
 
+## Movement speed multiplier during cast lock — Fayde can still move but at reduced speed.
+## GDD Rule 6: movement is dampened, not zeroed, during the post-hit recovery window.
+const CAST_LOCK_SPEED_FACTOR: float = 0.25
+
 ## Camera zoom levels.
 ## COMBAT 1.5×: visible 768×432 game-px, Fayde occupies ~15% height (Hades-like scale).
 ## PREP 0.55×: visible 2094×1178 game-px, shows full 1280×768 arena with ~400px margin.
@@ -58,6 +62,7 @@ var _dash_cooldown_timer: float = 0.0  # countdown; > 0.0 means on cooldown
 var _cast_beam_timer: float = 0.0     # countdown; > 0.0 means cast beam visible (debug)
 var _cast_prana_type: int = -1        # primary type of last resolved spell; -1 = none
 var _blink_timer: float = 0.0         # counts up; toggles modulate.a every BLINK_INTERVAL
+var _cast_lock_timer: float = 0.0      # countdown; > 0.0 means post-hit movement dampened
 
 ## AudioSystem Autoload reference; null-safe — set in _ready(), overridable for tests.
 ## Variant (not Node) intentional — allows MockAudioSystem injection without Node inheritance.
@@ -68,7 +73,7 @@ var _last_footstep_played: StringName = &""
 
 @onready var _camera: Camera2D = $Camera2D
 @onready var _iso_char: Node = $IsoCharacter
-@onready var _spell_vfx: SpellVFX = $SpellVFX
+@onready var _spell_vfx: AnimatedSprite2D = $SpellVFX
 var _zoom_tween: Tween = null
 var _last_anim: String = ""
 
@@ -94,7 +99,7 @@ func _ready() -> void:
 			"cast": "fayde_cast",
 		})
 		_iso_char.play_anim("idle")
-	# SpellVFX self-initialises in its own _ready() — no setup call needed here.
+		# _setup_spell_vfx() — disabled; spell cast VFX removed
 	if VELOCITY_SNAP_THRESHOLD >= FOOTSTEP_VELOCITY_THRESHOLD:
 		push_error("VELOCITY_SNAP_THRESHOLD (%f) must be < FOOTSTEP_VELOCITY_THRESHOLD (%f)" % [
 			VELOCITY_SNAP_THRESHOLD, FOOTSTEP_VELOCITY_THRESHOLD])
@@ -149,6 +154,9 @@ func _physics_process(delta: float) -> void:
 			velocity = velocity.lerp(Vector2.ZERO, friction_factor)
 			if velocity.length() < VELOCITY_SNAP_THRESHOLD:
 				velocity = Vector2.ZERO
+		# Cast lock: dampen velocity to CAST_LOCK_SPEED_FACTOR during post-hit recovery.
+		if _cast_lock_timer > 0.0:
+			velocity *= CAST_LOCK_SPEED_FACTOR
 		if Input.is_action_just_pressed(&"dash") and _dash_cooldown_timer <= 0.0:
 			var dash_dir: Vector2 = _snap_to_8dir(input_dir) if input_dir != Vector2.ZERO \
 				else _last_facing_dir
@@ -158,6 +166,7 @@ func _physics_process(delta: float) -> void:
 			_dash_duration_timer = DASH_DURATION
 			_is_invincible = true
 			collision_mask = COLLISION_MASK_DASHING
+			_cast_lock_timer = 0.0  # dash cancels cast lock (GDD Rule 6)
 			if audio_system != null:
 				audio_system.play_event(&"sfx_fayde_dash")
 			dash_cooldown_changed.emit(false)
@@ -177,6 +186,12 @@ func _physics_process(delta: float) -> void:
 		if _dash_cooldown_timer <= 0.0:
 			_dash_cooldown_timer = 0.0
 			dash_cooldown_changed.emit(true)
+
+	# ── Cast lock countdown (unconditional) ───────────────────────────────────
+	if _cast_lock_timer > 0.0:
+		_cast_lock_timer -= delta
+		if _cast_lock_timer <= 0.0:
+			_cast_lock_timer = 0.0
 
 	# ── Footstep accumulator (count-up; fires when >= interval) ─────────────────
 	# Timer advances during DASHING — post-dash first footstep may fire early (by design).
@@ -289,15 +304,50 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	_blink_timer = 0.0
 	_dash_duration_timer = 0.0
 	_dash_cooldown_timer = 0.0
+	_cast_lock_timer = 0.0
 	dash_cooldown_changed.emit(true)
 	_footstep_timer = 0.0
 	_footstep_bag.clear()
 	_tween_zoom(ZOOM_PREP)
 
 
-## TR-PC-007 stub: CAST_LOCKED movement sub-state. Full behaviour in SpellCastingEffects epic.
-func _on_cast_hit_started(_lock_duration: float = 0.0) -> void:
+func _setup_spell_vfx() -> void:
+	var path: String = "res://assets/art/vfx/spell_cast/"
+	var da := DirAccess.open(path)
+	if da == null or not is_instance_valid(_spell_vfx):
+		return
+	var files: Array[String] = []
+	da.list_dir_begin()
+	var fname: String = da.get_next()
+	while not fname.is_empty():
+		if not da.current_is_dir() and fname.ends_with(".png"):
+			files.append(fname)
+		fname = da.get_next()
+	da.list_dir_end()
+	files.sort()
+	var sf := SpriteFrames.new()
+	sf.add_animation(&"cast")
+	sf.set_animation_loop(&"cast", false)
+	sf.set_animation_speed(&"cast", 20.0)
+	for f: String in files:
+		var tex := load(path + f) as Texture2D
+		if tex != null:
+			sf.add_frame(&"cast", tex)
+	_spell_vfx.sprite_frames = sf
+	_spell_vfx.animation_finished.connect(_on_spell_vfx_finished)
+
+
+func _on_spell_vfx_finished() -> void:
+	_spell_vfx.visible = false
+
+
+## CAST_LOCKED movement sub-state (GDD Rule 6).
+## Dampens movement during the post-hit recovery window. Dash cancels the lock.
+## [param lock_duration] seconds of dampened movement (0.12 default, 0.20 Ashfire).
+## [param slow_factor] is reserved on the signal but PlayerController uses its own constant.
+func _on_cast_hit_started(lock_duration: float = 0.12) -> void:
 	_cast_beam_timer = 0.20
+	_cast_lock_timer = lock_duration
 
 
 func _on_combo_resolved(spell_effect: SpellEffect) -> void:
