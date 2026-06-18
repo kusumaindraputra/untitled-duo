@@ -94,7 +94,7 @@ func _ready() -> void:
 			"cast": "fayde_cast",
 		})
 		_iso_char.play_anim("idle")
-	_setup_spell_vfx()
+	# _setup_spell_vfx() — disabled; spell cast VFX removed
 	if VELOCITY_SNAP_THRESHOLD >= FOOTSTEP_VELOCITY_THRESHOLD:
 		push_error("VELOCITY_SNAP_THRESHOLD (%f) must be < FOOTSTEP_VELOCITY_THRESHOLD (%f)" % [
 			VELOCITY_SNAP_THRESHOLD, FOOTSTEP_VELOCITY_THRESHOLD])
@@ -327,9 +327,6 @@ func _on_spell_vfx_finished() -> void:
 ## TR-PC-007 stub: CAST_LOCKED movement sub-state. Full behaviour in SpellCastingEffects epic.
 func _on_cast_hit_started(_lock_duration: float = 0.0) -> void:
 	_cast_beam_timer = 0.20
-	if is_instance_valid(_spell_vfx) and _spell_vfx.sprite_frames != null:
-		_spell_vfx.visible = true
-		_spell_vfx.play(&"cast")
 
 
 func _on_combo_resolved(spell_effect: SpellEffect) -> void:
