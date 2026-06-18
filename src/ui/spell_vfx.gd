@@ -394,26 +394,26 @@ class _HitVFX extends Node2D:
 	## atk0 — palm strike: 3 filled flame wedges pointing upward.
 	func _draw_ashfire_atk0(p: float) -> void:
 		var alpha: float = 1.0 - p
-		var outer: float = 10.0 + p * 22.0
+		var outer: float = 25.0 + p * 55.0
 		var c: Color = Color(1.0, 0.3, 0.07, alpha)
 		for i: int in 3:
 			var angle: float = -PI / 2.0 + (float(i) - 1.0) * 0.52
 			var dir: Vector2 = Vector2.from_angle(angle)
 			var perp: Vector2 = dir.rotated(PI / 2.0)
-			var half_w: float = 5.5 - p * 2.0
+			var half_w: float = 13.8 - p * 5.0
 			draw_polygon(PackedVector2Array([dir * outer, perp * half_w, -perp * half_w]),
 					PackedColorArray([c]))
 
 	## atk1 — sweeping kick: 5 filled wedges in a 140° fan + arc.
 	func _draw_ashfire_atk1(p: float) -> void:
 		var alpha: float = 1.0 - p
-		var outer: float = 20.0 + p * 30.0
+		var outer: float = 50.0 + p * 75.0
 		var c: Color = Color(1.0, 0.45, 0.0, alpha)
 		for i: int in 5:
 			var angle: float = -PI * 0.7 + float(i) * (PI * 1.4 / 4.0)
 			var dir: Vector2 = Vector2.from_angle(angle)
 			var perp: Vector2 = dir.rotated(PI / 2.0)
-			var half_w: float = 7.0 - p * 3.0
+			var half_w: float = 17.5 - p * 7.5
 			draw_polygon(PackedVector2Array([dir * outer, perp * half_w, -perp * half_w]),
 					PackedColorArray([c]))
 		draw_arc(Vector2.ZERO, outer * 0.6, -PI * 0.7, PI * 0.7, 16,
@@ -422,13 +422,13 @@ class _HitVFX extends Node2D:
 	## atk2 — 360° eruption: 8 filled wedges + outer ring.
 	func _draw_ashfire_atk2(p: float) -> void:
 		var alpha: float = 1.0 - p
-		var outer: float = 24.0 + p * 48.0
+		var outer: float = 60.0 + p * 120.0
 		var c: Color = Color(1.0, 0.4, 0.0, alpha)
 		for i: int in 8:
 			var angle: float = (TAU / 8.0) * float(i)
 			var dir: Vector2 = Vector2.from_angle(angle)
 			var perp: Vector2 = dir.rotated(PI / 2.0)
-			var half_w: float = 8.0 - p * 4.0
+			var half_w: float = 20.0 - p * 10.0
 			draw_polygon(PackedVector2Array([dir * outer, perp * half_w, -perp * half_w]),
 					PackedColorArray([c]))
 		draw_arc(Vector2.ZERO, outer * 0.7, 0.0, TAU, 24,
@@ -445,21 +445,21 @@ class _HitVFX extends Node2D:
 	## atk0 — absorb: thick shrinking ring + inner glow circle.
 	func _draw_voidblue_atk0(p: float) -> void:
 		var alpha: float = 1.0 - p
-		var radius: float = 28.0 * (1.0 - p) + 4.0
+		var radius: float = 70.0 * (1.0 - p) + 10.0
 		draw_arc(Vector2.ZERO, radius, 0.0, TAU, 24,
-				Color(0.29, 0.37, 0.96, alpha), 4.0, true)
+				Color(0.29, 0.37, 0.96, alpha), 10.0, true)
 		draw_circle(Vector2.ZERO, radius * 0.35, Color(0.55, 0.4, 1.0, alpha * 0.3))
 
 	## atk1 — shadow pull: triskelion arcs + growing filled center dot.
 	func _draw_voidblue_atk1(p: float) -> void:
 		var alpha: float = 1.0 - p
-		var radius: float = 20.0 - p * 8.0
+		var radius: float = 50.0 - p * 20.0
 		var c: Color = Color(0.29, 0.37, 0.96, alpha)
 		for i: int in 3:
 			var start_a: float = (TAU / 3.0) * float(i)
 			draw_arc(Vector2.ZERO, radius, start_a,
-					start_a + TAU / 3.0 * 0.7, 14, c, 3.0, true)
-		draw_circle(Vector2.ZERO, 2.0 + p * 8.0, Color(0.55, 0.4, 1.0, alpha))
+					start_a + TAU / 3.0 * 0.7, 14, c, 7.5, true)
+		draw_circle(Vector2.ZERO, 5.0 + p * 20.0, Color(0.55, 0.4, 1.0, alpha))
 
 	## atk2 — void collapse: 3 phase-staggered expanding rings.
 	func _draw_voidblue_atk2(p: float) -> void:
@@ -467,8 +467,8 @@ class _HitVFX extends Node2D:
 			var phase: float = clampf(p - float(i) * 0.15, 0.0, 1.0)
 			if phase <= 0.0:
 				continue
-			var width: float = maxf(3.5 - float(i) * 0.8, 1.5)
-			draw_arc(Vector2.ZERO, phase * (28.0 + float(i) * 10.0), 0.0, TAU, 24,
+			var width: float = maxf(8.8 - float(i) * 2.0, 3.8)
+			draw_arc(Vector2.ZERO, phase * (70.0 + float(i) * 25.0), 0.0, TAU, 24,
 					Color(0.29, 0.37, 0.96, 1.0 - phase), width, true)
 
 	# ── Stormgold (yellow #FFCC00, spawns at target, directional) ────────────
@@ -482,11 +482,11 @@ class _HitVFX extends Node2D:
 	## atk0 — snap shot: short bullet streak + impact diamond at center.
 	func _draw_stormgold_atk0(p: float) -> void:
 		var alpha: float = 1.0 - p
-		var len: float = 14.0 + p * 6.0
+		var len: float = 35.0 + p * 15.0
 		var sd: Vector2 = shot_direction
 		var perp: Vector2 = sd.rotated(PI / 2.0)
-		draw_line(-sd * 4.0, sd * len, Color(1.0, 0.9, 0.0, alpha), 4.0, true)
-		var flash: float = 5.0 * (1.0 - p)
+		draw_line(-sd * 10.0, sd * len, Color(1.0, 0.9, 0.0, alpha), 10.0, true)
+		var flash: float = 12.5 * (1.0 - p)
 		var c_flash: Color = Color(1.0, 1.0, 0.6, alpha)
 		draw_polygon(PackedVector2Array([sd * (flash * 1.5), perp * flash,
 				-sd * (flash * 0.5), -perp * flash]),
@@ -495,28 +495,28 @@ class _HitVFX extends Node2D:
 	## atk1 — precision shot: medium streak + bright core + exit sparks.
 	func _draw_stormgold_atk1(p: float) -> void:
 		var alpha: float = 1.0 - p
-		var len: float = 28.0 + p * 8.0
+		var len: float = 70.0 + p * 20.0
 		var sd: Vector2 = shot_direction
-		draw_line(-sd * 6.0, sd * len, Color(1.0, 0.85, 0.0, alpha), 4.5, true)
-		draw_line(-sd * 4.0, sd * len * 0.65, Color(1.0, 1.0, 0.8, alpha * 0.7), 2.0, true)
+		draw_line(-sd * 15.0, sd * len, Color(1.0, 0.85, 0.0, alpha), 11.2, true)
+		draw_line(-sd * 10.0, sd * len * 0.65, Color(1.0, 1.0, 0.8, alpha * 0.7), 5.0, true)
 		var impact: Vector2 = sd * len
 		for sign in [1.0, -1.0]:
-			draw_line(impact, impact + sd.rotated(sign * 0.7) * (9.0 * (1.0 - p)),
-					Color(1.0, 0.9, 0.2, alpha * 0.7), 2.0, true)
+			draw_line(impact, impact + sd.rotated(sign * 0.7) * (22.5 * (1.0 - p)),
+					Color(1.0, 0.9, 0.2, alpha * 0.7), 5.0, true)
 
 	## atk2 — critical beam: long streak + impact ring + exit sparks.
 	func _draw_stormgold_atk2(p: float) -> void:
 		var alpha: float = 1.0 - p
-		var len: float = 42.0 + p * 14.0
+		var len: float = 105.0 + p * 35.0
 		var sd: Vector2 = shot_direction
-		draw_line(-sd * 8.0, sd * len, Color(1.0, 0.85, 0.0, alpha), 6.0, true)
-		draw_line(-sd * 5.0, sd * len * 0.8, Color(1.0, 1.0, 0.9, alpha * 0.7), 2.5, true)
-		draw_arc(Vector2.ZERO, 10.0 + p * 22.0, 0.0, TAU, 20,
-				Color(1.0, 0.9, 0.0, alpha * 0.7), 2.5, true)
+		draw_line(-sd * 20.0, sd * len, Color(1.0, 0.85, 0.0, alpha), 15.0, true)
+		draw_line(-sd * 12.5, sd * len * 0.8, Color(1.0, 1.0, 0.9, alpha * 0.7), 6.2, true)
+		draw_arc(Vector2.ZERO, 25.0 + p * 55.0, 0.0, TAU, 20,
+				Color(1.0, 0.9, 0.0, alpha * 0.7), 6.2, true)
 		var impact: Vector2 = sd * len
 		for sign in [1.0, -1.0]:
-			draw_line(impact, impact + sd.rotated(sign * 0.65) * (14.0 * (1.0 - p)),
-					Color(1.0, 0.9, 0.2, alpha * 0.6), 2.0, true)
+			draw_line(impact, impact + sd.rotated(sign * 0.65) * (35.0 * (1.0 - p)),
+					Color(1.0, 0.9, 0.2, alpha * 0.6), 5.0, true)
 
 	# ── Deepfrost (cyan #3DD9F0, spawns at target) ────────────────────────────
 
@@ -528,7 +528,7 @@ class _HitVFX extends Node2D:
 
 	## atk0 — push: filled hexagon expanding and fading.
 	func _draw_deepfrost_atk0(p: float) -> void:
-		var radius: float = 5.0 + p * 18.0
+		var radius: float = 12.5 + p * 45.0
 		var alpha: float = 1.0 - p
 		_draw_hexagon_filled(Vector2.ZERO, radius,
 				Color(0.24, 0.85, 0.94, alpha * 0.35),
@@ -537,18 +537,18 @@ class _HitVFX extends Node2D:
 	## atk1 — frost line: 3 filled hexagons in horizontal line.
 	func _draw_deepfrost_atk1(p: float) -> void:
 		var alpha: float = 1.0 - p
-		var radius: float = 6.0 + p * 10.0
+		var radius: float = 15.0 + p * 25.0
 		for i: int in 3:
-			_draw_hexagon_filled(Vector2((float(i) - 1.0) * 28.0, 0.0), radius,
+			_draw_hexagon_filled(Vector2((float(i) - 1.0) * 70.0, 0.0), radius,
 					Color(0.24, 0.85, 0.94, alpha * 0.35),
 					Color(0.24, 0.85, 0.94, alpha), 2.0)
 
 	## atk2 — glacial field: filled inner circle + two expanding rings.
 	func _draw_deepfrost_atk2(p: float) -> void:
 		var alpha: float = 1.0 - p
-		var inner_r: float = 8.0 + p * 26.0
+		var inner_r: float = 20.0 + p * 65.0
 		draw_circle(Vector2.ZERO, inner_r, Color(0.24, 0.85, 0.94, alpha * 0.22))
-		draw_arc(Vector2.ZERO, 16.0 + p * 44.0, 0.0, TAU, 28,
+		draw_arc(Vector2.ZERO, 40.0 + p * 110.0, 0.0, TAU, 28,
 				Color(0.24, 0.85, 0.94, alpha * 0.85), 3.0, true)
 		draw_arc(Vector2.ZERO, inner_r, 0.0, TAU, 20,
 				Color(0.6, 0.95, 1.0, alpha * 0.55), 2.0, true)
@@ -574,12 +574,12 @@ class _HitVFX extends Node2D:
 	## atk0 — bloom strike: 5 filled diamond petals radiating outward.
 	func _draw_verdant_atk0(p: float) -> void:
 		var alpha: float = 1.0 - p
-		_draw_petals_filled(5, lerp(28.0, 8.0, p), Color(0.1, 0.79, 0.33, alpha))
+		_draw_petals_filled(5, lerp(70.0, 20.0, p), Color(0.1, 0.79, 0.33, alpha))
 
 	## atk1 — shield pulse: expanding ring with inner fill.
 	func _draw_verdant_atk1(p: float) -> void:
 		var alpha: float = 1.0 - p
-		var r: float = 12.0 + p * 48.0
+		var r: float = 30.0 + p * 120.0
 		draw_circle(Vector2.ZERO, r * 0.55, Color(0.1, 0.79, 0.33, alpha * 0.2))
 		draw_arc(Vector2.ZERO, r, 0.0, TAU, 28,
 				Color(0.1, 0.79, 0.33, alpha), 3.5, true)
@@ -587,11 +587,11 @@ class _HitVFX extends Node2D:
 	## atk2 — rejuvenating strike: 5 filled petals + 4 rising heal dots.
 	func _draw_verdant_atk2(p: float) -> void:
 		var alpha: float = 1.0 - p
-		_draw_petals_filled(5, lerp(34.0, 10.0, p), Color(0.1, 0.79, 0.33, alpha))
+		_draw_petals_filled(5, lerp(85.0, 25.0, p), Color(0.1, 0.79, 0.33, alpha))
 		for i: int in 4:
 			draw_circle(
-				Vector2((float(i) - 1.5) * 12.0, -p * 28.0 - float(i) * 4.0),
-				3.5 * (1.0 - p),
+				Vector2((float(i) - 1.5) * 30.0, -p * 70.0 - float(i) * 10.0),
+				8.8 * (1.0 - p),
 				Color(0.35, 1.0, 0.5, alpha * 0.9)
 			)
 
