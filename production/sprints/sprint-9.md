@@ -82,8 +82,9 @@ Sprint 9 planning audit (2026-06-17) revealed that **all epics in the epics inde
 - [ ] S9-01: Manual validation complete — all S8 visual features confirmed in Godot
 - [ ] S9-02: ADR-0013 gate filled OR formally closed — no more "evidence file blank"
 - [ ] S9-03: Playtest documented OR formally descoped — no 4th carry
-- [ ] S9-04: All implemented story files stamped as Complete with test evidence filled
-- [ ] S9-05: Epic index and EPIC.md files reflect actual implementation state
+- [x] S9-04: All implemented story files stamped as Complete with test evidence filled
+- [x] S9-05: Epic index and EPIC.md files reflect actual implementation state
+- [x] S9-09: Arena half-cover debris implemented — Layer 5 (16), EnemyInstance mask=17, SCE mask=5, 706 tests green
 - [ ] `sprint-status.yaml` up to date after every story close
 
 ---

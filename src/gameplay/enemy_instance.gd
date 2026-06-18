@@ -129,11 +129,10 @@ func _setup_collision_nodes() -> void:
 	root_shape.name = "CollisionShape2D"
 	root_shape.shape = body_circle
 	add_child(root_shape)
-	# Enemies on layer 3 (bit 2, value 4). Mask: walls (1) + player (2) + debris (16) = 19.
-	# Player dash pass-through: player switches to mask=1 (walls only) during dash, so
-	# enemies slide off the player body normally but are bypassed on dash (S8-02, S9-09).
+	# Enemies on layer 3 (bit 2, value 4). Mask: walls (1) + debris (16) = 17 (S9-09).
+	# Player is NOT in enemy mask — contact damage fires via HitArea (Area2D), not physics.
 	collision_layer = 4
-	collision_mask = 19
+	collision_mask = 17
 	var hit_circle := CircleShape2D.new()
 	hit_circle.radius = 12.0
 	var hit_shape := CollisionShape2D.new()

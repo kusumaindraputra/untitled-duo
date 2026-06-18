@@ -284,3 +284,26 @@ func test_enemy_instance_is_alive_returns_true_before_init() -> void:
 	assert_bool(enemy.is_alive()).is_true()
 
 	enemy.free()
+
+
+# ── S9-09: half-cover collision layer/mask ────────────────────────────────────
+
+func test_enemy_instance_collision_layer_is_enemy_layer() -> void:
+	var enemy: EnemyInstance = _make_enemy()
+	add_child(enemy)
+
+	assert_int(enemy.collision_layer).is_equal(4)  # Layer 3 (bit 2)
+
+	remove_child(enemy)
+	enemy.free()
+
+
+func test_enemy_instance_collision_mask_is_walls_and_debris() -> void:
+	var enemy: EnemyInstance = _make_enemy()
+	add_child(enemy)
+
+	# 17 = walls (1) + debris (16) — player excluded; contact damage via HitArea (S9-09).
+	assert_int(enemy.collision_mask).is_equal(17)
+
+	remove_child(enemy)
+	enemy.free()

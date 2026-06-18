@@ -103,3 +103,13 @@ func test_debris_two_consecutive_calls_do_not_crash() -> void:
 	assert_int(_positions_a.size()).is_between(0, room._DEBRIS_COUNT_MAX)
 	assert_int(_positions_b.size()).is_between(0, room._DEBRIS_COUNT_MAX)
 	room.free()
+
+
+# ── S9-09: half-cover layer constant ──────────────────────────────────────────
+
+## _HALF_COVER_LAYER must be 16 (bit 4 = Layer 5) so debris blocks movement but not Prana.
+## (design/quick-specs/arena-cover-types.md, S9-09 AC criterion 1)
+func test_debris_half_cover_layer_constant_is_16() -> void:
+	var room := _make_room()
+	assert_int(room._HALF_COVER_LAYER).is_equal(16)
+	room.free()
