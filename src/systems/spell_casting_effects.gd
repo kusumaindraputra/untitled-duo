@@ -117,6 +117,26 @@ const CONE_ANGLE_MELEE: float = 90.0
 ## Narrower cone requires more precise facing at 150px range.
 const CONE_ANGLE_RANGED: float = 45.0
 
+## Cone spread angle for semi-melee types (Voidblue, Deepfrost) — medium range, medium spread.
+const CONE_ANGLE_SEMI_MELEE: float = 75.0
+
+## Cone spread angle for Stormgold sniper — long range, narrow precision cone.
+const CONE_ANGLE_SNIPER: float = 30.0
+
+## Cast range for pure melee types (Ashfire, Verdant).
+const MELEE_RANGE: float = 80.0
+
+## Cast range for semi-melee types (Voidblue, Deepfrost).
+const SEMI_MELEE_RANGE: float = 110.0
+
+## Cast range for Stormgold sniper attacks.
+const STORMGOLD_SNIPER_RANGE: float = 220.0
+
+## Maximum Fayde-to-target distance for Stormgold Follow-Through bonus (+30% damage).
+## Player must sprint from sniper range into this zone during the Stun window.
+## Deferred: requires Enemy AI _is_attacking flag; currently inert at FP scope.
+const STORMGOLD_FOLLOW_THROUGH_MAX_DIST: float = 100.0
+
 ## Number of arc segments used to approximate the cone for intersect_shape queries.
 const CONE_ARC_SEGMENTS: int = 8
 
@@ -460,7 +480,7 @@ func _fire_secondary_effect(pt: int, tier: int, attack_index: int) -> void:
 
 
 ## Selects a primary target via cone overlap query (replaces raycast for combo game feel).
-## Ashfire uses CONE_ANGLE_MELEE (90°) at 80px range; all other types use CONE_ANGLE_RANGED (45°) at 150px.
+## 5-tier range system: Ashfire/Verdant 80px 90°, Voidblue/Deepfrost 110px 75°, Stormgold 220px 30°.
 ## Returns the nearest enemy within the cone, or null if none found.
 ## Tests bypass this entirely via _override_target.
 func _select_primary_target() -> Node:
@@ -471,9 +491,24 @@ func _select_primary_target() -> Node:
 	var space: PhysicsDirectSpaceState2D = get_viewport().get_world_2d().direct_space_state
 	var origin: Vector2 = _fayde_ref.global_position
 	var facing: Vector2 = _fayde_ref.get_facing_direction() if _fayde_ref.has_method(&"get_facing_direction") else Vector2.RIGHT
-	var is_melee: bool = _current_spell_effect != null and _current_spell_effect.primary_type == 0
-	var cast_range: float = 80.0 if is_melee else 150.0
-	var cone_angle: float = CONE_ANGLE_MELEE if is_melee else CONE_ANGLE_RANGED
+	# 5-tier range system: pure melee (80px) / semi-melee (110px) / sniper (220px).
+	# Cone widens at shorter ranges to compensate for reduced reach.
+	var pt: int = _current_spell_effect.primary_type if _current_spell_effect != null else -1
+	var cast_range: float
+	var cone_angle: float
+	match pt:
+		0, 4:  # Ashfire, Verdant — pure melee
+			cast_range = MELEE_RANGE
+			cone_angle = CONE_ANGLE_MELEE
+		1, 3:  # Voidblue, Deepfrost — semi-melee
+			cast_range = SEMI_MELEE_RANGE
+			cone_angle = CONE_ANGLE_SEMI_MELEE
+		2:  # Stormgold — sniper
+			cast_range = STORMGOLD_SNIPER_RANGE
+			cone_angle = CONE_ANGLE_SNIPER
+		_:
+			cast_range = 150.0
+			cone_angle = CONE_ANGLE_RANGED
 
 	# Build a ConvexPolygonShape2D approximating a cone sector in the facing direction.
 	# Points: origin (0,0) + arc points spread across cone_angle, centred on facing.
@@ -524,6 +559,12 @@ func get_stat_bonus(stat_id: StringName) -> float:
 	if _current_spell_effect == null:
 		return 0.0
 	return _current_spell_effect.aggregate_stat_bonus.get(stat_id, 0.0)
+
+
+## Read-only access to the cached SpellEffect for the current wave.
+## Returns null between waves. Used by SpellVFX and CombatHUD for per-type visual routing.
+func get_cached_spell_effect() -> SpellEffect:
+	return _current_spell_effect
 
 
 # ── Signal handlers ───────────────────────────────────────────────────────────

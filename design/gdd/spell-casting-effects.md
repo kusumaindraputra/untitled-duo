@@ -68,7 +68,15 @@ Cast input (`Input.is_action_just_pressed(&"cast")`) is only processed when `_st
 
 **5. Target selection.** On each cast press, SC&E selects a primary target using the `TargetingModel` for the current attack. The **default targeting model is `DIRECTIONAL_FACING`** — fires a ray from Fayde in `PlayerController.get_facing_direction()` and hits the first enemy whose collision shape intersects the ray within `CAST_MAX_RANGE`. Implemented via `PhysicsDirectSpaceState2D.intersect_ray(origin, origin + facing * range, exclude_list, ENEMY_COLLISION_LAYER)`.
 
-**CAST_MAX_RANGE is per-type.** Ashfire uses `ASHFIRE_MELEE_RANGE = 80px` (melee distance only — enforces the close-in dance identity). All other types use the default `CAST_MAX_RANGE = 150px`. The per-type range is defined in the type's attack data; SC&E reads it alongside the `TargetingModel`.
+**CAST_MAX_RANGE is per-type — 3-tier system.** Range and cone angle are coupled: shorter range = wider cone to compensate for reduced reach.
+
+| Range Tier | Types | Range | Cone | Identity |
+|-----------|-------|-------|------|----------|
+| Pure melee | Ashfire (0), Verdant (4) | 80px | 90° | Must enter enemy's attack zone |
+| Semi-melee | Voidblue (1), Deepfrost (3) | 110px | 75° | Close enough to be risky, far enough for control |
+| Sniper | Stormgold (2) | 220px | 30° | Safest positioning; narrow cone demands precision |
+
+The per-type range and cone are defined as constants in SC&E (`MELEE_RANGE`, `SEMI_MELEE_RANGE`, `STORMGOLD_SNIPER_RANGE`, `CONE_ANGLE_MELEE`, `CONE_ANGLE_SEMI_MELEE`, `CONE_ANGLE_SNIPER`). SC&E uses `intersect_shape` with a `ConvexPolygonShape2D` cone approximation (8 arc segments) to replace the earlier raycast — the wider cone at melee range makes Ashfire and Verdant feel forgiving without sacrificing intent.
 
 If `primary_target == null` (no enemy in range/direction): visual cast effect fires in facing direction (minimal Prana-colored particle); no damage or status applied; combo index advances normally.
 
@@ -245,7 +253,7 @@ SC&E resolves each chain attack via `ATTACK_DATA[primary_type][primary_tier][att
 
 ---
 
-**Type 1 — Voidblue** (`base_damage_modifier = 0.90`, `cast_range = 150px`, `cast_lock = 0.12s`)
+**Type 1 — Voidblue** (`base_damage_modifier = 0.90`, `cast_range = 110px`, `cone = 75°`, `cast_lock = 0.12s`) — *semi-melee: shadow predator closing distance*
 
 | Tier | Index | `tier_attack_modifier` | `targeting_model` | Notes |
 |------|-------|----------------------|-------------------|-------|
@@ -258,44 +266,46 @@ SC&E resolves each chain attack via `ATTACK_DATA[primary_type][primary_tier][att
 
 ---
 
-**Type 2 — Stormgold** (`base_damage_modifier = 1.15`, `cast_range = 150px`, `cast_lock = 0.12s`)
+**Type 2 — Stormgold** (`base_damage_modifier = 1.15`, `cast_range = 220px`, `cone = 30°`, `cast_lock = 0.12s`) — *sniper: safest position, narrow cone demands precision*
 
 | Tier | Index | `tier_attack_modifier` | `targeting_model` | Notes |
 |------|-------|----------------------|-------------------|-------|
 | 1 | 0 | 1.00 | DIRECTIONAL_FACING | Quick snap; Stun (0.8s) on hit; if qualifying interrupt, start `_followthrough_window = 1.5s` |
 | 2 | 0 | 1.00 | DIRECTIONAL_FACING | Snap; Stun; `_followthrough_window` as above |
-| 2 | 1 | 1.20 | DIRECTIONAL_FACING | Lightning follow; Step 6 bonus if `_followthrough_window > 0` |
+| 2 | 1 | 1.20 | DIRECTIONAL_FACING | Lightning follow; Step 6 bonus if `_followthrough_window > 0` **AND** `distance(Fayde, target) ≤ STORMGOLD_FOLLOW_THROUGH_MAX_DIST = 100px` at hit time |
 | 3 | 0 | 1.00 | DIRECTIONAL_FACING | Snap |
-| 3 | 1 | 1.20 | DIRECTIONAL_FACING | Follow |
+| 3 | 1 | 1.20 | DIRECTIONAL_FACING | Follow (distance check as above) |
 | 3 | 2 | 1.00 | DIRECTIONAL_FACING | Chain strike (primary); *secondary*: fork to nearest enemy ≠ primary (Formula 4) |
 
 **Qualifying interrupt**: Stun was applied while the enemy's attack animation was active (`enemy._is_attacking == true` at moment of Stun). Idle or moving enemies do not qualify. Enemy AI GDD owns the `_is_attacking` flag. [FP note: `_is_attacking` is undefined at FP — qualifying interrupts never occur; `_followthrough_window` never becomes non-zero; Step 6 is inert at FP.]
 
+**Follow-Through distance tension**: Player snipes from 220px (safe). Stun window = 0.8s. To earn +30% Follow-Through, player must sprint from 220px to within 100px during the Stun window. If player stays at 220px: `atk2 = 1.20×` (safe, no bonus). If player sprints in: `atk2 = 1.20 × 1.30 = 1.56×` (commit, bonus). With Deepfrost NP T2 Freeze also active: `atk2 = 1.20 × 1.30 × 1.25 = 1.95×` (maximum).
+
 ---
 
-**Type 3 — Deepfrost** (`base_damage_modifier = 0.80`, `cast_range = 150px`, `cast_lock = 0.12s`)
+**Type 3 — Deepfrost** (`base_damage_modifier = 0.80`, `cast_range = 110px`, `cone = 75°`, `cast_lock = 0.12s`) — *semi-melee: enter range to Freeze, then retreat while enemy is rooted*
 
 | Tier | Index | `tier_attack_modifier` | `targeting_model` | Notes |
 |------|-------|----------------------|-------------------|-------|
 | 1 | 0 | 1.00 | DIRECTIONAL_FACING | Push; Freeze (2.0s) on hit |
 | 2 | 0 | 1.00 | DIRECTIONAL_FACING | Push; Freeze on hit |
-| 2 | 1 | 0.80 | LINE_THROUGH_TARGET (100px) | Frost line; Freeze on all hit |
+| 2 | 1 | 0.80 | LINE_THROUGH_TARGET (120px) | Frost line; Freeze on all hit — 120px ensures line reaches from semi-melee position |
 | 3 | 0 | 1.00 | DIRECTIONAL_FACING | Push |
-| 3 | 1 | 0.80 | LINE_THROUGH_TARGET (100px) | Frost line |
+| 3 | 1 | 0.80 | LINE_THROUGH_TARGET (120px) | Frost line |
 | 3 | 2 | 0.00 | AREA_AT_TARGET (`GLACIAL_FIELD_RADIUS = 120px`) | Glacial field; **0 direct damage**; *secondary*: CHILL slow zone for `GLACIAL_FIELD_DURATION = 3.0s`; does not trigger Shatter |
 
 ---
 
-**Type 4 — Verdant** (`base_damage_modifier = 0.70`, `cast_range = 150px`, `cast_lock = 0.12s`)
+**Type 4 — Verdant** (`base_damage_modifier = 0.70`, `cast_range = 80px`, `cone = 90°`, `cast_lock = 0.12s`) — *pure melee: heal through punishment; lowest damage, highest sustained survival*
 
 | Tier | Index | `tier_attack_modifier` | `targeting_model` | Notes |
 |------|-------|----------------------|-------------------|-------|
-| 1 | 0 | 1.00 | DIRECTIONAL_FACING | Bloom strike; Regen applied to Fayde on hit |
-| 2 | 0 | 1.00 | DIRECTIONAL_FACING | Bloom strike |
+| 1 | 0 | 1.00 | DIRECTIONAL_FACING (80px) | Bloom strike; Regen applied to Fayde on hit |
+| 2 | 0 | 1.00 | DIRECTIONAL_FACING (80px) | Bloom strike |
 | 2 | 1 | 0.00 | SELF | Shield pulse; **0 damage**; calls `health_and_damage.grant_barrier(fayde, barrier_hp)` where `barrier_hp` = Formula 8; barrier absorbed on next hit to Fayde |
-| 3 | 0 | 1.00 | DIRECTIONAL_FACING | Bloom strike |
+| 3 | 0 | 1.00 | DIRECTIONAL_FACING (80px) | Bloom strike |
 | 3 | 1 | 0.00 | SELF | Shield pulse (barrier) |
-| 3 | 2 | 1.20 | DIRECTIONAL_FACING | Rejuvenating strike; Regen resets to 3.0s + immediate 2 HP tick on hit |
+| 3 | 2 | 1.20 | DIRECTIONAL_FACING (80px) | Rejuvenating strike; Regen resets to 3.0s + immediate 2 HP tick on hit |
 
 ---
 
@@ -517,8 +527,13 @@ SC&E computes these before each `apply_status()` call:
 | Knob | Symbol | Default | Safe Range | Effect if too high | Effect if too low |
 |------|--------|---------|------------|-------------------|-------------------|
 | Spell base damage | `BASE_SPELL_DAMAGE` | 20.0 | 10–30 | All spells overkill; low-tier combos trivialize enemies | All spells feel weak; T3 fails to one-shot Clusters (12 HP) |
-| Default cast range | `CAST_MAX_RANGE` | 150px | 80–250px | Fayde hits from across the arena; positioning irrelevant | Requires nearly adjacent contact for all non-Ashfire types |
-| Ashfire melee range | `ASHFIRE_MELEE_RANGE` | 80px | 48–120px | Ashfire becomes safe-range; loses dance identity | Fayde must be inside enemy hitbox; collision issues |
+| Melee range (Ashfire, Verdant) | `MELEE_RANGE` | 80px | 48–120px | Melee types become safe-range; lose close-combat identity | Fayde must be inside enemy hitbox; collision issues |
+| Semi-melee range (Voidblue, Deepfrost) | `SEMI_MELEE_RANGE` | 110px | 80–140px | Approaches ranged safety; positioning pressure lost | Inside melee comfort; semi-melee has no spacing advantage over melee |
+| Stormgold sniper range | `STORMGOLD_SNIPER_RANGE` | 220px | 150–300px | Out of screen edge awareness; enemies feel like shooting gallery | Loses sniper identity; approaches semi-melee spacing |
+| Melee cone angle | `CONE_ANGLE_MELEE` | 90° | 60–120° | Too forgiving; eliminates facing skill expression | Frustrating at 80px; tiny cone at close range feels unfair |
+| Semi-melee cone angle | `CONE_ANGLE_SEMI_MELEE` | 75° | 50–100° | Wide cone at medium range trivializes aim | Miss rate frustrating at 110px range |
+| Sniper cone angle | `CONE_ANGLE_SNIPER` | 30° | 15–45° | Loses sniper identity; too easy to hit at 220px | Requires pixel-perfect aim; frustrating against moving enemies |
+| Follow-Through max distance | `STORMGOLD_FOLLOW_THROUGH_MAX_DIST` | 100px | 60–150px | Bonus activates without sprinting; tension collapses | Player can never close 220px→100px in 0.8s Stun window |
 | Default cast lock duration | `CAST_LOCK_DURATION` | 0.12s | 0.05–0.25s | Noticeable movement pause per hit; combo feels sluggish | No perceivable commitment; cast lock has no feel |
 | Ashfire cast lock duration | `ASHFIRE_CAST_LOCK_DURATION` | 0.20s | 0.12–0.35s | Dance combo feels heavy (correct) vs clunky | Ashfire feels identical to other types; dance identity lost |
 | Combo continuation window | `combo_continuation_window` | 2.0s | 0.8–3.0s | Chain timing has no skill expression | Too tight for age 7+ target; T3 chains rarely complete |
@@ -535,7 +550,8 @@ SC&E computes these before each `apply_status()` call:
 
 **Interaction warnings:**
 - `STORMGOLD_NP_WINDOW_T1`, `ADJ_COMBO_WIN`, and `STORM_COMBO_SPD` stat all stack additively on `combo_continuation_window`. Add a `COMBO_WINDOW_MAX` safety cap if playtest reveals excessive tolerance.
-- `ASHFIRE_MELEE_RANGE` must always be < `CAST_MAX_RANGE`. Setter should enforce this — if equal, Ashfire loses its short-range identity.
+- `MELEE_RANGE` must always be < `SEMI_MELEE_RANGE` < `STORMGOLD_SNIPER_RANGE`. If these collapse toward each other the 3-tier positioning identity breaks.
+- Cone angles should invert with range: wider cone at shorter range. Breaking this creates counterintuitive feel (tight cone at melee = frustrating; wide cone at sniper range = trivial).
 - `ASHFIRE_CAST_LOCK_DURATION` must always be > `CAST_LOCK_DURATION`. Setter should enforce this — Ashfire's dance commitment must exceed the default.
 
 ## Visual/Audio Requirements

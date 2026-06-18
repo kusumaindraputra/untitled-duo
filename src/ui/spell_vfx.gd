@@ -92,16 +92,24 @@ func _exit_tree() -> void:
 ## Brief modulate pulse on Fayde when a cast begins.
 ## Uses a color tween (not alpha) so PlayerController._physics_process alpha-reset
 ## (guards the i-frame blink system) does not kill the pulse mid-flight.
-## [param _spell_effect] reserved for per-type pulse color at MVP scope.
-func _on_cast_started(_spell_effect: SpellEffect) -> void:
+## Pulse color is brightened from the primary Prana type's canonical color.
+func _on_cast_started(spell_effect: SpellEffect) -> void:
 	if get_tree() == null:
 		return
 	var player: Node = get_tree().get_first_node_in_group(&"player")
 	if player == null or not player is CanvasItem:
 		return
+	# Look up canonical type color; fall back to white if catalog unavailable.
+	var pulse_color: Color = Color.WHITE
+	if spell_effect != null:
+		var type_data: PranaType = PranaCatalog.get_type(spell_effect.primary_type)
+		if type_data != null:
+			# Overbrighten the type color for a visible flash without losing hue identity.
+			pulse_color = type_data.color * 2.2
+			pulse_color.a = 1.0
 	var tween: Tween = create_tween()
-	tween.tween_property(player as CanvasItem, "modulate", Color(1.5, 1.5, 2.5, 1.0), 0.05)
-	tween.tween_property(player as CanvasItem, "modulate", Color.WHITE, 0.10)
+	tween.tween_property(player as CanvasItem, "modulate", pulse_color, 0.05)
+	tween.tween_property(player as CanvasItem, "modulate", Color.WHITE, 0.12)
 
 
 ## Zero-allocation hot path (ADR-0015): looks up pool node by shape,
@@ -121,7 +129,8 @@ func _on_spell_hit_element(target: Node, prana_type_id: int) -> void:
 	_start_shake(amplify)
 
 
-## Tints Fayde blue-grey for _lock_duration seconds to signal post-hit movement dampening.
+## Tints Fayde with a dimmed primary type color for _lock_duration seconds.
+## Signals post-hit movement dampening with hue identity (not generic blue-grey).
 ## Uses color tween (alpha stays 1.0) so PlayerController alpha-reset does not interfere.
 func _on_cast_hit_started(_lock_duration: float) -> void:
 	if get_tree() == null:
@@ -129,8 +138,17 @@ func _on_cast_hit_started(_lock_duration: float) -> void:
 	var player: Node = get_tree().get_first_node_in_group(&"player")
 	if player == null or not player is CanvasItem:
 		return
+	# Derive tint from the current wave's primary type — dimmed to 60% so it reads
+	# as "locked" rather than "glowing." Falls back to neutral grey if no spell cached.
+	var tint: Color = Color(0.7, 0.7, 0.7, 1.0)
+	var se: SpellEffect = SpellCastingEffects.get_cached_spell_effect()
+	if se != null:
+		var type_data: PranaType = PranaCatalog.get_type(se.primary_type)
+		if type_data != null:
+			tint = type_data.color * 0.65
+			tint.a = 1.0
 	var tween: Tween = create_tween()
-	tween.tween_property(player as CanvasItem, "modulate", Color(0.7, 0.7, 1.1, 1.0), 0.0)
+	tween.tween_property(player as CanvasItem, "modulate", tint, 0.0)
 	tween.tween_property(player as CanvasItem, "modulate", Color.WHITE, _lock_duration)
 
 
