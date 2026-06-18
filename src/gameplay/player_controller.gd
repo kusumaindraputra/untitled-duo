@@ -68,7 +68,7 @@ var _last_footstep_played: StringName = &""
 
 @onready var _camera: Camera2D = $Camera2D
 @onready var _iso_char: Node = $IsoCharacter
-@onready var _spell_vfx: AnimatedSprite2D = $SpellVFX
+@onready var _spell_vfx: SpellVFX = $SpellVFX
 var _zoom_tween: Tween = null
 var _last_anim: String = ""
 
@@ -94,7 +94,7 @@ func _ready() -> void:
 			"cast": "fayde_cast",
 		})
 		_iso_char.play_anim("idle")
-	# _setup_spell_vfx() — disabled; spell cast VFX removed
+	# SpellVFX self-initialises in its own _ready() — no setup call needed here.
 	if VELOCITY_SNAP_THRESHOLD >= FOOTSTEP_VELOCITY_THRESHOLD:
 		push_error("VELOCITY_SNAP_THRESHOLD (%f) must be < FOOTSTEP_VELOCITY_THRESHOLD (%f)" % [
 			VELOCITY_SNAP_THRESHOLD, FOOTSTEP_VELOCITY_THRESHOLD])
@@ -293,36 +293,6 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	_footstep_timer = 0.0
 	_footstep_bag.clear()
 	_tween_zoom(ZOOM_PREP)
-
-
-func _setup_spell_vfx() -> void:
-	var path: String = "res://assets/art/vfx/spell_cast/"
-	var da := DirAccess.open(path)
-	if da == null or not is_instance_valid(_spell_vfx):
-		return
-	var files: Array[String] = []
-	da.list_dir_begin()
-	var fname: String = da.get_next()
-	while not fname.is_empty():
-		if not da.current_is_dir() and fname.ends_with(".png"):
-			files.append(fname)
-		fname = da.get_next()
-	da.list_dir_end()
-	files.sort()
-	var sf := SpriteFrames.new()
-	sf.add_animation(&"cast")
-	sf.set_animation_loop(&"cast", false)
-	sf.set_animation_speed(&"cast", 20.0)
-	for f: String in files:
-		var tex := load(path + f) as Texture2D
-		if tex != null:
-			sf.add_frame(&"cast", tex)
-	_spell_vfx.sprite_frames = sf
-	_spell_vfx.animation_finished.connect(_on_spell_vfx_finished)
-
-
-func _on_spell_vfx_finished() -> void:
-	_spell_vfx.visible = false
 
 
 ## TR-PC-007 stub: CAST_LOCKED movement sub-state. Full behaviour in SpellCastingEffects epic.
