@@ -50,6 +50,11 @@ const _DEBRIS_PLACE_ATTEMPTS: int = 80
 ## 90/110/75 px clearances, 80 attempts). (LD-02)
 @export var obstacle_config: ObstacleConfig = null
 
+## Room template resource — data-driven room layout (LD-12).
+## When set, _ready() uses template tile_cells, valid_zone_polygons, and spawn_positions
+## instead of generating a default diamond. null = default diamond arena.
+@export var room_template: RoomTemplate = null
+
 # ── @onready ──────────────────────────────────────────────────────────────────
 
 @onready var _spawn_markers: Node2D = $SpawnMarkers
@@ -59,10 +64,19 @@ const _DEBRIS_PLACE_ATTEMPTS: int = 80
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 func _ready() -> void:
-	_build_floor()
-	_place_spawn_markers()
+	if room_template != null and not room_template.tile_cells.is_empty():
+		_build_floor_from_template()
+	else:
+		_build_floor()
+	if room_template != null and not room_template.spawn_positions.is_empty():
+		_place_spawn_markers_from_template()
+	else:
+		_place_spawn_markers()
 	_build_walls()
-	_build_navigation()
+	if room_template != null and not room_template.tile_cells.is_empty():
+		_build_navigation_from_template_boundary()
+	else:
+		_build_navigation()
 	_build_debris_obstacles()
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -100,6 +114,130 @@ func _build_navigation() -> void:
 	])
 	nav_poly.add_polygon(PackedInt32Array([0, 1, 2]))
 	nav_poly.add_polygon(PackedInt32Array([0, 2, 3]))
+	nav_region.navigation_polygon = nav_poly
+	add_child(nav_region)
+
+
+## Builds the floor tiles from room_template.tile_cells instead of the default diamond.
+## Reuses the same TileSetAtlasSource setup as _build_floor().
+func _build_floor_from_template() -> void:
+	_tile_map.clear()
+	if _tile_map.tile_set.has_source(_FLOOR_SOURCE_ID):
+		_tile_map.tile_set.remove_source(_FLOOR_SOURCE_ID)
+	var tex: Texture2D = load(_FLOOR_TILE_PATH) as Texture2D
+	if tex == null:
+		push_error("IsometricRoom: floor tile not found at %s" % _FLOOR_TILE_PATH)
+		return
+	var atlas := TileSetAtlasSource.new()
+	atlas.texture = tex
+	atlas.texture_region_size = Vector2i(64, 32)
+	atlas.create_tile(_FLOOR_ATLAS_COORD)
+	_tile_map.tile_set.add_source(atlas, _FLOOR_SOURCE_ID)
+	for cell: Vector2i in room_template.tile_cells:
+		_tile_map.set_cell(cell, _FLOOR_SOURCE_ID, _FLOOR_ATLAS_COORD)
+	# Flood-fill from origin — remove isolated tiles not connected to the main body.
+	var all_cells: Dictionary = {}
+	for c: Vector2i in _tile_map.get_used_cells():
+		all_cells[c] = true
+	# Start flood-fill from the first tile cell (template origin point).
+	var start: Vector2i = room_template.tile_cells[0] if not room_template.tile_cells.is_empty() else Vector2i.ZERO
+	var visited: Dictionary = {}
+	var queue: Array[Vector2i] = [start]
+	var dirs: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	while not queue.is_empty():
+		var cell: Vector2i = queue.pop_back()
+		if visited.has(cell) or not all_cells.has(cell):
+			continue
+		visited[cell] = true
+		for d: Vector2i in dirs:
+			var nb: Vector2i = cell + d
+			if all_cells.has(nb) and not visited.has(nb):
+				queue.append(nb)
+	for c: Vector2i in all_cells:
+		if not visited.has(c):
+			_tile_map.erase_cell(c)
+
+
+## Places spawn markers at template.predefined spawn_positions.
+## Skips the centroid+angle auto-placement algorithm.
+func _place_spawn_markers_from_template() -> void:
+	var markers: Array[Node] = _spawn_markers.get_children()
+	for i: int in range(min(markers.size(), room_template.spawn_positions.size())):
+		if markers[i] is Marker2D:
+			(markers[i] as Marker2D).position = room_template.spawn_positions[i]
+
+
+## Builds a NavigationRegion2D from the template tile boundary.
+## Uses the same edge-counting approach as _build_walls() to find the boundary,
+## then constructs a navigation polygon from the boundary vertices.
+func _build_navigation_from_template_boundary() -> void:
+	var used: Array[Vector2i] = _tile_map.get_used_cells()
+	if used.is_empty():
+		return
+	var corner_offsets: Array[Vector2] = [
+		Vector2(0, -_TILE_Y_STEP), Vector2(_TILE_X_STEP, 0),
+		Vector2(0, _TILE_Y_STEP), Vector2(-_TILE_X_STEP, 0),
+	]
+	var edge_count: Dictionary = {}
+	var edge_points: Dictionary = {}
+	for cell: Vector2i in used:
+		var center: Vector2 = _tile_map.map_to_local(cell)
+		for i: int in range(4):
+			var a: Vector2 = center + corner_offsets[i]
+			var b: Vector2 = center + corner_offsets[(i + 1) % 4]
+			var key: String = _edge_key(a, b)
+			edge_count[key] = int(edge_count.get(key, 0)) + 1
+			if not edge_points.has(key):
+				edge_points[key] = [a, b]
+	# Collect boundary vertices in clock-wise order from boundary edges.
+	# Build connected chains: each boundary edge connects two vertices.
+	var boundary_edges: Array[Dictionary] = []
+	for key: String in edge_count:
+		if int(edge_count[key]) == 1:
+			var pair: Array = edge_points[key]
+			boundary_edges.append({"a": pair[0] as Vector2, "b": pair[1] as Vector2})
+	if boundary_edges.is_empty():
+		return
+	# Chain edges into ordered vertices.
+	var ordered: Array[Vector2] = []
+	var current: Vector2 = boundary_edges[0]["a"] as Vector2
+	var next: Vector2 = boundary_edges[0]["b"] as Vector2
+	ordered.append(current)
+	var used_edges: Dictionary = {}
+	used_edges[_edge_key(current, next)] = true
+	while true:
+		ordered.append(next)
+		var found: bool = false
+		for e: Dictionary in boundary_edges:
+			var ek: String = _edge_key(e["a"] as Vector2, e["b"] as Vector2)
+			if used_edges.has(ek):
+				continue
+			var ea: Vector2 = e["a"] as Vector2
+			var eb: Vector2 = e["b"] as Vector2
+			var eps: float = 0.5
+			if (ea - next).length() < eps:
+				next = eb
+				used_edges[ek] = true
+				found = true
+				break
+			elif (eb - next).length() < eps:
+				next = ea
+				used_edges[ek] = true
+				found = true
+				break
+		if not found:
+			break
+		if ordered.size() > 1 and (ordered[0] - next).length() < 1.0:
+			break  # closed loop
+	var nav_poly := NavigationPolygon.new()
+	nav_poly.vertices = PackedVector2Array(ordered)
+	var indices: PackedInt32Array = PackedInt32Array()
+	for i: int in range(1, ordered.size() - 1):
+		indices.append(0)
+		indices.append(i)
+		indices.append(i + 1)
+	nav_poly.add_polygon(indices)
+	var nav_region := NavigationRegion2D.new()
 	nav_region.navigation_polygon = nav_poly
 	add_child(nav_region)
 
@@ -271,8 +409,11 @@ func _edge_key(a: Vector2, b: Vector2) -> String:
 
 
 ## Returns the active obstacle config, loading defaults on first access. (LD-02)
-## Template authors override via the @export obstacle_config in the inspector.
+## Template authors override via the @export obstacle_config in the inspector,
+## or via room_template.obstacle_config (template override takes priority).
 func _get_obstacle_config() -> ObstacleConfig:
+	if room_template != null and room_template.obstacle_config != null:
+		return room_template.obstacle_config
 	if obstacle_config == null:
 		obstacle_config = ObstacleConfig.new()
 	return obstacle_config
@@ -326,13 +467,41 @@ func _generate_debris_positions(spawn_positions: Array[Vector2], zone_check: Cal
 	return placed
 
 
+## Returns a zone_check Callable for the current room template.
+## If the template defines valid_zone_rects, returns a Callable that tests
+## point-in-any-rect via Rect2.has_point().
+## If no template or empty rects, returns an invalid Callable — the generation
+## function falls back to default inner-diamond zone. (LD-12)
+func _get_zone_check() -> Callable:
+	if room_template == null or room_template.valid_zone_rects.is_empty():
+		return Callable()
+	var rects: Array[Rect2] = room_template.valid_zone_rects
+	return func(pos: Vector2) -> bool:
+		for r: Rect2 in rects:
+			if r.has_point(pos):
+				return true
+		return false
+
+
+## Returns sample half-extents for random candidate generation.
+## Uses template wall_half overrides if set, otherwise defaults to WALL_HALF_X/Y.
+func _get_sample_extents() -> Dictionary:
+	var wx: float = float(room_template.wall_half_x) if room_template != null and room_template.wall_half_x > 0 else float(_WALL_HALF_X)
+	var wy: float = float(room_template.wall_half_y) if room_template != null and room_template.wall_half_y > 0 else float(_WALL_HALF_Y)
+	var cfg: ObstacleConfig = _get_obstacle_config()
+	return {"x": wx * cfg.inner_scale, "y": wy * cfg.inner_scale}
+
+
 ## Spawns half-cover debris obstacles (S9-09, design/quick-specs/arena-cover-types.md).
 ## Debris blocks movement (physics layer 16) but not Prana spells or projectiles.
 ## Each debris also has a NavigationObstacle2D for enemy avoidance.
 ## Positions are randomised each run via _generate_debris_positions (level-generation.md).
+## When a room_template is set, passes the template's zone_check and sample extents. (LD-12)
 func _build_debris_obstacles() -> void:
 	var spawn_positions: Array[Vector2] = get_spawn_markers()
-	for pos: Vector2 in _generate_debris_positions(spawn_positions):
+	var zone_check: Callable = _get_zone_check()
+	var extents: Dictionary = _get_sample_extents()
+	for pos: Vector2 in _generate_debris_positions(spawn_positions, zone_check, extents["x"], extents["y"]):
 		var body := StaticBody2D.new()
 		body.name = "Debris"
 		body.position = pos

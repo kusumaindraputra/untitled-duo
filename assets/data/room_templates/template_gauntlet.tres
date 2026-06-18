@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="RoomTemplate" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/room_template.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+display_name = "The Gauntlet"
+room_type = 1
+tile_cells = Array[Vector2i]([])
+wall_half_x = 0
+wall_half_y = 0
+valid_zone_rects = Array[Rect2]([Rect2(-524.8, -314.88, 424.8, 629.76), Rect2(100, -314.88, 424.8, 629.76)])
+spawn_positions = Array[Vector2]([])
+obstacle_config = null
