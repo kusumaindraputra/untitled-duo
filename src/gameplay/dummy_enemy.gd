@@ -159,6 +159,7 @@ func _on_enemy_killed(instance_id: int, _type_id: int, _affil: GameEnums.DamageC
 		return
 	_is_dead = true
 	_current_hp = 0
+	collision_layer = 0  # stop spell raycasts from hitting dead body (ADR-0007)
 	_refresh_bar()
 	dummy_killed.emit()
 	await get_tree().create_timer(0.8).timeout

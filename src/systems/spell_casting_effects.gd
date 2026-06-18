@@ -541,7 +541,7 @@ func _select_primary_target() -> Node:
 	var nearest_dist: float = INF
 	for result in results:
 		var collider: Node = result.get("collider")
-		if collider != null and collider.is_in_group(&"enemy"):
+		if collider != null and collider.is_in_group(&"enemy") and collider.has_method(&"is_alive") and collider.is_alive():
 			var dist: float = origin.distance_squared_to((collider as Node2D).global_position)
 			if dist < nearest_dist:
 				nearest_dist = dist

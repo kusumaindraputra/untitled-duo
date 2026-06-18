@@ -527,6 +527,7 @@ func _on_enemy_killed(instance_id: int, _type_id: int, _prana_affiliation: GameE
 	_fayde_in_contact = false
 	_stop_attack_vfx()
 	$HitArea.monitoring = false
+	collision_layer = 0  # stop spell raycasts from hitting dead body (ADR-0007)
 
 	# Play IsoCharacter death animation if available; use fallback timer for cleanup.
 	var has_iso_death: bool = false
