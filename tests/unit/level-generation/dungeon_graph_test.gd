@@ -64,7 +64,7 @@ func test_connect_creates_directed_edge() -> void:
 	var g := DungeonGraph.new()
 	g.add_room(0)
 	g.add_room(0)
-	g.connect(0, 1)
+	g.add_edge(0, 1)
 	assert_int(g.edge_count()).is_equal(1)
 	# Direction-aware: outgoing from 0, incoming to 1
 	assert_array(g.get_outgoing(0)).contains_exactly([1])
@@ -77,8 +77,8 @@ func test_connect_is_idempotent() -> void:
 	var g := DungeonGraph.new()
 	g.add_room(0)
 	g.add_room(0)
-	g.connect(0, 1)
-	g.connect(0, 1)
+	g.add_edge(0, 1)
+	g.add_edge(0, 1)
 	assert_int(g.edge_count()).is_equal(1)
 
 
@@ -86,15 +86,15 @@ func test_connect_reverse_edge_is_distinct() -> void:
 	var g := DungeonGraph.new()
 	g.add_room(0)
 	g.add_room(0)
-	g.connect(0, 1)
-	g.connect(1, 0)  # reverse — distinct edge
+	g.add_edge(0, 1)
+	g.add_edge(1, 0)  # reverse — distinct edge
 	assert_int(g.edge_count()).is_equal(2)
 
 
 func test_connect_out_of_bounds_warns() -> void:
 	var g := DungeonGraph.new()
 	g.add_room(0)
-	g.connect(0, 99)  # out of bounds — should push_warning, not crash
+	g.add_edge(0, 99)  # out of bounds — should push_warning, not crash
 	assert_int(g.edge_count()).is_equal(0)
 
 
@@ -119,8 +119,8 @@ func test_entry_and_exit_on_linear_chain() -> void:
 	g.add_room(0)   # 0
 	g.add_room(0)   # 1
 	g.add_room(0)   # 2
-	g.connect(0, 1)
-	g.connect(1, 2)
+	g.add_edge(0, 1)
+	g.add_edge(1, 2)
 	assert_int(g.get_entry_room()).is_equal(0)
 	assert_array(g.get_exit_rooms()).contains_exactly([2])
 
@@ -138,8 +138,8 @@ func test_has_path_linear() -> void:
 	g.add_room(0)   # 0
 	g.add_room(0)   # 1
 	g.add_room(0)   # 2
-	g.connect(0, 1)
-	g.connect(1, 2)
+	g.add_edge(0, 1)
+	g.add_edge(1, 2)
 	assert_bool(g.has_path(0, 2)).is_true()
 	assert_bool(g.has_path(2, 0)).is_false()   # directed — no reverse path
 	assert_bool(g.has_path(0, 1)).is_true()
@@ -153,10 +153,10 @@ func test_has_path_branching_and_regroup() -> void:
 	g.add_room(0)   # 1
 	g.add_room(0)   # 2
 	g.add_room(0)   # 3
-	g.connect(0, 1)
-	g.connect(0, 2)
-	g.connect(1, 3)
-	g.connect(2, 3)
+	g.add_edge(0, 1)
+	g.add_edge(0, 2)
+	g.add_edge(1, 3)
+	g.add_edge(2, 3)
 	assert_bool(g.has_path(0, 3)).is_true()
 	assert_bool(g.has_path(1, 3)).is_true()
 	assert_bool(g.has_path(2, 3)).is_true()
@@ -179,9 +179,9 @@ func test_is_acyclic_on_linear_dag() -> void:
 	g.add_room(0)   # 1
 	g.add_room(0)   # 2
 	g.add_room(0)   # 3
-	g.connect(0, 1)
-	g.connect(1, 2)
-	g.connect(2, 3)
+	g.add_edge(0, 1)
+	g.add_edge(1, 2)
+	g.add_edge(2, 3)
 	assert_bool(g.is_acyclic()).is_true()
 
 
@@ -193,10 +193,10 @@ func test_is_acyclic_on_branching_dag() -> void:
 	g.add_room(0)
 	g.add_room(0)
 	g.add_room(0)
-	g.connect(0, 1)
-	g.connect(0, 2)
-	g.connect(1, 3)
-	g.connect(2, 3)
+	g.add_edge(0, 1)
+	g.add_edge(0, 2)
+	g.add_edge(1, 3)
+	g.add_edge(2, 3)
 	assert_bool(g.is_acyclic()).is_true()
 
 
@@ -205,9 +205,9 @@ func test_is_acyclic_detects_cycle() -> void:
 	g.add_room(0)   # 0
 	g.add_room(0)   # 1
 	g.add_room(0)   # 2
-	g.connect(0, 1)
-	g.connect(1, 2)
-	g.connect(2, 0)   # cycle!
+	g.add_edge(0, 1)
+	g.add_edge(1, 2)
+	g.add_edge(2, 0)   # cycle!
 	assert_bool(g.is_acyclic()).is_false()
 
 

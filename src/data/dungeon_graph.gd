@@ -15,7 +15,7 @@
 ##   var g := DungeonGraph.new()
 ##   var start: int = g.add_room(0)       # Combat = 0
 ##   var boss: int  = g.add_room(3)       # BossGate = 3
-##   g.connect(start, boss)
+##   g.add_edge(start, boss)
 ##   assert(g.has_path(start, boss))
 ##
 ## GDD:     design/room-connection-model.md, design/room-type-taxonomy.md
@@ -56,13 +56,14 @@ func add_room(type: int, template: RoomTemplate = null) -> int:
 
 
 ## Creates a directed edge from [param from_idx] to [param to_idx].
-## Idempotent: connecting the same pair twice does not create a duplicate.
-func connect(from_idx: int, to_idx: int) -> void:
+## Idempotent: adding the same pair twice does not create a duplicate.
+## Named add_edge (not connect) to avoid shadowing Object.connect().
+func add_edge(from_idx: int, to_idx: int) -> void:
 	if from_idx < 0 or from_idx >= _rooms.size():
-		push_warning("DungeonGraph.connect: from_idx %d out of bounds." % from_idx)
+		push_warning("DungeonGraph.add_edge: from_idx %d out of bounds." % from_idx)
 		return
 	if to_idx < 0 or to_idx >= _rooms.size():
-		push_warning("DungeonGraph.connect: to_idx %d out of bounds." % to_idx)
+		push_warning("DungeonGraph.add_edge: to_idx %d out of bounds." % to_idx)
 		return
 	for e: Dictionary in _edges:
 		if int(e["from"]) == from_idx and int(e["to"]) == to_idx:
