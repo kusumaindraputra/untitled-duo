@@ -55,6 +55,11 @@ const _DEBRIS_PLACE_ATTEMPTS: int = 80
 ## instead of generating a default diamond. null = default diamond arena.
 @export var room_template: RoomTemplate = null
 
+## Anchor object to place in this room (LD-22).
+## Set by RoomPopulator when room type is Memory Chamber. null = no anchor in this room.
+## Placed at a safe position inside the walkable zone after _build_floor() completes.
+@export var anchor_object_data: AnchorObject = null
+
 # ── @onready ──────────────────────────────────────────────────────────────────
 
 @onready var _spawn_markers: Node2D = $SpawnMarkers
@@ -78,6 +83,8 @@ func _ready() -> void:
 	else:
 		_build_navigation()
 	_build_debris_obstacles()
+	if anchor_object_data != null:
+		_place_anchor_object(anchor_object_data)
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
@@ -559,3 +566,24 @@ func _build_debris_obstacles() -> void:
 		body.add_child(top)
 
 		add_child(body)
+
+
+## Places one AnchorObjectNode at a safe position inside the walkable zone (LD-22).
+## Position strategy: tile centroid offset by a fixed vector — guaranteed inside the
+## diamond for the default arena, safe from spawn markers (>80px) and walls (>60px).
+## Future: RoomPopulator will pass per-room safe positions derived from valid_zone_polygons.
+##
+## [param data] AnchorObject resource defining the anchor identity and trigger radius.
+func _place_anchor_object(data: AnchorObject) -> void:
+	var anchor_scene: PackedScene = load("res://src/scenes/AnchorObjectNode.tscn")
+	if anchor_scene == null:
+		push_error("IsometricRoom: AnchorObjectNode.tscn not found")
+		return
+	var node: AnchorObjectNode = anchor_scene.instantiate() as AnchorObjectNode
+	node.set_anchor_data(data)
+	var entity_layer: Node2D = get_node_or_null("EntityLayer") as Node2D
+	var parent: Node = entity_layer if entity_layer != null else self
+	parent.add_child(node)
+	# Default safe position: slightly south of center — inside the default diamond,
+	# well clear of spawn markers (A=-192,-96; B=192,-96; C=0,128) and walls (±384 y).
+	node.position = Vector2(0.0, 60.0)

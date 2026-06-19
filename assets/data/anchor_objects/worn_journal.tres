@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="AnchorObject" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/anchor_object.gd" id="1_ao"]
+
+[resource]
+script = ExtResource("1_ao")
+anchor_id = &"worn_journal"
+display_name = "Worn Journal"
+visual_description = "A tattered leather journal left open. Handwriting inside looks familiar."
+memory_id = &"mem_worn_journal"
+trigger_radius = 48.0
+trigger_condition = 0
