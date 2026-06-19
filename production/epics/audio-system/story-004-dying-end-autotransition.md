@@ -1,12 +1,12 @@
 # Story 004: DYING State + END Auto-Transition
 
 > **Epic**: Audio System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Logic
 > **Estimate**: 3h
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: 2026-06-18
+> **Last Updated**: 2026-06-19
 
 ## Context
 
@@ -167,7 +167,7 @@ func _on_end_cue_finished() -> void:
 **Story Type**: Logic
 **Required evidence**: `tests/unit/audio/music_fsm_dying_test.gd` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] `tests/unit/audio/music_fsm_dying_test.gd` — 774 tests total, 0 failures (2026-06-19)
 
 ---
 
