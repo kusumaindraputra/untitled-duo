@@ -41,6 +41,12 @@ const COLLISION_MASK_DASHING: int = 1  # bit 0 only: walls only — dash passes 
 ## Modulate alpha oscillation interval during i-frames — ~8 blinks/sec at 60fps.
 const BLINK_INTERVAL: float = 0.06
 
+## Camera smoothing speed — pixels/sec² toward the target position.
+## Higher = snappier; 8.0 gives subtle smoothing without sluggish feel.
+const CAMERA_SMOOTH_SPEED: float = 8.0
+## Maximum camera look-ahead offset in pixels (ahead of player in movement direction).
+const CAMERA_LOOK_AHEAD_MAX: float = 30.0
+
 ## Movement speed multiplier during cast lock — Fayde can still move but at reduced speed.
 ## GDD Rule 6: movement is dampened, not zeroed, during the post-hit recovery window.
 const CAST_LOCK_SPEED_FACTOR: float = 0.25
@@ -97,6 +103,7 @@ func _ready() -> void:
 	collision_layer = COLLISION_LAYER_PLAYER
 	collision_mask = COLLISION_MASK_NORMAL
 	_setup_combat_flash()
+	_setup_camera_smoothing()
 	if is_instance_valid(_iso_char):
 		_iso_char.configure({
 			"idle": "fayde_idle",
@@ -216,6 +223,15 @@ func _physics_process(delta: float) -> void:
 		if wanted != _last_anim:
 			_last_anim = wanted
 			_iso_char.play_anim(wanted)
+
+	# Look-ahead offset: shift camera ahead in movement direction.
+	# Null-safe: headless unit tests have no Camera2D child.
+	if is_instance_valid(_camera):
+		var speed_ratio: float = minf(velocity.length() / MOVE_SPEED, 1.0)
+		if velocity.length() > 1.0:
+			_camera.position = velocity.normalized() * speed_ratio * CAMERA_LOOK_AHEAD_MAX
+		else:
+			_camera.position = _camera.position.lerp(Vector2.ZERO, delta * 4.0)
 
 	move_and_slide()
 
@@ -385,6 +401,15 @@ func _play_combat_flash() -> void:
 	_flash_tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 	_flash_tween.tween_interval(get_physics_process_delta_time())
 	_flash_tween.tween_property(_flash_rect, "modulate:a", 0.0, 0.15)
+
+
+## Enables Camera2D built-in position smoothing so the camera glides
+## instead of snapping to the player. Called once from _ready().
+func _setup_camera_smoothing() -> void:
+	if _camera == null:
+		return
+	_camera.position_smoothing_enabled = true
+	_camera.position_smoothing_speed = CAMERA_SMOOTH_SPEED
 
 
 func _tween_zoom(target: Vector2) -> void:

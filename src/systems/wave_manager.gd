@@ -114,12 +114,16 @@ var _wave_composition: Array[Dictionary] = []
 ## Cleared and freed when combat starts.
 var _preview_nodes: Array[Node2D] = []
 
+## AudioSystem reference; null-safe — set in _ready().
+var _audio: Variant = null
+
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 func _ready() -> void:
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	GameStateManager.combat_started.connect(_on_combat_started)
 	HealthAndDamage.enemy_killed.connect(_on_enemy_killed)
+	_audio = get_node_or_null("/root/AudioSystem")
 	all_waves_cleared.connect(GameStateManager.receive_all_waves_cleared)
 	boss_defeated.connect(GameStateManager.receive_boss_defeated)
 
@@ -287,6 +291,10 @@ func _spawn_wave() -> void:
 		boss_defeated.emit()
 		return
 	_wave_state = WaveState.WAVE_ACTIVE
+
+	# Audio: fire-and-forget, null-safe.
+	if _audio != null and _audio.has_method(&"has_event") and _audio.has_event(&"sfx_enemy_spawn"):
+		_audio.play_event(&"sfx_enemy_spawn")
 
 
 ## Instantiates the actual enemy scenes at projected spawn positions during preparation.

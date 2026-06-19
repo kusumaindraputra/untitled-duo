@@ -259,6 +259,7 @@ func play_event(event_name: StringName) -> void:
 	if not _validated_events.has(event_name):
 		push_error("AudioSystem: play_event('%s') — event not registered." % event_name)
 		return
+
 	var data: AudioEventData = _validated_events[event_name]
 	match data.bus:
 		BUS_SFX:
@@ -269,6 +270,13 @@ func play_event(event_name: StringName) -> void:
 			push_error("AudioSystem: play_event('%s') targets BUS_AMB — use play_ambient() instead." % event_name)
 		_:
 			push_error("AudioSystem: Unknown bus '%s' for event '%s'." % [data.bus, event_name])
+
+
+## Returns true if [param event_name] is registered in the validated event map.
+## Use this to guard play_event() calls when the registry may be incomplete
+## (e.g., headless tests, early development before audio assets exist).
+func has_event(event_name: StringName) -> bool:
+	return _validated_events.has(event_name)
 
 
 ## Starts crossfade from the current ambient player to [param event_name]'s stream.

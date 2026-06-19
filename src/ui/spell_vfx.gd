@@ -5,11 +5,16 @@
 ## Listens to SC&E signals and routes them to the correct visual systems:
 ##   - cast_started      → modulate pulse on Fayde (cast readiness cue)
 ##   - spell_hit_element → per-type GPUParticles2D hit burst at target position
-##   - cast_hit_started  → stub (FP; MVP: flash Fayde cast-lock indicator)
+##   - cast_hit_started  → cast-lock tint (locked movement visual feedback)
+##   - heavy_hit         → amplified hitstop + shake + red flash (GF-06 heavy-hit juice)
+##   - player_died       → death cinematic: slow-motion + red vignette + death ring
+##
+## Also routes audio events to AudioSystem — fire-and-forget, null-safe.
 ##
 ## ADR: ADR-0003 (Signal-Driven Architecture), ADR-0015 (SpellVFX Particle Pool)
 ## Story: SC&E Story 005 — Prana Type Visual Differentiation (S5-03)
 ##        S7-05 — SpellVFX particle pre-pool (PERF-C1 fix)
+##        GF-06 — Gamefeel Pass 2 (heavy-hit, death cinematic, audio routing)
 ##
 ## Registration: Autoload #10 in project.godot (after SpellCastingEffects).
 ## No class_name — Godot 4.6 rejects class_name matching the Autoload node name.
@@ -50,10 +55,39 @@ var _shake_end_us: int = 0
 ## Multiplier applied to VFX, hitstop, and shake when the final chain attack lands.
 const COMBO_ENDER_AMPLIFY: float = 1.5
 
+## Hitstop duration multiplier for heavy hits (≥15 damage).
+const HEAVY_HIT_HITSTOP_MULT: float = 2.0
+## Shake amplitude multiplier for heavy hits.
+const HEAVY_HIT_SHAKE_MULT: float = 2.0
+## Opacity of the heavy-hit red flash at peak.
+const HEAVY_FLASH_ALPHA: float = 0.18
+## Duration of the heavy-hit red flash fade-out (seconds).
+const HEAVY_FLASH_DURATION: float = 0.25
+
 ## Tracked from chain_index_changed — true when the next hit is the final chain attack.
 var _next_is_ender: bool = false
 ## 0-based index of the current attack in the combo (0=first, 1=second, 2=ender).
 var _last_attack_index: int = 0
+
+## AudioSystem Autoload reference; null-safe — set in _ready(), overridable for tests.
+## Variant (not Node) intentional — allows mock injection.
+var _audio: Variant = null
+
+# ── Death cinematic state ─────────────────────────────────────────────────────
+
+## True while the death cinematic slow-motion is active.
+var _dying: bool = false
+## Countdown timer for death cinematic (real-time seconds, PROCESS_MODE_ALWAYS).
+var _death_timer: float = 0.0
+## Full-screen red vignette active during death cinematic.
+var _death_vignette: ColorRect = null
+
+# ── Heavy-hit flash state ─────────────────────────────────────────────────────
+
+## CanvasLayer + ColorRect for heavy-hit red flash. Created lazily on first heavy hit.
+var _heavy_flash_layer: CanvasLayer = null
+var _heavy_flash_rect: ColorRect = null
+var _heavy_flash_tween: Tween = null
 
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -65,7 +99,10 @@ func _ready() -> void:
 	SpellCastingEffects.cast_hit_started.connect(_on_cast_hit_started)
 	SpellCastingEffects.chain_index_changed.connect(_on_chain_index_changed)
 	HealthAndDamage.damage_taken.connect(_on_damage_taken)
+	HealthAndDamage.heavy_hit.connect(_on_heavy_hit)
+	HealthAndDamage.player_died.connect(_on_player_died)
 	_init_pool()
+	_audio = get_node_or_null("/root/AudioSystem")
 	# Camera is looked up lazily on first shake — autoload _ready() fires before
 	# the game scene (and player) exist, so get_first_node_in_group would return null here.
 
@@ -73,6 +110,7 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	_tick_hitstop()
 	_tick_shake()
+	_tick_death()
 
 
 func _exit_tree() -> void:
@@ -84,10 +122,17 @@ func _exit_tree() -> void:
 		SpellCastingEffects.cast_hit_started.disconnect(_on_cast_hit_started)
 	if HealthAndDamage.damage_taken.is_connected(_on_damage_taken):
 		HealthAndDamage.damage_taken.disconnect(_on_damage_taken)
+	if HealthAndDamage.heavy_hit.is_connected(_on_heavy_hit):
+		HealthAndDamage.heavy_hit.disconnect(_on_heavy_hit)
+	if HealthAndDamage.player_died.is_connected(_on_player_died):
+		HealthAndDamage.player_died.disconnect(_on_player_died)
 	if SpellCastingEffects.chain_index_changed.is_connected(_on_chain_index_changed):
 		SpellCastingEffects.chain_index_changed.disconnect(_on_chain_index_changed)
 	if _in_hitstop:
 		Engine.time_scale = 1.0
+	if _dying:
+		Engine.time_scale = 1.0
+		_dying = false
 
 
 # ── Signal handlers ────────────────────────────────────────────────────────────
@@ -113,11 +158,12 @@ func _on_cast_started(spell_effect: SpellEffect) -> void:
 	var tween: Tween = create_tween()
 	tween.tween_property(player as CanvasItem, "modulate", pulse_color, 0.05)
 	tween.tween_property(player as CanvasItem, "modulate", Color.WHITE, 0.12)
+	_audio_play(&"sfx_spell_cast")
 
 
 ## Zero-allocation hot path (ADR-0015): looks up pool node by shape,
 ## updates position and color, then restarts emission.
-## Also triggers per-type procedural draw VFX, hitstop, and screen shake.
+## Also triggers per-type procedural draw VFX, hitstop, screen shake, and audio.
 func _on_spell_hit_element(target: Node, prana_type_id: int) -> void:
 	var type_data: PranaType = PranaCatalog.get_type(prana_type_id)
 	if type_data == null:
@@ -130,6 +176,7 @@ func _on_spell_hit_element(target: Node, prana_type_id: int) -> void:
 		_spawn_hit_vfx(target as Node2D, prana_type_id, _last_attack_index)
 	_start_hitstop(amplify)
 	_start_shake(amplify)
+	_audio_play(&"sfx_spell_hit")
 
 
 ## Tints Fayde with a dimmed primary type color for _lock_duration seconds.
@@ -153,6 +200,7 @@ func _on_cast_hit_started(_lock_duration: float) -> void:
 	var tween: Tween = create_tween()
 	tween.tween_property(player as CanvasItem, "modulate", tint, 0.0)
 	tween.tween_property(player as CanvasItem, "modulate", Color.WHITE, _lock_duration)
+	_audio_play(&"sfx_fayde_cast_locked")
 
 
 ## Tracks chain state so _on_spell_hit_element can detect and amplify the final attack.
@@ -161,6 +209,7 @@ func _on_cast_hit_started(_lock_duration: float) -> void:
 func _on_chain_index_changed(combo_idx: int, combo_count: int) -> void:
 	if combo_idx > 0 and combo_idx == combo_count:
 		_next_is_ender = true
+		_audio_play(&"sfx_combo_ender")
 	_last_attack_index = clampi(combo_idx - 1, 0, 2)
 
 
@@ -177,11 +226,147 @@ func _on_damage_taken(target: Node, _final_damage: int, _current_hp: int) -> voi
 		var tw: Tween = create_tween()
 		tw.tween_property(ci, "modulate", Color(2.0, 0.25, 0.25, 1.0), 0.0)
 		tw.tween_property(ci, "modulate", Color.WHITE, 0.18)
+		_audio_play(&"sfx_fayde_hit")
 	else:
 		if target.has_method(&"request_hit_flash"):
 			target.request_hit_flash()
 		else:
 			_flash_enemy_white(ci)
+		_audio_play(&"sfx_enemy_hit")
+
+
+# ── Heavy hit ──────────────────────────────────────────────────────────────────
+
+## Handles heavy_hit from HealthAndDamage (≥15 damage).
+## Amplifies hitstop 2×, shake 2×, and shows a brief red screen flash.
+## Audio: sfx_heavy_hit for both player and enemy hits.
+func _on_heavy_hit(target: Node, _final_damage: int) -> void:
+	_start_hitstop(HEAVY_HIT_HITSTOP_MULT)
+	_start_shake(HEAVY_HIT_SHAKE_MULT)
+	_show_heavy_flash()
+	_audio_play(&"sfx_heavy_hit")
+
+
+## Shows a brief red flash overlay. Creates the CanvasLayer + ColorRect lazily
+## on first call, then reuses them. Fades in instantly, then fades out over 0.25 s.
+func _show_heavy_flash() -> void:
+	# Lazy-init the flash layer on first heavy hit.
+	if _heavy_flash_layer == null:
+		_heavy_flash_layer = CanvasLayer.new()
+		_heavy_flash_layer.layer = 99  # above HUD (10), below combat flash (100)
+		add_child(_heavy_flash_layer)
+		_heavy_flash_rect = ColorRect.new()
+		_heavy_flash_rect.color = Color(1.0, 0.15, 0.1, 0.0)
+		_heavy_flash_rect.anchor_right = 1.0
+		_heavy_flash_rect.anchor_bottom = 1.0
+		_heavy_flash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_heavy_flash_layer.add_child(_heavy_flash_rect)
+	if _heavy_flash_tween:
+		_heavy_flash_tween.kill()
+	_heavy_flash_rect.color.a = HEAVY_FLASH_ALPHA
+	_heavy_flash_tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	_heavy_flash_tween.tween_property(_heavy_flash_rect, "color:a", 0.0, HEAVY_FLASH_DURATION)
+
+
+# ── Player death cinematic ─────────────────────────────────────────────────────
+
+## Death cinematic constants.
+## Full slow-motion duration in real-time seconds (PROCESS_MODE_ALWAYS).
+const DEATH_SLOWMO_DURATION: float = 2.0
+## Time scale during death cinematic.
+const DEATH_TIME_SCALE: float = 0.25
+## Peak opacity of the red death vignette.
+const DEATH_VIGNETTE_ALPHA: float = 0.35
+## Death ring initial radius (pixels).
+const DEATH_RING_START: float = 10.0
+## Death ring final radius (pixels).
+const DEATH_RING_END: float = 300.0
+
+## Triggers the player death cinematic: slow-motion, red vignette, expanding ring.
+## Fires from HealthAndDamage.player_died. The death overlay (debug_game_loop)
+## appears on top — the cinematic adds dramatic weight underneath it.
+func _on_player_died() -> void:
+	_dying = true
+	_death_timer = DEATH_SLOWMO_DURATION
+	Engine.time_scale = DEATH_TIME_SCALE
+	# Spawn the death vignette as a child of the scene root so it covers everything.
+	if get_tree() != null and get_tree().root != null:
+		_death_vignette = ColorRect.new()
+		_death_vignette.color = Color(1.0, 0.05, 0.05, 0.0)
+		_death_vignette.anchor_right = 1.0
+		_death_vignette.anchor_bottom = 1.0
+		_death_vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		get_tree().root.add_child(_death_vignette)
+		# Fade vignette in over 0.4 s.
+		var tw: Tween = _death_vignette.create_tween().set_ease(Tween.EASE_OUT)
+		tw.tween_property(_death_vignette, "color:a", DEATH_VIGNETTE_ALPHA, 0.4)
+	# Spawn the death ring — top_level so it stays in world space during slow-mo.
+	var player: Node = get_tree().get_first_node_in_group(&"player") if get_tree() != null else null
+	if player != null and player is Node2D:
+		var ring := _DeathRing.new()
+		ring.top_level = true
+		ring.global_position = (player as Node2D).global_position
+		get_tree().root.add_child(ring)
+	_audio_play(&"sfx_fayde_death")
+
+
+## Counts down the death cinematic timer and restores normal time on expiry.
+## Called every frame from _process() with PROCESS_MODE_ALWAYS.
+func _tick_death() -> void:
+	if not _dying:
+		return
+	if _death_vignette != null:
+		# Heartbeat pulse on the vignette: 2 beats/sec, 0.05 amplitude.
+		var pulse: float = 1.0 + sin(Time.get_ticks_usec() * 0.000004 * TAU) * 0.05
+		_death_vignette.color.a = DEATH_VIGNETTE_ALPHA * pulse
+	_death_timer -= get_process_delta_time()
+	if _death_timer <= 0.0:
+		Engine.time_scale = 1.0
+		_dying = false
+		# Fade out and free the vignette.
+		if _death_vignette != null:
+			var tw: Tween = _death_vignette.create_tween()
+			tw.tween_property(_death_vignette, "color:a", 0.0, 0.4)
+			tw.tween_callback(_death_vignette.queue_free)
+			_death_vignette = null
+
+
+## Inner class: procedural death ring that expands from Fayde's death position.
+## A single red ring that grows from 10→300 px over DEATH_SLOWMO_DURATION seconds.
+class _DeathRing extends Node2D:
+	const RING_DURATION: float = 2.0
+	var _start_us: int = 0
+
+	func _ready() -> void:
+		process_mode = PROCESS_MODE_ALWAYS
+		z_index = 200
+		_start_us = Time.get_ticks_usec()
+
+	func _process(_delta: float) -> void:
+		if Time.get_ticks_usec() - _start_us >= int(RING_DURATION * 1_000_000.0):
+			queue_free()
+		else:
+			queue_redraw()
+
+	func _draw() -> void:
+		var elapsed: float = float(Time.get_ticks_usec() - _start_us) / 1_000_000.0
+		var p: float = clampf(elapsed / RING_DURATION, 0.0, 1.0)
+		var alpha: float = 1.0 - p
+		var ring_r: float = lerpf(10.0, 300.0, p)
+		draw_arc(Vector2.ZERO, ring_r, 0.0, TAU, 32,
+				Color(1.0, 0.1, 0.1, alpha * 0.7), 3.0, true)
+		# Secondary thinner ring at 60% radius.
+		draw_arc(Vector2.ZERO, ring_r * 0.6, 0.0, TAU, 24,
+				Color(1.0, 0.3, 0.2, alpha * 0.4), 1.5, true)
+
+
+# ── Audio routing ──────────────────────────────────────────────────────────────
+
+## Plays an audio event through AudioSystem. Null-safe — silent no-op when
+## AudioSystem is not available (headless tests, missing autoload).
+func _audio_play(event_name: StringName) -> void:
+	if _audio != null and _audio.has_method(&"has_event") and _audio.has_event(event_name):
+		_audio.play_event(event_name)
 
 
 # ── Pool ──────────────────────────────────────────────────────────────────────

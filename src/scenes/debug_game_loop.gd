@@ -72,6 +72,9 @@ func _on_run_ended(win: bool) -> void:
 ## Room-clear warm wash overlay — gold flash on wave_ended (Art Bible §2.4).
 ## Flash in 0.15 s → hold 0.6 s → fade out 0.5 s. Auto-frees at tween end.
 func _on_wave_ended() -> void:
+	var audio := get_node_or_null("/root/AudioSystem")
+	if audio != null and audio.has_method(&"has_event") and audio.has_event(&"sfx_wave_clear"):
+		audio.play_event(&"sfx_wave_clear")
 	var wash := ColorRect.new()
 	wash.color = Color(1.0, 0.85, 0.4, 0.0)
 	wash.anchor_right = 1.0

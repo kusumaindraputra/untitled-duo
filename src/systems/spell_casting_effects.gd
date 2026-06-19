@@ -225,6 +225,9 @@ var _buffer_pressed: bool = false
 ## Countdown for the input buffer. Positive = buffer active; expires at 0.
 var _buffer_timer: float = 0.0
 
+## AudioSystem reference; null-safe — set in _ready().
+var _audio: Variant = null
+
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
@@ -250,6 +253,7 @@ func _ready() -> void:
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	GameStateManager.combat_started.connect(_on_combat_started)
 	CombinationResolution.combo_resolved.connect(_on_combo_resolved)
+	_audio = get_node_or_null("/root/AudioSystem")
 
 
 func _exit_tree() -> void:
@@ -319,6 +323,10 @@ func _trigger_cast() -> void:
 
 	_combo_index += 1
 	chain_index_changed.emit(_combo_index, combo_count)
+
+	# Audio: combo step sound (null-safe).
+	if _audio != null and _audio.has_method(&"has_event") and _audio.has_event(&"sfx_combo_advance"):
+		_audio.play_event(&"sfx_combo_advance")
 
 	# Story 003: fire the attack for the just-advanced index.
 	# current_index is _combo_index - 1 because _combo_index was already incremented above.

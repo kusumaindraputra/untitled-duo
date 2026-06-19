@@ -60,6 +60,9 @@ var _vfx_tween: Tween = null
 ## Separate from _vfx_tween so contact/telegraph and status visuals coexist.
 var _status_tween: Tween = null
 
+## AudioSystem reference; null-safe — set in _ready().
+var _audio: Variant = null
+
 ## IsoCharacter sprite component — auto-set from scene tree.
 @onready var _iso_char: Node = $IsoCharacter
 var _last_anim: String = ""
@@ -105,6 +108,7 @@ func _ready() -> void:
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	HealthAndDamage.enemy_killed.connect(_on_enemy_killed)
 	_fayde_ref = get_tree().get_first_node_in_group(&"player") as Node2D
+	_audio = get_node_or_null("/root/AudioSystem")
 	# Configure IsoCharacter with skeleton animations.
 	if is_instance_valid(_iso_char):
 		_iso_char.configure({
@@ -531,6 +535,9 @@ func _on_enemy_killed(instance_id: int, _type_id: int, prana_affiliation: GameEn
 	# Spawn death burst VFX — color bloom outward per Art Bible principle.
 	# PranaType.color mapped from prana_affiliation; neutral enemies burst white.
 	_spawn_death_burst(prana_affiliation)
+	# Audio: fire-and-forget, null-safe.
+	if _audio != null and _audio.has_method(&"has_event") and _audio.has_event(&"sfx_enemy_death"):
+		_audio.play_event(&"sfx_enemy_death")
 
 	# Play IsoCharacter death animation if available; use fallback timer for cleanup.
 	var has_iso_death: bool = false
