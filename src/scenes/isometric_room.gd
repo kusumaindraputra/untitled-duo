@@ -347,6 +347,11 @@ func _place_spawn_markers() -> void:
 			if used_cells.has(c):
 				continue
 			var pos: Vector2 = _tile_map.map_to_local(c)
+			# Exclude tiles in the outer 22% of the diamond — boundary tiles put enemies
+			# at the visible edge of the floor and appear OOB at combat zoom 1.5×.
+			var norm_check: float = absf(pos.x) / float(_WALL_HALF_X) + absf(pos.y) / float(_WALL_HALF_Y)
+			if norm_check > 0.78:
+				continue
 			var too_close: bool = false
 			for placed: Vector2 in placed_positions:
 				if pos.distance_to(placed) < 80.0:

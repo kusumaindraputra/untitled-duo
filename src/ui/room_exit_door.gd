@@ -84,6 +84,20 @@ func _on_room_cleared() -> void:
 	if is_instance_valid(_beacon):
 		_beacon.unlocked = true
 	_update_label()
+	# Godot 4 does not emit body_entered for bodies already overlapping when monitoring
+	# is re-enabled (e.g. Fayde standing at the door when the last enemy dies, or
+	# returning to the same door position after a room transition). Defer so the
+	# physics step processes the new monitoring state before we query overlaps.
+	call_deferred(&"_check_existing_overlap")
+
+
+func _check_existing_overlap() -> void:
+	if _locked:
+		return
+	for body: Node2D in get_overlapping_bodies():
+		if body.is_in_group(&"player"):
+			_on_body_entered(body)
+			break
 
 
 func _on_body_entered(body: Node2D) -> void:
