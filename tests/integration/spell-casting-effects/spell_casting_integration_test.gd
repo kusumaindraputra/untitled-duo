@@ -18,6 +18,26 @@ extends GdUnitTestSuite
 
 const SCEScript = preload("res://src/systems/spell_casting_effects.gd")
 
+## Dummy AudioStream used to silence AudioSystem music-cue push_errors.
+## AudioSystem Story 004 hasn't delivered music cue assets yet;
+## emitting GameStateManager signals in integration tests triggers
+## AudioSystem._crossfade_to() which push_errors when cues are null.
+## Populating dummy streams in before_test() prevents that noise.
+var _dummy_stream: AudioStreamGenerator = null
+
+
+func before_test() -> void:
+	# Populate music cues for COMBAT and PREPARATION so AudioSystem doesn't push_error
+	# when GSM signals fire during the test (Story 004 still needs to load real cues).
+	var audio: Node = AudioSystem
+	if audio == null:
+		return
+	_dummy_stream = AudioStreamGenerator.new()
+	_dummy_stream.buffer_length = 0.01
+	for state in [1, 2]:  # MusicState.PREPARATION=1, COMBAT=2
+		if not audio._music_cues.has(state) or audio._music_cues[state] == null:
+			audio._music_cues[state] = _dummy_stream
+
 
 # ── Mock classes ──────────────────────────────────────────────────────────────
 
@@ -35,12 +55,17 @@ class MockHD:
 
 
 ## Pass-through SEM: shatter returns raw unchanged; has_status always false.
+## apply_status is a no-op stub — required by SC&E._apply_status_effects()
+## which calls SEM for Ashfire Burn DoT, Voidblue Blind, Stormgold Stun, etc.
 class MockSEM:
 	func check_and_apply_shatter(_target: Node, raw: float) -> float:
 		return raw
 
 	func has_status(_target: Node, _status: GameEnums.BaseStatus) -> bool:
 		return false
+
+	func apply_status(_target: Node, _status: GameEnums.BaseStatus, _duration: float, _spell_base_damage: float = 0.0) -> void:
+		pass
 
 
 ## Minimal enemy node exposing prana_affiliation and FP status stub fields.
