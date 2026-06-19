@@ -1,12 +1,12 @@
 # Story 007: Volume Control + Formula 2
 
 > **Epic**: Audio System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Logic
 > **Estimate**: 2h
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: 2026-06-18
+> **Last Updated**: 2026-06-19
 
 ## Context
 
@@ -171,7 +171,7 @@ Failure to reset leaves Music bus above −3.0 dB for subsequent tests.
 **Story Type**: Logic
 **Required evidence**: `tests/unit/audio/volume_control_test.gd` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] `tests/unit/audio/volume_control_test.gd` — 809 tests total, 0 failures (2026-06-19)
 
 ---
 
