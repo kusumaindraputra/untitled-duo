@@ -1,8 +1,9 @@
 ## debug_game_loop.gd — Temporary launcher for the First Playable build.
 ##
-## Wires the scene tree, registers input actions, and auto-starts the run.
+## Wires the scene tree, generates a DungeonGraph, and drives multi-room runs.
 ## The player uses the PranaGrid UI to arrange fragments and confirm before
-## combat begins — no keyboard bypass.
+## each combat. After clearing a room, exit doors unlock — the player walks
+## through to trigger the next room transition.
 ##
 ## Controls (in-game):
 ##   W / A / S / D  — Move Fayde
@@ -13,9 +14,28 @@
 ## Remove when a proper game menu and run-start flow are implemented.
 extends Node
 
+var _dungeon_graph: DungeonGraph = null
+
 func _ready() -> void:
 	_register_input_actions()
-	$WaveManager.spawn_points_container = $SubSceneRoot/IsometricRoom/SpawnMarkers
+
+	# Tell SceneManager about the initial room already in main.tscn so the first
+	# room transition correctly frees it instead of leaving a duplicate.
+	SceneManager.set_initial_scene($SubSceneRoot/IsometricRoom)
+
+	# Generate a 7-room dungeon and give it to RoomTransitionManager.
+	var gen := DungeonGenerator.new()
+	_dungeon_graph = gen.generate(7, 1)
+	var rtm: RoomTransitionManager = $RoomTransitionManager
+	rtm.setup(_dungeon_graph)
+	rtm.room_transition_completed.connect(_on_room_transitioned)
+
+	# Wire initial room: spawn markers + exit doors + is_final_room flag.
+	var initial_room: IsometricRoom = $SubSceneRoot/IsometricRoom
+	$WaveManager.spawn_points_container = initial_room.get_node("SpawnMarkers")
+	_set_final_room_flag(_dungeon_graph.get_entry_room())
+	rtm.wire_exit_doors(initial_room)
+
 	$PlayerController.position = Vector2(0, 0)
 	# Wire CombatHUD node references here — NodePath in .tscn can't resolve because
 	# CombatHUD enters the tree before PlayerController (scene ordering in main.tscn).
@@ -36,6 +56,28 @@ func _input(event: InputEvent) -> void:
 
 
 # ── Private ───────────────────────────────────────────────────────────────────
+
+## Called after each room transition completes. Rewires WaveManager to the new
+## room's SpawnMarkers, updates the is_final_room flag, then restarts prep phase.
+func _on_room_transitioned(new_room_idx: int) -> void:
+	var new_room: Node = SceneManager.get_current_scene()
+	if new_room == null:
+		push_error("debug_game_loop: room_transition_completed but SceneManager has no scene")
+		return
+	var spawn_markers: Node = new_room.get_node_or_null("SpawnMarkers")
+	if spawn_markers == null:
+		push_error("debug_game_loop: new room has no SpawnMarkers node")
+	$WaveManager.spawn_points_container = spawn_markers
+	_set_final_room_flag(new_room_idx)
+	GameStateManager.restart_preparation()
+
+
+## Sets WaveManager.is_final_room based on the room type at [param room_idx].
+func _set_final_room_flag(room_idx: int) -> void:
+	if _dungeon_graph == null:
+		return
+	var room: Dictionary = _dungeon_graph.get_room(room_idx)
+	$WaveManager.is_final_room = (room.get("type", DungeonGraph.ROOM_TYPE_COMBAT) == DungeonGraph.ROOM_TYPE_BOSS)
 
 func _register_input_actions() -> void:
 	_ensure_key_action(&"move_left", KEY_A)

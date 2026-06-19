@@ -79,6 +79,12 @@ const FP_RIFTER_COUNT: int = 2
 ## SEEKER + SWARMER guaranteed). (LD-03)
 @export var enemy_pool_config: EnemyPoolConfig = null
 
+## True for the final (boss) room of the dungeon. Only the final room emits
+## all_waves_cleared and boss_defeated — non-final rooms emit only wave_cleared,
+## which unlocks exit doors and lets the player proceed to the next room.
+## Set by debug_game_loop after each room transition via DungeonGraph room type.
+@export var is_final_room: bool = false
+
 # ── Signals ───────────────────────────────────────────────────────────────────
 
 ## Emitted when the current wave's enemies are all defeated.
@@ -124,6 +130,7 @@ func _ready() -> void:
 	GameStateManager.combat_started.connect(_on_combat_started)
 	HealthAndDamage.enemy_killed.connect(_on_enemy_killed)
 	_audio = get_node_or_null("/root/AudioSystem")
+	wave_cleared.connect(GameStateManager.receive_wave_cleared)
 	all_waves_cleared.connect(GameStateManager.receive_all_waves_cleared)
 	boss_defeated.connect(GameStateManager.receive_boss_defeated)
 
@@ -138,6 +145,8 @@ func _exit_tree() -> void:
 		GameStateManager.combat_started.disconnect(_on_combat_started)
 	if HealthAndDamage.enemy_killed.is_connected(_on_enemy_killed):
 		HealthAndDamage.enemy_killed.disconnect(_on_enemy_killed)
+	if wave_cleared.is_connected(GameStateManager.receive_wave_cleared):
+		wave_cleared.disconnect(GameStateManager.receive_wave_cleared)
 	if all_waves_cleared.is_connected(GameStateManager.receive_all_waves_cleared):
 		all_waves_cleared.disconnect(GameStateManager.receive_all_waves_cleared)
 	if boss_defeated.is_connected(GameStateManager.receive_boss_defeated):
@@ -181,8 +190,9 @@ func _on_enemy_killed(_instance_id: int, _type_id: int,
 	if _enemies_alive <= 0:
 		_wave_state = WaveState.WAVE_COMPLETE
 		wave_cleared.emit()
-		all_waves_cleared.emit()
-		boss_defeated.emit()  # FP: no boss encounter; fires immediately after (TR-WES-005)
+		if is_final_room:
+			all_waves_cleared.emit()
+			boss_defeated.emit()
 
 # ── Internal ──────────────────────────────────────────────────────────────────
 
@@ -287,8 +297,10 @@ func _spawn_wave() -> void:
 	if _enemies_total == 0:
 		push_error("WaveManager: no enemies spawned — wave vacuously complete")
 		_wave_state = WaveState.WAVE_COMPLETE
-		all_waves_cleared.emit()
-		boss_defeated.emit()
+		wave_cleared.emit()
+		if is_final_room:
+			all_waves_cleared.emit()
+			boss_defeated.emit()
 		return
 	_wave_state = WaveState.WAVE_ACTIVE
 

@@ -46,6 +46,13 @@ func get_current_scene() -> Node:
 	return _current_scene
 
 
+## Registers [param scene] as the initial room that already exists in main.tscn.
+## Call once from debug_game_loop._ready() so the first change_room() correctly
+## frees the bootstrapped room instead of leaving a duplicate under SubSceneRoot.
+func set_initial_scene(scene: Node) -> void:
+	_current_scene = scene
+
+
 ## Swaps the active sub-scene to a new instantiation of [param packed_scene].
 ##
 ## Performs the swap in three steps:

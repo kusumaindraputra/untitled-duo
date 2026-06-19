@@ -71,7 +71,10 @@ func test_combo_ring_frees_after_duration() -> void:
 
 	assert_bool(ring.is_queued_for_deletion()).is_true()
 
-	# Cleanup — the ring is queued for deletion but we need to null the ref.
+	# Cleanup — ring queued itself for deletion, but GdUnit4 checks orphans before the
+	# SceneTree processes the deletion queue. Free immediately to avoid exit-code 101.
+	if is_instance_valid(ring):
+		ring.free()
 	vfx._combo_ring = null
 
 

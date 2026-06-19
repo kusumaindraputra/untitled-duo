@@ -311,40 +311,74 @@ func test_pause_from_death_screen_is_noop() -> void:
 	assert_int(count[0]).is_equal(0)
 	gsm.free()
 
-# ── AC-10: Wave cleared cycle ─────────────────────────────────────────────────
+# ── AC-10: Wave cleared — emits signals, stays in COMBAT_PHASE ───────────────
 
-func test_wave_cleared_transitions_to_preparation_phase_and_emits_wave_ended() -> void:
+## GIVEN GSM in COMBAT_PHASE
+## WHEN _on_wave_cleared() is called
+## THEN wave_ended and room_cleared are emitted; state stays COMBAT_PHASE.
+## (State transitions to PREPARATION_PHASE only after the room transition via restart_preparation.)
+func test_wave_cleared_emits_wave_ended_and_room_cleared_stays_in_combat() -> void:
 	var gsm: Node = _make_gsm()
 	_force_state(gsm, GameEnums.GameState.COMBAT_PHASE)
-	gsm._waves_remaining = 2
-	var count: Array[int] = [0]
-	gsm.wave_ended.connect(func() -> void: count[0] += 1)
+	var wave_ended_count: Array[int] = [0]
+	var room_cleared_count: Array[int] = [0]
+	gsm.wave_ended.connect(func() -> void: wave_ended_count[0] += 1)
+	gsm.room_cleared.connect(func() -> void: room_cleared_count[0] += 1)
 
 	gsm._on_wave_cleared()
+
+	assert_int(wave_ended_count[0]).is_equal(1)
+	assert_int(room_cleared_count[0]).is_equal(1)
+	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.COMBAT_PHASE)
+	gsm.free()
+
+
+## GIVEN GSM in COMBAT_PHASE
+## WHEN _on_wave_cleared() is called from non-COMBAT_PHASE state
+## THEN no signals emitted (guard fires)
+func test_wave_cleared_noop_when_not_in_combat_phase() -> void:
+	var gsm: Node = _make_gsm()
+	_force_state(gsm, GameEnums.GameState.PREPARATION_PHASE)
+	var count: Array[int] = [0]
+	gsm.room_cleared.connect(func() -> void: count[0] += 1)
+
+	gsm._on_wave_cleared()
+
+	assert_int(count[0]).is_equal(0)
+	gsm.free()
+
+# ── AC-11: restart_preparation transitions to PREPARATION_PHASE ──────────────
+
+## GIVEN GSM in COMBAT_PHASE
+## WHEN restart_preparation() is called
+## THEN state transitions to PREPARATION_PHASE and preparation_started emitted
+func test_restart_preparation_from_combat_enters_preparation_phase() -> void:
+	var gsm: Node = _make_gsm()
+	_force_state(gsm, GameEnums.GameState.COMBAT_PHASE)
+	var count: Array[int] = [0]
+	gsm.preparation_started.connect(func(_wi: int, _wr: int) -> void: count[0] += 1)
+
+	gsm.restart_preparation()
 
 	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.PREPARATION_PHASE)
 	assert_int(count[0]).is_equal(1)
 	gsm.free()
 
-# ── AC-11: preparation_started payload ───────────────────────────────────────
 
-func test_preparation_started_carries_incremented_wave_index_and_decremented_waves_remaining() -> void:
+## GIVEN GSM in COMBAT_PHASE with _wave_index = 3
+## WHEN restart_preparation() is called
+## THEN _wave_index is reset to 0 and preparation_started carries wave_index=0
+func test_restart_preparation_resets_wave_index_to_zero() -> void:
 	var gsm: Node = _make_gsm()
 	_force_state(gsm, GameEnums.GameState.COMBAT_PHASE)
-	gsm._wave_index = 2
-	gsm._waves_remaining = 1
+	gsm._wave_index = 3
 	var wi_out: Array[int] = []
-	var wr_out: Array[int] = []
-	gsm.preparation_started.connect(func(wi: int, wr: int) -> void:
-		wi_out.append(wi)
-		wr_out.append(wr)
-	)
+	gsm.preparation_started.connect(func(wi: int, _wr: int) -> void: wi_out.append(wi))
 
-	gsm._on_wave_cleared()
+	gsm.restart_preparation()
 
 	assert_int(wi_out.size()).is_equal(1)
-	assert_int(wi_out[0]).is_equal(3)
-	assert_int(wr_out[0]).is_equal(0)
+	assert_int(wi_out[0]).is_equal(0)
 	gsm.free()
 
 # ── AC-12: Prep timer auto-confirm and halt ───────────────────────────────────

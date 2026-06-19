@@ -38,6 +38,12 @@ func _ready() -> void:
 		GameStateManager.room_cleared.connect(_on_room_cleared)
 
 
+func _exit_tree() -> void:
+	if GameStateManager != null \
+			and GameStateManager.room_cleared.is_connected(_on_room_cleared):
+		GameStateManager.room_cleared.disconnect(_on_room_cleared)
+
+
 # ── Public API ─────────────────────────────────────────────────────────────────
 
 ## Sets the destination room type and updates the door label.

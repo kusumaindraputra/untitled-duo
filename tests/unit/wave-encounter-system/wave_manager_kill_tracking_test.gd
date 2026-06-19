@@ -119,46 +119,78 @@ func test_on_enemy_killed_last_enemy_sets_wave_complete_and_zeroes_count() -> vo
 	_teardown_wm(wm)
 
 
-# ── AC-WES-09: Completion signals emitted once, in order ─────────────────────
+# ── AC-WES-09: Completion signals — final room emits all, non-final emits only wave_cleared
 
-## GIVEN WaveManager with _wave_state=WAVE_ACTIVE and _enemies_alive=1
+## GIVEN WaveManager with is_final_room=true, _wave_state=WAVE_ACTIVE, _enemies_alive=1
 ## WHEN _on_enemy_killed() called (the final kill)
-## THEN all_waves_cleared emitted exactly 1 time AND boss_defeated emitted exactly 1 time
-func test_on_enemy_killed_last_enemy_emits_all_waves_cleared_and_boss_defeated_once_each() -> void:
+## THEN wave_cleared, all_waves_cleared, boss_defeated all emitted exactly once
+func test_on_enemy_killed_last_enemy_final_room_emits_all_three_signals() -> void:
 	var wm: WaveManager = _make_wm()
+	wm.is_final_room = true
 	wm._wave_state = WaveManager.WaveState.WAVE_ACTIVE
 	wm._enemies_alive = 1
 
+	var wc_count: Array[int] = [0]
 	var awc_count: Array[int] = [0]
 	var bd_count: Array[int] = [0]
+	wm.wave_cleared.connect(func() -> void: wc_count[0] += 1)
 	wm.all_waves_cleared.connect(func() -> void: awc_count[0] += 1)
 	wm.boss_defeated.connect(func() -> void: bd_count[0] += 1)
 
 	wm._on_enemy_killed(1, 0, GameEnums.DamageClass.NONE)
 
+	assert_int(wc_count[0]).is_equal(1)
 	assert_int(awc_count[0]).is_equal(1)
 	assert_int(bd_count[0]).is_equal(1)
 
 	_teardown_wm(wm)
 
 
-## GIVEN WaveManager with _wave_state=WAVE_ACTIVE and _enemies_alive=1
+## GIVEN WaveManager with is_final_room=false (default), _wave_state=WAVE_ACTIVE, _enemies_alive=1
 ## WHEN _on_enemy_killed() called (the final kill)
-## THEN all_waves_cleared fires BEFORE boss_defeated (synchronous, same frame — ADR-0014)
-func test_on_enemy_killed_all_waves_cleared_fires_before_boss_defeated() -> void:
+## THEN wave_cleared emitted once; all_waves_cleared and boss_defeated NOT emitted
+func test_on_enemy_killed_last_enemy_non_final_room_emits_only_wave_cleared() -> void:
 	var wm: WaveManager = _make_wm()
+	# is_final_room defaults to false
+	wm._wave_state = WaveManager.WaveState.WAVE_ACTIVE
+	wm._enemies_alive = 1
+
+	var wc_count: Array[int] = [0]
+	var awc_count: Array[int] = [0]
+	var bd_count: Array[int] = [0]
+	wm.wave_cleared.connect(func() -> void: wc_count[0] += 1)
+	wm.all_waves_cleared.connect(func() -> void: awc_count[0] += 1)
+	wm.boss_defeated.connect(func() -> void: bd_count[0] += 1)
+
+	wm._on_enemy_killed(1, 0, GameEnums.DamageClass.NONE)
+
+	assert_int(wc_count[0]).is_equal(1)
+	assert_int(awc_count[0]).is_equal(0)
+	assert_int(bd_count[0]).is_equal(0)
+
+	_teardown_wm(wm)
+
+
+## GIVEN WaveManager with is_final_room=true, _wave_state=WAVE_ACTIVE, _enemies_alive=1
+## WHEN _on_enemy_killed() called (the final kill)
+## THEN signal order: wave_cleared → all_waves_cleared → boss_defeated
+func test_on_enemy_killed_final_room_signal_order_wc_awc_bd() -> void:
+	var wm: WaveManager = _make_wm()
+	wm.is_final_room = true
 	wm._wave_state = WaveManager.WaveState.WAVE_ACTIVE
 	wm._enemies_alive = 1
 
 	var emission_order: Array[String] = []
+	wm.wave_cleared.connect(func() -> void: emission_order.append("wave_cleared"))
 	wm.all_waves_cleared.connect(func() -> void: emission_order.append("all_waves_cleared"))
 	wm.boss_defeated.connect(func() -> void: emission_order.append("boss_defeated"))
 
 	wm._on_enemy_killed(1, 0, GameEnums.DamageClass.NONE)
 
-	assert_int(emission_order.size()).is_equal(2)
-	assert_str(emission_order[0]).is_equal("all_waves_cleared")
-	assert_str(emission_order[1]).is_equal("boss_defeated")
+	assert_int(emission_order.size()).is_equal(3)
+	assert_str(emission_order[0]).is_equal("wave_cleared")
+	assert_str(emission_order[1]).is_equal("all_waves_cleared")
+	assert_str(emission_order[2]).is_equal("boss_defeated")
 
 	_teardown_wm(wm)
 
@@ -170,6 +202,7 @@ func test_on_enemy_killed_all_waves_cleared_fires_before_boss_defeated() -> void
 ## THEN _wave_state remains WAVE_COMPLETE; signals not re-emitted; _enemies_alive unchanged
 func test_on_enemy_killed_duplicate_after_wave_complete_does_not_re_emit_or_decrement() -> void:
 	var wm: WaveManager = _make_wm()
+	wm.is_final_room = true  # emit all signals so we can verify no re-emission
 	wm._wave_state = WaveManager.WaveState.WAVE_ACTIVE
 	wm._enemies_alive = 1
 
@@ -214,19 +247,22 @@ func test_on_enemy_killed_duplicate_does_not_make_enemies_alive_negative() -> vo
 
 # ── AC-WES-11: Zero-spawn guard fires completion without kills ────────────────
 
-## GIVEN WaveManager with a spawn container having 0 markers (all spawns fail)
+## GIVEN WaveManager with is_final_room=true and 0 spawn markers
 ## WHEN _spawn_wave() runs via _on_combat_started(false)
-## THEN all_waves_cleared emitted once, boss_defeated emitted once, _wave_state=WAVE_COMPLETE
+## THEN wave_cleared, all_waves_cleared, boss_defeated all emitted once; _wave_state=WAVE_COMPLETE
 ## without any enemy_killed signals — run does not hang (TR-WES-003, ADR-0014)
-func test_zero_spawn_guard_emits_completion_signals_and_sets_wave_complete_without_kills() -> void:
+func test_zero_spawn_guard_final_room_emits_all_signals_and_sets_wave_complete() -> void:
 	var wm: WaveManager = _make_wm()
+	wm.is_final_room = true
 	var spawn_container: Node = _make_spawn_container(0)
 	wm.spawn_points_container = spawn_container
 	# Non-empty composition so the spawn loop enters and the "fewer markers" break fires.
 	wm._wave_composition = [{ "type_id": 0, "scene": null }]
 
+	var wc_count: Array[int] = [0]
 	var awc_count: Array[int] = [0]
 	var bd_count: Array[int] = [0]
+	wm.wave_cleared.connect(func() -> void: wc_count[0] += 1)
 	wm.all_waves_cleared.connect(func() -> void: awc_count[0] += 1)
 	wm.boss_defeated.connect(func() -> void: bd_count[0] += 1)
 
@@ -234,8 +270,38 @@ func test_zero_spawn_guard_emits_completion_signals_and_sets_wave_complete_witho
 
 	assert_int(wm._enemies_total).is_equal(0)
 	assert_int(wm._wave_state).is_equal(WaveManager.WaveState.WAVE_COMPLETE)
+	assert_int(wc_count[0]).is_equal(1)
 	assert_int(awc_count[0]).is_equal(1)
 	assert_int(bd_count[0]).is_equal(1)
+
+	_teardown_container(spawn_container)
+	_teardown_wm(wm)
+
+
+## GIVEN WaveManager with is_final_room=false (non-final) and 0 spawn markers
+## WHEN _spawn_wave() runs via _on_combat_started(false)
+## THEN wave_cleared emitted once; all_waves_cleared and boss_defeated NOT emitted
+func test_zero_spawn_guard_non_final_room_emits_only_wave_cleared() -> void:
+	var wm: WaveManager = _make_wm()
+	# is_final_room defaults to false
+	var spawn_container: Node = _make_spawn_container(0)
+	wm.spawn_points_container = spawn_container
+	wm._wave_composition = [{ "type_id": 0, "scene": null }]
+
+	var wc_count: Array[int] = [0]
+	var awc_count: Array[int] = [0]
+	var bd_count: Array[int] = [0]
+	wm.wave_cleared.connect(func() -> void: wc_count[0] += 1)
+	wm.all_waves_cleared.connect(func() -> void: awc_count[0] += 1)
+	wm.boss_defeated.connect(func() -> void: bd_count[0] += 1)
+
+	wm._on_combat_started(false)
+
+	assert_int(wm._enemies_total).is_equal(0)
+	assert_int(wm._wave_state).is_equal(WaveManager.WaveState.WAVE_COMPLETE)
+	assert_int(wc_count[0]).is_equal(1)
+	assert_int(awc_count[0]).is_equal(0)
+	assert_int(bd_count[0]).is_equal(0)
 
 	_teardown_container(spawn_container)
 	_teardown_wm(wm)

@@ -132,3 +132,42 @@ func test_wire_exit_doors_null_scene_no_crash() -> void:
 	rtm.wire_exit_doors(null)
 	assert_bool(true).is_true()
 	rtm.free()
+
+
+## GIVEN RTM set up with a linear graph, room has 1 door
+## WHEN wire_exit_doors() wires the door to outgoing[0]
+## THEN door.player_entered is connected to rtm.request_transition
+func test_wire_exit_doors_connects_player_entered_to_request_transition() -> void:
+	var rtm := RoomTransitionManager.new()
+	var g := _linear_graph()
+	rtm.setup(g)
+	var room: Node = _mock_room(1)
+	rtm.wire_exit_doors(room)
+	var door: RoomExitDoor = room.get_child(0) as RoomExitDoor
+	assert_bool(door.player_entered.is_connected(rtm.request_transition)).is_true()
+	room.free()
+	rtm.free()
+
+
+## GIVEN RTM wires exit doors twice (idempotent call)
+## WHEN wire_exit_doors() is called a second time on the same door
+## THEN player_entered has exactly 1 connection to request_transition (no duplicate)
+func test_wire_exit_doors_idempotent_no_duplicate_connections() -> void:
+	var rtm := RoomTransitionManager.new()
+	var g := _linear_graph()
+	rtm.setup(g)
+	var room: Node = _mock_room(1)
+	rtm.wire_exit_doors(room)
+	rtm.wire_exit_doors(room)
+	var door: RoomExitDoor = room.get_child(0) as RoomExitDoor
+	assert_bool(door.player_entered.is_connected(rtm.request_transition)).is_true()
+	# Count connections to request_transition via untyped array to avoid Array[Dictionary] cast issues.
+	var connections: Array = door.player_entered.get_connections()
+	var rtm_conn_count: int = 0
+	for conn in connections:
+		var callable: Callable = (conn as Dictionary).get("callable", Callable())
+		if callable == Callable(rtm, "request_transition"):
+			rtm_conn_count += 1
+	assert_int(rtm_conn_count).is_equal(1)
+	room.free()
+	rtm.free()

@@ -85,6 +85,7 @@ func _ready() -> void:
 	_build_debris_obstacles()
 	if anchor_object_data != null:
 		_place_anchor_object(anchor_object_data)
+	_spawn_exit_door()
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
@@ -106,6 +107,21 @@ func get_spawn_markers() -> Array[Vector2]:
 	return markers
 
 # ── Private ───────────────────────────────────────────────────────────────────
+
+## Spawns one RoomExitDoor Area2D at the south exit of the diamond arena.
+## Placed at Vector2(0, 340) — 44 px inside the south wall boundary (y=384),
+## well within the walkable zone. Trigger radius 30 px; starts locked.
+## RoomTransitionManager.wire_exit_doors() wires the destination after room load.
+func _spawn_exit_door() -> void:
+	var door := RoomExitDoor.new()
+	var shape := CollisionShape2D.new()
+	var circle := CircleShape2D.new()
+	circle.radius = 30.0
+	shape.shape = circle
+	door.add_child(shape)
+	door.position = Vector2(0, 340)
+	add_child(door)
+
 
 ## Adds a NavigationRegion2D covering the diamond tile area.
 ## Enemies can query NavigationServer2D for pathfinding within this region.

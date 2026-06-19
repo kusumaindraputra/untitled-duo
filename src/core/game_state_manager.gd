@@ -159,15 +159,15 @@ func _on_arrangement_confirmed() -> void:
 	_enter_combat(false)
 
 
-## COMBAT_PHASE → PREPARATION_PHASE on wave clear. Emits [signal wave_ended] (AC-10).
+## COMBAT_PHASE wave cleared: emits [signal wave_ended] and [signal room_cleared].
+## Does NOT change state — exit doors unlock and the player walks to the next room.
+## State transitions to PREPARATION_PHASE only after the room transition completes,
+## via [method restart_preparation] called by the orchestration layer (debug_game_loop).
 func _on_wave_cleared() -> void:
 	if _active_state != GameEnums.GameState.COMBAT_PHASE:
 		return
 	wave_ended.emit()
-	_wave_index += 1
-	if _waves_remaining > 0:
-		_waves_remaining -= 1
-	_request_transition(GameEnums.GameState.PREPARATION_PHASE)
+	room_cleared.emit()
 
 
 ## COMBAT_PHASE self-transition for boss wave (AC-01).
@@ -192,6 +192,20 @@ func receive_all_waves_cleared() -> void:
 ## Public entry point for WaveManager.boss_defeated signal connection (AV-5).
 func receive_boss_defeated() -> void:
 	_on_boss_defeated()
+
+
+## Public entry point for WaveManager.wave_cleared signal connection.
+## Non-final rooms connect here to emit room_cleared and unlock exit doors.
+func receive_wave_cleared() -> void:
+	_on_wave_cleared()
+
+
+## Transitions to PREPARATION_PHASE from any state (e.g., after a room transition).
+## Resets wave index and re-emits preparation_started so WaveManager rebuilds
+## composition for the new room. Called by debug_game_loop after room_transition_completed.
+func restart_preparation() -> void:
+	_wave_index = 0
+	_request_transition(GameEnums.GameState.PREPARATION_PHASE)
 
 
 ## Immediate death sequence (TR-GSF-008).
