@@ -87,6 +87,11 @@ var _type_indicator_label: Label = null
 
 func _ready() -> void:
 	process_mode = PROCESS_MODE_PAUSABLE
+	mouse_filter = Control.MOUSE_FILTER_PASS  # root passes events to children; _gui_input handled by slots/tokens/buttons
+	# Stretch to viewport so GUI hit-testing on child Controls works.
+	# Without explicit size, the root Control rect is (0,0,0,0) which can block
+	# Viewport._gui_call_input() from dispatching events to children.
+	size = get_viewport_rect().size
 	_slots.resize(GRID_SIZE)
 	_slots.fill(null)
 	_committed_fragments.resize(GRID_SIZE)

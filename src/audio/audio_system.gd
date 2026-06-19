@@ -515,18 +515,16 @@ func _get_cue_for_state(state: MusicState) -> AudioStream:
 ##   3. Call incoming_player.play().
 ##   4. Create new tween with set_parallel(true).
 ##
-## If [param cue] is null, logs push_error() and returns without changing state (AC-AS-22).
-## If [param fade_duration] <= 0.0, applies instant cut (no tween) per ADR-0012 guard.
-## Callers must invoke _connect_end_finished_signal() after this call when targeting END_*
-## states (AC-AS-26) — the signal connection is NOT wired inside this function.
+## If [param cue] is null (no audio asset), logs push_warning() and transitions silently.
+## AC-AS-22 relaxed during early development — game proceeds without music rather than blocking.
 func _crossfade_to(new_state: MusicState, fade_duration: float) -> void:
 	var cue: AudioStream = _get_cue_for_state(new_state)
 	if cue == null and new_state != MusicState.DYING:
-		push_error(
-			"AudioSystem: No music cue registered for state %s — transition to %s blocked (AC-AS-22)."
-				% [MusicState.keys()[new_state], MusicState.keys()[new_state]]
+		push_warning(
+			"AudioSystem: No music cue registered for state %s — transitioning silently (AC-AS-22 relaxed)."
+				% MusicState.keys()[new_state]
 		)
-		return
+		# Fall through — transition proceeds with silence instead of blocking.
 
 	_music_state = new_state
 

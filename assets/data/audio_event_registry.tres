@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="AudioEventRegistry" load_steps=2 format=3 uid="uid://jst3c9fa12bzs"]
+[gd_resource type="Resource" script_class="AudioEventRegistry" format=3 uid="uid://b21c55krwnkia"]
 
 [ext_resource type="Script" uid="uid://8c87jzuvj7vef" path="res://src/audio/audio_event_registry.gd" id="1_registry"]
 

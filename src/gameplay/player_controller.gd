@@ -19,7 +19,7 @@ enum ControllerState { DISABLED, ENABLED, DASHING }
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 const MOVE_SPEED: float = 180.0
-const MOVE_ACCELERATION: float = 0.65
+const MOVE_ACCELERATION: float = 0.80
 const MOVE_FRICTION: float = 0.50
 const VELOCITY_SNAP_THRESHOLD: float = 8.0
 const DASH_SPEED: float = 400.0
@@ -52,7 +52,7 @@ const CAMERA_LOOK_AHEAD_MAX: float = 30.0
 
 ## Movement speed multiplier during cast lock — Fayde can still move but at reduced speed.
 ## GDD Rule 6: movement is dampened, not zeroed, during the post-hit recovery window.
-const CAST_LOCK_SPEED_FACTOR: float = 0.25
+const CAST_LOCK_SPEED_FACTOR: float = 0.55
 
 ## Camera zoom levels.
 ## COMBAT 1.5×: visible 768×432 game-px, Fayde occupies ~15% height (Hades-like scale).
@@ -421,6 +421,7 @@ func _setup_combat_flash() -> void:
 	_flash_rect.modulate.a = 0.0
 	_flash_rect.anchor_right = 1.0
 	_flash_rect.anchor_bottom = 1.0
+	_flash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(_flash_rect)
 
 
