@@ -1,12 +1,12 @@
 # Story 006: Stinger API + Music Ducking
 
 > **Epic**: Audio System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Logic
 > **Estimate**: 3h
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: 2026-06-18
+> **Last Updated**: 2026-06-19
 
 ## Context
 
@@ -165,7 +165,7 @@ Store last event reference for restore: `var _last_stinger_event: AudioEventData
 **Story Type**: Logic
 **Required evidence**: `tests/unit/audio/stinger_test.gd` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] `tests/unit/audio/stinger_test.gd` — 791 tests total, 0 failures (2026-06-19)
 
 ---
 

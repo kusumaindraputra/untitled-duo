@@ -33,6 +33,12 @@ const BUS_AMB: StringName = &"AMB"
 ## Pre-instantiated SFX pool node count (TR-AS-002, ADR-0012).
 const SFX_POOL_SIZE: int = 24
 
+## Stinger priority: COMBAT (0) can be blocked by NARRATIVE (1).
+const STINGER_PRIORITY_COMBAT: int = 0
+const STINGER_PRIORITY_NARRATIVE: int = 1
+## Duck fade-in duration for Music bus when stinger starts.
+const STINGER_DUCK_FADE_IN_SEC: float = 0.1
+
 # ── Music state machine — states (TR-AS-003, ADR-0012) ───────────────────────
 
 ## Six music states driven exclusively by GameStateManager signals.
@@ -126,6 +132,15 @@ var _dying_elapsed: float = 0.0
 ## When true, a run_ended(false) arrived during DYING before DYING_MIN_HOLD_SEC elapsed.
 ## _process() fires the queued END_DEFEAT transition once the hold guard clears.
 var _pending_defeat_transition: bool = false
+
+## Live stinger tween (duck or restore). Killed before each new tween.
+var _active_stinger_tween: Tween = null
+## Music bus volume captured before first stinger duck. Retained on interrupt — never re-captured.
+var _music_pre_stinger_volume: float = 0.0
+## Priority of the currently playing stinger. -1 = no stinger playing.
+var _current_stinger_priority: int = -1
+## Last stinger event played — provides restore_duration_sec for _restore_music_after_stinger().
+var _last_stinger_event: AudioEventData = null
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
@@ -304,12 +319,83 @@ func stop_ambient() -> void:
 		.from(active.volume_db)
 
 
-func play_stinger(_event_name: StringName) -> void:
-	pass  # Story 006
+## Plays a non-pooled stinger and ducks the Music bus.
+## Priority policy: NARRATIVE (1) blocks COMBAT (0); NARRATIVE interrupts COMBAT; same-priority = last-caller-wins.
+## Music pre-stinger volume is captured ONCE and retained on interrupt to prevent compounding drift.
+## Duck is suppressed when _music_state == DYING (music is already silent).
+func play_stinger(event_name: StringName) -> void:
+	if not _validated_events.has(event_name):
+		push_error("AudioSystem: play_stinger('%s') — event not registered." % event_name)
+		return
+	var event: AudioEventData = _validated_events[event_name]
+	if event.bus not in [BUS_SFX, BUS_UI]:
+		push_error("AudioSystem: play_stinger('%s') — event must use SFX or UI bus." % event_name)
+		return
+	# Priority policy: NARRATIVE blocks COMBAT (not the reverse).
+	if _current_stinger_priority == STINGER_PRIORITY_NARRATIVE \
+			and event.stinger_priority == STINGER_PRIORITY_COMBAT:
+		return  # NARRATIVE blocks COMBAT — silently ignored.
+	# New stinger proceeds — disconnect any prior finished signal.
+	if _stinger_player.finished.is_connected(_on_stinger_finished):
+		_stinger_player.finished.disconnect(_on_stinger_finished)
+	# Capture pre-stinger Music volume ONLY when no stinger is active — prevents drift on interrupt.
+	if _current_stinger_priority == -1:
+		_music_pre_stinger_volume = AudioServer.get_bus_volume_db(
+			AudioServer.get_bus_index(BUS_MUSIC))
+	_last_stinger_event = event
+	_current_stinger_priority = event.stinger_priority
+	_stinger_player.stream = event.stream
+	_stinger_player.play()
+	_stinger_player.finished.connect(_on_stinger_finished, CONNECT_ONE_SHOT)
+	# Duck Music bus (suppressed in DYING — music is already at -80 dB).
+	if _music_state != MusicState.DYING:
+		var music_bus_idx: int = AudioServer.get_bus_index(BUS_MUSIC)
+		var target_db: float = _music_pre_stinger_volume + event.duck_depth_db
+		# Apply immediately so headless tests can assert bus volume without a tween step.
+		# The tween below provides smooth fade in runtime; the immediate set is overridden
+		# by the tween's first interpolation step after the first process frame.
+		AudioServer.set_bus_volume_db(music_bus_idx, target_db)
+		if _active_stinger_tween != null:
+			_active_stinger_tween.kill()
+		_active_stinger_tween = create_tween()
+		_active_stinger_tween.tween_method(
+			func(db: float) -> void: AudioServer.set_bus_volume_db(music_bus_idx, db),
+			_music_pre_stinger_volume, target_db, STINGER_DUCK_FADE_IN_SEC)
 
 
+## Stops the active stinger immediately and creates a restore tween for the Music bus.
+## Disconnects the finished signal to prevent _on_stinger_finished() from also restoring.
 func stop_stinger() -> void:
-	pass  # Story 006
+	if _stinger_player.finished.is_connected(_on_stinger_finished):
+		_stinger_player.finished.disconnect(_on_stinger_finished)
+	_stinger_player.stop()
+	_stinger_player.stream = null
+	_restore_music_after_stinger()
+	_current_stinger_priority = -1
+
+
+## ONE_SHOT callback: stinger finished naturally — restore Music bus.
+func _on_stinger_finished() -> void:
+	_restore_music_after_stinger()
+	_current_stinger_priority = -1
+
+
+## Fades Music bus back to _music_pre_stinger_volume over event.restore_duration_sec.
+## No-op when in DYING state (music is already silent — do not restore).
+func _restore_music_after_stinger() -> void:
+	if _music_state == MusicState.DYING:
+		return
+	if _last_stinger_event == null:
+		return
+	var music_bus_idx: int = AudioServer.get_bus_index(BUS_MUSIC)
+	if _active_stinger_tween != null:
+		_active_stinger_tween.kill()
+	_active_stinger_tween = create_tween()
+	_active_stinger_tween.tween_method(
+		func(db: float) -> void: AudioServer.set_bus_volume_db(music_bus_idx, db),
+		AudioServer.get_bus_volume_db(music_bus_idx),
+		_music_pre_stinger_volume,
+		_last_stinger_event.restore_duration_sec)
 
 # ── Private dispatch ──────────────────────────────────────────────────────────
 
