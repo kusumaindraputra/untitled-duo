@@ -100,6 +100,7 @@ func _ready() -> void:
 		"PlayerController: exactly one 'player' node expected")
 	GameStateManager.combat_started.connect(_on_combat_started)
 	GameStateManager.preparation_started.connect(_on_preparation_started)
+	GameStateManager.room_cleared.connect(_on_room_cleared)
 	HealthAndDamage.player_died.connect(_on_player_died)
 	SpellCastingEffects.cast_hit_started.connect(_on_cast_hit_started)
 	CombinationResolution.combo_resolved.connect(_on_combo_resolved)
@@ -126,6 +127,8 @@ func _exit_tree() -> void:
 		GameStateManager.combat_started.disconnect(_on_combat_started)
 	if GameStateManager.preparation_started.is_connected(_on_preparation_started):
 		GameStateManager.preparation_started.disconnect(_on_preparation_started)
+	if GameStateManager.room_cleared.is_connected(_on_room_cleared):
+		GameStateManager.room_cleared.disconnect(_on_room_cleared)
 	if HealthAndDamage.player_died.is_connected(_on_player_died):
 		HealthAndDamage.player_died.disconnect(_on_player_died)
 	if SpellCastingEffects.cast_hit_started.is_connected(_on_cast_hit_started):
@@ -364,6 +367,10 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	dash_cooldown_changed.emit(true)
 	_footstep_timer = 0.0
 	_footstep_bag.clear()
+	_tween_zoom(ZOOM_PREP)
+
+
+func _on_room_cleared() -> void:
 	_tween_zoom(ZOOM_PREP)
 
 

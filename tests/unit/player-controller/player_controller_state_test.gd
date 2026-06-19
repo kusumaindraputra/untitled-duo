@@ -6,6 +6,8 @@
 ##   AC-PC-10:  _on_preparation_started sets DISABLED and zeroes velocity
 ##   AC-PC-11:  _on_combat_started sets ENABLED (non-boss and boss variants)
 ##   AC-PC-12:  Mid-dash preparation_started clears state, velocity, and invincibility
+##   AC-PC-13:  room_cleared does NOT change controller state (player walks to exit)
+##   AC-PC-14:  room_cleared signal connection exists in scene tree (regression: bug fix)
 ##
 ## Framework: GdUnit4 v6.1.3 (extends GdUnitTestSuite)
 extends GdUnitTestSuite
@@ -120,4 +122,33 @@ func test_pc_mid_dash_preparation_started_clears_all_three_states() -> void:
 	assert_int(pc.get_controller_state()).is_equal(PlayerController.ControllerState.DISABLED)
 	assert_vector(pc.velocity).is_equal(Vector2.ZERO)
 	assert_bool(pc.is_invincible()).is_false()
+	pc.free()
+
+
+# ── AC-PC-13: room_cleared keeps controller ENABLED (player walks to exit) ───
+
+func test_pc_on_room_cleared_does_not_disable_controller() -> void:
+	# Arrange
+	var pc: PlayerController = _make_pc()
+	pc._controller_state = PlayerController.ControllerState.ENABLED
+
+	# Act — room_cleared fires after last wave; player must still move to the door
+	pc._on_room_cleared()
+
+	# Assert — state unchanged so player can walk to the exit
+	assert_int(pc.get_controller_state()).is_equal(PlayerController.ControllerState.ENABLED)
+	pc.free()
+
+
+# ── AC-PC-14: room_cleared signal wired in scene tree (regression) ────────────
+
+func test_pc_room_cleared_signal_connected_via_tree_integration() -> void:
+	# Regression: room_cleared was never connected, so zooming out after the last
+	# wave was missing — exit door appeared off-screen in the void below the floor.
+	var pc: PlayerController = _make_pc()
+	add_child(pc)
+
+	assert_bool(GameStateManager.room_cleared.is_connected(pc._on_room_cleared)).is_true()
+
+	remove_child(pc)
 	pc.free()
