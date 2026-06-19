@@ -374,6 +374,49 @@ func stop_stinger() -> void:
 	_current_stinger_priority = -1
 
 
+## Sets the Master bus volume, clamped to [−80.0, 0.0] dB.
+func set_master_volume(db: float) -> void:
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index(BUS_MASTER), clampf(db, -80.0, 0.0))
+
+## Sets the Music bus volume, clamped to [−80.0, −3.0] dB.
+## Upper bound −3.0 is an architectural invariant ensuring Prana SFX headroom (ADR-0012, TR-AS-006).
+func set_music_volume(db: float) -> void:
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index(BUS_MUSIC), clampf(db, -80.0, -3.0))
+
+## Sets the SFX bus volume, clamped to [−80.0, 0.0] dB.
+func set_sfx_volume(db: float) -> void:
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index(BUS_SFX), clampf(db, -80.0, 0.0))
+
+## Sets the UI bus volume, clamped to [−80.0, 0.0] dB.
+func set_ui_volume(db: float) -> void:
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index(BUS_UI), clampf(db, -80.0, 0.0))
+
+## Sets the AMB bus volume, clamped to [−80.0, −10.0] dB.
+## Upper bound −10.0 is an architectural invariant: "world breathes softly" (ADR-0012, TR-AS-007).
+func set_amb_volume(db: float) -> void:
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index(BUS_AMB), clampf(db, -80.0, -10.0))
+
+## Returns the current Master bus volume in dB (reads AudioServer directly — not cached).
+func get_master_volume() -> float:
+	return AudioServer.get_bus_volume_db(AudioServer.get_bus_index(BUS_MASTER))
+
+## Returns the current Music bus volume in dB (reads AudioServer directly — not cached).
+func get_music_volume() -> float:
+	return AudioServer.get_bus_volume_db(AudioServer.get_bus_index(BUS_MUSIC))
+
+## Returns the current SFX bus volume in dB (reads AudioServer directly — not cached).
+func get_sfx_volume() -> float:
+	return AudioServer.get_bus_volume_db(AudioServer.get_bus_index(BUS_SFX))
+
+## Returns the current UI bus volume in dB (reads AudioServer directly — not cached).
+func get_ui_volume() -> float:
+	return AudioServer.get_bus_volume_db(AudioServer.get_bus_index(BUS_UI))
+
+## Returns the current AMB bus volume in dB (reads AudioServer directly — not cached).
+func get_amb_volume() -> float:
+	return AudioServer.get_bus_volume_db(AudioServer.get_bus_index(BUS_AMB))
+
+
 ## ONE_SHOT callback: stinger finished naturally — restore Music bus.
 func _on_stinger_finished() -> void:
 	_restore_music_after_stinger()
@@ -654,6 +697,17 @@ func _compute_crossfade_volume(
 		duration: float) -> float:
 	var t_clamped: float = clampf(t, 0.0, duration)
 	return lerpf(start_db, target_db, t_clamped / duration)
+
+
+## Converts a 0–100 integer slider value to a dB level in [−80.0, 0.0].
+##
+## Formula (ADR-0012 Formula 2):
+##   result = lerp(-80.0, 0.0, float(slider_value) / 100.0)
+##
+## float() cast is mandatory — int/int produces 0 for all values 0-99 in GDScript.
+## This is a TEST-ONLY pure function (AC-AS-31).
+func _slider_to_db(slider_value: int) -> float:
+	return lerpf(-80.0, 0.0, float(slider_value) / 100.0)
 
 # ── Test accessors ────────────────────────────────────────────────────────────
 
