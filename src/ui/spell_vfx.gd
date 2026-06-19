@@ -82,6 +82,16 @@ var _death_timer: float = 0.0
 ## Full-screen red vignette active during death cinematic.
 var _death_vignette: ColorRect = null
 
+# ── Desperate zone vignette state (Gamefeel Pass 3 #5) ──────────────────────────
+
+## Persistent red vignette active when Fayde is in DESPERATE HP zone (≤20% HP).
+## Fades in on zone enter, fades out on upward recovery. Heartbeat pulse via _process.
+var _desperate_vignette: ColorRect = null
+## True while the desperate vignette is active (zone == DESPERATE and not dying).
+var _in_desperate_zone: bool = false
+## Tween for vignette fade transitions. Killed on new zone signal or death.
+var _desperate_tween: Tween = null
+
 # ── Heavy-hit flash state ─────────────────────────────────────────────────────
 
 ## CanvasLayer + ColorRect for heavy-hit red flash. Created lazily on first heavy hit.
@@ -101,6 +111,7 @@ func _ready() -> void:
 	HealthAndDamage.damage_taken.connect(_on_damage_taken)
 	HealthAndDamage.heavy_hit.connect(_on_heavy_hit)
 	HealthAndDamage.player_died.connect(_on_player_died)
+	HealthAndDamage.player_hp_zone_changed.connect(_on_hp_zone_changed)
 	_init_pool()
 	_audio = get_node_or_null("/root/AudioSystem")
 	# Camera is looked up lazily on first shake — autoload _ready() fires before
@@ -111,6 +122,7 @@ func _process(_delta: float) -> void:
 	_tick_hitstop()
 	_tick_shake()
 	_tick_death()
+	_tick_desperate_vignette()
 
 
 func _exit_tree() -> void:
@@ -126,6 +138,8 @@ func _exit_tree() -> void:
 		HealthAndDamage.heavy_hit.disconnect(_on_heavy_hit)
 	if HealthAndDamage.player_died.is_connected(_on_player_died):
 		HealthAndDamage.player_died.disconnect(_on_player_died)
+	if HealthAndDamage.player_hp_zone_changed.is_connected(_on_hp_zone_changed):
+		HealthAndDamage.player_hp_zone_changed.disconnect(_on_hp_zone_changed)
 	if SpellCastingEffects.chain_index_changed.is_connected(_on_chain_index_changed):
 		SpellCastingEffects.chain_index_changed.disconnect(_on_chain_index_changed)
 	if _in_hitstop:
@@ -268,6 +282,71 @@ func _show_heavy_flash() -> void:
 	_heavy_flash_tween.tween_property(_heavy_flash_rect, "color:a", 0.0, HEAVY_FLASH_DURATION)
 
 
+# ── Low-HP desperate vignette (Gamefeel Pass 3 #5) ───────────────────────────────
+
+## Base opacity of the desperate-zone red vignette (below death vignette at 0.35).
+const DESPERATE_VIGNETTE_ALPHA: float = 0.18
+## Heartbeat pulse amplitude (added to base alpha at peak).
+const DESPERATE_PULSE_AMPLITUDE: float = 0.07
+## Heartbeat rate in beats per second. 1.2 Hz = slightly elevated, anxious rhythm.
+const DESPERATE_HEARTBEAT_RATE: float = 1.2
+## Duration of the fade-in / fade-out tween for the desperate vignette (seconds).
+const DESPERATE_VIGNETTE_FADE: float = 0.5
+
+## Handles player_hp_zone_changed from HealthAndDamage.
+## DESPERATE: shows a persistent red vignette with heartbeat pulse.
+## CAREFUL / FULL: fades out and frees the vignette on upward recovery.
+## Guard: does not activate if the death cinematic is already playing.
+func _on_hp_zone_changed(zone: GameEnums.HPZone) -> void:
+	if _dying:
+		return
+	if zone == GameEnums.HPZone.DESPERATE:
+		_show_desperate_vignette()
+	else:
+		_hide_desperate_vignette()
+
+
+## Creates (or reuses) a full-screen red vignette for the DESPERATE HP zone.
+## Fades in over DESPERATE_VIGNETTE_FADE seconds. Silently no-ops if already active.
+func _show_desperate_vignette() -> void:
+	if _desperate_vignette != null:
+		return
+	if get_tree() == null or get_tree().root == null:
+		return
+	_desperate_vignette = ColorRect.new()
+	_desperate_vignette.color = Color(0.85, 0.08, 0.08, 0.0)
+	_desperate_vignette.anchor_right = 1.0
+	_desperate_vignette.anchor_bottom = 1.0
+	_desperate_vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	get_tree().root.add_child(_desperate_vignette)
+	_in_desperate_zone = true
+	if _desperate_tween:
+		_desperate_tween.kill()
+	_desperate_tween = _desperate_vignette.create_tween().set_ease(Tween.EASE_OUT)
+	_desperate_tween.tween_property(_desperate_vignette, "color:a", DESPERATE_VIGNETTE_ALPHA, DESPERATE_VIGNETTE_FADE)
+
+
+## Fades out and frees the desperate vignette. No-op if not active.
+func _hide_desperate_vignette() -> void:
+	if _desperate_vignette == null:
+		return
+	_in_desperate_zone = false
+	if _desperate_tween:
+		_desperate_tween.kill()
+	_desperate_tween = _desperate_vignette.create_tween().set_ease(Tween.EASE_OUT)
+	_desperate_tween.tween_property(_desperate_vignette, "color:a", 0.0, DESPERATE_VIGNETTE_FADE)
+	_desperate_tween.tween_callback(_desperate_vignette.queue_free)
+	_desperate_vignette = null
+
+
+## Applies a heartbeat pulse to the desperate vignette alpha.
+## Called every frame from _process() with PROCESS_MODE_ALWAYS.
+func _tick_desperate_vignette() -> void:
+	if not _in_desperate_zone or _desperate_vignette == null:
+		return
+	var pulse: float = 1.0 + sin(Time.get_ticks_usec() * 0.000001 * DESPERATE_HEARTBEAT_RATE * TAU) * (DESPERATE_PULSE_AMPLITUDE / DESPERATE_VIGNETTE_ALPHA)
+	_desperate_vignette.color.a = DESPERATE_VIGNETTE_ALPHA * pulse
+
 # ── Player death cinematic ─────────────────────────────────────────────────────
 
 ## Death cinematic constants.
@@ -286,6 +365,12 @@ const DEATH_RING_END: float = 300.0
 ## Fires from HealthAndDamage.player_died. The death overlay (debug_game_loop)
 ## appears on top — the cinematic adds dramatic weight underneath it.
 func _on_player_died() -> void:
+	if _desperate_vignette != null:
+		if _desperate_tween:
+			_desperate_tween.kill()
+		_desperate_vignette.queue_free()
+		_desperate_vignette = null
+		_in_desperate_zone = false
 	_dying = true
 	_death_timer = DEATH_SLOWMO_DURATION
 	Engine.time_scale = DEATH_TIME_SCALE

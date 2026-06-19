@@ -71,6 +71,10 @@ var _last_anim: String = ""
 ## Must remain >= 0.3s — H&D i-frame guarantee depends on this (Enemy AI Dep. #3).
 const ENEMY_MIN_CONTACT_INTERVAL: float = 0.3
 
+## Knockback strength applied to Fayde on contact damage (pixels/sec away from enemy).
+## Gamefeel Pass 3 item #7 — small push-away on hit.
+const ENEMY_KNOCKBACK_STRENGTH: float = 150.0
+
 ## Radius within which a nearby enemy generates a push force (pixels).
 const SEPARATION_RADIUS: float = 28.0
 ## Scales the raw separation sum into a pixel/s force added to the chase velocity.
@@ -230,6 +234,8 @@ func _physics_process(delta: float) -> void:
 			HealthAndDamage.apply_damage(
 				_fayde_ref, _base_damage,
 				GameEnums.DamageClass.NONE, GameEnums.DamageSource.CONTACT)
+			if _fayde_ref != null and _fayde_ref.has_method(&"request_knockback"):
+				_fayde_ref.request_knockback(global_position, ENEMY_KNOCKBACK_STRENGTH)
 			# += preserves sub-frame overshoot per ADR-0004 decrement pattern.
 			_contact_timer += ENEMY_MIN_CONTACT_INTERVAL
 
@@ -582,6 +588,8 @@ func _on_hitarea_body_entered(body: Node2D) -> void:
 		_start_contact_vfx()
 	HealthAndDamage.apply_damage(
 		body, _base_damage, GameEnums.DamageClass.NONE, GameEnums.DamageSource.CONTACT)
+	if body.has_method(&"request_knockback"):
+		body.request_knockback(global_position, ENEMY_KNOCKBACK_STRENGTH)
 	_contact_timer = ENEMY_MIN_CONTACT_INTERVAL
 
 

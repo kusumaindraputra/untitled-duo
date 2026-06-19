@@ -40,6 +40,9 @@ const COLLISION_MASK_DASHING: int = 1  # bit 0 only: walls only — dash passes 
 
 ## Modulate alpha oscillation interval during i-frames — ~8 blinks/sec at 60fps.
 const BLINK_INTERVAL: float = 0.06
+## Duration of knockback velocity override (seconds). Brief window where movement
+## input is suppressed so the push-away reads clearly regardless of held keys.
+const KNOCKBACK_DURATION: float = 0.08
 
 ## Camera smoothing speed — pixels/sec² toward the target position.
 ## Higher = snappier; 8.0 gives subtle smoothing without sluggish feel.
@@ -69,6 +72,7 @@ var _cast_beam_timer: float = 0.0     # countdown; > 0.0 means cast beam visible
 var _cast_prana_type: int = -1        # primary type of last resolved spell; -1 = none
 var _blink_timer: float = 0.0         # counts up; toggles modulate.a every BLINK_INTERVAL
 var _cast_lock_timer: float = 0.0      # countdown; > 0.0 means post-hit movement dampened
+var _knockback_timer: float = 0.0      # countdown; > 0.0 means knockback velocity override active
 
 ## AudioSystem Autoload reference; null-safe — set in _ready(), overridable for tests.
 ## Variant (not Node) intentional — allows MockAudioSystem injection without Node inheritance.
@@ -155,35 +159,46 @@ func _physics_process(delta: float) -> void:
 
 	# ── ENABLED: movement + dash trigger ────────────────────────────────────────
 	if _controller_state == ControllerState.ENABLED:
-		var input_dir: Vector2 = Input.get_vector(
-			&"move_left", &"move_right", &"move_up", &"move_down")
-		var move_factor: float = 1.0 - pow(1.0 - MOVE_ACCELERATION, delta * 60.0)
-		var friction_factor: float = 1.0 - pow(1.0 - MOVE_FRICTION, delta * 60.0)
-		if input_dir != Vector2.ZERO:
-			velocity = velocity.lerp(input_dir.normalized() * MOVE_SPEED, move_factor)
-			_last_facing_dir = _snap_to_8dir(input_dir)
-		else:
+		# Knockback override: suppress movement input so the push-away reads
+		# clearly regardless of held keys. Friction still decays the velocity.
+		if _knockback_timer > 0.0:
+			_knockback_timer -= delta
+			var friction_factor: float = 1.0 - pow(1.0 - MOVE_FRICTION, delta * 60.0)
 			velocity = velocity.lerp(Vector2.ZERO, friction_factor)
 			if velocity.length() < VELOCITY_SNAP_THRESHOLD:
 				velocity = Vector2.ZERO
+		else:
+			var input_dir: Vector2 = Input.get_vector(
+				&"move_left", &"move_right", &"move_up", &"move_down")
+			var move_factor: float = 1.0 - pow(1.0 - MOVE_ACCELERATION, delta * 60.0)
+			var friction_factor: float = 1.0 - pow(1.0 - MOVE_FRICTION, delta * 60.0)
+			if input_dir != Vector2.ZERO:
+				velocity = velocity.lerp(input_dir.normalized() * MOVE_SPEED, move_factor)
+				_last_facing_dir = _snap_to_8dir(input_dir)
+			else:
+				velocity = velocity.lerp(Vector2.ZERO, friction_factor)
+				if velocity.length() < VELOCITY_SNAP_THRESHOLD:
+					velocity = Vector2.ZERO
+			if Input.is_action_just_pressed(&"dash") and _dash_cooldown_timer <= 0.0:
+				var dash_dir: Vector2 = _snap_to_8dir(input_dir) if input_dir != Vector2.ZERO \
+					else _last_facing_dir
+				_last_facing_dir = dash_dir
+				velocity = dash_dir * DASH_SPEED
+				_controller_state = ControllerState.DASHING
+				_dash_duration_timer = DASH_DURATION
+				_is_invincible = true
+				collision_mask = COLLISION_MASK_DASHING
+				_cast_lock_timer = 0.0  # dash cancels cast lock (GDD Rule 6)
+				_knockback_timer = 0.0   # dash cancels knockback
+				if audio_system != null:
+					audio_system.play_event(&"sfx_fayde_dash")
+				dash_cooldown_changed.emit(false)
+				_spawn_dash_dust()
+				_spawn_dash_ghosts(dash_dir)
 		# Cast lock: dampen velocity to CAST_LOCK_SPEED_FACTOR during post-hit recovery.
-		if _cast_lock_timer > 0.0:
+		# Knockback overrides cast lock dampening — the push-away should feel unhindered.
+		if _cast_lock_timer > 0.0 and _knockback_timer <= 0.0:
 			velocity *= CAST_LOCK_SPEED_FACTOR
-		if Input.is_action_just_pressed(&"dash") and _dash_cooldown_timer <= 0.0:
-			var dash_dir: Vector2 = _snap_to_8dir(input_dir) if input_dir != Vector2.ZERO \
-				else _last_facing_dir
-			_last_facing_dir = dash_dir
-			velocity = dash_dir * DASH_SPEED
-			_controller_state = ControllerState.DASHING
-			_dash_duration_timer = DASH_DURATION
-			_is_invincible = true
-			collision_mask = COLLISION_MASK_DASHING
-			_cast_lock_timer = 0.0  # dash cancels cast lock (GDD Rule 6)
-			if audio_system != null:
-				audio_system.play_event(&"sfx_fayde_dash")
-			dash_cooldown_changed.emit(false)
-			_spawn_dash_dust()
-			_spawn_dash_ghosts(dash_dir)
 
 	# ── DASHING: duration countdown ───────────────────────────────────────────
 	if _controller_state == ControllerState.DASHING:
@@ -270,6 +285,24 @@ func get_cast_position() -> Vector2:
 func get_dash_cooldown_remaining() -> float:
 	return max(_dash_cooldown_timer, 0.0)
 
+
+## Applies a brief velocity push away from [param from_pos].
+## Called by EnemyInstance on contact damage to give Fayde a small knockback.
+## Knockback is suppressed during dash (player is invincible) and when disabled.
+## [param strength] is the initial velocity in pixels/sec away from the source.
+func request_knockback(from_pos: Vector2, strength: float) -> void:
+	if _controller_state != ControllerState.ENABLED:
+		return
+	if _is_invincible:
+		return
+	var dir: Vector2 = (global_position - from_pos).normalized()
+	if dir.length_squared() < 0.01:
+		dir = Vector2.UP  # fallback if enemy is exactly at Fayde's position
+	velocity = dir * strength
+	_knockback_timer = KNOCKBACK_DURATION
+	# Cancel cast lock — knockback feel takes priority over post-hit dampening.
+	_cast_lock_timer = 0.0
+
 # ── Private methods ───────────────────────────────────────────────────────────
 
 ## Snaps an input vector to the nearest of 8 directions (45° increments).
@@ -327,6 +360,7 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	_dash_duration_timer = 0.0
 	_dash_cooldown_timer = 0.0
 	_cast_lock_timer = 0.0
+	_knockback_timer = 0.0
 	dash_cooldown_changed.emit(true)
 	_footstep_timer = 0.0
 	_footstep_bag.clear()
