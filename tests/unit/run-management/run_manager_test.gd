@@ -1,18 +1,21 @@
 ## run_manager_test.gd — Unit tests for RunManager (Story 001).
 ##
 ## Coverage:
-##   AC-RM-01: run_started resets all fields (active=true, outcome=NONE, waves=0)
+##   AC-RM-01: run_started resets all fields (active=true, outcome=NONE, waves=0, rooms=0, floor=1)
 ##   AC-RM-02: run_started while active → reset + push_error (state observable; error logged)
 ##   AC-RM-03: wave_ended ×3 → waves_completed=3; get_run_data() reflects it
-##   AC-RM-04: room_cleared → WIN; idempotent second call stays WIN
-##   AC-RM-05: run_ended(true) after room_cleared → active=false, outcome=WIN
+##   AC-RM-04: room_cleared → rooms_cleared=1, outcome stays NONE (win NOT set by room_cleared)
+##   AC-RM-05: run_ended(true) → active=false, outcome=WIN
 ##   AC-RM-06: run_ended(false) with NONE outcome → active=false, outcome=LOSS
-##   AC-RM-07: run_ended(false) after WIN does NOT overwrite to LOSS
+##   AC-RM-07: run_ended(false) with WIN already set → WIN preserved (guard prevents WIN→LOSS)
 ##   AC-RM-08: run_ended with no active run → push_error; active stays false
 ##   AC-RM-09: get_run_data() post-run has correct keys and final values
 ##   AC-RM-10: get_run_data() mid-run → active=true, outcome=NONE
 ##   AC-RM-11: get_run_data() returns a copy — mutation doesn't affect internal state
 ##   AC-RM-12: wave_ended while inactive → increment + push_error (state observable)
+##   AC-RM-13: floor_completed → current_floor increments from 1 to 2
+##   AC-RM-14: get_run_data() includes current_floor and rooms_cleared keys
+##   AC-RM-15: run_started resets current_floor to 1 and rooms_cleared to 0
 ##
 ## Note on push_error() assertions:
 ##   GdUnit4 v6.1.3 has no API to capture or assert push_error() output. Tests that cover
@@ -52,7 +55,7 @@ func _teardown_rm(rm: Node) -> void:
 
 ## GIVEN RunManager freshly added to tree (initial: active=false, outcome=NONE, waves=0)
 ## WHEN GameStateManager.run_started emitted
-## THEN _run_active=true, _run_outcome=NONE, _waves_completed=0
+## THEN _run_active=true, _run_outcome=NONE, _waves_completed=0, _rooms_cleared=0, _current_floor=1
 func test_run_manager_run_started_sets_active_true_and_resets_outcome_and_waves() -> void:
 	var rm: Node = _make_rm()
 
@@ -61,6 +64,8 @@ func test_run_manager_run_started_sets_active_true_and_resets_outcome_and_waves(
 	assert_bool(rm._run_active).is_true()
 	assert_int(rm._run_outcome).is_equal(GameEnums.RunOutcome.NONE)
 	assert_int(rm._waves_completed).is_equal(0)
+	assert_int(rm._rooms_cleared).is_equal(0)
+	assert_int(rm._current_floor).is_equal(1)
 
 	_teardown_rm(rm)
 
@@ -106,47 +111,48 @@ func test_run_manager_wave_ended_three_times_increments_waves_completed_to_three
 	_teardown_rm(rm)
 
 
-# ── AC-RM-04: room_cleared → WIN; idempotent second call ─────────────────────
+# ── AC-RM-04: room_cleared → rooms_cleared increments, outcome stays NONE ─────
 
 ## GIVEN run is active with outcome=NONE
 ## WHEN room_cleared emitted
-## THEN _run_outcome=WIN and _run_active remains true
-func test_run_manager_room_cleared_sets_outcome_to_win_and_run_stays_active() -> void:
+## THEN _rooms_cleared=1 AND _run_outcome stays NONE AND _run_active remains true
+func test_run_manager_room_cleared_increments_rooms_cleared_and_does_not_set_win() -> void:
 	var rm: Node = _make_rm()
 	GameStateManager.run_started.emit()
 
 	GameStateManager.room_cleared.emit()
 
-	assert_int(rm._run_outcome).is_equal(GameEnums.RunOutcome.WIN)
+	assert_int(rm._rooms_cleared).is_equal(1)
+	assert_int(rm._run_outcome).is_equal(GameEnums.RunOutcome.NONE)
 	assert_bool(rm._run_active).is_true()
 
 	_teardown_rm(rm)
 
 
-## GIVEN room_cleared already fired (outcome=WIN)
+## GIVEN room_cleared already fired (_rooms_cleared=1)
 ## WHEN room_cleared emitted a second time
-## THEN _run_outcome remains WIN (idempotent)
-func test_run_manager_room_cleared_twice_stays_win_idempotent() -> void:
+## THEN _rooms_cleared=2 AND outcome stays NONE
+func test_run_manager_room_cleared_twice_increments_rooms_cleared_to_two() -> void:
 	var rm: Node = _make_rm()
 	GameStateManager.run_started.emit()
 	GameStateManager.room_cleared.emit()
 
 	GameStateManager.room_cleared.emit()
 
-	assert_int(rm._run_outcome).is_equal(GameEnums.RunOutcome.WIN)
+	assert_int(rm._rooms_cleared).is_equal(2)
+	assert_int(rm._run_outcome).is_equal(GameEnums.RunOutcome.NONE)
 
 	_teardown_rm(rm)
 
 
-# ── AC-RM-05: run_ended(true) after room_cleared → active=false, outcome=WIN ──
+# ── AC-RM-05: run_ended(true) → active=false, outcome=WIN ────────────────────
 
-## GIVEN room_cleared fired (outcome=WIN)
+## GIVEN run is active (run_started fired)
 ## WHEN run_ended(true) emitted
 ## THEN _run_active=false AND _run_outcome=WIN
-func test_run_manager_run_ended_win_true_after_room_cleared_sets_active_false_and_keeps_win() -> void:
+func test_run_manager_run_ended_win_true_sets_active_false_and_win_outcome() -> void:
 	var rm: Node = _make_rm()
 	GameStateManager.run_started.emit()
-	GameStateManager.room_cleared.emit()
 
 	GameStateManager.run_ended.emit(true)
 
@@ -173,15 +179,15 @@ func test_run_manager_run_ended_win_false_with_none_outcome_sets_loss() -> void:
 	_teardown_rm(rm)
 
 
-# ── AC-RM-07: run_ended(false) after WIN does NOT overwrite to LOSS ───────────
+# ── AC-RM-07: run_ended(false) with WIN already set → WIN preserved ───────────
 
-## GIVEN room_cleared fired (outcome=WIN)
+## GIVEN _run_outcome=WIN was set directly (e.g., from a prior run_ended(true) scenario)
 ## WHEN run_ended(false) emitted
 ## THEN _run_active=false AND _run_outcome remains WIN (guard prevents WIN→LOSS)
-func test_run_manager_run_ended_win_false_after_win_does_not_overwrite_to_loss() -> void:
+func test_run_manager_run_ended_win_false_with_win_outcome_does_not_overwrite_to_loss() -> void:
 	var rm: Node = _make_rm()
 	GameStateManager.run_started.emit()
-	GameStateManager.room_cleared.emit()
+	rm._run_outcome = GameEnums.RunOutcome.WIN   # set directly to simulate pre-existing WIN
 
 	GameStateManager.run_ended.emit(false)
 
@@ -213,7 +219,7 @@ func test_run_manager_run_ended_without_active_run_keeps_active_false() -> void:
 
 ## GIVEN run_started → room_cleared → run_ended(true) sequence
 ## WHEN get_run_data() called after run_ended
-## THEN dict has "run_active" (false), "run_outcome" (WIN), "waves_completed" (0)
+## THEN dict has all keys; run_active=false, outcome=WIN, waves=0, rooms_cleared=1
 func test_run_manager_get_run_data_post_run_returns_finalized_values() -> void:
 	var rm: Node = _make_rm()
 	GameStateManager.run_started.emit()
@@ -225,9 +231,12 @@ func test_run_manager_get_run_data_post_run_returns_finalized_values() -> void:
 	assert_bool(data.has("run_active")).is_true()
 	assert_bool(data.has("run_outcome")).is_true()
 	assert_bool(data.has("waves_completed")).is_true()
+	assert_bool(data.has("rooms_cleared")).is_true()
+	assert_bool(data.has("current_floor")).is_true()
 	assert_bool(data["run_active"]).is_false()
 	assert_int(data["run_outcome"]).is_equal(GameEnums.RunOutcome.WIN)
 	assert_int(data["waves_completed"]).is_equal(0)
+	assert_int(data["rooms_cleared"]).is_equal(1)
 
 	_teardown_rm(rm)
 
@@ -283,5 +292,58 @@ func test_run_manager_wave_ended_while_inactive_increments_waves_and_logs_error(
 
 	assert_int(rm._waves_completed).is_equal(1)
 	assert_bool(rm._run_active).is_false()
+
+	_teardown_rm(rm)
+
+
+# ── AC-RM-13: floor_completed → current_floor increments ─────────────────────
+
+## GIVEN run is active and current_floor=1
+## WHEN floor_completed emitted
+## THEN _current_floor=2
+func test_run_manager_floor_completed_increments_current_floor() -> void:
+	var rm: Node = _make_rm()
+	GameStateManager.run_started.emit()
+
+	GameStateManager.floor_completed.emit()
+
+	assert_int(rm._current_floor).is_equal(2)
+
+	_teardown_rm(rm)
+
+
+# ── AC-RM-14: get_run_data() includes current_floor and rooms_cleared ─────────
+
+## GIVEN run is active with floor=1, rooms_cleared=0
+## WHEN get_run_data() called mid-run
+## THEN result has "current_floor"==1 and "rooms_cleared"==0
+func test_run_manager_get_run_data_mid_run_includes_floor_and_rooms_cleared() -> void:
+	var rm: Node = _make_rm()
+	GameStateManager.run_started.emit()
+
+	var data: Dictionary = rm.get_run_data()
+
+	assert_bool(data.has("current_floor")).is_true()
+	assert_bool(data.has("rooms_cleared")).is_true()
+	assert_int(data["current_floor"]).is_equal(1)
+	assert_int(data["rooms_cleared"]).is_equal(0)
+
+	_teardown_rm(rm)
+
+
+# ── AC-RM-15: run_started resets floor and rooms_cleared ─────────────────────
+
+## GIVEN dirty state (_current_floor=3, _rooms_cleared=5)
+## WHEN run_started emitted
+## THEN _current_floor=1 AND _rooms_cleared=0
+func test_run_manager_run_started_resets_current_floor_and_rooms_cleared() -> void:
+	var rm: Node = _make_rm()
+	rm._current_floor = 3
+	rm._rooms_cleared = 5
+
+	GameStateManager.run_started.emit()
+
+	assert_int(rm._current_floor).is_equal(1)
+	assert_int(rm._rooms_cleared).is_equal(0)
 
 	_teardown_rm(rm)

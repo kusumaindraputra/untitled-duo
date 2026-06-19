@@ -26,12 +26,19 @@ var _run_outcome: GameEnums.RunOutcome = GameEnums.RunOutcome.NONE
 ## Number of waves completed this run (incremented on each wave_ended signal).
 var _waves_completed: int = 0
 
+## Number of rooms cleared this run (incremented on each room_cleared signal).
+var _rooms_cleared: int = 0
+
+## Current floor number within this run (1-based). Incremented on floor_completed.
+var _current_floor: int = 1
+
 # ── Built-in ──────────────────────────────────────────────────────────────────
 
 func _ready() -> void:
 	GameStateManager.run_started.connect(_on_run_started)
 	GameStateManager.wave_ended.connect(_on_wave_ended)
 	GameStateManager.room_cleared.connect(_on_room_cleared)
+	GameStateManager.floor_completed.connect(_on_floor_completed)
 	GameStateManager.run_ended.connect(_on_run_ended)
 
 
@@ -42,6 +49,8 @@ func _exit_tree() -> void:
 		GameStateManager.wave_ended.disconnect(_on_wave_ended)
 	if GameStateManager.room_cleared.is_connected(_on_room_cleared):
 		GameStateManager.room_cleared.disconnect(_on_room_cleared)
+	if GameStateManager.floor_completed.is_connected(_on_floor_completed):
+		GameStateManager.floor_completed.disconnect(_on_floor_completed)
 	if GameStateManager.run_ended.is_connected(_on_run_ended):
 		GameStateManager.run_ended.disconnect(_on_run_ended)
 
@@ -53,6 +62,8 @@ func _exit_tree() -> void:
 ##   "run_active"      — bool: true if a run is in progress
 ##   "run_outcome"     — GameEnums.RunOutcome: NONE / WIN / LOSS
 ##   "waves_completed" — int: number of waves completed this run
+##   "rooms_cleared"   — int: number of rooms cleared this run
+##   "current_floor"   — int: current floor number (1-based)
 ##
 ## The returned Dictionary is a shallow copy — mutating it does not affect
 ## RunManager's internal state (all values are primitives).
@@ -60,12 +71,14 @@ func _exit_tree() -> void:
 ## Example:
 ##   var data: Dictionary = RunManager.get_run_data()
 ##   if data["run_active"]:
-##       show_wave_count(data["waves_completed"])
+##       show_floor_count(data["current_floor"])
 func get_run_data() -> Dictionary:
 	return {
 		"run_active": _run_active,
 		"run_outcome": _run_outcome,
 		"waves_completed": _waves_completed,
+		"rooms_cleared": _rooms_cleared,
+		"current_floor": _current_floor,
 	}.duplicate()
 
 # ── Signal callbacks ───────────────────────────────────────────────────────────
@@ -80,6 +93,8 @@ func _on_run_started() -> void:
 	_run_active = true
 	_run_outcome = GameEnums.RunOutcome.NONE
 	_waves_completed = 0
+	_rooms_cleared = 0
+	_current_floor = 1
 
 
 ## Increments waves_completed on each wave_ended signal.
@@ -92,15 +107,20 @@ func _on_wave_ended() -> void:
 	_waves_completed += 1
 
 
-## Sets run_outcome to WIN when the room is cleared.
-## Idempotent — repeated calls while already WIN are silent no-ops.
+## Increments rooms_cleared counter on each room_cleared signal.
+## Does NOT set the run outcome — outcome is only set by run_ended.
 func _on_room_cleared() -> void:
-	_run_outcome = GameEnums.RunOutcome.WIN
+	_rooms_cleared += 1
 
 
-## Finalises the run: sets run_active = false and conditionally sets LOSS.
-## Rule 7: only sets LOSS when win == false AND _run_outcome == NONE.
-## Wins (room_cleared) are never overwritten.
+## Increments current_floor when a non-final floor's boss is defeated.
+func _on_floor_completed() -> void:
+	_current_floor += 1
+
+
+## Finalises the run: sets run_active = false and the definitive outcome.
+## WIN when win == true (boss of final floor defeated).
+## LOSS when win == false and outcome was not already WIN (guard against WIN→LOSS overwrite).
 ## push_error() if no run is active when this signal fires.
 func _on_run_ended(win: bool) -> void:
 	if not _run_active:
@@ -109,5 +129,7 @@ func _on_run_ended(win: bool) -> void:
 		)
 		return
 	_run_active = false
-	if not win and _run_outcome == GameEnums.RunOutcome.NONE:
+	if win:
+		_run_outcome = GameEnums.RunOutcome.WIN
+	elif _run_outcome == GameEnums.RunOutcome.NONE:
 		_run_outcome = GameEnums.RunOutcome.LOSS

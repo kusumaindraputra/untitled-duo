@@ -109,6 +109,44 @@ func wire_exit_doors(room_scene: Node) -> void:
 	_wire_exit_doors(room_scene)
 
 
+## Replaces the current dungeon floor with [param graph] and loads its entry room.
+##
+## Sequence: fade-out → SceneManager.change_room(entry) → wire doors → fade-in.
+## Re-entrant calls while a transition is in progress are silently ignored.
+## The caller need not await — connect to [signal room_transition_completed] for completion.
+##
+## Usage (from floor orchestrator):
+##   rtm.load_floor(new_graph)
+##   # _on_room_transitioned fires via room_transition_completed when ready
+func load_floor(graph: DungeonGraph) -> void:
+	if _is_transitioning or graph == null:
+		return
+	_is_transitioning = true
+	_graph = graph
+	_current_idx = _graph.get_entry_room()
+
+	await _fade_to(1.0)
+
+	var entry: Dictionary = _graph.get_room(_current_idx)
+	var tmpl: RoomTemplate = entry.get("template", null) as RoomTemplate
+	var packed: PackedScene = _resolve_packed_scene(tmpl)
+	if packed == null:
+		push_error("RoomTransitionManager.load_floor: could not resolve PackedScene for entry room.")
+		_is_transitioning = false
+		return
+
+	SceneManager.change_room(packed)
+	await SceneManager.room_changed
+
+	_graph.set_room_state(_current_idx, DungeonGraph.ROOM_STATE_VISITED)
+	_wire_exit_doors(SceneManager.get_current_scene())
+
+	await _fade_to(0.0)
+
+	_is_transitioning = false
+	room_transition_completed.emit(_current_idx)
+
+
 # ── Private ────────────────────────────────────────────────────────────────────
 
 func _wire_exit_doors(room_scene: Node) -> void:

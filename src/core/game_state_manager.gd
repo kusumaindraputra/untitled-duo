@@ -53,6 +53,11 @@ signal run_ended(win: bool)
 ## Emitted on room clear (consumed by SceneManager — Story 002).
 signal room_cleared()
 
+## Emitted when the boss is defeated but the current floor is not the final floor.
+## Consumed by the floor orchestrator (debug_game_loop / FloorManager) to advance the run
+## to the next floor. The orchestrator calls restart_preparation() after loading the new floor.
+signal floor_completed()
+
 # ── Export ────────────────────────────────────────────────────────────────────
 
 ## Seconds available in PREPARATION_PHASE before timer auto-confirms.
@@ -76,6 +81,10 @@ var _prep_timer_halted: bool = false
 ## Set by PranaGrid — defaults true until grid is implemented.
 var _loadout_valid: bool = true
 
+## True when the current floor is the last floor of the run.
+## Set by the floor orchestrator via set_is_final_floor(). Defaults true (single-floor behaviour).
+var _is_final_floor: bool = true
+
 # ── Built-in ──────────────────────────────────────────────────────────────────
 
 func _ready() -> void:
@@ -96,6 +105,13 @@ func get_active_state() -> GameEnums.GameState:
 ## Returns [member _loadout_valid]. Called by [method _on_arrangement_confirmed] (AC-05).
 func is_loadout_valid() -> bool:
 	return _loadout_valid
+
+
+## Sets [member _is_final_floor]. Called by the floor orchestrator before each floor begins.
+## Pass true on the last floor of a run so boss defeat ends the run.
+## Pass false on earlier floors so boss defeat emits [signal floor_completed] instead.
+func set_is_final_floor(value: bool) -> void:
+	_is_final_floor = value
 
 
 ## Starts a new run from MAIN_MENU.
@@ -262,10 +278,16 @@ func _enter_combat(is_boss: bool) -> void:
 
 ## Deferred target of [method _on_boss_defeated].
 ## No-op if state has already changed (player died same frame).
+## If [member _is_final_floor] is true: transitions to RUN_SUMMARY (run ends, win).
+## If false: emits [signal floor_completed] and stays in COMBAT_PHASE — the orchestrator
+## loads the next floor and calls restart_preparation() when ready.
 func _request_boss_defeat_transition() -> void:
 	if _active_state != GameEnums.GameState.COMBAT_PHASE:
 		return
-	_request_transition(GameEnums.GameState.RUN_SUMMARY)
+	if _is_final_floor:
+		_request_transition(GameEnums.GameState.RUN_SUMMARY)
+	else:
+		floor_completed.emit()
 
 
 ## Advances the preparation-phase countdown (ADR-0004).

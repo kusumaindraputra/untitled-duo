@@ -14,7 +14,12 @@
 ## Remove when a proper game menu and run-start flow are implemented.
 extends Node
 
+## Total number of floors in a single run.
+const TOTAL_FLOORS: int = 3
+
 var _dungeon_graph: DungeonGraph = null
+var _gen: DungeonGenerator = DungeonGenerator.new()
+var _current_floor: int = 1
 
 func _ready() -> void:
 	_register_input_actions()
@@ -23,9 +28,8 @@ func _ready() -> void:
 	# room transition correctly frees it instead of leaving a duplicate.
 	SceneManager.set_initial_scene($SubSceneRoot/IsometricRoom)
 
-	# Generate a 7-room dungeon and give it to RoomTransitionManager.
-	var gen := DungeonGenerator.new()
-	_dungeon_graph = gen.generate(7, 1)
+	# Generate floor 1 and give it to RoomTransitionManager.
+	_dungeon_graph = _gen.generate(7, _current_floor)
 	var rtm: RoomTransitionManager = $RoomTransitionManager
 	rtm.setup(_dungeon_graph)
 	rtm.room_transition_completed.connect(_on_room_transitioned)
@@ -44,8 +48,10 @@ func _ready() -> void:
 	hud.player_controller = $PlayerController
 	hud.fayde_node = $PlayerController
 	GameStateManager._active_state = GameEnums.GameState.MAIN_MENU
+	GameStateManager.set_is_final_floor(_current_floor >= TOTAL_FLOORS)
 	GameStateManager.run_ended.connect(_on_run_ended)
 	GameStateManager.wave_ended.connect(_on_wave_ended)
+	GameStateManager.floor_completed.connect(_on_floor_completed)
 	GameStateManager.start_run()
 
 
@@ -90,6 +96,16 @@ func _register_input_actions() -> void:
 	_ensure_joypad_action(&"prana_confirm", JOY_BUTTON_Y)
 	_ensure_key_action(&"prana_confirm", KEY_ENTER)
 	_ensure_joypad_action(&"prana_type_cycle", JOY_BUTTON_RIGHT_SHOULDER)
+
+
+## Called when the boss of a non-final floor is defeated.
+## Generates the next floor and loads it via RTM — _on_room_transitioned handles
+## spawn rewiring + restart_preparation() when load_floor() completes.
+func _on_floor_completed() -> void:
+	_current_floor += 1
+	_dungeon_graph = _gen.generate(7, _current_floor)
+	GameStateManager.set_is_final_floor(_current_floor >= TOTAL_FLOORS)
+	$RoomTransitionManager.load_floor(_dungeon_graph)
 
 
 func _on_run_ended(win: bool) -> void:

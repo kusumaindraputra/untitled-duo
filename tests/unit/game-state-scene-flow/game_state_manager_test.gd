@@ -501,3 +501,61 @@ func test_pause_from_preparation_phase_stores_previous_state() -> void:
 	assert_int(gsm._previous_state).is_equal(GameEnums.GameState.PREPARATION_PHASE)
 	assert_int(count[0]).is_equal(1)
 	gsm.free()
+
+# ── Multi-floor: floor_completed + set_is_final_floor ────────────────────────
+
+## GIVEN GSM in COMBAT_PHASE with is_final_floor=false
+## WHEN boss is defeated (deferred _request_boss_defeat_transition runs)
+## THEN floor_completed emitted, run_ended(true) NOT emitted, state stays COMBAT_PHASE
+func test_boss_defeated_with_non_final_floor_emits_floor_completed_not_run_ended() -> void:
+	var gsm: Node = _make_gsm()
+	add_child(gsm)
+	_force_state(gsm, GameEnums.GameState.COMBAT_PHASE)
+	gsm.set_is_final_floor(false)
+	var floor_count: Array[int] = [0]
+	var win_count: Array[int] = [0]
+	gsm.floor_completed.connect(func() -> void: floor_count[0] += 1)
+	gsm.run_ended.connect(func(_win: bool) -> void: win_count[0] += 1)
+
+	gsm._on_boss_defeated()
+	await get_tree().process_frame
+
+	assert_int(floor_count[0]).is_equal(1)
+	assert_int(win_count[0]).is_equal(0)
+	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.COMBAT_PHASE)
+	gsm.free()
+
+
+## GIVEN GSM in COMBAT_PHASE with is_final_floor=true (default)
+## WHEN boss is defeated
+## THEN run_ended(true) emitted via RUN_SUMMARY, floor_completed NOT emitted
+func test_boss_defeated_with_final_floor_default_emits_run_ended_true() -> void:
+	var gsm: Node = _make_gsm()
+	add_child(gsm)
+	_force_state(gsm, GameEnums.GameState.COMBAT_PHASE)
+	# is_final_floor defaults to true — no call to set_is_final_floor needed
+	var floor_count: Array[int] = [0]
+	var wins: Array[bool] = []
+	gsm.floor_completed.connect(func() -> void: floor_count[0] += 1)
+	gsm.run_ended.connect(func(win: bool) -> void: wins.append(win))
+
+	gsm._on_boss_defeated()
+	await get_tree().process_frame
+
+	assert_int(floor_count[0]).is_equal(0)
+	assert_int(wins.size()).is_equal(1)
+	assert_bool(wins[0]).is_true()
+	assert_int(gsm.get_active_state()).is_equal(GameEnums.GameState.RUN_SUMMARY)
+	gsm.free()
+
+
+## GIVEN GSM freshly created (_is_final_floor=true by default)
+## WHEN set_is_final_floor(false) called
+## THEN _is_final_floor=false
+func test_set_is_final_floor_false_updates_internal_flag() -> void:
+	var gsm: Node = _make_gsm()
+
+	gsm.set_is_final_floor(false)
+
+	assert_bool(gsm._is_final_floor).is_false()
+	gsm.free()
