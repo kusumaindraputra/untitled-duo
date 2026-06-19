@@ -60,6 +60,8 @@ const CROSSFADE_DURATION_TO_END: float = 2.0
 const CROSSFADE_DURATION_TO_MAIN_MENU: float = 0.5
 ## COMBAT/PREP → DYING. Fast fade to silence.
 const CROSSFADE_DURATION_TO_DYING: float = 0.1
+## Ambient layer fade out duration (Story 005). Used for both crossfade-out and stop_ambient().
+const CROSSFADE_DURATION_AMBIENT_OUT: float = 0.5
 ## Minimum time (seconds) DYING must hold before a queued END_DEFEAT transition fires (AC-AS-29).
 const DYING_MIN_HOLD_SEC: float = 1.5
 
@@ -105,6 +107,13 @@ var _inactive_music_idx: int = 1
 ## The live crossfade Tween. Killed before each new crossfade (ADR-0012).
 ## null when no crossfade is in progress.
 var _active_tween: Tween = null
+
+## Index into _ambient_players[] that is currently audible (0 = AmbientA, 1 = AmbientB).
+var _active_ambient_idx: int = 0
+
+## The live ambient crossfade Tween. Killed before each new ambient crossfade (Story 005).
+## null when no ambient crossfade is in progress.
+var _active_ambient_tween: Tween = null
 
 ## Maps MusicState → AudioStream resource. Populated by _load_music_cues().
 ## null entries are valid (e.g. DYING has no cue by design).
@@ -247,13 +256,52 @@ func play_event(event_name: StringName) -> void:
 			push_error("AudioSystem: Unknown bus '%s' for event '%s'." % [data.bus, event_name])
 
 
-## Stubs for future stories (Story 005, 006, 007).
-func play_ambient(_event_name: StringName) -> void:
-	pass  # Story 005
+## Starts crossfade from the current ambient player to [param event_name]'s stream.
+##
+## Crossfade order (mirrors _crossfade_to ADR-0012 pattern):
+##   1. Kill prior ambient tween.
+##   2. Set incoming volume to -80 dB BEFORE play().
+##   3. Call incoming.play().
+##   4. Create new parallel tween: outgoing fades out, incoming fades in.
+##   5. Swap _active_ambient_idx.
+##
+## Error conditions (push_error + return, no crash):
+##   - event_name not in _validated_events
+##   - event_name bus is not BUS_AMB
+func play_ambient(event_name: StringName) -> void:
+	if not _validated_events.has(event_name):
+		push_error("AudioSystem: play_ambient('%s') — event not registered." % event_name)
+		return
+	var event: AudioEventData = _validated_events[event_name]
+	if event.bus != BUS_AMB:
+		push_error("AudioSystem: play_ambient('%s') — event bus is not AMB." % event_name)
+		return
+	if _active_ambient_tween != null:
+		_active_ambient_tween.kill()
+	var incoming_idx: int = 1 - _active_ambient_idx
+	var incoming: AudioStreamPlayer = _ambient_players[incoming_idx]
+	var outgoing: AudioStreamPlayer = _ambient_players[_active_ambient_idx]
+	incoming.stream = event.stream
+	incoming.volume_db = -80.0
+	incoming.play()
+	_active_ambient_tween = create_tween()
+	_active_ambient_tween.set_parallel(true)
+	_active_ambient_tween.tween_property(outgoing, "volume_db", -80.0, CROSSFADE_DURATION_AMBIENT_OUT)\
+		.from(outgoing.volume_db)
+	_active_ambient_tween.tween_property(incoming, "volume_db", 0.0, CROSSFADE_DURATION_AMBIENT_OUT)
+	_active_ambient_idx = incoming_idx
 
 
+## Fades out the currently active ambient player over CROSSFADE_DURATION_AMBIENT_OUT.
+## Kills any in-progress ambient tween before creating the fade-out tween.
+## Safe to call with no prior play_ambient() — fades the default player (index 0).
 func stop_ambient() -> void:
-	pass  # Story 005
+	if _active_ambient_tween != null:
+		_active_ambient_tween.kill()
+	var active: AudioStreamPlayer = _ambient_players[_active_ambient_idx]
+	_active_ambient_tween = create_tween()
+	_active_ambient_tween.tween_property(active, "volume_db", -80.0, CROSSFADE_DURATION_AMBIENT_OUT)\
+		.from(active.volume_db)
 
 
 func play_stinger(_event_name: StringName) -> void:

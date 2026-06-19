@@ -1,12 +1,12 @@
 # Story 005: Ambient Layer
 
 > **Epic**: Audio System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Logic
 > **Estimate**: 2h
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: 2026-06-18
+> **Last Updated**: 2026-06-19
 
 ## Context
 
@@ -130,7 +130,7 @@ Note: `stop_ambient()` fades only the active player — it is a single tween, no
 **Story Type**: Logic
 **Required evidence**: `tests/unit/audio/ambient_layer_test.gd` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] `tests/unit/audio/ambient_layer_test.gd` — 783 tests total, 0 failures (2026-06-19)
 
 ---
 
