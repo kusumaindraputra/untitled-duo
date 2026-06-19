@@ -1,12 +1,12 @@
 # Story 003: Music State Machine — Core Transitions + Crossfade
 
 > **Epic**: Audio System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Foundation
 > **Type**: Logic
 > **Estimate**: 4h
 > **Manifest Version**: 2026-06-03
-> **Last Updated**: 2026-06-18
+> **Last Updated**: 2026-06-19
 
 ## Context
 
@@ -211,7 +211,7 @@ This function is NEVER called from `_process()` or runtime paths — test-only.
 **Story Type**: Logic
 **Required evidence**: `tests/unit/audio/music_fsm_test.gd` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] `tests/unit/audio/music_fsm_test.gd` — 764 tests total, 0 failures (2026-06-19)
 
 ---
 
