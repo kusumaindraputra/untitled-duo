@@ -16,6 +16,9 @@
 class_name RoomExitDoor
 extends Area2D
 
+## Must match PlayerController.COLLISION_LAYER_PLAYER — no global constant exists yet.
+const _PLAYER_LAYER: int = 2
+
 ## Emitted when an unlocked door is entered by the player.
 signal player_entered(destination_idx: int)
 
@@ -32,6 +35,7 @@ var _locked: bool = true
 
 
 func _ready() -> void:
+	collision_mask = _PLAYER_LAYER  # detect CharacterBody2D on player physics layer
 	body_entered.connect(_on_body_entered)
 	monitoring = false   # locked at spawn — wait for room_cleared
 	if GameStateManager != null:
