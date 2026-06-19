@@ -77,6 +77,10 @@ var _last_footstep_played: StringName = &""
 var _zoom_tween: Tween = null
 var _last_anim: String = ""
 
+## Combat-start flash — masks the 0.55x→1.5x zoom snap so it doesn't read as Fayde teleporting.
+var _flash_rect: ColorRect = null
+var _flash_tween: Tween = null
+
 # ── Built-in virtual methods ──────────────────────────────────────────────────
 
 func _ready() -> void:
@@ -92,6 +96,7 @@ func _ready() -> void:
 	audio_system = get_node_or_null("/root/AudioSystem")
 	collision_layer = COLLISION_LAYER_PLAYER
 	collision_mask = COLLISION_MASK_NORMAL
+	_setup_combat_flash()
 	if is_instance_valid(_iso_char):
 		_iso_char.configure({
 			"idle": "fayde_idle",
@@ -287,12 +292,11 @@ func _compute_steps_per_second() -> float:
 func _on_combat_started(_is_boss: bool = false) -> void:
 	_controller_state = ControllerState.ENABLED
 	if _camera != null:
-		# Snap zoom instantly — tweening back while player is already mobile creates a
-		# disorienting "position jump" effect. Zoom-out to prep is still tweened.
 		if _zoom_tween:
 			_zoom_tween.kill()
 			_zoom_tween = null
 		_camera.zoom = ZOOM_COMBAT
+	_play_combat_flash()
 
 
 func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) -> void:
@@ -352,6 +356,33 @@ func _on_cast_hit_started(lock_duration: float = 0.12) -> void:
 
 func _on_combo_resolved(spell_effect: SpellEffect) -> void:
 	_cast_prana_type = spell_effect.primary_type
+
+
+## Creates a full-screen ColorRect on a high-layer CanvasLayer for the combat start flash.
+## Called once from _ready(). Starts invisible; _play_combat_flash() drives it.
+func _setup_combat_flash() -> void:
+	var canvas := CanvasLayer.new()
+	canvas.layer = 100  # above HUD (layer=10) and all game content
+	add_child(canvas)
+	_flash_rect = ColorRect.new()
+	_flash_rect.color = Color.BLACK
+	_flash_rect.modulate.a = 0.0
+	_flash_rect.anchor_right = 1.0
+	_flash_rect.anchor_bottom = 1.0
+	canvas.add_child(_flash_rect)
+
+
+## Briefly flashes black to mask the 0.55x→1.5x zoom snap at combat start.
+## Holds opaque for one physics frame, then fades to transparent over 0.15 s.
+func _play_combat_flash() -> void:
+	if _flash_rect == null:
+		return
+	if _flash_tween:
+		_flash_tween.kill()
+	_flash_rect.modulate.a = 1.0
+	_flash_tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	_flash_tween.tween_interval(get_physics_process_delta_time())
+	_flash_tween.tween_property(_flash_rect, "modulate:a", 0.0, 0.15)
 
 
 func _tween_zoom(target: Vector2) -> void:
