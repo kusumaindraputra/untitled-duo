@@ -60,6 +60,8 @@ const CROSSFADE_DURATION_TO_END: float = 2.0
 const CROSSFADE_DURATION_TO_MAIN_MENU: float = 0.5
 ## COMBAT/PREP → DYING. Fast fade to silence.
 const CROSSFADE_DURATION_TO_DYING: float = 0.1
+## Minimum time (seconds) DYING must hold before a queued END_DEFEAT transition fires (AC-AS-29).
+const DYING_MIN_HOLD_SEC: float = 1.5
 
 ## AudioEventRegistry resource path (ADR-0012 — no hardcoded event data in GDScript).
 const _REGISTRY_PATH: String = "res://assets/data/audio_event_registry.tres"
@@ -107,6 +109,14 @@ var _active_tween: Tween = null
 ## Maps MusicState → AudioStream resource. Populated by _load_music_cues().
 ## null entries are valid (e.g. DYING has no cue by design).
 var _music_cues: Dictionary[int, AudioStream] = {}
+
+## Seconds elapsed since the DYING state was entered. Reset to 0.0 on _on_death_started().
+## Guards against run_ended(false) arriving before the moment "breathes" (AC-AS-29).
+var _dying_elapsed: float = 0.0
+
+## When true, a run_ended(false) arrived during DYING before DYING_MIN_HOLD_SEC elapsed.
+## _process() fires the queued END_DEFEAT transition once the hold guard clears.
+var _pending_defeat_transition: bool = false
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
@@ -322,8 +332,8 @@ func _get_cue_for_state(state: MusicState) -> AudioStream:
 ##
 ## If [param cue] is null, logs push_error() and returns without changing state (AC-AS-22).
 ## If [param fade_duration] <= 0.0, applies instant cut (no tween) per ADR-0012 guard.
-## Connects [signal AudioStreamPlayer.finished] via CONNECT_ONE_SHOT on incoming player
-## when transitioning to END_VICTORY or END_DEFEAT (auto-returns to MAIN_MENU, AC-AS-26).
+## Callers must invoke _connect_end_finished_signal() after this call when targeting END_*
+## states (AC-AS-26) — the signal connection is NOT wired inside this function.
 func _crossfade_to(new_state: MusicState, fade_duration: float) -> void:
 	var cue: AudioStream = _get_cue_for_state(new_state)
 	if cue == null and new_state != MusicState.DYING:
@@ -361,10 +371,6 @@ func _crossfade_to(new_state: MusicState, fade_duration: float) -> void:
 	# Step 3: start incoming player.
 	incoming.play()
 
-	# Connect ONE_SHOT finished handler for END states (auto-transition to MAIN_MENU).
-	if new_state == MusicState.END_DEFEAT or new_state == MusicState.END_VICTORY:
-		incoming.finished.connect(_on_end_cue_finished, CONNECT_ONE_SHOT)
-
 	if fade_duration <= 0.0:
 		# Instant cut — no tween needed.
 		outgoing.volume_db = -80.0
@@ -390,6 +396,19 @@ func _crossfade_to(new_state: MusicState, fade_duration: float) -> void:
 	var tmp: int = _active_music_idx
 	_active_music_idx = _inactive_music_idx
 	_inactive_music_idx = tmp
+
+
+# ── Music FSM — frame update (Story 004) ─────────────────────────────────────
+
+## Advances the DYING hold guard and fires the queued END_DEFEAT transition once
+## DYING_MIN_HOLD_SEC has elapsed (AC-AS-29). No-op in all other states.
+func _process(delta: float) -> void:
+	if _music_state == MusicState.DYING:
+		_dying_elapsed += delta
+		if _pending_defeat_transition and _dying_elapsed >= DYING_MIN_HOLD_SEC:
+			_pending_defeat_transition = false
+			_crossfade_to(MusicState.END_DEFEAT, CROSSFADE_DURATION_TO_END)
+			_connect_end_finished_signal()
 
 
 # ── Music FSM — signal handlers (Story 003) ───────────────────────────────────
@@ -424,27 +443,60 @@ func _on_wave_ended() -> void:
 	pass  # Intentional no-op: wave_ended is not connected to the music FSM.
 
 
-## COMBAT/PREP → DYING on GameStateManager.death_started (Story 004).
-## Stub for Story 003 — DYING hold guard (AC-AS-29) implemented in Story 004.
+## COMBAT/PREP → DYING on GameStateManager.death_started (AC-AS-28).
+## Fades both music players to −80 dB simultaneously.
+## Non-interruptible guard: no-op when already in an END_* state.
 func _on_death_started() -> void:
-	pass  # Story 004: implement DYING hold guard and pending defeat transition.
+	if _music_state in [MusicState.END_VICTORY, MusicState.END_DEFEAT]:
+		return
+	_music_state = MusicState.DYING
+	_dying_elapsed = 0.0
+	_pending_defeat_transition = false
+	if _active_tween != null:
+		_active_tween.kill()
+	_active_tween = create_tween()
+	_active_tween.set_parallel(true)
+	_active_tween.tween_property(_music_players[0], "volume_db", -80.0, CROSSFADE_DURATION_TO_DYING) \
+		.from(_music_players[0].volume_db)
+	_active_tween.tween_property(_music_players[1], "volume_db", -80.0, CROSSFADE_DURATION_TO_DYING) \
+		.from(_music_players[1].volume_db)
 
 
-## COMBAT/PREP → END_DEFEAT or END_VICTORY on GameStateManager.run_ended.
-## Also handles defensive fallback: DYING → END_DEFEAT on run_ended(win: false)
-## after DYING_MIN_HOLD_SEC has elapsed (Story 004).
+## COMBAT/PREP/DYING → END_DEFEAT or END_VICTORY on GameStateManager.run_ended.
+## When in DYING state and run_ended(false) arrives before DYING_MIN_HOLD_SEC elapses,
+## the transition is queued in _pending_defeat_transition and fired by _process() (AC-AS-29).
 func _on_run_ended(win: bool) -> void:
-	if _music_state == MusicState.END_DEFEAT or _music_state == MusicState.END_VICTORY:
+	if _music_state in [MusicState.END_VICTORY, MusicState.END_DEFEAT]:
 		return  # END states are non-interruptible (AC-AS-15).
 	if win:
 		_crossfade_to(MusicState.END_VICTORY, CROSSFADE_DURATION_TO_END)
+		_connect_end_finished_signal()
 	else:
-		_crossfade_to(MusicState.END_DEFEAT, CROSSFADE_DURATION_TO_END)
+		if _music_state == MusicState.DYING:
+			if _dying_elapsed >= DYING_MIN_HOLD_SEC:
+				_crossfade_to(MusicState.END_DEFEAT, CROSSFADE_DURATION_TO_END)
+				_connect_end_finished_signal()
+			else:
+				_pending_defeat_transition = true
+		else:
+			_crossfade_to(MusicState.END_DEFEAT, CROSSFADE_DURATION_TO_END)
+			_connect_end_finished_signal()
 
 
-## ONE_SHOT callback connected to incoming player.finished when entering END_*.
-## Auto-transitions back to MAIN_MENU (AC-AS-26).
+## Connects the ONE_SHOT finished handler to the incoming player after a crossfade to END_*.
+## Called by _on_run_ended() and _process() immediately after _crossfade_to() (AC-AS-26).
+## Connecting here (not inside _crossfade_to) ensures the handler is on the correct player
+## after the active/inactive index swap performed by _crossfade_to().
+func _connect_end_finished_signal() -> void:
+	var incoming: AudioStreamPlayer = _music_players[_active_music_idx]
+	incoming.finished.connect(_on_end_cue_finished, CONNECT_ONE_SHOT)
+
+
+## ONE_SHOT callback fired when the END_DEFEAT or END_VICTORY cue finishes playing.
+## Auto-transitions back to MAIN_MENU (AC-AS-26). State guard discards stale signals.
 func _on_end_cue_finished() -> void:
+	if _music_state != MusicState.END_VICTORY and _music_state != MusicState.END_DEFEAT:
+		return
 	_crossfade_to(MusicState.MAIN_MENU, CROSSFADE_DURATION_TO_MAIN_MENU)
 
 
@@ -475,3 +527,9 @@ func _compute_crossfade_volume(
 ## deterministic eviction order without requiring real-time play() calls (AC-AS-06).
 func _set_slot_timestamp(idx: int, ticks: int) -> void:
 	_timestamps[idx] = ticks
+
+
+## Test seam — sets _dying_elapsed for deterministic hold guard testing (AC-AS-29).
+## Allows tests to advance past DYING_MIN_HOLD_SEC without real-time await.
+func _set_dying_elapsed(sec: float) -> void:
+	_dying_elapsed = sec
