@@ -597,9 +597,16 @@ func _place_anchor_object(data: AnchorObject) -> void:
 		return
 	var node: AnchorObjectNode = anchor_scene.instantiate() as AnchorObjectNode
 	node.set_anchor_data(data)
+	node.memory_fragment_triggered.connect(_on_memory_fragment_triggered)
 	var entity_layer: Node2D = get_node_or_null("EntityLayer") as Node2D
 	var parent: Node = entity_layer if entity_layer != null else self
 	parent.add_child(node)
 	# Default safe position: slightly south of center — inside the default diamond,
 	# well clear of spawn markers (A=-192,-96; B=192,-96; C=0,128) and walls (±384 y).
 	node.position = Vector2(0.0, 60.0)
+
+
+func _on_memory_fragment_triggered(memory_id: StringName) -> void:
+	var modal := MemoryFragmentModal.new()
+	modal.setup(memory_id)
+	add_child(modal)
