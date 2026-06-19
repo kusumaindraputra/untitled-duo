@@ -99,6 +99,10 @@ var _heavy_flash_layer: CanvasLayer = null
 var _heavy_flash_rect: ColorRect = null
 var _heavy_flash_tween: Tween = null
 
+## Active combo-window depleting ring; null when no combo window is open.
+## Freed on combo expiry, new window open, preparation_started, or player_died.
+var _combo_ring: _ComboRing = null
+
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
@@ -108,6 +112,8 @@ func _ready() -> void:
 	SpellCastingEffects.spell_hit_element.connect(_on_spell_hit_element)
 	SpellCastingEffects.cast_hit_started.connect(_on_cast_hit_started)
 	SpellCastingEffects.chain_index_changed.connect(_on_chain_index_changed)
+	SpellCastingEffects.combo_window_opened.connect(_on_combo_window_opened)
+	GameStateManager.preparation_started.connect(_on_preparation_started)
 	HealthAndDamage.damage_taken.connect(_on_damage_taken)
 	HealthAndDamage.heavy_hit.connect(_on_heavy_hit)
 	HealthAndDamage.player_died.connect(_on_player_died)
@@ -142,6 +148,10 @@ func _exit_tree() -> void:
 		HealthAndDamage.player_hp_zone_changed.disconnect(_on_hp_zone_changed)
 	if SpellCastingEffects.chain_index_changed.is_connected(_on_chain_index_changed):
 		SpellCastingEffects.chain_index_changed.disconnect(_on_chain_index_changed)
+	if SpellCastingEffects.combo_window_opened.is_connected(_on_combo_window_opened):
+		SpellCastingEffects.combo_window_opened.disconnect(_on_combo_window_opened)
+	if GameStateManager.preparation_started.is_connected(_on_preparation_started):
+		GameStateManager.preparation_started.disconnect(_on_preparation_started)
 	if _in_hitstop:
 		Engine.time_scale = 1.0
 	if _dying:
@@ -225,6 +235,52 @@ func _on_chain_index_changed(combo_idx: int, combo_count: int) -> void:
 		_next_is_ender = true
 		_audio_play(&"sfx_combo_ender")
 	_last_attack_index = clampi(combo_idx - 1, 0, 2)
+	# Free combo ring on expiry (combo_idx == 0 signals chain reset).
+	if combo_idx == 0:
+		_free_combo_ring()
+
+
+
+
+## Handles preparation_started from GameStateManager.
+## Frees the combo ring so it does not persist across waves.
+func _on_preparation_started(_idx: int, _rem: int) -> void:
+	_free_combo_ring()
+
+
+## Handles combo_window_opened from SpellCastingEffects.
+## Spawns a depleting ring arc around Fayde showing the combo continuation window.
+## No-op during death cinematic. Kills any existing ring before spawning a new one.
+func _on_combo_window_opened(window_duration: float) -> void:
+	if _dying:
+		return
+	_free_combo_ring()
+	if get_tree() == null or get_tree().root == null:
+		return
+	var player: Node = get_tree().get_first_node_in_group(&"player")
+	if player == null or not player is Node2D:
+		return
+	var color: Color = Color.WHITE
+	var se: SpellEffect = SpellCastingEffects.get_cached_spell_effect()
+	if se != null:
+		var type_data: PranaType = PranaCatalog.get_type(se.primary_type)
+		if type_data != null:
+			color = type_data.color
+	var ring := _ComboRing.new()
+	ring.duration = window_duration
+	ring.ring_color = color
+	ring.top_level = true
+	ring.global_position = (player as Node2D).global_position
+	get_tree().root.add_child(ring)
+	_combo_ring = ring
+
+
+## Frees the active combo window ring if one exists. Idempotent.
+func _free_combo_ring() -> void:
+	if _combo_ring != null:
+		if is_instance_valid(_combo_ring):
+			_combo_ring.queue_free()
+		_combo_ring = null
 
 
 ## Flashes the damaged entity: red on player, white on enemy.
@@ -393,6 +449,7 @@ func _on_player_died() -> void:
 		ring.global_position = (player as Node2D).global_position
 		get_tree().root.add_child(ring)
 	_audio_play(&"sfx_fayde_death")
+	_free_combo_ring()
 
 
 ## Counts down the death cinematic timer and restores normal time on expiry.
@@ -621,6 +678,41 @@ func _spawn_hit_vfx(target: Node2D, type_id: int, attack_index: int = 0) -> void
 			vfx.free()
 			return
 		vfx.global_position = target.global_position
+
+
+# ── Inner class: combo window depleting ring (Gamefeel Pass 4 #6) ───────────────
+
+## Procedural ring arc that depletes around Fayde during the combo continuation window.
+## Arc shrinks from 360° to 0° over [member duration] seconds. Color from Prana type.
+## Self-frees when duration expires. World-space, PROCESS_MODE_ALWAYS.
+class _ComboRing extends Node2D:
+	## Total duration of the combo window in seconds (COMBO_CONTINUATION_WINDOW = 2.0).
+	var duration: float = 2.0
+	## Prana type color for the ring.
+	var ring_color: Color = Color.WHITE
+	## Microsecond timestamp of ring creation.
+	var _start_us: int = 0
+
+	func _ready() -> void:
+		process_mode = PROCESS_MODE_ALWAYS
+		z_index = 100
+		_start_us = Time.get_ticks_usec()
+
+	func _process(_delta: float) -> void:
+		if Time.get_ticks_usec() - _start_us >= int(duration * 1_000_000.0):
+			queue_free()
+		else:
+			queue_redraw()
+
+	func _draw() -> void:
+		var elapsed: float = float(Time.get_ticks_usec() - _start_us) / 1_000_000.0
+		var remaining: float = clampf(1.0 - elapsed / duration, 0.0, 1.0)
+		# Alpha fades from 0.60 (peak) to 0.15 (near-expiry) — ring becomes fainter as urgency rises.
+		var alpha: float = 0.15 + remaining * 0.45
+		# Arc sweeps clockwise from top (−PI/2) — standard clock-face metaphor.
+		var end_angle: float = -PI / 2.0 + remaining * TAU
+		draw_arc(Vector2.ZERO, 50.0, -PI / 2.0, end_angle, 32,
+				Color(ring_color, alpha), 3.5, true)
 
 
 # ── Inner class: single procedural VFX instance ───────────────────────────────

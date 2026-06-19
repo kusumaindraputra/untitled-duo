@@ -87,6 +87,11 @@ signal chain_index_changed(combo_index: int, combo_attack_count: int)
 ## SpellVFX listens to this to prime visual/audio readiness cues per GDD Rule 1.
 signal cast_started(spell_effect: SpellEffect)
 
+## Emitted when the combo continuation window opens (CAST_LOCKED → CHAINING transition).
+## [param window_duration] is COMBO_CONTINUATION_WINDOW (2.0s). SpellVFX uses this to
+## spawn a depleting ring arc around Fayde — Gamefeel Pass 4 #6.
+signal combo_window_opened(window_duration: float)
+
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -284,6 +289,8 @@ func _process(delta: float) -> void:
 			_cast_lock_timer = 0.0
 			if _state == SCEState.CAST_LOCKED:
 				_state = SCEState.CHAINING if _combo_index > 0 else SCEState.READY
+				if _state == SCEState.CHAINING:
+					combo_window_opened.emit(COMBO_CONTINUATION_WINDOW)
 			# Auto-fire if input was buffered during lock
 			if _buffer_pressed and _state != SCEState.IDLE:
 				_buffer_pressed = false
@@ -319,7 +326,13 @@ func _trigger_cast() -> void:
 		return
 	var combo_count: int = _current_spell_effect.combo_attack_count
 	if _combo_index >= combo_count:
-		return
+		# Combo exhausted — reset and start a fresh chain immediately.
+		# Prevents the silent-no-op that made Fayde feel unresponsive
+		# between combo cycles (Gamefeel Pass 4 fluidity fix).
+		_combo_index = 0
+		chain_index_changed.emit(0, combo_count)
+		_buffer_pressed = false
+		_buffer_timer = 0.0
 
 	_combo_index += 1
 	chain_index_changed.emit(_combo_index, combo_count)
