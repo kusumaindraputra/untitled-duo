@@ -25,6 +25,7 @@ func _ready() -> void:
 	hud.fayde_node = $PlayerController
 	GameStateManager._active_state = GameEnums.GameState.MAIN_MENU
 	GameStateManager.run_ended.connect(_on_run_ended)
+	GameStateManager.wave_ended.connect(_on_wave_ended)
 	GameStateManager.start_run()
 
 
@@ -66,6 +67,22 @@ func _on_run_ended(win: bool) -> void:
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	overlay.add_child(label)
 	add_child(overlay)
+
+
+## Room-clear warm wash overlay — gold flash on wave_ended (Art Bible §2.4).
+## Flash in 0.15 s → hold 0.6 s → fade out 0.5 s. Auto-frees at tween end.
+func _on_wave_ended() -> void:
+	var wash := ColorRect.new()
+	wash.color = Color(1.0, 0.85, 0.4, 0.0)
+	wash.anchor_right = 1.0
+	wash.anchor_bottom = 1.0
+	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	$CanvasLayer.add_child(wash)
+	var tw: Tween = create_tween()
+	tw.tween_property(wash, "color:a", 0.18, 0.15).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(0.6)
+	tw.tween_property(wash, "color:a", 0.0, 0.5).set_ease(Tween.EASE_IN)
+	tw.tween_callback(wash.queue_free)
 
 
 func _ensure_key_action(action: StringName, keycode: Key) -> void:

@@ -514,7 +514,7 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 
 ## Responds to H&D's enemy_killed signal (AC-EAI-15, 16, 28, 29).
 ## Instance ID guard ensures only this enemy handles its own death event.
-func _on_enemy_killed(instance_id: int, _type_id: int, _prana_affiliation: GameEnums.DamageClass) -> void:
+func _on_enemy_killed(instance_id: int, _type_id: int, prana_affiliation: GameEnums.DamageClass) -> void:
 	if instance_id != get_instance_id():
 		return
 	if _state == EnemyState.DEAD:
@@ -527,6 +527,10 @@ func _on_enemy_killed(instance_id: int, _type_id: int, _prana_affiliation: GameE
 	_stop_attack_vfx()
 	$HitArea.monitoring = false
 	collision_layer = 0  # stop spell raycasts from hitting dead body (ADR-0007)
+
+	# Spawn death burst VFX — color bloom outward per Art Bible principle.
+	# PranaType.color mapped from prana_affiliation; neutral enemies burst white.
+	_spawn_death_burst(prana_affiliation)
 
 	# Play IsoCharacter death animation if available; use fallback timer for cleanup.
 	var has_iso_death: bool = false
@@ -583,3 +587,62 @@ func _on_hitarea_body_exited(body: Node2D) -> void:
 	_contact_timer = 0.0
 	if _archetype != GameEnums.EnemyArchetype.SHOOTER:
 		_stop_attack_vfx()
+
+## Spawns a procedural _DeathBurst node that draws an expanding ring + outward dots
+## at the enemy's position. Color is mapped from [param prana_affiliation] via
+## PranaCatalog; neutral (NONE) enemies burst white. Duration: 0.35 s.
+##
+## Guard: no-op when not inside the scene tree (headless test safety).
+func _spawn_death_burst(prana_affiliation: GameEnums.DamageClass) -> void:
+	if not is_inside_tree():
+		return
+	var burst := _DeathBurst.new()
+	burst.prana_affiliation = prana_affiliation
+	burst.global_position = global_position
+	# Attach as sibling so the burst is not freed with the enemy's queue_free().
+	# If parent is null (test context), skip — the burst has nowhere to live.
+	var parent_node: Node = get_parent()
+	if parent_node == null:
+		return
+	parent_node.add_child(burst)
+
+
+## Inner class: single procedural death burst instance.
+## Draws an expanding ring (radius 8→55 px) with 6 outward dots along radial rays.
+## Auto-frees after DEATH_BURST_DURATION seconds via process-mode-ALWAYS timer.
+class _DeathBurst extends Node2D:
+	var prana_affiliation: GameEnums.DamageClass = GameEnums.DamageClass.NONE
+	var _start_us: int = 0
+	const DEATH_BURST_DURATION: float = 0.35
+
+	func _ready() -> void:
+		process_mode = PROCESS_MODE_ALWAYS
+		z_index = 90
+		_start_us = Time.get_ticks_usec()
+
+	func _process(_delta: float) -> void:
+		if Time.get_ticks_usec() - _start_us >= int(DEATH_BURST_DURATION * 1_000_000.0):
+			queue_free()
+		else:
+			queue_redraw()
+
+	func _draw() -> void:
+		var elapsed: float = float(Time.get_ticks_usec() - _start_us) / 1_000_000.0
+		var p: float = clampf(elapsed / DEATH_BURST_DURATION, 0.0, 1.0)
+		var alpha: float = 1.0 - p
+		# Color from PranaCatalog, or white for neutral enemies.
+		var c: Color = Color.WHITE
+		if prana_affiliation >= 0:
+			var type_data: PranaType = PranaCatalog.get_type(prana_affiliation)
+			if type_data != null:
+				c = type_data.color
+		# Expanding ring: radius 8 → 55 px.
+		var ring_r: float = lerpf(8.0, 55.0, p)
+		draw_arc(Vector2.ZERO, ring_r, 0.0, TAU, 20, Color(c.r, c.g, c.b, alpha * 0.7), 3.0, true)
+		# 6 outward dots along radial rays.
+		for i: int in 6:
+			var angle: float = (TAU / 6.0) * float(i)
+			var dot_dist: float = lerpf(5.0, 40.0, p)
+			var dot_r: float = lerpf(4.0, 1.5, p)
+			draw_circle(Vector2.from_angle(angle) * dot_dist, dot_r,
+					Color(c.r, c.g, c.b, alpha * 0.85))

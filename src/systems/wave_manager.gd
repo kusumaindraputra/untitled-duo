@@ -273,6 +273,10 @@ func _spawn_wave() -> void:
 		var spread: Vector2 = Vector2(cos(spawn_idx * 2.4), sin(spawn_idx * 2.4)) * jitter
 		enemy.global_position = base_pos + spread
 		enemy.init(entry["type_id"])
+		# Spawn VFX: pop-in scale tween (0→1, BACK easing for slight overshoot).
+		enemy.scale = Vector2.ZERO
+		var tw: Tween = enemy.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(enemy, "scale", Vector2.ONE, 0.18)
 		spawn_idx += 1
 	_enemies_total = spawn_idx
 	_enemies_alive = _enemies_total

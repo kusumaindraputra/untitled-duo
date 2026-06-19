@@ -175,6 +175,8 @@ func _physics_process(delta: float) -> void:
 			if audio_system != null:
 				audio_system.play_event(&"sfx_fayde_dash")
 			dash_cooldown_changed.emit(false)
+			_spawn_dash_dust()
+			_spawn_dash_ghosts(dash_dir)
 
 	# ── DASHING: duration countdown ───────────────────────────────────────────
 	if _controller_state == ControllerState.DASHING:
@@ -395,3 +397,79 @@ func _tween_zoom(target: Vector2) -> void:
 func _on_player_died() -> void:
 	_controller_state = ControllerState.DISABLED
 	velocity = Vector2.ZERO
+
+
+## Spawns a procedural dust burst at Fayde's feet when a dash starts.
+## Two _DashDust nodes offset ±15px perpendicular to dash direction.
+func _spawn_dash_dust() -> void:
+	if not is_inside_tree():
+		return
+	# Perpendicular offset so both dust puffs are visible from iso perspective.
+	var perp: Vector2 = _last_facing_dir.rotated(PI / 2.0)
+	for sign in [-1.0, 1.0]:
+		var dust := _DashDust.new()
+		dust.global_position = global_position + perp * 15.0 * sign
+		add_child(dust)
+
+
+## Spawns 2 ghost afterimage sprites at Fayde's current position.
+## Each ghost captures the current IsoCharacter sprite frame, offset backward
+## along the dash direction, and fades out over 0.25 s.
+func _spawn_dash_ghosts(dash_dir: Vector2) -> void:
+	if _iso_char == null or not _iso_char._initialized:
+		return
+	var sprite: AnimatedSprite2D = _iso_char.get_sprite()
+	if sprite == null or sprite.sprite_frames == null:
+		return
+	var current_anim: String = sprite.animation
+	if current_anim.is_empty():
+		return
+	var frame_idx: int = sprite.frame
+	var frame_tex: Texture2D = sprite.sprite_frames.get_frame_texture(current_anim, frame_idx)
+	if frame_tex == null:
+		return
+	var backward: Vector2 = -dash_dir
+	for i: int in range(2):
+		var ghost := Sprite2D.new()
+		ghost.texture = frame_tex
+		ghost.scale = _iso_char.sprite_scale
+		ghost.global_position = global_position + backward * (20.0 + float(i) * 18.0)
+		ghost.z_index = z_index - 1
+		ghost.modulate.a = 0.35 - float(i) * 0.15
+		# Top-level so ghost stays in place while Fayde dashes forward.
+		ghost.top_level = true
+		get_tree().root.add_child(ghost)
+		var tw: Tween = create_tween()
+		tw.tween_property(ghost, "modulate:a", 0.0, 0.25)
+		tw.tween_callback(ghost.queue_free)
+
+
+## Inner class: single procedural dash dust puff.
+## Draws 5 expanding circles in a small cluster, auto-frees after 0.3 s.
+class _DashDust extends Node2D:
+	const DUST_DURATION: float = 0.3
+
+	var _start_us: int = 0
+
+	func _ready() -> void:
+		process_mode = PROCESS_MODE_ALWAYS
+		z_index = 89  # below Fayde, above floor
+		_start_us = Time.get_ticks_usec()
+
+	func _process(_delta: float) -> void:
+		if Time.get_ticks_usec() - _start_us >= int(DUST_DURATION * 1_000_000.0):
+			queue_free()
+		else:
+			queue_redraw()
+
+	func _draw() -> void:
+		var elapsed: float = float(Time.get_ticks_usec() - _start_us) / 1_000_000.0
+		var p: float = clampf(elapsed / DUST_DURATION, 0.0, 1.0)
+		var alpha: float = 1.0 - p
+		var c: Color = Color(0.8, 0.75, 0.65, alpha)
+		# 5 dust motes expanding outward + upward.
+		for i: int in 5:
+			var angle: float = (TAU / 5.0) * float(i) + p * 0.5
+			var dist: float = lerpf(2.0, 22.0, p)
+			var r: float = lerpf(3.5, 0.5, p)
+			draw_circle(Vector2.from_angle(angle) * dist + Vector2(0, -p * 10.0), r, c)
