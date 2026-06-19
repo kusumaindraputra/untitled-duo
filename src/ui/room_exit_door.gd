@@ -24,6 +24,9 @@ extends Area2D
 ## Must match PlayerController.COLLISION_LAYER_PLAYER — no global constant exists yet.
 const _PLAYER_LAYER: int = 2
 
+## Display names for each DungeonGraph.ROOM_TYPE_* value (same order as enum).
+const _ROOM_TYPE_NAMES: Array[String] = ["⚔ Combat", "💀 Elite", "♥ Rest", "👑 Boss"]
+
 ## Emitted when an unlocked door is entered by the player.
 signal player_entered(destination_idx: int)
 
@@ -110,9 +113,8 @@ func _on_body_entered(body: Node2D) -> void:
 func _update_label() -> void:
 	if _label == null:
 		return
-	var type_names: Array[String] = ["⚔ Combat", "💀 Elite", "♥ Rest", "👑 Boss"]
 	var suffix: String = " [LOCKED]" if _locked else " ▼"
-	var base: String = type_names[destination_type] if destination_type < type_names.size() else "Exit"
+	var base: String = _ROOM_TYPE_NAMES[destination_type] if destination_type < _ROOM_TYPE_NAMES.size() else "Exit"
 	_label.text = base + suffix
 	_label.modulate.a = 0.5 if _locked else 0.92
 

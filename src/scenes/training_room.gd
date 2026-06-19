@@ -36,7 +36,7 @@ func _ready() -> void:
 	hud.fayde_node = $PlayerController
 	GameStateManager.run_ended.connect(_on_run_ended)
 	# Standard first-run flow: MAIN_MENU → start_run() → PREP_PHASE.
-	GameStateManager._active_state = GameEnums.GameState.MAIN_MENU
+	GameStateManager.reset_to_main_menu()
 	GameStateManager.start_run()
 	_spawn_dummy()
 
@@ -77,10 +77,8 @@ func _spawn_dummy() -> void:
 ## Returns to PREPARATION_PHASE so the player can re-arrange prana freely.
 ## Emits run_ended(false) first so RunManager resets cleanly before the new run.
 func _go_to_prep() -> void:
-	# End current run cleanly (resets RunManager._run_active).
-	GameStateManager.run_ended.emit(false)
-	# Re-enter from MAIN_MENU (required by GameStateManager.start_run() guard).
-	GameStateManager._active_state = GameEnums.GameState.MAIN_MENU
+	# End current run + reset to MAIN_MENU (required by start_run() guard).
+	GameStateManager.reset_to_main_menu()
 	GameStateManager.start_run()
 	# run_started clears H&D registry — re-register dummy so it's hittable again.
 	if is_instance_valid(_dummy):

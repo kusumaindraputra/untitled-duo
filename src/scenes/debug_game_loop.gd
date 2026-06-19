@@ -47,7 +47,7 @@ func _ready() -> void:
 	var hud: CombatHUD = $CanvasLayer/CombatHUD
 	hud.player_controller = $PlayerController
 	hud.fayde_node = $PlayerController
-	GameStateManager._active_state = GameEnums.GameState.MAIN_MENU
+	GameStateManager.reset_to_main_menu()
 	GameStateManager.set_is_final_floor(_current_floor >= TOTAL_FLOORS)
 	GameStateManager.run_ended.connect(_on_run_ended)
 	GameStateManager.wave_ended.connect(_on_wave_ended)

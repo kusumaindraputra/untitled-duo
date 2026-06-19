@@ -106,10 +106,10 @@ const COMBO_CONTINUATION_WINDOW: float = 2.0
 
 ## Base knockback distance in pixels per hit. Multiplied by tier_attack_modifier.
 ## Tuning knob: 60 gives ~1 character-width slide; T3 eruption pushes 60×1.50=90px.
-const KNCKBACK_BASE: float = 60.0
+const KNOCKBACK_BASE: float = 60.0
 
 ## Maximum knockback distance in pixels (hard cap regardless of modifier).
-const KNCKBACK_MAX: float = 90.0
+const KNOCKBACK_MAX: float = 90.0
 
 ## Input buffer window in seconds — early SPACE press within this window still fires.
 const INPUT_BUFFER_WINDOW: float = 0.15
@@ -430,7 +430,7 @@ func _fire_attack(attack_index: int) -> void:
 	# SHADOW=1, LIGHTNING=2, ICE=3, NATURE=4) are 1:1 with primary_type integers.
 	# PranaCatalog requires a live Autoload unavailable in headless tests.
 	# Approved 2026-06-06; see file header for full note.
-	var raw_affiliation = target.get(&"prana_affiliation")
+	var raw_affiliation: Variant = target.get(&"prana_affiliation")
 	var enemy_affiliation: int = raw_affiliation if raw_affiliation != null else GameEnums.DamageClass.NONE
 	if pt != GameEnums.DamageClass.NONE and enemy_affiliation == pt:
 		raw *= 2.0
@@ -453,12 +453,12 @@ func _fire_attack(attack_index: int) -> void:
 
 
 ## Applies a knockback push to [param target] away from Fayde.
-## Distance scales with tier_attack_modifier, capped at KNCKBACK_MAX.
+## Distance scales with tier_attack_modifier, capped at KNOCKBACK_MAX.
 ## No-op if target lacks the apply_knockback duck-type method.
 func _apply_knockback(target: Node, tier_mod: float) -> void:
 	if _fayde_ref == null:
 		return
-	var distance: float = minf(KNCKBACK_BASE * tier_mod, KNCKBACK_MAX)
+	var distance: float = minf(KNOCKBACK_BASE * tier_mod, KNOCKBACK_MAX)
 	if distance <= 0.0:
 		return
 	# Direction FROM Fayde TO target = away from Fayde. direction_to gives from→to vector.

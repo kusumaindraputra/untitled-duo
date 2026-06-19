@@ -58,7 +58,7 @@ var _error_label: Label = null
 
 ## Live PranaGridSlot nodes, indexed 0–8. Empty until _create_ui_nodes() runs.
 ## Guards in _place_token/_clear_slot check size before accessing.
-var _slot_nodes: Array = []
+var _slot_nodes: Array[PranaGridSlot] = []
 
 ## Confirm button reference. Null in headless tests — all callers guard with != null.
 var _confirm_button: Button = null
@@ -99,7 +99,7 @@ func _ready() -> void:
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	GameStateManager.grid_locked.connect(_on_grid_locked)
 	GameStateManager.grid_hidden.connect(_on_grid_hidden)
-	arrangement_confirmed.connect(GameStateManager._on_arrangement_confirmed)
+	arrangement_confirmed.connect(GameStateManager.receive_arrangement_confirmed)
 	_create_ui_nodes()
 	visible = false
 	# Initialize gamepad cursor position after first layout pass. (ADR-0013: must defer
@@ -112,11 +112,14 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
-	if arrangement_confirmed.is_connected(GameStateManager._on_arrangement_confirmed):
-		arrangement_confirmed.disconnect(GameStateManager._on_arrangement_confirmed)
-	GameStateManager.preparation_started.disconnect(_on_preparation_started)
-	GameStateManager.grid_locked.disconnect(_on_grid_locked)
-	GameStateManager.grid_hidden.disconnect(_on_grid_hidden)
+	if arrangement_confirmed.is_connected(GameStateManager.receive_arrangement_confirmed):
+		arrangement_confirmed.disconnect(GameStateManager.receive_arrangement_confirmed)
+	if GameStateManager.preparation_started.is_connected(_on_preparation_started):
+		GameStateManager.preparation_started.disconnect(_on_preparation_started)
+	if GameStateManager.grid_locked.is_connected(_on_grid_locked):
+		GameStateManager.grid_locked.disconnect(_on_grid_locked)
+	if GameStateManager.grid_hidden.is_connected(_on_grid_hidden):
+		GameStateManager.grid_hidden.disconnect(_on_grid_hidden)
 
 
 ## Detects input mode switch (gamepad ↔ mouse/keyboard) and dispatches d-pad navigation

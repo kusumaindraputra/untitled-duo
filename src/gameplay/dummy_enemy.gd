@@ -12,7 +12,7 @@ extends StaticBody2D
 signal dummy_killed
 
 ## Read by SpellCastingEffects Step9 elemental multiplier.
-var prana_affiliation: int = GameEnums.DamageClass.NONE
+var prana_affiliation: GameEnums.DamageClass = GameEnums.DamageClass.NONE
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 

@@ -216,6 +216,27 @@ func receive_wave_cleared() -> void:
 	_on_wave_cleared()
 
 
+## Public entry point for PranaGrid.arrangement_confirmed signal connection.
+## External callers connect here; private _on_arrangement_confirmed() is the implementation.
+func receive_arrangement_confirmed() -> void:
+	_on_arrangement_confirmed()
+
+
+## Resets state machine to MAIN_MENU from any state (debug/training scenes only).
+## Emits [signal run_ended] false when called from an active run state, so
+## RunManager resets cleanly. Use instead of writing to _active_state directly.
+func reset_to_main_menu() -> void:
+	var run_states: Array[GameEnums.GameState] = [
+		GameEnums.GameState.PREPARATION_PHASE,
+		GameEnums.GameState.COMBAT_PHASE,
+		GameEnums.GameState.PAUSED,
+		GameEnums.GameState.DEATH_SCREEN,
+	]
+	if _active_state in run_states:
+		run_ended.emit(false)
+	_active_state = GameEnums.GameState.MAIN_MENU
+
+
 ## Transitions to PREPARATION_PHASE from any state (e.g., after a room transition).
 ## Resets wave index and re-emits preparation_started so WaveManager rebuilds
 ## composition for the new room. Called by debug_game_loop after room_transition_completed.

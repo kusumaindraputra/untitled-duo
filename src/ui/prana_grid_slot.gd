@@ -16,15 +16,6 @@
 class_name PranaGridSlot
 extends Panel  # Panel so add_theme_stylebox_override("panel", ...) renders correctly
 
-## Prana type colors — Art Bible palette (QA plan S4-04 manual checklist).
-const TYPE_COLORS: Array[Color] = [
-	Color("#F24C1D"),  # 0 Ashfire
-	Color("#4A5EF5"),  # 1 Voidblue
-	Color("#FFCC00"),  # 2 Stormgold
-	Color("#3DD9F0"),  # 3 Deepfrost
-	Color("#1AC953"),  # 4 Verdant
-]
-
 ## Background color for an empty slot.
 const EMPTY_COLOR := Color(0.13, 0.13, 0.13, 0.92)
 
@@ -127,4 +118,4 @@ func _on_mouse_exited() -> void:
 func refresh(type_id: int) -> void:
 	_displayed_type_id = type_id
 	if _color_rect != null:
-		_color_rect.color = EMPTY_COLOR if type_id == -1 else TYPE_COLORS[type_id]
+		_color_rect.color = EMPTY_COLOR if type_id == -1 else PranaTypeToken.TYPE_COLORS[type_id]
