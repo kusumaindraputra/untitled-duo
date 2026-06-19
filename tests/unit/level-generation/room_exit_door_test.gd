@@ -4,12 +4,12 @@
 ##   - _PLAYER_LAYER constant matches PlayerController.COLLISION_LAYER_PLAYER = 2
 ##     (regression: collision_mask was 1 by default; player on layer 2 → body_entered never fired)
 ##   - _ready() sets collision_mask = _PLAYER_LAYER and monitoring = false
-##   - _on_room_cleared() sets monitoring = true
+##   - _on_room_cleared() sets monitoring = true and unlocks beacon
 ##   - destination_idx defaults to -1
 ##   - set_destination_type stores value
 ##
-## Note: _ready() is called manually — @onready var _label stays null (safe; _ready() doesn't use it).
-## Node teardown: .free() for nodes not in scene tree (GdUnit4 headless rule).
+## Tests calling _ready() manage their own door lifecycle (create → call → free) to avoid
+## orphan warnings from GdUnit4: child nodes (_beacon, _label) are freed with the parent.
 extends GdUnitTestSuite
 
 
@@ -33,17 +33,24 @@ func test_room_exit_door_player_layer_constant_is_two() -> void:
 
 
 # ── test_02: _ready() sets collision_mask to player layer ────────────────────
+## Owns its own door lifecycle to avoid orphan warnings from child nodes.
 
 func test_room_exit_door_ready_sets_collision_mask_to_player_layer() -> void:
-	_door._ready()
-	assert_int(_door.collision_mask).is_equal(RoomExitDoor._PLAYER_LAYER)
+	var door := RoomExitDoor.new()
+	door._ready()
+	var mask: int = door.collision_mask
+	door.free()
+	assert_int(mask).is_equal(RoomExitDoor._PLAYER_LAYER)
 
 
 # ── test_03: door starts locked after _ready() ───────────────────────────────
 
 func test_room_exit_door_starts_locked_monitoring_false() -> void:
-	_door._ready()
-	assert_bool(_door.monitoring).is_false()
+	var door := RoomExitDoor.new()
+	door._ready()
+	var is_monitoring: bool = door.monitoring
+	door.free()
+	assert_bool(is_monitoring).is_false()
 
 
 # ── test_04: room_cleared unlocks door ───────────────────────────────────────
