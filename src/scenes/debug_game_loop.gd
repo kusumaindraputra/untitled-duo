@@ -113,6 +113,8 @@ func _register_input_actions() -> void:
 	_ensure_key_action(&"move_up",    KEY_W)
 	_ensure_key_action(&"move_down",  KEY_S)
 	_ensure_key_action(&"dash",       KEY_SHIFT)
+	# Gamepad: A / Cross = cast (free during combat; prana_place is prep-only)
+	_ensure_joypad_action(&"cast", JOY_BUTTON_A)
 	# Gamepad: left analog stick for movement (JOY_AXIS_LEFT_X/Y)
 	_ensure_joypad_motion_action(&"move_left",  JOY_AXIS_LEFT_X, -1.0)
 	_ensure_joypad_motion_action(&"move_right", JOY_AXIS_LEFT_X,  1.0)
