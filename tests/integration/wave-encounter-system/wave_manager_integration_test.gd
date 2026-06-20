@@ -117,6 +117,7 @@ func test_full_fp_run_flow_transitions_through_all_states() -> void:
 ## THEN all_waves_cleared emitted exactly 1 time; boss_defeated emitted exactly 1 time
 func test_full_fp_run_completion_signals_emitted_exactly_once_each() -> void:
 	var wm: WaveManager = _make_wm()
+	wm.is_final_room = true
 	var spawn_container: Node = _make_spawn_container(10)
 	wm.spawn_points_container = spawn_container
 
@@ -146,6 +147,7 @@ func test_full_fp_run_completion_signals_emitted_exactly_once_each() -> void:
 ## THEN all_waves_cleared fires BEFORE boss_defeated (synchronous, same frame — ADR-0014)
 func test_full_fp_run_all_waves_cleared_fires_before_boss_defeated() -> void:
 	var wm: WaveManager = _make_wm()
+	wm.is_final_room = true
 	var spawn_container: Node = _make_spawn_container(10)
 	wm.spawn_points_container = spawn_container
 

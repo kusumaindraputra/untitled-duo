@@ -183,6 +183,89 @@ func test_null_template_zone_check_is_invalid() -> void:
 	room.free()
 
 
+# ── layout_style tests ──────────────────────────────────────────────────────────
+
+## layout_style=0 (DIAMOND) returns empty from _resolve_layout_cells → default floor.
+func test_resolve_layout_cells_diamond_returns_empty() -> void:
+	var room := _make_room(TemplateDiamond)
+	var cells: Array[Vector2i] = room._resolve_layout_cells()
+	assert_array(cells).is_empty()
+	room.free()
+
+
+## layout_style=2 (SPLIT) returns non-empty cells.
+func test_resolve_layout_cells_split_returns_cells() -> void:
+	var room := _make_room(TemplateSplit)
+	var cells: Array[Vector2i] = room._resolve_layout_cells()
+	assert_array(cells).is_not_empty()
+	room.free()
+
+
+## NARROW cells count is less than full diamond (60 % size → fewer tiles).
+func test_narrow_cells_fewer_than_diamond() -> void:
+	var room := _make_room()
+	var narrow: Array[Vector2i] = room._generate_narrow_cells()
+	var full_xr: int = room._WALL_HALF_X / room._TILE_X_STEP
+	var full_yr: int = room._WALL_HALF_Y / room._TILE_Y_STEP
+	var diamond_count: int = 0
+	for tx: int in range(-room._FLOOR_RADIUS, room._FLOOR_RADIUS + 1):
+		for ty: int in range(-room._FLOOR_RADIUS, room._FLOOR_RADIUS + 1):
+			var norm := float(abs(tx - ty)) / float(full_xr) + float(abs(tx + ty)) / float(full_yr)
+			if norm <= 1.0:
+				diamond_count += 1
+	assert_int(narrow.size()).is_less(diamond_count)
+	room.free()
+
+
+## NARROW cells all satisfy the 60 % diamond norm (no stray tiles).
+func test_narrow_cells_satisfy_scaled_norm() -> void:
+	var room := _make_room()
+	var cells: Array[Vector2i] = room._generate_narrow_cells()
+	var xr: int = (room._WALL_HALF_X / room._TILE_X_STEP) * 6 / 10   # 12
+	var yr: int = (room._WALL_HALF_Y / room._TILE_Y_STEP) * 6 / 10   # 14
+	for c: Vector2i in cells:
+		var norm := float(abs(c.x - c.y)) / float(xr) + float(abs(c.x + c.y)) / float(yr)
+		assert_float(norm).override_failure_message("Narrow cell %s outside 60 %% diamond (norm=%f)" % [c, norm]).is_less_equal(1.0)
+	room.free()
+
+
+## SPLIT cells include both left (col < -2) and right (col > 2) quadrants.
+func test_split_cells_cover_both_chambers() -> void:
+	var room := _make_room()
+	var cells: Array[Vector2i] = room._generate_split_cells()
+	var has_left: bool = false
+	var has_right: bool = false
+	for c: Vector2i in cells:
+		if c.x - c.y < -2:
+			has_left = true
+		if c.x - c.y > 2:
+			has_right = true
+	assert_bool(has_left).is_true()
+	assert_bool(has_right).is_true()
+	room.free()
+
+
+## SPLIT bridge is connected: tile (0,0) exists in the result.
+func test_split_cells_origin_in_bridge() -> void:
+	var room := _make_room()
+	var cells: Array[Vector2i] = room._generate_split_cells()
+	var cells_set: Dictionary = {}
+	for c: Vector2i in cells:
+		cells_set[c] = true
+	assert_bool(cells_set.has(Vector2i(0, 0))).is_true()
+	room.free()
+
+
+## Split template has layout_style = 2.
+func test_split_template_layout_style_is_2() -> void:
+	assert_int(TemplateSplit.layout_style).is_equal(2)
+
+
+## Diamond template has layout_style = 0.
+func test_diamond_template_layout_style_is_0() -> void:
+	assert_int(TemplateDiamond.layout_style).is_equal(0)
+
+
 # ── Template room_type enum values ──────────────────────────────────────────────
 
 ## Room types: 0=Combat, 1=Elite, 2=Rest, 3=BossGate.

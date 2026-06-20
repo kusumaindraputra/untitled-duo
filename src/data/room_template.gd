@@ -35,6 +35,10 @@ extends Resource
 ## Default 26 covers WALL_HALF_X=640 → x_radius=20 and WALL_HALF_Y=384 → y_radius=24.
 @export var floor_radius: int = 26
 
+## Procedural layout style. Ignored when tile_cells is non-empty (hand-authored wins).
+## 0=Diamond (full default), 1=Narrow (60 % size diamond), 2=Split (two chambers + bridge).
+@export var layout_style: int = 0
+
 # ── Walls & Navigation ──────────────────────────────────────────────────────────
 
 ## Optional wall half-extents override. If zero (default), uses IsometricRoom._WALL_HALF_X/Y.

@@ -69,8 +69,9 @@ const _DEBRIS_PLACE_ATTEMPTS: int = 80
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 func _ready() -> void:
-	if room_template != null and not room_template.tile_cells.is_empty():
-		_build_floor_from_template()
+	var custom_cells: Array[Vector2i] = _resolve_layout_cells()
+	if not custom_cells.is_empty():
+		_build_floor_from_cells(custom_cells)
 	else:
 		_build_floor()
 	if room_template != null and not room_template.spawn_positions.is_empty():
@@ -78,7 +79,7 @@ func _ready() -> void:
 	else:
 		_place_spawn_markers()
 	_build_walls()
-	if room_template != null and not room_template.tile_cells.is_empty():
+	if not custom_cells.is_empty():
 		_build_navigation_from_template_boundary()
 	else:
 		_build_navigation()
@@ -216,29 +217,69 @@ func _build_navigation() -> void:
 	add_child(nav_region)
 
 
-## Builds the floor tiles from room_template.tile_cells instead of the default diamond.
-## Reuses the same TileSetAtlasSource setup as _build_floor().
-func _build_floor_from_template() -> void:
-	_tile_map.clear()
-	if _tile_map.tile_set.has_source(_FLOOR_SOURCE_ID):
-		_tile_map.tile_set.remove_source(_FLOOR_SOURCE_ID)
-	var tex: Texture2D = load(_FLOOR_TILE_PATH) as Texture2D
-	if tex == null:
-		push_error("IsometricRoom: floor tile not found at %s" % _FLOOR_TILE_PATH)
-		return
-	var atlas := TileSetAtlasSource.new()
-	atlas.texture = tex
-	atlas.texture_region_size = Vector2i(64, 32)
-	atlas.create_tile(_FLOOR_ATLAS_COORD)
-	_tile_map.tile_set.add_source(atlas, _FLOOR_SOURCE_ID)
-	for cell: Vector2i in room_template.tile_cells:
-		_tile_map.set_cell(cell, _FLOOR_SOURCE_ID, _FLOOR_ATLAS_COORD)
-	# Flood-fill from origin — remove isolated tiles not connected to the main body.
-	var all_cells: Dictionary = {}
-	for c: Vector2i in _tile_map.get_used_cells():
-		all_cells[c] = true
-	# Start flood-fill from the first tile cell (template origin point).
-	var start: Vector2i = room_template.tile_cells[0] if not room_template.tile_cells.is_empty() else Vector2i.ZERO
+## Chooses which tile cells to use for this room's floor.
+## Priority: (1) hand-authored tile_cells in template, (2) procedural layout_style,
+## (3) empty → _ready() falls back to default diamond _build_floor().
+func _resolve_layout_cells() -> Array[Vector2i]:
+	if room_template == null:
+		return []
+	if not room_template.tile_cells.is_empty():
+		return room_template.tile_cells
+	match room_template.layout_style:
+		1:   # NARROW — 60 % size diamond, tight corridors
+			return _generate_narrow_cells()
+		2:   # SPLIT — two chambers connected by a bridge
+			return _generate_split_cells()
+	return []   # DIAMOND (0) or unknown → default diamond
+
+
+## Generates tile cells for a 60 % diamond (NARROW layout).
+## Creates a compact arena that forces closer combat.
+func _generate_narrow_cells() -> Array[Vector2i]:
+	var xr: int = (_WALL_HALF_X / _TILE_X_STEP) * 6 / 10   # 60 % of 20 = 12
+	var yr: int = (_WALL_HALF_Y / _TILE_Y_STEP) * 6 / 10   # 60 % of 24 = 14
+	var scan: int = max(xr, yr) + 2
+	var cells: Dictionary = {}
+	for tx: int in range(-scan, scan + 1):
+		for ty: int in range(-scan, scan + 1):
+			var norm: float = float(abs(tx - ty)) / float(xr) + float(abs(tx + ty)) / float(yr)
+			if norm <= 1.0:
+				cells[Vector2i(tx, ty)] = true
+	return _flood_fill_cells(cells, Vector2i(0, 0))
+
+
+## Generates tile cells for a two-chamber room split by a chokepoint (SPLIT layout).
+## Left chamber and right chamber are connected by a narrow bridge in screen space.
+## bridge_half = 2 tiles → bridge is ≈ 128 px wide in screen space.
+## bridge_height = 6 tiles → bridge is ≈ 96 px tall in screen space.
+func _generate_split_cells() -> Array[Vector2i]:
+	const BRIDGE_HALF: int = 2
+	const BRIDGE_HY:   int = 6
+	var xr: int = _WALL_HALF_X / _TILE_X_STEP   # 20
+	var yr: int = _WALL_HALF_Y / _TILE_Y_STEP    # 24
+	var cells: Dictionary = {}
+	for tx: int in range(-_FLOOR_RADIUS, _FLOOR_RADIUS + 1):
+		for ty: int in range(-_FLOOR_RADIUS, _FLOOR_RADIUS + 1):
+			var norm: float = float(abs(tx - ty)) / float(xr) + float(abs(tx + ty)) / float(yr)
+			if norm > 1.0:
+				continue
+			var col: int = tx - ty   # maps to screen X
+			var in_left: bool   = col < -BRIDGE_HALF
+			var in_right: bool  = col > BRIDGE_HALF
+			var in_bridge: bool = abs(col) <= BRIDGE_HALF and abs(tx + ty) <= BRIDGE_HY
+			if in_left or in_right or in_bridge:
+				cells[Vector2i(tx, ty)] = true
+	return _flood_fill_cells(cells, Vector2i(0, 0))
+
+
+## Flood-fill from [param start] over [param all_cells], returning only the
+## connected component that includes [param start]. Removes isolated tile clusters.
+func _flood_fill_cells(all_cells: Dictionary, start: Vector2i) -> Array[Vector2i]:
+	if not all_cells.has(start):
+		# start not in set — pick the first available cell
+		if all_cells.is_empty():
+			return []
+		start = all_cells.keys()[0] as Vector2i
 	var visited: Dictionary = {}
 	var queue: Array[Vector2i] = [start]
 	var dirs: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
@@ -251,8 +292,46 @@ func _build_floor_from_template() -> void:
 			var nb: Vector2i = cell + d
 			if all_cells.has(nb) and not visited.has(nb):
 				queue.append(nb)
+	var result: Array[Vector2i] = []
+	for c: Vector2i in visited:
+		result.append(c)
+	return result
+
+
+## Paints [param cells] onto the TileMapLayer using the standard floor tile setup.
+## Shared by _build_floor_from_template() and the procedural shape generators.
+func _build_floor_from_cells(cells: Array[Vector2i]) -> void:
+	_tile_map.clear()
+	if _tile_map.tile_set.has_source(_FLOOR_SOURCE_ID):
+		_tile_map.tile_set.remove_source(_FLOOR_SOURCE_ID)
+	var tex: Texture2D = load(_FLOOR_TILE_PATH) as Texture2D
+	if tex == null:
+		push_error("IsometricRoom: floor tile not found at %s" % _FLOOR_TILE_PATH)
+		return
+	var atlas := TileSetAtlasSource.new()
+	atlas.texture = tex
+	atlas.texture_region_size = Vector2i(64, 32)
+	atlas.create_tile(_FLOOR_ATLAS_COORD)
+	_tile_map.tile_set.add_source(atlas, _FLOOR_SOURCE_ID)
+	for cell: Vector2i in cells:
+		_tile_map.set_cell(cell, _FLOOR_SOURCE_ID, _FLOOR_ATLAS_COORD)
+
+
+## Builds the floor tiles from room_template.tile_cells instead of the default diamond.
+## Uses _build_floor_from_cells() then erases isolated tiles via flood-fill.
+func _build_floor_from_template() -> void:
+	_build_floor_from_cells(room_template.tile_cells)
+	# Flood-fill from template origin (first cell, or Vector2i.ZERO) to remove isolated tiles.
+	var all_cells: Dictionary = {}
+	for c: Vector2i in _tile_map.get_used_cells():
+		all_cells[c] = true
+	var start: Vector2i = room_template.tile_cells[0] if not room_template.tile_cells.is_empty() else Vector2i.ZERO
+	var connected: Array[Vector2i] = _flood_fill_cells(all_cells, start)
+	var connected_set: Dictionary = {}
+	for c: Vector2i in connected:
+		connected_set[c] = true
 	for c: Vector2i in all_cells:
-		if not visited.has(c):
+		if not connected_set.has(c):
 			_tile_map.erase_cell(c)
 
 

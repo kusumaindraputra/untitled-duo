@@ -87,7 +87,11 @@ func request_transition(destination_idx: int) -> void:
 		_is_transitioning = false
 		return
 
-	SceneManager.change_room(packed)
+	var captured_tmpl: RoomTemplate = tmpl
+	SceneManager.change_room(packed, func(scene: Node) -> void:
+		if scene is IsometricRoom and captured_tmpl != null:
+			(scene as IsometricRoom).room_template = captured_tmpl
+	)
 	await SceneManager.room_changed
 
 	_current_idx = destination_idx
@@ -135,7 +139,11 @@ func load_floor(graph: DungeonGraph) -> void:
 		_is_transitioning = false
 		return
 
-	SceneManager.change_room(packed)
+	var captured_tmpl: RoomTemplate = tmpl
+	SceneManager.change_room(packed, func(scene: Node) -> void:
+		if scene is IsometricRoom and captured_tmpl != null:
+			(scene as IsometricRoom).room_template = captured_tmpl
+	)
 	await SceneManager.room_changed
 
 	_graph.set_room_state(_current_idx, DungeonGraph.ROOM_STATE_VISITED)

@@ -58,13 +58,17 @@ func set_initial_scene(scene: Node) -> void:
 ## Performs the swap in three steps:
 ## 1. queue_free() the old scene (if any).
 ## 2. await get_tree().process_frame — ensures old scene is fully removed (TR-GSF-003).
-## 3. instantiate() and add_child() the new scene.
+## 3. instantiate(), optionally configure via [param pre_configure], then add_child().
+##
+## [param pre_configure] Optional Callable(Node) called after instantiate() but before
+## add_child() (before _ready()). Use to set @export properties that must be live
+## when _ready() fires — e.g. setting room_template on IsometricRoom.
 ##
 ## Re-entrancy guard: if called while a swap is already in progress, logs a
 ## push_error() and returns immediately — the in-progress swap is not interrupted.
 ##
 ## [param packed_scene] must be a valid PackedScene. Null is not accepted.
-func change_room(packed_scene: PackedScene) -> void:
+func change_room(packed_scene: PackedScene, pre_configure: Callable = Callable()) -> void:
 	if _is_swapping:
 		push_error("[SceneManager] change_room() called while swap in progress — rejected")
 		return
@@ -86,6 +90,9 @@ func change_room(packed_scene: PackedScene) -> void:
 		push_error("[SceneManager] PackedScene.instantiate() returned null — swap aborted")
 		_is_swapping = false
 		return
+
+	if pre_configure.is_valid():
+		pre_configure.call(new_scene)
 
 	_sub_scene_root.add_child(new_scene)
 

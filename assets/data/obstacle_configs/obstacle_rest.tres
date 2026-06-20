@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ObstacleConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/obstacle_config.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+count_min = 0
+count_max = 2
+inner_scale = 0.70
+min_center_dist = 120.0
+min_spawn_dist = 130.0
+min_between_dist = 120.0
+place_attempts = 40

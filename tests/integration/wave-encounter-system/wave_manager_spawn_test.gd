@@ -298,6 +298,7 @@ func test_spawn_spread_never_exceeds_12px_from_marker() -> void:
 ## Edge case: zero markers → _enemies_total=0, _wave_state=WAVE_COMPLETE, signals fire.
 func test_zero_markers_triggers_vacuous_complete_and_clears_signals() -> void:
 	var wm: WaveManager = _make_wm()
+	wm.is_final_room = true
 	var spawn_container: Node = _make_spawn_container(0)
 	wm.spawn_points_container = spawn_container
 	wm._wave_composition = _make_fp_composition()
