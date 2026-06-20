@@ -191,6 +191,7 @@ func _on_combat_started(is_boss: bool) -> void:
 		return
 	_clear_wave_preview()
 	if room_type == DungeonGraph.ROOM_TYPE_REST:
+		_apply_rest_heal()
 		_wave_state = WaveState.WAVE_COMPLETE
 		wave_cleared.emit()
 		return
@@ -214,6 +215,23 @@ func _on_enemy_killed(_instance_id: int, _type_id: int,
 			boss_defeated.emit()
 
 # ── Internal ──────────────────────────────────────────────────────────────────
+
+## Heals Fayde for 10–20 % of max HP when entering a REST room.
+## Finds the player via group query (ADR-0004 dependency-injection pattern where
+## scene node is not directly wired — WaveManager has no @export ref to PlayerController).
+func _apply_rest_heal() -> void:
+	if not is_inside_tree():
+		return
+	var player: Node = get_tree().get_first_node_in_group(&"player")
+	if player == null:
+		push_warning("WaveManager._apply_rest_heal: no player in 'player' group — heal skipped")
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var pct: float = rng.randf_range(0.10, 0.20)
+	var heal_amount: int = roundi(float(HealthAndDamage.FAYDE_MAX_HP) * pct)
+	HealthAndDamage.apply_heal(player, float(heal_amount))
+
 
 ## Returns the active enemy pool config, loading defaults on first access. (LD-03)
 ## Boss rooms use boss_pool_config when set; all others use enemy_pool_config.
@@ -266,7 +284,8 @@ func _build_wave_composition(seed: int = -1) -> void:
 	for type_id: int in type_ids:
 		var et: EnemyType = EnemyCatalog.get_type(type_id)
 		var scene: PackedScene = et.scene if et != null else null
-		_wave_composition.append({ "type_id": type_id, "scene": scene })
+		var base_scale: float = et.base_scale if et != null else 1.0
+		_wave_composition.append({ "type_id": type_id, "scene": scene, "base_scale": base_scale })
 
 
 ## Returns the ordered array of spawn marker Node2Ds from spawn_points_container.
@@ -311,10 +330,12 @@ func _spawn_wave() -> void:
 		var spread: Vector2 = Vector2(cos(spawn_idx * 2.4), sin(spawn_idx * 2.4)) * jitter
 		enemy.global_position = base_pos + spread
 		enemy.init(entry["type_id"])
-		# Spawn VFX: pop-in scale tween (0→1, BACK easing for slight overshoot).
+		# Spawn VFX: pop-in scale tween (0→final_scale, BACK ease for slight overshoot).
+		# Boss enemies use base_scale > 1.0 from EnemyType so they spawn visually large.
+		var final_scale: float = entry.get("base_scale", 1.0)
 		enemy.scale = Vector2.ZERO
 		var tw: Tween = enemy.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tw.tween_property(enemy, "scale", Vector2.ONE, 0.18)
+		tw.tween_property(enemy, "scale", Vector2(final_scale, final_scale), 0.18)
 		spawn_idx += 1
 	_enemies_total = spawn_idx
 	_enemies_alive = _enemies_total
@@ -366,6 +387,8 @@ func _show_wave_preview() -> void:
 			hit_area.monitoring = false
 			hit_area.monitorable = false
 		enemy.init(entry["type_id"])   # colors DebugCircle, sets archetype — no H&D registration
+		var preview_scale: float = entry.get("base_scale", 1.0)
+		enemy.scale = Vector2(preview_scale, preview_scale)
 		enemy.modulate.a = 0.5
 		enemy.global_position = base_pos + spread
 		# Name label above the enemy so the player knows which type is spawning where.

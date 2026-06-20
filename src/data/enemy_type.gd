@@ -23,3 +23,6 @@ extends Resource
 ## Debug placeholder colour shown on DebugCircle until real sprites land.
 ## Applied in EnemyInstance.init() via DebugCircle.color = et.debug_color.
 @export var debug_color: Color = Color.WHITE
+## Visual scale multiplier for wave spawn tween target. 1.0 = normal enemy, 2.5 = boss.
+## Read by WaveManager._spawn_wave() to set the pop-in tween final scale. (LD-03)
+@export var base_scale: float = 1.0

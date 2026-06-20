@@ -32,6 +32,7 @@ const _ENTRY_FILES: Array[String] = [
 	"enemy_cluster.tres",
 	"enemy_warped_warden.tres",
 	"enemy_rifter.tres",
+	"enemy_vault_sentinel.tres",
 ]
 
 # ── Private state ─────────────────────────────────────────────────────────────
@@ -194,6 +195,15 @@ func _make_stub(index: int) -> EnemyType:
 			stub.base_hp = 8
 			stub.base_move_speed = 35.0
 			stub.base_damage = 1.5
+		5:  # Vault Sentinel — boss
+			stub.name = "VaultSentinel"
+			stub.archetype = GameEnums.EnemyArchetype.BOSS
+			stub.debug_color = Color(0.4, 0.0, 0.8)      # deep purple
+			stub.base_hp = 250
+			stub.base_move_speed = 65.0
+			stub.base_damage = 25.0
+			stub.wave_threat_value = 20
+			stub.base_scale = 2.5
 		_:
 			stub.name = "EnemyStub_%d" % index
 			stub.archetype = GameEnums.EnemyArchetype.SEEKER

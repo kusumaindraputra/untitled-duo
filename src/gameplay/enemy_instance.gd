@@ -53,6 +53,22 @@ var _rusher_charge_dir: Vector2 = Vector2.ZERO
 ## Current orbit angle (radians) for SWARMER. Randomised per instance in init().
 var _swarmer_angle: float = 0.0
 
+## Max HP — set from EnemyCatalog in init(). Used by HP bar ratio computation.
+var _max_hp: int = 0
+## Current HP — updated via HealthAndDamage.damage_taken signal. Used for boss enrage.
+var _current_hp: int = 0
+## HP bar visual node created in init(). Null until first init() call.
+var _hp_bar: _EnemyHPBar = null
+
+## BOSS archetype — active attack index: 0=SLAM, 1=CHARGE, 2=SALVO.
+var _boss_attack: int = 0
+## BOSS archetype — sub-phase within the current attack. -1 = "just entered, initialise me".
+var _boss_phase: int = -1
+## BOSS archetype — countdown timer for the current sub-phase. 0.0 = not ticking.
+var _boss_phase_timer: float = 0.0
+## BOSS archetype — locked direction captured at start of CHARGE burst.
+var _boss_charge_dir: Vector2 = Vector2.ZERO
+
 ## Active Tween for attack/telegraph modulate pulse. Null when idle.
 var _vfx_tween: Tween = null
 
@@ -100,6 +116,24 @@ const RUSHER_COOLDOWN_DURATION: float = 1.2
 const SWARMER_ORBIT_RADIUS: float = 80.0
 const SWARMER_ORBIT_SPEED: float = 1.4
 
+## BOSS archetype — SLAM pattern constants.
+const BOSS_SLAM_TRIGGER_DIST: float = 150.0
+const BOSS_SLAM_TELEGRAPH_SEC: float = 1.5
+const BOSS_SLAM_COOLDOWN_SEC: float = 2.0
+const BOSS_SLAM_RADIUS: float = 130.0
+## BOSS archetype — CHARGE pattern constants.
+const BOSS_CHARGE_TRIGGER_DIST: float = 220.0
+const BOSS_CHARGE_TELEGRAPH_SEC: float = 0.5
+const BOSS_CHARGE_SPEED_MULT: float = 4.5
+const BOSS_CHARGE_DURATION_SEC: float = 0.7
+const BOSS_CHARGE_COOLDOWN_SEC: float = 1.8
+## BOSS archetype — SALVO pattern constants.
+const BOSS_SALVO_WINDUP_SEC: float = 0.8
+const BOSS_SALVO_COOLDOWN_SEC: float = 2.2
+const BOSS_SALVO_COUNT: int = 6
+## HP fraction below which the boss enrages (speeds up 30 %).
+const BOSS_ENRAGE_THRESHOLD: float = 0.33
+
 # ── Built-in virtual methods ──────────────────────────────────────────────────
 
 func _ready() -> void:
@@ -111,6 +145,7 @@ func _ready() -> void:
 	GameStateManager.combat_started.connect(_on_combat_started)
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	HealthAndDamage.enemy_killed.connect(_on_enemy_killed)
+	HealthAndDamage.damage_taken.connect(_on_damage_taken_hp_bar)
 	_fayde_ref = get_tree().get_first_node_in_group(&"player") as Node2D
 	_audio = get_node_or_null("/root/AudioSystem")
 	# Configure IsoCharacter with skeleton animations.
@@ -163,6 +198,8 @@ func _exit_tree() -> void:
 		GameStateManager.preparation_started.disconnect(_on_preparation_started)
 	if HealthAndDamage.enemy_killed.is_connected(_on_enemy_killed):
 		HealthAndDamage.enemy_killed.disconnect(_on_enemy_killed)
+	if HealthAndDamage.damage_taken.is_connected(_on_damage_taken_hp_bar):
+		HealthAndDamage.damage_taken.disconnect(_on_damage_taken_hp_bar)
 	# Guard against mid-animation scene teardown racing the CONNECT_ONE_SHOT callback.
 	if $AnimationPlayer.animation_finished.is_connected(_on_death_animation_finished):
 		$AnimationPlayer.animation_finished.disconnect(_on_death_animation_finished)
@@ -218,6 +255,8 @@ func _physics_process(delta: float) -> void:
 			_tick_rusher(delta)
 		GameEnums.EnemyArchetype.SWARMER:
 			_tick_swarmer(delta)
+		GameEnums.EnemyArchetype.BOSS:
+			_tick_boss(delta)
 		_:
 			_tick_seeker(delta)
 
@@ -256,6 +295,8 @@ func init(enemy_type_id: int, catalog: Variant = null) -> void:
 	_archetype = et.archetype
 	_base_damage = et.base_damage
 	_move_speed = et.base_move_speed
+	_max_hp = et.base_hp
+	_current_hp = et.base_hp
 	var debug_circle: Node = get_node_or_null("DebugCircle")
 	if debug_circle != null:
 		debug_circle.set("color", et.debug_color)
@@ -265,6 +306,15 @@ func init(enemy_type_id: int, catalog: Variant = null) -> void:
 		_swarmer_angle = rng.randf_range(0.0, TAU)
 	_rusher_phase = 0
 	_rusher_timer = 0.0
+	if _archetype == GameEnums.EnemyArchetype.BOSS:
+		_boss_attack = 0
+		_boss_phase = -1
+		_boss_phase_timer = 0.0
+	# Create HP bar on first init — reuse across re-inits if already attached.
+	if _hp_bar == null:
+		_hp_bar = _EnemyHPBar.new()
+		_hp_bar.z_index = 5
+		add_child(_hp_bar)
 
 
 ## Returns true when this enemy is not in the DEAD state.
@@ -517,6 +567,8 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	_stun_timer = 0.0
 	_rusher_phase = 0
 	_rusher_timer = 0.0
+	_boss_phase = -1
+	_boss_phase_timer = 0.0
 	_stop_attack_vfx()
 	if _state == EnemyState.STUNNED:
 		_state = EnemyState.CHASING
@@ -603,6 +655,185 @@ func _on_hitarea_body_exited(body: Node2D) -> void:
 	if _archetype != GameEnums.EnemyArchetype.SHOOTER:
 		_stop_attack_vfx()
 
+## Updates _current_hp and refreshes the HP bar whenever this enemy takes damage.
+## Filters by instance identity — cheap no-op for all other targets' damage events.
+func _on_damage_taken_hp_bar(target: Node, _damage: int, current_hp: int) -> void:
+	if target != self:
+		return
+	_current_hp = current_hp
+	if is_instance_valid(_hp_bar):
+		_hp_bar.show_hp(_current_hp, _max_hp)
+
+
+# ── BOSS archetype AI ─────────────────────────────────────────────────────────
+
+## Top-level BOSS tick: ticks the phase timer and dispatches to the active pattern.
+## Patterns cycle SLAM → CHARGE → SALVO → SLAM.
+## At HP < BOSS_ENRAGE_THRESHOLD (33 %), speed/cadence scaled by 1.3×.
+func _tick_boss(delta: float) -> void:
+	if _fayde_ref == null:
+		velocity = Vector2.ZERO
+		return
+	if _boss_phase_timer > 0.0:
+		_boss_phase_timer -= delta
+	var dist: float = global_position.distance_to(_fayde_ref.global_position)
+	var hp_mult: float = 1.3 if _max_hp > 0 and \
+		float(_current_hp) / float(_max_hp) < BOSS_ENRAGE_THRESHOLD else 1.0
+	var sep: Vector2 = _compute_separation()
+	match _boss_attack:
+		0: _tick_boss_slam(delta, sep, dist, hp_mult)
+		1: _tick_boss_charge(delta, sep, dist, hp_mult)
+		2: _tick_boss_salvo(delta, sep, dist, hp_mult)
+
+
+## BOSS SLAM: approach slowly → stop at range → telegraph → AoE ring → cooldown.
+func _tick_boss_slam(_delta: float, sep: Vector2, dist: float, hp_mult: float) -> void:
+	if _boss_phase == -1:
+		_boss_phase = 0
+		_boss_phase_timer = 0.0
+	match _boss_phase:
+		0:  # APPROACH
+			velocity = (_dir_last_valid * _move_speed * 0.5 * hp_mult + sep)
+			move_and_slide()
+			if dist <= BOSS_SLAM_TRIGGER_DIST:
+				_boss_phase = 1
+				_boss_phase_timer = BOSS_SLAM_TELEGRAPH_SEC / hp_mult
+				_start_slam_telegraph()
+		1:  # TELEGRAPH — stand still, warning circle pulses
+			velocity = Vector2.ZERO
+			move_and_slide()
+			if _boss_phase_timer <= 0.0:
+				_stop_attack_vfx()
+				_slam_aoe()
+				_boss_phase = 2
+				_boss_phase_timer = BOSS_SLAM_COOLDOWN_SEC / hp_mult
+		2:  # COOLDOWN
+			velocity = sep
+			move_and_slide()
+			if _boss_phase_timer <= 0.0:
+				_boss_phase = -1
+				_boss_attack = (_boss_attack + 1) % 3
+
+
+## BOSS CHARGE: approach → freeze telegraph → burst at BOSS_CHARGE_SPEED_MULT → cooldown.
+func _tick_boss_charge(_delta: float, sep: Vector2, dist: float, hp_mult: float) -> void:
+	if _boss_phase == -1:
+		_boss_phase = 0
+		_boss_phase_timer = 0.0
+	match _boss_phase:
+		0:  # APPROACH
+			velocity = (_dir_last_valid * _move_speed * 0.7 * hp_mult + sep)
+			move_and_slide()
+			if dist <= BOSS_CHARGE_TRIGGER_DIST:
+				_boss_phase = 1
+				_boss_phase_timer = BOSS_CHARGE_TELEGRAPH_SEC / hp_mult
+				_start_telegraph_vfx()
+		1:  # TELEGRAPH — freeze, lock direction
+			velocity = Vector2.ZERO
+			move_and_slide()
+			if _boss_phase_timer <= 0.0:
+				_boss_charge_dir = _dir_last_valid
+				_boss_phase = 2
+				_boss_phase_timer = BOSS_CHARGE_DURATION_SEC / hp_mult
+				if _vfx_tween:
+					_vfx_tween.kill()
+					_vfx_tween = null
+				modulate = Color(2.5, 0.2, 0.2)
+		2:  # CHARGING — burst in locked direction; end early on impact
+			velocity = (_boss_charge_dir * _move_speed * BOSS_CHARGE_SPEED_MULT + sep) * hp_mult
+			move_and_slide()
+			if _fayde_in_contact or _boss_phase_timer <= 0.0:
+				_stop_attack_vfx()
+				if _fayde_in_contact and _fayde_ref != null and \
+						_fayde_ref.has_method(&"request_knockback"):
+					_fayde_ref.request_knockback(global_position, 400.0)
+				_boss_phase = 3
+				_boss_phase_timer = BOSS_CHARGE_COOLDOWN_SEC / hp_mult
+		3:  # COOLDOWN
+			velocity = sep
+			move_and_slide()
+			if _boss_phase_timer <= 0.0:
+				_boss_phase = -1
+				_boss_attack = (_boss_attack + 1) % 3
+
+
+## BOSS SALVO: stop → blue telegraph → fire star of 6 projectiles → cooldown.
+func _tick_boss_salvo(_delta: float, sep: Vector2, _dist: float, hp_mult: float) -> void:
+	if _boss_phase == -1:
+		_boss_phase = 0
+		_boss_phase_timer = BOSS_SALVO_WINDUP_SEC / hp_mult
+		if _vfx_tween:
+			_vfx_tween.kill()
+		_vfx_tween = create_tween().set_loops()
+		_vfx_tween.tween_property(self, "modulate", Color(0.5, 0.5, 2.5), 0.15)
+		_vfx_tween.tween_property(self, "modulate", Color(0.3, 0.3, 1.5), 0.15)
+	match _boss_phase:
+		0:  # WINDUP — stand still while timer counts
+			velocity = sep
+			move_and_slide()
+			if _boss_phase_timer <= 0.0:
+				_stop_attack_vfx()
+				_fire_salvo()
+				_boss_phase = 1
+				_boss_phase_timer = BOSS_SALVO_COOLDOWN_SEC / hp_mult
+		1:  # COOLDOWN
+			velocity = sep
+			move_and_slide()
+			if _boss_phase_timer <= 0.0:
+				_boss_phase = -1
+				_boss_attack = (_boss_attack + 1) % 3
+
+
+## Starts the slow red pulse VFX and spawns the ground-circle SLAM warning.
+func _start_slam_telegraph() -> void:
+	if _vfx_tween:
+		_vfx_tween.kill()
+	_vfx_tween = create_tween().set_loops()
+	_vfx_tween.tween_property(self, "modulate", Color(2.5, 0.3, 0.3), 0.3)
+	_vfx_tween.tween_property(self, "modulate", Color(1.0, 0.1, 0.1), 0.3)
+	_spawn_slam_warning()
+
+
+## Applies DIRECT AoE damage to Fayde if she is within BOSS_SLAM_RADIUS.
+## DIRECT source bypasses i-frames so the player must dodge rather than tank.
+func _slam_aoe() -> void:
+	if _fayde_ref == null or not is_instance_valid(_fayde_ref):
+		return
+	if global_position.distance_to(_fayde_ref.global_position) <= BOSS_SLAM_RADIUS:
+		HealthAndDamage.apply_damage(
+			_fayde_ref, _base_damage,
+			GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
+		if _fayde_ref.has_method(&"request_knockback"):
+			_fayde_ref.request_knockback(global_position, 350.0)
+
+
+## Spawns a _SlamWarning sibling that draws a pulsing circle for BOSS_SLAM_TELEGRAPH_SEC.
+func _spawn_slam_warning() -> void:
+	if not is_inside_tree():
+		return
+	var parent_node: Node = get_parent()
+	if parent_node == null:
+		return
+	var warning := _SlamWarning.new()
+	warning.global_position = global_position
+	warning.duration = BOSS_SLAM_TELEGRAPH_SEC
+	warning.radius = BOSS_SLAM_RADIUS
+	parent_node.add_child(warning)
+
+
+## Fires BOSS_SALVO_COUNT projectiles evenly distributed around a full circle.
+func _fire_salvo() -> void:
+	if get_parent() == null:
+		return
+	for i: int in BOSS_SALVO_COUNT:
+		var angle: float = (TAU / float(BOSS_SALVO_COUNT)) * float(i)
+		var dir: Vector2 = Vector2.from_angle(angle)
+		var proj: Projectile = Projectile.new()
+		get_parent().add_child(proj)
+		proj.global_position = global_position
+		proj.launch(dir, _base_damage * 0.7)
+
+
 ## Spawns a procedural _DeathBurst node that draws an expanding ring + outward dots
 ## at the enemy's position. Color is mapped from [param prana_affiliation] via
 ## PranaCatalog; neutral (NONE) enemies burst white. Duration: 0.35 s.
@@ -661,3 +892,77 @@ class _DeathBurst extends Node2D:
 			var dot_r: float = lerpf(4.0, 1.5, p)
 			draw_circle(Vector2.from_angle(angle) * dot_dist, dot_r,
 					Color(c.r, c.g, c.b, alpha * 0.85))
+
+
+## Inner class: HP bar drawn above the enemy head.
+## Created in EnemyInstance.init() and shown whenever HealthAndDamage.damage_taken
+## fires for this enemy. Auto-hides 2 seconds after the last hit.
+## Positioned at y=-35 in the enemy's local space so it floats above the sprite.
+## Scales with the parent node (boss at 2.5× gets a proportionally larger bar).
+class _EnemyHPBar extends Node2D:
+	const WIDTH: float = 40.0
+	const HEIGHT: float = 5.0
+	var _ratio: float = 1.0
+	var _show_timer: float = 0.0
+	const SHOW_DURATION: float = 2.0
+
+	func _ready() -> void:
+		position = Vector2(-WIDTH * 0.5, -35.0)
+		visible = false
+		process_mode = PROCESS_MODE_ALWAYS
+
+	func show_hp(current: int, max_hp: int) -> void:
+		if max_hp > 0:
+			_ratio = clampf(float(current) / float(max_hp), 0.0, 1.0)
+		_show_timer = SHOW_DURATION
+		visible = true
+		queue_redraw()
+
+	func _process(delta: float) -> void:
+		if visible:
+			_show_timer -= delta
+			if _show_timer <= 0.0:
+				visible = false
+
+	func _draw() -> void:
+		draw_rect(Rect2(0.0, 0.0, WIDTH, HEIGHT), Color(0.1, 0.0, 0.0, 0.85))
+		var filled: float = WIDTH * _ratio
+		var bar_col: Color
+		if _ratio > 0.5:
+			bar_col = Color(0.1, 0.85, 0.1)
+		elif _ratio > 0.25:
+			bar_col = Color(0.9, 0.65, 0.1)
+		else:
+			bar_col = Color(0.9, 0.15, 0.15)
+		if filled > 0.0:
+			draw_rect(Rect2(0.0, 0.0, filled, HEIGHT), bar_col)
+		draw_rect(Rect2(0.0, 0.0, WIDTH, HEIGHT), Color(0.8, 0.8, 0.8, 0.5), false, 1.0)
+
+
+## Inner class: pulsing ground circle shown during BOSS SLAM telegraph.
+## Spawned as a sibling by EnemyInstance._spawn_slam_warning(); auto-frees after [duration].
+class _SlamWarning extends Node2D:
+	var duration: float = 1.5
+	var radius: float = 130.0
+	var _elapsed: float = 0.0
+
+	func _ready() -> void:
+		process_mode = PROCESS_MODE_ALWAYS
+		z_index = 1
+
+	func _process(delta: float) -> void:
+		_elapsed += delta
+		if _elapsed >= duration:
+			queue_free()
+		else:
+			queue_redraw()
+
+	func _draw() -> void:
+		var p: float = clampf(_elapsed / duration, 0.0, 1.0)
+		# Pulse alpha 3 times during the telegraph window.
+		var pulse: float = 0.5 + 0.5 * sin(p * TAU * 3.0)
+		var alpha: float = 0.45 * pulse
+		draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48,
+				Color(0.9, 0.2, 0.1, alpha), 3.0, true)
+		# Solid fill at low opacity so the zone is readable.
+		draw_circle(Vector2.ZERO, radius, Color(0.9, 0.2, 0.1, alpha * 0.15))

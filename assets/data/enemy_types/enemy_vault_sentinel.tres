@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EnemyType" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_type.gd" id="1_enemy_type"]
+[ext_resource type="PackedScene" path="res://src/gameplay/EnemyInstance.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_enemy_type")
+id = 5
+name = "VaultSentinel"
+archetype = 3
+prana_affiliation = -1
+base_hp = 250
+base_damage = 25.0
+base_move_speed = 65.0
+drop_prana_type = null
+drop_rate = null
+wave_threat_value = 20
+sprite_size = Vector2i(16, 16)
+debug_color = Color(0.4, 0.0, 0.8, 1)
+status = 0
+scene = ExtResource("2_scene")
+base_scale = 2.5
