@@ -13,6 +13,9 @@
 ##   AC-SC-23:  ASH_CRIT at _combo_index==1 only; suppressed at index 2+
 ##   AC-SC-25:  Formula 7 with stat bonuses: freeze_timer=2.5; stun_timer=1.2
 ##   AC-SC-26:  spell_hit_element emitted once per hit with correct args; not on miss
+##   AC-SC-27:  Verdant T2 secondary → apply_heal called with SHIELD_PULSE_HEAL (15.0)
+##   AC-SC-28:  Deepfrost T3 glacial field → FREEZE on enemy in radius; not on enemy outside
+##   AC-SC-29:  Verdant T3 index 1 secondary → apply_heal called (same as T2 path)
 ##
 ## Step 9 deviation note: implementation uses GameEnums.DamageClass(pt) instead of
 ## PranaCatalog.get_type(pt).damage_class (approved 2026-06-06; see SCE Story 003).
@@ -32,19 +35,22 @@ const SCEScript = preload("res://src/systems/spell_casting_effects.gd")
 
 # ── Inner mocks ───────────────────────────────────────────────────────────────
 
-## Spy on apply_damage: records call count and last raw_damage argument.
+## Spy on apply_damage and apply_heal: records call count and last argument values.
 class MockHealthAndDamage:
 	var call_count: int = 0
 	var last_raw_damage: float = 0.0
 	var last_target: Node = null
+	var heal_call_count: int = 0
+	var last_heal_amount: float = 0.0
 
 	func apply_damage(target: Node, raw_damage: float, _element: GameEnums.DamageClass, _source: GameEnums.DamageSource) -> void:
 		call_count += 1
 		last_raw_damage = raw_damage
 		last_target = target
 
-	func apply_heal(_target: Node, _amount: float) -> void:
-		pass
+	func apply_heal(_target: Node, amount: float) -> void:
+		heal_call_count += 1
+		last_heal_amount = amount
 
 
 ## Passthrough SEM stub: check_and_apply_shatter returns base_damage unchanged;
@@ -579,4 +585,110 @@ func test_sce_spell_hit_element_not_emitted_on_miss_no_target() -> void:
 
 	assert_int(results["count"]).is_equal(0)
 
+	_teardown_sce(sce)
+
+
+# ── AC-SC-27: Verdant T2 secondary → apply_heal called ──────────────────────
+
+## GIVEN Verdant T2 SpellEffect; _fayde_ref set to a MockEnemy at (0,0)
+## WHEN _fire_attack(1) called (modifier==0.0 slot)
+## THEN apply_heal called once with SHIELD_PULSE_HEAL (15.0); apply_damage never called
+func test_sce_verdant_t2_secondary_calls_apply_heal_on_fayde() -> void:
+	var hd := MockHealthAndDamage.new()
+	var sce = _make_sce(hd)
+	var se := _make_spell_effect(4, 2, 0.70, 2)  # Verdant T2
+	var fayde := MockEnemy.new()
+	add_child(fayde)
+	var enemy := MockEnemy.new()
+	add_child(enemy)
+	_ready_sce(sce, se, enemy)
+	sce._fayde_ref = fayde
+	sce._combo_index = 2  # Second attack
+
+	sce._fire_attack(1)
+
+	assert_int(hd.call_count).is_equal(0)
+	assert_int(hd.heal_call_count).is_equal(1)
+	assert_float(hd.last_heal_amount).is_equal(15.0)
+
+	remove_child(fayde)
+	fayde.free()
+	remove_child(enemy)
+	enemy.free()
+	_teardown_sce(sce)
+
+
+# ── AC-SC-28: Deepfrost T3 glacial field → FREEZE in radius, skip outside ───
+
+## GIVEN Deepfrost T3 SpellEffect; _fayde_ref at (0,0); two enemies:
+##       enemy_near at (100,0) — inside 200px; enemy_far at (300,0) — outside
+## WHEN _fire_attack(2) called (modifier==0.0 glacial field slot)
+## THEN apply_status FREEZE called for enemy_near only; apply_damage never called
+func test_sce_deepfrost_t3_glacial_field_freezes_enemies_in_radius_only() -> void:
+	var hd := MockHealthAndDamage.new()
+	var sem := MockStatusEffectsPassthrough.new()
+	var sce = _make_sce(hd, sem)
+	var se := _make_spell_effect(3, 3, 0.80, 3)  # Deepfrost T3
+
+	var fayde := MockEnemy.new()
+	fayde.position = Vector2(0.0, 0.0)
+	add_child(fayde)
+
+	var enemy_near := MockEnemy.new()
+	enemy_near.position = Vector2(100.0, 0.0)
+	add_child(enemy_near)
+
+	var enemy_far := MockEnemy.new()
+	enemy_far.position = Vector2(300.0, 0.0)
+	add_child(enemy_far)
+
+	_ready_sce(sce, se, enemy_near)
+	sce._fayde_ref = fayde
+	var enemies_list: Array[Node] = [enemy_near, enemy_far]
+	sce._get_enemies = func() -> Array[Node]: return enemies_list
+	sce._combo_index = 3  # Third attack
+
+	sce._fire_attack(2)
+
+	assert_int(hd.call_count).is_equal(0)
+	var freeze_calls: Array = sem.apply_status_calls.filter(
+		func(c: Dictionary) -> bool: return c["status_type"] == GameEnums.BaseStatus.FREEZE
+	)
+	assert_int(freeze_calls.size()).is_equal(1)
+
+	remove_child(fayde)
+	fayde.free()
+	remove_child(enemy_near)
+	enemy_near.free()
+	remove_child(enemy_far)
+	enemy_far.free()
+	_teardown_sce(sce)
+
+
+# ── AC-SC-29: Verdant T3 index 1 secondary → same heal path as T2 ───────────
+
+## GIVEN Verdant T3 SpellEffect; _fayde_ref set
+## WHEN _fire_attack(1) called (modifier==0.0 slot — same as T2)
+## THEN apply_heal called with 15.0 (SHIELD_PULSE_HEAL)
+func test_sce_verdant_t3_index1_secondary_calls_apply_heal() -> void:
+	var hd := MockHealthAndDamage.new()
+	var sce = _make_sce(hd)
+	var se := _make_spell_effect(4, 3, 0.70, 3)  # Verdant T3
+	var fayde := MockEnemy.new()
+	add_child(fayde)
+	var enemy := MockEnemy.new()
+	add_child(enemy)
+	_ready_sce(sce, se, enemy)
+	sce._fayde_ref = fayde
+	sce._combo_index = 2  # Index 1 fires on second press
+
+	sce._fire_attack(1)
+
+	assert_int(hd.heal_call_count).is_equal(1)
+	assert_float(hd.last_heal_amount).is_equal(15.0)
+
+	remove_child(fayde)
+	fayde.free()
+	remove_child(enemy)
+	enemy.free()
 	_teardown_sce(sce)

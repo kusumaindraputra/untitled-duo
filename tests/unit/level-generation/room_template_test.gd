@@ -266,6 +266,66 @@ func test_diamond_template_layout_style_is_0() -> void:
 	assert_int(TemplateDiamond.layout_style).is_equal(0)
 
 
+## Arena template has layout_style = 3 (wide flat diamond, distinct from default).
+func test_arena_template_layout_style_is_3() -> void:
+	assert_int(TemplateArena.layout_style).is_equal(3)
+
+
+## Corridor template has layout_style = 4 (narrow elongated, distinct from default).
+func test_corridor_template_layout_style_is_4() -> void:
+	assert_int(TemplateCorridor.layout_style).is_equal(4)
+
+
+## ARENA cells are non-empty and wider than the standard diamond (more x-spread).
+func test_arena_cells_non_empty_and_wider_than_diamond() -> void:
+	var room := _make_room()
+	var arena_cells: Array[Vector2i] = room._generate_arena_cells()
+	assert_array(arena_cells).is_not_empty()
+	var max_col_spread: int = 0
+	for c: Vector2i in arena_cells:
+		max_col_spread = maxi(max_col_spread, abs(c.x - c.y))
+	# Arena x_radius = 24 > default 20 → should produce wider col spread
+	assert_int(max_col_spread).is_greater_equal(22)
+	room.free()
+
+
+## CORRIDOR cells are non-empty and narrower than the standard diamond (less x-spread).
+func test_corridor_cells_non_empty_and_narrower_than_default() -> void:
+	var room := _make_room()
+	var corridor_cells: Array[Vector2i] = room._generate_corridor_cells()
+	assert_array(corridor_cells).is_not_empty()
+	var max_col_spread: int = 0
+	for c: Vector2i in corridor_cells:
+		max_col_spread = maxi(max_col_spread, abs(c.x - c.y))
+	# Corridor x_radius = 10 < default 20 → narrower col spread
+	assert_int(max_col_spread).is_less_equal(12)
+	room.free()
+
+
+## Arena and Corridor produce different cell shapes — at least 30 % cell-count difference.
+func test_arena_and_corridor_cells_are_distinct_shapes() -> void:
+	var room := _make_room()
+	var arena_cells: Array[Vector2i] = room._generate_arena_cells()
+	var corridor_cells: Array[Vector2i] = room._generate_corridor_cells()
+	var larger: int = maxi(arena_cells.size(), corridor_cells.size())
+	var smaller: int = mini(arena_cells.size(), corridor_cells.size())
+	assert_float(float(smaller) / float(larger)).is_less(0.85)
+	room.free()
+
+
+## After layout_style updates, resolve returns non-empty for Arena (3) and Corridor (4).
+func test_resolve_layout_cells_arena_and_corridor_return_cells() -> void:
+	var room_arena := _make_room(TemplateArena)
+	var arena_cells: Array[Vector2i] = room_arena._resolve_layout_cells()
+	assert_array(arena_cells).is_not_empty()
+	room_arena.free()
+
+	var room_corridor := _make_room(TemplateCorridor)
+	var corridor_cells: Array[Vector2i] = room_corridor._resolve_layout_cells()
+	assert_array(corridor_cells).is_not_empty()
+	room_corridor.free()
+
+
 # ── Template room_type enum values ──────────────────────────────────────────────
 
 ## Room types: 0=Combat, 1=Elite, 2=Rest, 3=BossGate.

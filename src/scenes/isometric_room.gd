@@ -230,6 +230,10 @@ func _resolve_layout_cells() -> Array[Vector2i]:
 			return _generate_narrow_cells()
 		2:   # SPLIT — two chambers connected by a bridge
 			return _generate_split_cells()
+		3:   # ARENA — wide flat diamond, open combat space
+			return _generate_arena_cells()
+		4:   # CORRIDOR — narrow elongated diamond, linear movement
+			return _generate_corridor_cells()
 	return []   # DIAMOND (0) or unknown → default diamond
 
 
@@ -243,6 +247,37 @@ func _generate_narrow_cells() -> Array[Vector2i]:
 	for tx: int in range(-scan, scan + 1):
 		for ty: int in range(-scan, scan + 1):
 			var norm: float = float(abs(tx - ty)) / float(xr) + float(abs(tx + ty)) / float(yr)
+			if norm <= 1.0:
+				cells[Vector2i(tx, ty)] = true
+	return _flood_fill_cells(cells, Vector2i(0, 0))
+
+
+## Generates tile cells for a wide, flat arena (ARENA layout).
+## 120 % x-radius, 75 % y-radius → visually wider and shallower than the default diamond.
+## Creates an open combat space that favours ranged play.
+func _generate_arena_cells() -> Array[Vector2i]:
+	const ARENA_XR: int = 24   # 120 % of default 20 → wider screen x
+	const ARENA_YR: int = 18   # 75 % of default 24 → shallower screen y
+	var scan: int = max(ARENA_XR, ARENA_YR) + 2
+	var cells: Dictionary = {}
+	for tx: int in range(-scan, scan + 1):
+		for ty: int in range(-scan, scan + 1):
+			var norm: float = float(abs(tx - ty)) / float(ARENA_XR) + float(abs(tx + ty)) / float(ARENA_YR)
+			if norm <= 1.0:
+				cells[Vector2i(tx, ty)] = true
+	return _flood_fill_cells(cells, Vector2i(0, 0))
+
+
+## Generates tile cells for a narrow, elongated corridor (CORRIDOR layout).
+## 50 % x-radius, 125 % y-radius → a tall narrow room that forces linear movement.
+func _generate_corridor_cells() -> Array[Vector2i]:
+	const CORRIDOR_XR: int = 10  # 50 % of default 20 → narrow screen x
+	const CORRIDOR_YR: int = 30  # 125 % of default 24 → deep screen y
+	var scan: int = max(CORRIDOR_XR, CORRIDOR_YR) + 2
+	var cells: Dictionary = {}
+	for tx: int in range(-scan, scan + 1):
+		for ty: int in range(-scan, scan + 1):
+			var norm: float = float(abs(tx - ty)) / float(CORRIDOR_XR) + float(abs(tx + ty)) / float(CORRIDOR_YR)
 			if norm <= 1.0:
 				cells[Vector2i(tx, ty)] = true
 	return _flood_fill_cells(cells, Vector2i(0, 0))

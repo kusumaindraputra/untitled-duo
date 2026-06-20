@@ -153,6 +153,14 @@ const CONE_ARC_SEGMENTS: int = 8
 ## Tuning knob: safe range 10–30. At 20, Ashfire T1 deals round(20×1.25×1.00)=25.
 const BASE_SPELL_DAMAGE: float = 20.0
 
+## Instant heal amount applied to Fayde by the Verdant shield pulse (modifier==0.0 slot).
+## Tuning knob: safe range 10–25. At 15, fully heals ~2 Rifter hits (6–8 dmg each).
+const SHIELD_PULSE_HEAL: float = 15.0
+
+## AoE radius in pixels for Deepfrost T3 glacial field (modifier==0.0 slot).
+## At 200px the field covers roughly the central 60% of the default diamond arena.
+const GLACIAL_FIELD_RADIUS: float = 200.0
+
 ## Attack data per [primary_type][primary_tier][attack_index].
 ## Key "modifier" = tier_attack_modifier used in Formula 3 Step 4.
 ## FP inline — migrate to Resource at MVP (TR-SC-003).
@@ -237,6 +245,11 @@ var _buffer_timer: float = 0.0
 ## AudioSystem reference; null-safe — set in _ready().
 var _audio: Variant = null
 
+## Injectable enemy-list getter for Deepfrost T3 glacial field.
+## Production: set in _ready() to get_tree().get_nodes_in_group(&"enemy").
+## Tests: inject a Callable returning a controlled list before calling _fire_attack().
+var _get_enemies: Callable = Callable()
+
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
@@ -258,6 +271,8 @@ func _ready() -> void:
 		_health_and_damage = HealthAndDamage
 	if _status_effects == null:
 		_status_effects = StatusEffectsManager
+	if not _get_enemies.is_valid():
+		_get_enemies = func() -> Array[Node]: return get_tree().get_nodes_in_group(&"enemy")
 	_fayde_ref = get_tree().get_first_node_in_group(&"player")
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	GameStateManager.combat_started.connect(_on_combat_started)
@@ -496,13 +511,43 @@ func _apply_status_effects(target: Node, pt: int, se: SpellEffect, step4_raw: fl
 				_status_effects.apply_status(_fayde_ref, GameEnums.BaseStatus.REGENERATE, 3.0)
 
 
-## Stub for tier_attack_modifier == 0.0 secondary effects (Verdant T2 shield pulse,
-## Deepfrost T3 glacial field). Logs a warning — these effects are out of FP scope.
+## Fires the secondary effect for a tier_attack_modifier == 0.0 attack slot.
+## Verdant (pt=4): instant heal (shield pulse) to Fayde — SHIELD_PULSE_HEAL HP.
+## Deepfrost T3 index 2 (pt=3, tier=3, attack_index=2): glacial field via _apply_glacial_field().
+## Any other unimplemented combination: push_error (explicit caller error).
 func _fire_secondary_effect(pt: int, tier: int, attack_index: int) -> void:
-	push_warning(
-		"SpellCastingEffects._fire_secondary_effect(): secondary effect not implemented at FP "
-		+ "(type=%d tier=%d index=%d). No crash — field reserved for MVP." % [pt, tier, attack_index]
-	)
+	match pt:
+		4:  # Verdant — shield pulse: instant heal to Fayde
+			if _fayde_ref != null:
+				_health_and_damage.apply_heal(_fayde_ref, SHIELD_PULSE_HEAL)
+		3:  # Deepfrost — only T3 index 2 is defined as glacial field in ATTACK_DATA
+			if tier == 3 and attack_index == 2:
+				_apply_glacial_field()
+			else:
+				push_error(
+					"SpellCastingEffects._fire_secondary_effect(): Deepfrost secondary "
+					+ "not implemented at tier=%d index=%d" % [tier, attack_index]
+				)
+		_:
+			push_error(
+				"SpellCastingEffects._fire_secondary_effect(): unimplemented secondary "
+				+ "(type=%d tier=%d index=%d)" % [pt, tier, attack_index]
+			)
+
+
+## Applies FREEZE to every enemy within GLACIAL_FIELD_RADIUS of Fayde's position.
+## Called by _fire_secondary_effect() for the Deepfrost T3 index-2 glacial field slot.
+## No-op when _fayde_ref is null or _get_enemies is invalid.
+func _apply_glacial_field() -> void:
+	if _fayde_ref == null or not _get_enemies.is_valid():
+		return
+	var origin: Vector2 = (_fayde_ref as Node2D).global_position \
+		if _fayde_ref is Node2D else Vector2.ZERO
+	for enemy: Node in _get_enemies.call():
+		if not (enemy is Node2D):
+			continue
+		if origin.distance_to((enemy as Node2D).global_position) <= GLACIAL_FIELD_RADIUS:
+			_status_effects.apply_status(enemy, GameEnums.BaseStatus.FREEZE, 2.5)
 
 
 ## Selects a primary target via cone overlap query (replaces raycast for combo game feel).

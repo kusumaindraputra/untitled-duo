@@ -7,7 +7,7 @@
 script = ExtResource("1_script")
 display_name = "The Arena"
 room_type = 0
-layout_style = 0
+layout_style = 3
 tile_cells = Array[Vector2i]([])
 floor_radius = 26
 wall_half_x = 0
