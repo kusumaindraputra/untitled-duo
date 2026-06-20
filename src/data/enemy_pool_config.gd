@@ -22,3 +22,7 @@ extends Resource
 
 ## Type IDs guaranteed to appear at least once (subtracted from budget first).
 @export var guaranteed_types: Array[int] = [0, 2]
+
+## Hard cap on the number of enemies in a single wave. 0 = uncapped (default).
+## Applied after pool-fill, before spawn — guaranteed types are never trimmed.
+@export var enemy_count_max: int = 0

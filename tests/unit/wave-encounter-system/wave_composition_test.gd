@@ -85,3 +85,41 @@ func test_composition_is_not_empty() -> void:
 	wm._on_preparation_started(0, 0)
 	assert_int(wm._wave_composition.size()).is_greater(0)
 	_teardown_wm(wm)
+
+
+# ── enemy_count_max cap ───────────────────────────────────────────────────────
+
+## GIVEN a pool config with enemy_count_max = 3 and a large budget
+## WHEN composition is built
+## THEN wave_composition.size() <= 3 regardless of budget
+func test_composition_capped_by_enemy_count_max() -> void:
+	var wm := _make_wm()
+	var cfg := EnemyPoolConfig.new()
+	cfg.threat_budget_min = 50
+	cfg.threat_budget_max = 50
+	cfg.threat_cost = { 0: 1, 2: 1 }
+	cfg.enemy_pool = [0, 2]
+	cfg.guaranteed_types = [0, 2]
+	cfg.enemy_count_max = 3
+	wm.enemy_pool_config = cfg
+	wm._build_wave_composition(0)
+	assert_int(wm._wave_composition.size()).is_less_equal(3)
+	_teardown_wm(wm)
+
+
+## GIVEN a pool config with enemy_count_max = 0 (uncapped)
+## WHEN composition is built with a large budget
+## THEN wave_composition.size() > 3 (proves the cap is not applied when 0)
+func test_composition_uncapped_when_max_is_zero() -> void:
+	var wm := _make_wm()
+	var cfg := EnemyPoolConfig.new()
+	cfg.threat_budget_min = 20
+	cfg.threat_budget_max = 20
+	cfg.threat_cost = { 0: 1, 2: 1 }
+	cfg.enemy_pool = [0, 2]
+	cfg.guaranteed_types = [0]
+	cfg.enemy_count_max = 0  # uncapped
+	wm.enemy_pool_config = cfg
+	wm._build_wave_composition(0)
+	assert_int(wm._wave_composition.size()).is_greater(3)
+	_teardown_wm(wm)

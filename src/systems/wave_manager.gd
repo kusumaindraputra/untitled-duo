@@ -275,6 +275,10 @@ func _build_wave_composition(seed: int = -1) -> void:
 		var pick: int = affordable[rng.randi_range(0, affordable.size() - 1)]
 		type_ids.append(pick)
 		budget -= cfg.threat_cost.get(pick, 1)
+	# Enemy count cap — trim excess pool-fill entries before shuffle.
+	# Guaranteed types are prepended first so they survive any trim.
+	if cfg.enemy_count_max > 0 and type_ids.size() > cfg.enemy_count_max:
+		type_ids.resize(cfg.enemy_count_max)
 	# Seeded Fisher-Yates — avoids first-type bias in spawn order.
 	for i: int in range(type_ids.size() - 1, 0, -1):
 		var j: int = rng.randi_range(0, i)

@@ -92,6 +92,10 @@ signal cast_started(spell_effect: SpellEffect)
 ## spawn a depleting ring arc around Fayde — Gamefeel Pass 4 #6.
 signal combo_window_opened(window_duration: float)
 
+## Emitted when a hit triggers the elemental affiliation 2× bonus (Step 9).
+## CombatHUD uses this to spawn a "WEAK 2×" popup above the target.
+signal affiliation_bonus_hit(target: Node, prana_type_id: int)
+
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -434,6 +438,7 @@ func _fire_attack(attack_index: int) -> void:
 	var enemy_affiliation: int = raw_affiliation if raw_affiliation != null else GameEnums.DamageClass.NONE
 	if pt != GameEnums.DamageClass.NONE and enemy_affiliation == pt:
 		raw *= 2.0
+		affiliation_bonus_hit.emit(target, pt)
 
 	# Step 10 — deliver damage through Health & Damage (ADR-0007).
 	# element = DamageClass.NONE: SC&E owns the elemental multiplier above (Step 9)
