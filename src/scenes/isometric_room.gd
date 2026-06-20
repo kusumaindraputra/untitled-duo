@@ -89,6 +89,13 @@ func _ready() -> void:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+## Returns the player spawn position: SW corner tile center.
+## Guaranteed inside the safe zone (norm 0.5–0.82) — not OOB at combat zoom 1.5×.
+## Fallback: Vector2.ZERO if no valid tile found (e.g. empty tile map in tests).
+func get_player_spawn_position() -> Vector2:
+	return _find_sw_position()
+
+
 ## Returns global positions of all Marker2D children under SpawnMarkers.
 ## Used by WaveManager to place enemy spawns (Enemy AI epic).
 ## Returns at least 3 non-zero Vector2 positions at MVP scope.
@@ -108,19 +115,87 @@ func get_spawn_markers() -> Array[Vector2]:
 
 # ── Private ───────────────────────────────────────────────────────────────────
 
-## Spawns one RoomExitDoor Area2D at the south exit of the diamond arena.
-## Placed at Vector2(0, 340) — 44 px inside the south wall boundary (y=384),
-## well within the walkable zone. Trigger radius 30 px; starts locked.
-## RoomTransitionManager.wire_exit_doors() wires the destination after room load.
+## Spawns up to 3 RoomExitDoor Area2D nodes clustered in the NE corner.
+## Positions are chosen by _find_ne_positions (safe zone norm 0.5–0.82, spaced ≥60px).
+## Fallback: one door at Vector2(0, -300) if no valid NE tiles are found.
+## RTM.wire_exit_doors() wires destinations after room load; hides surplus doors.
 func _spawn_exit_door() -> void:
-	var door := RoomExitDoor.new()
-	var shape := CollisionShape2D.new()
-	var circle := CircleShape2D.new()
-	circle.radius = 30.0
-	shape.shape = circle
-	door.add_child(shape)
-	door.position = Vector2(0, 340)
-	add_child(door)
+	var positions: Array[Vector2] = _find_ne_positions(3)
+	if positions.is_empty():
+		positions = [Vector2(0.0, -300.0)]
+	for pos: Vector2 in positions:
+		var door := RoomExitDoor.new()
+		var shape := CollisionShape2D.new()
+		var circle := CircleShape2D.new()
+		circle.radius = 30.0
+		shape.shape = circle
+		door.add_child(shape)
+		door.position = pos
+		add_child(door)
+
+
+## Collects tile-map positions and delegates to _score_sw.
+func _find_sw_position() -> Vector2:
+	if _tile_map == null:
+		return Vector2.ZERO
+	var positions: Array[Vector2] = []
+	for c: Vector2i in _tile_map.get_used_cells():
+		positions.append(_tile_map.map_to_local(c))
+	return _score_sw(positions)
+
+
+## Pure function: returns the SW-most position from [param positions] in the safe zone.
+## Safe zone: norm 0.5–0.82 (|x|/WALL_HALF_X + |y|/WALL_HALF_Y).
+## SW score = -x + y (maximised when x is negative, y is positive — bottom-left screen).
+## Returns Vector2.ZERO when no position passes the safe zone filter.
+func _score_sw(positions: Array[Vector2]) -> Vector2:
+	var best_pos: Vector2 = Vector2.ZERO
+	var best_score: float = -INF
+	for pos: Vector2 in positions:
+		var norm: float = absf(pos.x) / float(_WALL_HALF_X) + absf(pos.y) / float(_WALL_HALF_Y)
+		if norm < 0.5 or norm > 0.82:
+			continue
+		var score: float = -pos.x + pos.y
+		if score > best_score:
+			best_score = score
+			best_pos = pos
+	return best_pos
+
+
+## Collects tile-map positions and delegates to _score_ne.
+func _find_ne_positions(n: int) -> Array[Vector2]:
+	if _tile_map == null:
+		return []
+	var positions: Array[Vector2] = []
+	for c: Vector2i in _tile_map.get_used_cells():
+		positions.append(_tile_map.map_to_local(c))
+	return _score_ne(positions, n)
+
+
+## Pure function: picks top [param n] NE positions from [param positions], spaced ≥60px.
+## Safe zone: norm 0.5–0.82. NE score = x - y (maximised when x positive, y negative — top-right screen).
+## Returns fewer than n if not enough valid candidates exist.
+func _score_ne(positions: Array[Vector2], n: int) -> Array[Vector2]:
+	var scored: Array[Dictionary] = []
+	for pos: Vector2 in positions:
+		var norm: float = absf(pos.x) / float(_WALL_HALF_X) + absf(pos.y) / float(_WALL_HALF_Y)
+		if norm < 0.5 or norm > 0.82:
+			continue
+		scored.append({"pos": pos, "score": pos.x - pos.y})
+	scored.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["score"]) > float(b["score"]))
+	var result: Array[Vector2] = []
+	for entry: Dictionary in scored:
+		if result.size() >= n:
+			break
+		var candidate: Vector2 = entry["pos"] as Vector2
+		var too_close: bool = false
+		for chosen: Vector2 in result:
+			if candidate.distance_to(chosen) < 60.0:
+				too_close = true
+				break
+		if not too_close:
+			result.append(candidate)
+	return result
 
 
 ## Adds a NavigationRegion2D covering the diamond tile area.
@@ -333,6 +408,10 @@ func _place_spawn_markers() -> void:
 		centroid += _tile_map.map_to_local(c)
 	centroid /= float(cells.size())
 
+	# Exclude tiles within 150px of the SW player spawn — keeps enemies out of
+	# the player's starting zone so PREP→BATTLE doesn't feel like an ambush.
+	var sw_pos: Vector2 = _find_sw_position()
+
 	var target_angles: Array[float] = [0.0, TAU / 3.0, 2.0 * TAU / 3.0]
 	var markers: Array[Node] = _spawn_markers.get_children()
 	var used_cells: Dictionary = {}
@@ -351,6 +430,8 @@ func _place_spawn_markers() -> void:
 			# at the visible edge of the floor and appear OOB at combat zoom 1.5×.
 			var norm_check: float = absf(pos.x) / float(_WALL_HALF_X) + absf(pos.y) / float(_WALL_HALF_Y)
 			if norm_check > 0.78:
+				continue
+			if sw_pos != Vector2.ZERO and pos.distance_to(sw_pos) < 150.0:
 				continue
 			var too_close: bool = false
 			for placed: Vector2 in placed_positions:

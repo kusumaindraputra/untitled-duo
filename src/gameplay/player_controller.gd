@@ -367,6 +367,8 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	dash_cooldown_changed.emit(true)
 	_footstep_timer = 0.0
 	_footstep_bag.clear()
+	if is_instance_valid(_camera):
+		_camera.position = Vector2.ZERO
 	_tween_zoom(ZOOM_PREP)
 
 

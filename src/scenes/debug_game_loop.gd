@@ -40,7 +40,7 @@ func _ready() -> void:
 	_set_final_room_flag(_dungeon_graph.get_entry_room())
 	rtm.wire_exit_doors(initial_room)
 
-	$PlayerController.position = Vector2(0, 0)
+	$PlayerController.position = initial_room.get_player_spawn_position()
 	# Wire CombatHUD node references here — NodePath in .tscn can't resolve because
 	# CombatHUD enters the tree before PlayerController (scene ordering in main.tscn).
 	# debug_game_loop._ready() fires last (parent after all children), so both are ready.
@@ -75,6 +75,8 @@ func _on_room_transitioned(new_room_idx: int) -> void:
 		push_error("debug_game_loop: new room has no SpawnMarkers node")
 	$WaveManager.spawn_points_container = spawn_markers
 	_set_final_room_flag(new_room_idx)
+	if new_room is IsometricRoom:
+		$PlayerController.position = (new_room as IsometricRoom).get_player_spawn_position()
 	GameStateManager.restart_preparation()
 
 
