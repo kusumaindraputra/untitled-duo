@@ -108,15 +108,22 @@ func _configure_wave_manager_for_room(room_idx: int) -> void:
 	$WaveManager.is_final_room = (rtype == DungeonGraph.ROOM_TYPE_BOSS)
 
 func _register_input_actions() -> void:
-	_ensure_key_action(&"move_left", KEY_A)
+	_ensure_key_action(&"move_left",  KEY_A)
 	_ensure_key_action(&"move_right", KEY_D)
-	_ensure_key_action(&"move_up", KEY_W)
-	_ensure_key_action(&"move_down", KEY_S)
-	_ensure_key_action(&"dash", KEY_SHIFT)
-	_ensure_joypad_action(&"prana_place", JOY_BUTTON_A)
-	_ensure_joypad_action(&"prana_clear", JOY_BUTTON_B)
-	_ensure_joypad_action(&"prana_confirm", JOY_BUTTON_Y)
-	_ensure_key_action(&"prana_confirm", KEY_ENTER)
+	_ensure_key_action(&"move_up",    KEY_W)
+	_ensure_key_action(&"move_down",  KEY_S)
+	_ensure_key_action(&"dash",       KEY_SHIFT)
+	# Gamepad: left analog stick for movement (JOY_AXIS_LEFT_X/Y)
+	_ensure_joypad_motion_action(&"move_left",  JOY_AXIS_LEFT_X, -1.0)
+	_ensure_joypad_motion_action(&"move_right", JOY_AXIS_LEFT_X,  1.0)
+	_ensure_joypad_motion_action(&"move_up",    JOY_AXIS_LEFT_Y, -1.0)
+	_ensure_joypad_motion_action(&"move_down",  JOY_AXIS_LEFT_Y,  1.0)
+	# Gamepad: West face button (X / Square) for dash
+	_ensure_joypad_action(&"dash", JOY_BUTTON_WEST)
+	_ensure_joypad_action(&"prana_place",      JOY_BUTTON_A)
+	_ensure_joypad_action(&"prana_clear",      JOY_BUTTON_B)
+	_ensure_joypad_action(&"prana_confirm",    JOY_BUTTON_Y)
+	_ensure_key_action(&"prana_confirm",       KEY_ENTER)
 	_ensure_joypad_action(&"prana_type_cycle", JOY_BUTTON_RIGHT_SHOULDER)
 
 
@@ -231,18 +238,38 @@ func _on_wave_ended() -> void:
 
 
 func _ensure_key_action(action: StringName, keycode: Key) -> void:
-	if InputMap.has_action(action):
-		return
-	InputMap.add_action(action)
+	if not InputMap.has_action(action):
+		InputMap.add_action(action, 0.2)
 	var ev := InputEventKey.new()
 	ev.keycode = keycode
+	for existing: InputEvent in InputMap.action_get_events(action):
+		if existing is InputEventKey and (existing as InputEventKey).keycode == keycode:
+			return
 	InputMap.action_add_event(action, ev)
 
 
 func _ensure_joypad_action(action: StringName, button: JoyButton) -> void:
-	if InputMap.has_action(action):
-		return
-	InputMap.add_action(action)
+	if not InputMap.has_action(action):
+		InputMap.add_action(action, 0.2)
 	var ev := InputEventJoypadButton.new()
 	ev.button_index = button
+	for existing: InputEvent in InputMap.action_get_events(action):
+		if existing is InputEventJoypadButton \
+				and (existing as InputEventJoypadButton).button_index == button:
+			return
+	InputMap.action_add_event(action, ev)
+
+
+## Registers an analog stick axis direction to an action. Safe to call multiple times.
+func _ensure_joypad_motion_action(action: StringName, axis: JoyAxis, axis_value: float) -> void:
+	if not InputMap.has_action(action):
+		InputMap.add_action(action, 0.2)
+	for existing: InputEvent in InputMap.action_get_events(action):
+		if existing is InputEventJoypadMotion:
+			var m := existing as InputEventJoypadMotion
+			if m.axis == axis and sign(m.axis_value) == sign(axis_value):
+				return
+	var ev := InputEventJoypadMotion.new()
+	ev.axis = axis
+	ev.axis_value = axis_value
 	InputMap.action_add_event(action, ev)
