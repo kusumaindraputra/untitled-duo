@@ -111,8 +111,8 @@ func _register_input_actions() -> void:
 	_ensure_joypad_motion_action(&"move_right", JOY_AXIS_LEFT_X,  1.0)
 	_ensure_joypad_motion_action(&"move_up",    JOY_AXIS_LEFT_Y, -1.0)
 	_ensure_joypad_motion_action(&"move_down",  JOY_AXIS_LEFT_Y,  1.0)
-	# Gamepad: West face button (X / Square) for dash
-	_ensure_joypad_action(&"dash", JOY_BUTTON_WEST)
+	# Gamepad: X / Square face button for dash
+	_ensure_joypad_action(&"dash", JOY_BUTTON_X)
 	_ensure_joypad_action(&"prana_place",      JOY_BUTTON_A)
 	_ensure_joypad_action(&"prana_clear",      JOY_BUTTON_B)
 	_ensure_joypad_action(&"prana_confirm",    JOY_BUTTON_Y)
