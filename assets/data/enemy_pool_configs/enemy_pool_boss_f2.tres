@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="EnemyPoolConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_pool_config.gd" id="1_config"]
+
+[resource]
+script = ExtResource("1_config")
+threat_budget_min = 15
+threat_budget_max = 15
+threat_cost = { 3: 15 }
+enemy_pool = Array[int]([3])
+guaranteed_types = Array[int]([3])

@@ -23,12 +23,18 @@ const _FLOOR_POOL_PATHS: Array[String] = [
 	"res://assets/data/enemy_pool_configs/enemy_pool_floor2.tres",
 	"res://assets/data/enemy_pool_configs/enemy_pool_floor3.tres",
 ]
-const _BOSS_POOL_PATH: String = "res://assets/data/enemy_pool_configs/enemy_pool_boss.tres"
+## Per-floor boss pool paths. F1=Sentinel, F2=WarpedWarden mid-boss, F3=Sentinel.
+const _BOSS_POOL_PATHS: Array[String] = [
+	"res://assets/data/enemy_pool_configs/enemy_pool_boss.tres",
+	"res://assets/data/enemy_pool_configs/enemy_pool_boss_f2.tres",
+	"res://assets/data/enemy_pool_configs/enemy_pool_boss.tres",
+]
 
 var _dungeon_graph: DungeonGraph = null
 var _gen: DungeonGenerator = DungeonGenerator.new()
 var _current_floor: int = 1
 var _floor_pool_configs: Array[EnemyPoolConfig] = []
+var _boss_pool_configs: Array[EnemyPoolConfig] = []
 
 func _ready() -> void:
 	_register_input_actions()
@@ -44,8 +50,6 @@ func _ready() -> void:
 	rtm.setup(_dungeon_graph)
 	rtm.room_transition_completed.connect(_on_room_transitioned)
 
-	# Wire pool configs onto WaveManager once at startup.
-	$WaveManager.boss_pool_config = load(_BOSS_POOL_PATH) as EnemyPoolConfig
 	_apply_floor_pool_config()
 
 	# Wire initial room: spawn markers + exit doors + room type flags.
@@ -127,19 +131,26 @@ func _on_floor_completed() -> void:
 	$RoomTransitionManager.load_floor(_dungeon_graph)
 
 
-## Loads per-floor EnemyPoolConfig resources into _floor_pool_configs.
+## Loads per-floor EnemyPoolConfig resources into _floor_pool_configs and _boss_pool_configs.
 func _load_pool_configs() -> void:
 	_floor_pool_configs.clear()
 	for path: String in _FLOOR_POOL_PATHS:
 		var res: Resource = load(path)
 		_floor_pool_configs.append(res as EnemyPoolConfig if res is EnemyPoolConfig else null)
+	_boss_pool_configs.clear()
+	for path: String in _BOSS_POOL_PATHS:
+		var res: Resource = load(path)
+		_boss_pool_configs.append(res as EnemyPoolConfig if res is EnemyPoolConfig else null)
 
 
-## Sets WaveManager.enemy_pool_config to the config for the current floor.
+## Sets WaveManager pool configs for the current floor (combat + boss).
 func _apply_floor_pool_config() -> void:
 	var floor_idx: int = clampi(_current_floor - 1, 0, _floor_pool_configs.size() - 1)
 	if not _floor_pool_configs.is_empty():
 		$WaveManager.enemy_pool_config = _floor_pool_configs[floor_idx]
+	if not _boss_pool_configs.is_empty():
+		var boss_idx: int = clampi(_current_floor - 1, 0, _boss_pool_configs.size() - 1)
+		$WaveManager.boss_pool_config = _boss_pool_configs[boss_idx]
 
 
 func _on_run_ended(win: bool) -> void:
