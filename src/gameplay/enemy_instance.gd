@@ -133,6 +133,12 @@ const BOSS_SALVO_COOLDOWN_SEC: float = 2.2
 const BOSS_SALVO_COUNT: int = 6
 ## HP fraction below which the boss enrages (speeds up 30 %).
 const BOSS_ENRAGE_THRESHOLD: float = 0.33
+## Distance below which the boss prefers SLAM over SALVO when selecting next attack.
+const BOSS_SELECT_SLAM_DIST: float = 80.0
+## Distance above which the boss prefers CHARGE over SALVO when selecting next attack.
+const BOSS_SELECT_CHARGE_DIST: float = 150.0
+## Threshold reduction applied during enrage: boss reads space more aggressively.
+const BOSS_ENRAGE_DIST_REDUCTION: float = 20.0
 
 # ── Built-in virtual methods ──────────────────────────────────────────────────
 
@@ -712,7 +718,7 @@ func _tick_boss_slam(_delta: float, sep: Vector2, dist: float, hp_mult: float) -
 			move_and_slide()
 			if _boss_phase_timer <= 0.0:
 				_boss_phase = -1
-				_boss_attack = (_boss_attack + 1) % 3
+				_boss_attack = _select_boss_attack(dist, hp_mult > 1.0)
 
 
 ## BOSS CHARGE: approach → freeze telegraph → burst at BOSS_CHARGE_SPEED_MULT → cooldown.
@@ -754,11 +760,11 @@ func _tick_boss_charge(_delta: float, sep: Vector2, dist: float, hp_mult: float)
 			move_and_slide()
 			if _boss_phase_timer <= 0.0:
 				_boss_phase = -1
-				_boss_attack = (_boss_attack + 1) % 3
+				_boss_attack = _select_boss_attack(dist, hp_mult > 1.0)
 
 
 ## BOSS SALVO: stop → blue telegraph → fire star of 6 projectiles → cooldown.
-func _tick_boss_salvo(_delta: float, sep: Vector2, _dist: float, hp_mult: float) -> void:
+func _tick_boss_salvo(_delta: float, sep: Vector2, dist: float, hp_mult: float) -> void:
 	if _boss_phase == -1:
 		_boss_phase = 0
 		_boss_phase_timer = BOSS_SALVO_WINDUP_SEC / hp_mult
@@ -781,7 +787,21 @@ func _tick_boss_salvo(_delta: float, sep: Vector2, _dist: float, hp_mult: float)
 			move_and_slide()
 			if _boss_phase_timer <= 0.0:
 				_boss_phase = -1
-				_boss_attack = (_boss_attack + 1) % 3
+				_boss_attack = _select_boss_attack(dist, hp_mult > 1.0)
+
+
+## Selects the next boss attack index based on current distance to Fayde.
+## Close  (< BOSS_SELECT_SLAM_DIST)   → 0 SLAM
+## Far    (> BOSS_SELECT_CHARGE_DIST) → 1 CHARGE
+## Middle                             → 2 SALVO
+## Enrage reduces both thresholds by BOSS_ENRAGE_DIST_REDUCTION.
+func _select_boss_attack(dist: float, is_enraged: bool) -> int:
+	var reduction: float = BOSS_ENRAGE_DIST_REDUCTION if is_enraged else 0.0
+	if dist < BOSS_SELECT_SLAM_DIST - reduction:
+		return 0
+	elif dist > BOSS_SELECT_CHARGE_DIST - reduction:
+		return 1
+	return 2
 
 
 ## Starts the slow red pulse VFX and spawns the ground-circle SLAM warning.

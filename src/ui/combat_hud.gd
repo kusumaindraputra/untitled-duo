@@ -51,6 +51,9 @@ const HP_COLOR_LABEL_FULL: Color = Color("#FFFFFF")
 ## Heal tint color applied to hp_bar.modulate immediately on health_restored.
 const HEAL_TINT_COLOR: Color = Color(0.6, 1.0, 0.6, 1.0)
 
+## Font color for "+N HP" floating heal labels (bright green).
+const HEAL_LABEL_COLOR: Color = Color("#44FF88")
+
 ## Maximum floating damage labels allowed on screen simultaneously (TR-CH-006).
 const DAMAGE_LABEL_POOL_CAP: int = 12
 
@@ -446,9 +449,10 @@ func _on_damage_taken(target: Node, final_damage: int, current_hp: int) -> void:
 
 
 ## Handles health_restored from HealthAndDamage.
-## Updates the HP label, starts the fill animation, and applies the heal tint.
+## Updates the HP label, starts the fill animation, applies the heal tint,
+## and spawns a "+N HP" floating label above Fayde.
 ## Skips if the target is not the player or if Fayde is dead.
-func _on_health_restored(target: Node, _healed_amount: int, current_hp: int) -> void:
+func _on_health_restored(target: Node, healed_amount: int, current_hp: int) -> void:
 	if not target.is_in_group(&"player"):
 		return
 	if _dead:
@@ -457,6 +461,23 @@ func _on_health_restored(target: Node, _healed_amount: int, current_hp: int) -> 
 	_start_hp_animation(float(current_hp), HP_BAR_FILL_DURATION)
 	hp_bar.modulate = HEAL_TINT_COLOR
 	_tint_timer = HEAL_TINT_DURATION
+	if healed_amount > 0:
+		_spawn_heal_label(target, healed_amount)
+
+
+## Spawns a "+N HP" floating label above [param target] in HEAL_LABEL_COLOR.
+## Shares the damage-label pool, eviction logic, and float-up animation.
+func _spawn_heal_label(target: Node, healed_amount: int) -> void:
+	_evict_if_at_cap()
+	var label := Label.new()
+	label.text = "+%d HP" % healed_amount
+	label.add_theme_color_override(&"font_color", HEAL_LABEL_COLOR)
+	var world_pos: Vector2 = (target as Node2D).global_position if target is Node2D else Vector2.ZERO
+	var vp_pos: Vector2 = get_viewport().get_canvas_transform() * world_pos
+	label.position = vp_pos + Vector2(randf_range(-8.0, 8.0), -20.0)
+	add_child(label)
+	_active_damage_labels.append(label)
+	_animate_damage_label(label)
 
 
 ## Handles player_died from HealthAndDamage.

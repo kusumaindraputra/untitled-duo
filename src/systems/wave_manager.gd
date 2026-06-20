@@ -67,6 +67,10 @@ const FP_CHARGER_COUNT: int = 2
 const FP_CLUSTER_COUNT: int = 5
 const FP_RIFTER_COUNT: int = 2
 
+## Seconds between heal animation start and door-unlock (wave_cleared) in REST rooms.
+## Gives the player time to see the "+N HP" floating label and green screen wash.
+const REST_HEAL_VISUAL_DELAY: float = 0.5
+
 # ── Exports ───────────────────────────────────────────────────────────────────
 
 ## Container node whose Node2D children define spawn positions.
@@ -193,6 +197,7 @@ func _on_combat_started(is_boss: bool) -> void:
 	if room_type == DungeonGraph.ROOM_TYPE_REST:
 		_apply_rest_heal()
 		_wave_state = WaveState.WAVE_COMPLETE
+		await get_tree().create_timer(REST_HEAL_VISUAL_DELAY).timeout
 		wave_cleared.emit()
 		return
 	_spawn_wave()

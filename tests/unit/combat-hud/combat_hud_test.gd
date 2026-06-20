@@ -21,6 +21,8 @@
 ##   AC-HUD-28: Chain dots track Fayde X position when she moves 64px right
 ##   AC-HUD-29: Chain dots clamped to viewport top when Fayde is near the top edge
 ##   AC-HUD-30: preparation_started stops chain dot position tracking
+##   AC-HUD-31: health_restored with player target spawns "+N HP" label in HEAL_LABEL_COLOR
+##   AC-HUD-32: health_restored with enemy target does NOT spawn a heal label
 ##
 ## Setup pattern:
 ##   - CombatHUD instantiated with CombatHUDScript.new() and add_child() — it connects
@@ -741,4 +743,46 @@ func test_preparation_started_stops_chain_dot_position_tracking() -> void:
 
 	remove_child(fayde)
 	fayde.free()
+	_teardown_hud(hud)
+
+
+# ── AC-HUD-31: health_restored on player spawns "+N HP" label ─────────────────
+
+## GIVEN CombatHUD in tree; MockFayde in "player" group
+## WHEN health_restored(fayde, 15, 90) emits
+## THEN a child label with text "+15 HP" and font_color == HEAL_LABEL_COLOR is present
+func test_health_restored_player_spawns_heal_label_green_text() -> void:
+	var hud: Node = _make_hud()
+	var fayde: MockFayde = _make_fayde()
+
+	HealthAndDamage.health_restored.emit(fayde, 15, 90)
+
+	# Find label with "+15 HP" text among hud children
+	var found: bool = false
+	for child: Node in hud.get_children():
+		if child is Label and (child as Label).text == "+15 HP":
+			found = true
+			var color: Color = (child as Label).get_theme_color(&"font_color")
+			assert_bool(color.is_equal_approx(hud.HEAL_LABEL_COLOR)).is_true()
+			break
+	assert_bool(found).is_true()
+
+	_teardown_fayde(fayde)
+	_teardown_hud(hud)
+
+
+# ── AC-HUD-32: health_restored on enemy does NOT spawn heal label ─────────────
+
+## GIVEN CombatHUD in tree; MockEnemy (not in "player" group)
+## WHEN health_restored(enemy, 15, 50) emits
+## THEN no "+15 HP" label is spawned
+func test_health_restored_enemy_target_no_heal_label() -> void:
+	var hud: Node = _make_hud()
+	var enemy: MockEnemy = _make_enemy()
+
+	var label_count_before: int = hud.get_child_count()
+	HealthAndDamage.health_restored.emit(enemy, 15, 50)
+	assert_int(hud.get_child_count()).is_equal(label_count_before)
+
+	_teardown_enemy(enemy)
 	_teardown_hud(hud)

@@ -63,6 +63,10 @@ const HEAVY_HIT_SHAKE_MULT: float = 2.0
 const HEAVY_FLASH_ALPHA: float = 0.18
 ## Duration of the heavy-hit red flash fade-out (seconds).
 const HEAVY_FLASH_DURATION: float = 0.25
+## Opacity of the REST-heal green screen wash at peak.
+const HEAL_FLASH_ALPHA: float = 0.15
+## Duration of the REST-heal green wash fade-out (seconds).
+const HEAL_FLASH_DURATION: float = 0.5
 
 ## Tracked from chain_index_changed — true when the next hit is the final chain attack.
 var _next_is_ender: bool = false
@@ -99,6 +103,12 @@ var _heavy_flash_layer: CanvasLayer = null
 var _heavy_flash_rect: ColorRect = null
 var _heavy_flash_tween: Tween = null
 
+# ── REST heal wash state ──────────────────────────────────────────────────────
+## CanvasLayer + ColorRect for the green REST-heal screen wash. Created lazily.
+var _heal_flash_layer: CanvasLayer = null
+var _heal_flash_rect: ColorRect = null
+var _heal_flash_tween: Tween = null
+
 ## Active combo-window depleting ring; null when no combo window is open.
 ## Freed on combo expiry, new window open, preparation_started, or player_died.
 var _combo_ring: _ComboRing = null
@@ -116,6 +126,7 @@ func _ready() -> void:
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	HealthAndDamage.damage_taken.connect(_on_damage_taken)
 	HealthAndDamage.heavy_hit.connect(_on_heavy_hit)
+	HealthAndDamage.health_restored.connect(_on_health_restored)
 	HealthAndDamage.player_died.connect(_on_player_died)
 	HealthAndDamage.player_hp_zone_changed.connect(_on_hp_zone_changed)
 	_init_pool()
@@ -142,6 +153,8 @@ func _exit_tree() -> void:
 		HealthAndDamage.damage_taken.disconnect(_on_damage_taken)
 	if HealthAndDamage.heavy_hit.is_connected(_on_heavy_hit):
 		HealthAndDamage.heavy_hit.disconnect(_on_heavy_hit)
+	if HealthAndDamage.health_restored.is_connected(_on_health_restored):
+		HealthAndDamage.health_restored.disconnect(_on_health_restored)
 	if HealthAndDamage.player_died.is_connected(_on_player_died):
 		HealthAndDamage.player_died.disconnect(_on_player_died)
 	if HealthAndDamage.player_hp_zone_changed.is_connected(_on_hp_zone_changed):
@@ -336,6 +349,36 @@ func _show_heavy_flash() -> void:
 	_heavy_flash_rect.color.a = HEAVY_FLASH_ALPHA
 	_heavy_flash_tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 	_heavy_flash_tween.tween_property(_heavy_flash_rect, "color:a", 0.0, HEAVY_FLASH_DURATION)
+
+
+# ── REST heal green wash ───────────────────────────────────────────────────────
+
+## Handles health_restored from HealthAndDamage.
+## Shows a brief green screen wash so the player perceives the REST room heal.
+func _on_health_restored(target: Node, _healed_amount: int, _current_hp: int) -> void:
+	if not target.is_in_group(&"player"):
+		return
+	_show_heal_wash()
+
+
+## Shows a brief green flash overlay. Created lazily, reused across heals.
+## Fades in instantly, then fades out over HEAL_FLASH_DURATION seconds.
+func _show_heal_wash() -> void:
+	if _heal_flash_layer == null:
+		_heal_flash_layer = CanvasLayer.new()
+		_heal_flash_layer.layer = 98  # below heavy-hit red (99), above HUD (10)
+		add_child(_heal_flash_layer)
+		_heal_flash_rect = ColorRect.new()
+		_heal_flash_rect.color = Color(0.1, 1.0, 0.25, 0.0)
+		_heal_flash_rect.anchor_right = 1.0
+		_heal_flash_rect.anchor_bottom = 1.0
+		_heal_flash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_heal_flash_layer.add_child(_heal_flash_rect)
+	if _heal_flash_tween:
+		_heal_flash_tween.kill()
+	_heal_flash_rect.color.a = HEAL_FLASH_ALPHA
+	_heal_flash_tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	_heal_flash_tween.tween_property(_heal_flash_rect, "color:a", 0.0, HEAL_FLASH_DURATION)
 
 
 # ── Low-HP desperate vignette (Gamefeel Pass 3 #5) ───────────────────────────────
