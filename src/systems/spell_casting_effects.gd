@@ -451,9 +451,12 @@ func _fire_attack(attack_index: int) -> void:
 	# Approved 2026-06-06; see file header for full note.
 	var raw_affiliation: Variant = target.get(&"prana_affiliation")
 	var enemy_affiliation: int = raw_affiliation if raw_affiliation != null else GameEnums.DamageClass.NONE
-	if pt != GameEnums.DamageClass.NONE and enemy_affiliation == pt:
-		raw *= 2.0
-		affiliation_bonus_hit.emit(target, pt)
+	if pt != GameEnums.DamageClass.NONE and enemy_affiliation != GameEnums.DamageClass.NONE:
+		if enemy_affiliation == pt:
+			raw *= 2.0
+			affiliation_bonus_hit.emit(target, pt)
+		else:
+			raw *= 0.5
 
 	# Step 10 — deliver damage through Health & Damage (ADR-0007).
 	# element = DamageClass.NONE: SC&E owns the elemental multiplier above (Step 9)
