@@ -745,6 +745,8 @@ func _tick_boss_charge(_delta: float, sep: Vector2, dist: float, hp_mult: float)
 					_vfx_tween.kill()
 					_vfx_tween = null
 				modulate = Color(2.5, 0.2, 0.2)
+				if _audio != null and _audio.has_method(&"has_event") and _audio.has_event(&"sfx_boss_charge"):
+					_audio.play_event(&"sfx_boss_charge")
 		2:  # CHARGING — burst in locked direction; end early on impact
 			velocity = (_boss_charge_dir * _move_speed * BOSS_CHARGE_SPEED_MULT + sep) * hp_mult
 			move_and_slide()
@@ -812,6 +814,8 @@ func _start_slam_telegraph() -> void:
 	_vfx_tween.tween_property(self, "modulate", Color(2.5, 0.3, 0.3), 0.3)
 	_vfx_tween.tween_property(self, "modulate", Color(1.0, 0.1, 0.1), 0.3)
 	_spawn_slam_warning()
+	if _audio != null and _audio.has_method(&"has_event") and _audio.has_event(&"sfx_boss_slam_telegraph"):
+		_audio.play_event(&"sfx_boss_slam_telegraph")
 
 
 ## Applies DIRECT AoE damage to Fayde if she is within BOSS_SLAM_RADIUS.
@@ -846,6 +850,8 @@ func _spawn_slam_warning() -> void:
 func _fire_salvo() -> void:
 	if get_parent() == null:
 		return
+	if _audio != null and _audio.has_method(&"has_event") and _audio.has_event(&"sfx_boss_salvo"):
+		_audio.play_event(&"sfx_boss_salvo")
 	var aim_angle: float = 0.0
 	if is_instance_valid(_fayde_ref):
 		aim_angle = (_fayde_ref.global_position - global_position).angle()

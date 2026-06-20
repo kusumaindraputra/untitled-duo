@@ -143,21 +143,60 @@ func _apply_floor_pool_config() -> void:
 
 
 func _on_run_ended(win: bool) -> void:
+	var audio: Node = get_node_or_null("/root/AudioSystem")
+	if audio != null and audio.has_method(&"has_event"):
+		var evt: StringName = &"sfx_run_win" if win else &"sfx_run_lose"
+		if audio.has_event(evt):
+			audio.play_event(evt)
+
+	var run_data: Dictionary = RunManager.get_run_data()
+	var floor_reached: int = run_data.get("current_floor", 1)
+	var rooms_cleared: int = run_data.get("rooms_cleared", 0)
+
 	var overlay := CanvasLayer.new()
 	overlay.layer = 20
+
 	var bg := ColorRect.new()
-	bg.color = Color(0.0, 0.0, 0.0, 0.75)
+	bg.color = Color(0.08, 0.05, 0.02, 0.88) if win else Color(0.12, 0.02, 0.02, 0.88)
 	bg.anchor_right = 1.0
 	bg.anchor_bottom = 1.0
 	overlay.add_child(bg)
-	var label := Label.new()
-	label.text = "YOU WIN\nPress R to restart" if win else "YOU DIED\nPress R to restart"
-	label.add_theme_font_size_override(&"font_size", 48)
-	label.anchor_right = 1.0
-	label.anchor_bottom = 1.0
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	overlay.add_child(label)
+
+	var vbox := VBoxContainer.new()
+	vbox.anchor_right = 1.0
+	vbox.anchor_bottom = 1.0
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	overlay.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "RUN COMPLETE" if win else "YOU DIED"
+	title.add_theme_font_size_override(&"font_size", 64)
+	title.add_theme_color_override(&"font_color", Color(1.0, 0.85, 0.3) if win else Color(0.9, 0.25, 0.25))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 24)
+	vbox.add_child(spacer)
+
+	var stats := Label.new()
+	stats.text = "Floor %d  ·  %d Room%s Cleared" % [floor_reached, rooms_cleared, "" if rooms_cleared == 1 else "s"]
+	stats.add_theme_font_size_override(&"font_size", 28)
+	stats.add_theme_color_override(&"font_color", Color(0.8, 0.8, 0.8))
+	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(stats)
+
+	var spacer2 := Control.new()
+	spacer2.custom_minimum_size = Vector2(0, 40)
+	vbox.add_child(spacer2)
+
+	var hint := Label.new()
+	hint.text = "Press R to play again"
+	hint.add_theme_font_size_override(&"font_size", 20)
+	hint.add_theme_color_override(&"font_color", Color(0.55, 0.55, 0.55))
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(hint)
+
 	add_child(overlay)
 
 

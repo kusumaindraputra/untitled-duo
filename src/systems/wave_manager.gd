@@ -236,6 +236,8 @@ func _apply_rest_heal() -> void:
 	var pct: float = rng.randf_range(0.10, 0.20)
 	var heal_amount: int = roundi(float(HealthAndDamage.FAYDE_MAX_HP) * pct)
 	HealthAndDamage.apply_heal(player, float(heal_amount))
+	if _audio != null and _audio.has_method(&"has_event") and _audio.has_event(&"sfx_rest_heal"):
+		_audio.play_event(&"sfx_rest_heal")
 
 
 ## Returns the active enemy pool config, loading defaults on first access. (LD-03)

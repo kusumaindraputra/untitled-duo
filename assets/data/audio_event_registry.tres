@@ -1,7 +1,146 @@
 [gd_resource type="Resource" script_class="AudioEventRegistry" format=3 uid="uid://b21c55krwnkia"]
 
 [ext_resource type="Script" uid="uid://8c87jzuvj7vef" path="res://src/audio/audio_event_registry.gd" id="1_registry"]
+[ext_resource type="Script" uid="uid://e7vtffj9dxusk" path="res://src/audio/audio_event_data.gd" id="2_data"]
+
+;; ── SFX: Combat / Spells ────────────────────────────────────────────────────
+[sub_resource type="Resource" id="R_spell_cast"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 1
+
+[sub_resource type="Resource" id="R_spell_hit"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 1
+
+[sub_resource type="Resource" id="R_heavy_hit"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 2
+
+[sub_resource type="Resource" id="R_fayde_hit"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 2
+
+[sub_resource type="Resource" id="R_enemy_hit"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 1
+
+[sub_resource type="Resource" id="R_combo_advance"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 1
+
+[sub_resource type="Resource" id="R_combo_ender"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 2
+
+[sub_resource type="Resource" id="R_fayde_cast_locked"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 1
+
+;; ── SFX: Enemies ────────────────────────────────────────────────────────────
+[sub_resource type="Resource" id="R_enemy_spawn"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 0
+
+[sub_resource type="Resource" id="R_enemy_death"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 1
+
+;; ── SFX: Boss Attacks ───────────────────────────────────────────────────────
+[sub_resource type="Resource" id="R_boss_slam_telegraph"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 2
+
+[sub_resource type="Resource" id="R_boss_charge"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 2
+
+[sub_resource type="Resource" id="R_boss_salvo"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 2
+
+;; ── SFX: Player Movement ────────────────────────────────────────────────────
+[sub_resource type="Resource" id="R_fayde_dash"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 1
+
+[sub_resource type="Resource" id="R_footstep_a"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 0
+
+[sub_resource type="Resource" id="R_footstep_b"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 0
+
+[sub_resource type="Resource" id="R_footstep_c"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 0
+
+;; ── SFX: Run Events ─────────────────────────────────────────────────────────
+[sub_resource type="Resource" id="R_wave_clear"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 2
+
+[sub_resource type="Resource" id="R_rest_heal"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 2
+
+[sub_resource type="Resource" id="R_fayde_death"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 2
+
+[sub_resource type="Resource" id="R_run_win"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 2
+
+[sub_resource type="Resource" id="R_run_lose"]
+script = ExtResource("2_data")
+bus = &"SFX"
+priority = 2
 
 [resource]
 script = ExtResource("1_registry")
-events = {}
+events = {
+&"sfx_spell_cast": SubResource("R_spell_cast"),
+&"sfx_spell_hit": SubResource("R_spell_hit"),
+&"sfx_heavy_hit": SubResource("R_heavy_hit"),
+&"sfx_fayde_hit": SubResource("R_fayde_hit"),
+&"sfx_enemy_hit": SubResource("R_enemy_hit"),
+&"sfx_combo_advance": SubResource("R_combo_advance"),
+&"sfx_combo_ender": SubResource("R_combo_ender"),
+&"sfx_fayde_cast_locked": SubResource("R_fayde_cast_locked"),
+&"sfx_enemy_spawn": SubResource("R_enemy_spawn"),
+&"sfx_enemy_death": SubResource("R_enemy_death"),
+&"sfx_boss_slam_telegraph": SubResource("R_boss_slam_telegraph"),
+&"sfx_boss_charge": SubResource("R_boss_charge"),
+&"sfx_boss_salvo": SubResource("R_boss_salvo"),
+&"sfx_fayde_dash": SubResource("R_fayde_dash"),
+&"sfx_fayde_footstep_a": SubResource("R_footstep_a"),
+&"sfx_fayde_footstep_b": SubResource("R_footstep_b"),
+&"sfx_fayde_footstep_c": SubResource("R_footstep_c"),
+&"sfx_wave_clear": SubResource("R_wave_clear"),
+&"sfx_rest_heal": SubResource("R_rest_heal"),
+&"sfx_fayde_death": SubResource("R_fayde_death"),
+&"sfx_run_win": SubResource("R_run_win"),
+&"sfx_run_lose": SubResource("R_run_lose")
+}
