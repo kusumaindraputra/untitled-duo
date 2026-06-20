@@ -841,12 +841,16 @@ func _spawn_slam_warning() -> void:
 	parent_node.add_child(warning)
 
 
-## Fires BOSS_SALVO_COUNT projectiles evenly distributed around a full circle.
+## Fires BOSS_SALVO_COUNT projectiles evenly distributed around a full circle,
+## with the 0th spoke aimed at Fayde's current position (no safe static spot).
 func _fire_salvo() -> void:
 	if get_parent() == null:
 		return
+	var aim_angle: float = 0.0
+	if is_instance_valid(_fayde_ref):
+		aim_angle = (_fayde_ref.global_position - global_position).angle()
 	for i: int in BOSS_SALVO_COUNT:
-		var angle: float = (TAU / float(BOSS_SALVO_COUNT)) * float(i)
+		var angle: float = aim_angle + (TAU / float(BOSS_SALVO_COUNT)) * float(i)
 		var dir: Vector2 = Vector2.from_angle(angle)
 		var proj: Projectile = Projectile.new()
 		get_parent().add_child(proj)
