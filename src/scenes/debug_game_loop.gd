@@ -17,12 +17,22 @@ extends Node
 ## Total number of floors in a single run.
 const TOTAL_FLOORS: int = 3
 
+## Paths to per-floor enemy pool configs. Index 0 = floor 1, etc.
+const _FLOOR_POOL_PATHS: Array[String] = [
+	"res://assets/data/enemy_pool_configs/enemy_pool_floor1.tres",
+	"res://assets/data/enemy_pool_configs/enemy_pool_floor2.tres",
+	"res://assets/data/enemy_pool_configs/enemy_pool_floor3.tres",
+]
+const _BOSS_POOL_PATH: String = "res://assets/data/enemy_pool_configs/enemy_pool_boss.tres"
+
 var _dungeon_graph: DungeonGraph = null
 var _gen: DungeonGenerator = DungeonGenerator.new()
 var _current_floor: int = 1
+var _floor_pool_configs: Array[EnemyPoolConfig] = []
 
 func _ready() -> void:
 	_register_input_actions()
+	_load_pool_configs()
 
 	# Tell SceneManager about the initial room already in main.tscn so the first
 	# room transition correctly frees it instead of leaving a duplicate.
@@ -34,10 +44,14 @@ func _ready() -> void:
 	rtm.setup(_dungeon_graph)
 	rtm.room_transition_completed.connect(_on_room_transitioned)
 
-	# Wire initial room: spawn markers + exit doors + is_final_room flag.
+	# Wire pool configs onto WaveManager once at startup.
+	$WaveManager.boss_pool_config = load(_BOSS_POOL_PATH) as EnemyPoolConfig
+	_apply_floor_pool_config()
+
+	# Wire initial room: spawn markers + exit doors + room type flags.
 	var initial_room: IsometricRoom = $SubSceneRoot/IsometricRoom
 	$WaveManager.spawn_points_container = initial_room.get_node("SpawnMarkers")
-	_set_final_room_flag(_dungeon_graph.get_entry_room())
+	_configure_wave_manager_for_room(_dungeon_graph.get_entry_room())
 	rtm.wire_exit_doors(initial_room)
 
 	$PlayerController.position = initial_room.get_player_spawn_position()
@@ -64,7 +78,7 @@ func _input(event: InputEvent) -> void:
 # ── Private ───────────────────────────────────────────────────────────────────
 
 ## Called after each room transition completes. Rewires WaveManager to the new
-## room's SpawnMarkers, updates the is_final_room flag, then restarts prep phase.
+## room's SpawnMarkers, updates room type flags, then restarts prep phase.
 func _on_room_transitioned(new_room_idx: int) -> void:
 	var new_room: Node = SceneManager.get_current_scene()
 	if new_room == null:
@@ -74,18 +88,20 @@ func _on_room_transitioned(new_room_idx: int) -> void:
 	if spawn_markers == null:
 		push_error("debug_game_loop: new room has no SpawnMarkers node")
 	$WaveManager.spawn_points_container = spawn_markers
-	_set_final_room_flag(new_room_idx)
+	_configure_wave_manager_for_room(new_room_idx)
 	if new_room is IsometricRoom:
 		$PlayerController.position = (new_room as IsometricRoom).get_player_spawn_position()
 	GameStateManager.restart_preparation()
 
 
-## Sets WaveManager.is_final_room based on the room type at [param room_idx].
-func _set_final_room_flag(room_idx: int) -> void:
+## Configures WaveManager for the room at [param room_idx]: sets room_type and is_final_room.
+func _configure_wave_manager_for_room(room_idx: int) -> void:
 	if _dungeon_graph == null:
 		return
 	var room: Dictionary = _dungeon_graph.get_room(room_idx)
-	$WaveManager.is_final_room = (room.get("type", DungeonGraph.ROOM_TYPE_COMBAT) == DungeonGraph.ROOM_TYPE_BOSS)
+	var rtype: int = room.get("type", DungeonGraph.ROOM_TYPE_COMBAT)
+	$WaveManager.room_type = rtype
+	$WaveManager.is_final_room = (rtype == DungeonGraph.ROOM_TYPE_BOSS)
 
 func _register_input_actions() -> void:
 	_ensure_key_action(&"move_left", KEY_A)
@@ -107,7 +123,23 @@ func _on_floor_completed() -> void:
 	_current_floor += 1
 	_dungeon_graph = _gen.generate(7, _current_floor)
 	GameStateManager.set_is_final_floor(_current_floor >= TOTAL_FLOORS)
+	_apply_floor_pool_config()
 	$RoomTransitionManager.load_floor(_dungeon_graph)
+
+
+## Loads per-floor EnemyPoolConfig resources into _floor_pool_configs.
+func _load_pool_configs() -> void:
+	_floor_pool_configs.clear()
+	for path: String in _FLOOR_POOL_PATHS:
+		var res: Resource = load(path)
+		_floor_pool_configs.append(res as EnemyPoolConfig if res is EnemyPoolConfig else null)
+
+
+## Sets WaveManager.enemy_pool_config to the config for the current floor.
+func _apply_floor_pool_config() -> void:
+	var floor_idx: int = clampi(_current_floor - 1, 0, _floor_pool_configs.size() - 1)
+	if not _floor_pool_configs.is_empty():
+		$WaveManager.enemy_pool_config = _floor_pool_configs[floor_idx]
 
 
 func _on_run_ended(win: bool) -> void:

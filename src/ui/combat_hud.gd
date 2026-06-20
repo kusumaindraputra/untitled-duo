@@ -168,6 +168,9 @@ var _dot_tweens: Array[Tween] = []
 var _combo_counter_label: Label = null
 var _combo_counter_tween: Tween = null
 
+## Floor indicator label — shows "Floor N" in the top-left corner.
+var _floor_label: Label = null
+
 
 # ── Built-in virtual methods ──────────────────────────────────────────────────
 
@@ -301,6 +304,13 @@ func _create_ui_nodes() -> void:
 	_combo_counter_label.add_theme_font_size_override(&"font_size", 18)
 	_combo_counter_label.position = Vector2(8, 128)
 	add_child(_combo_counter_label)
+
+	_floor_label = Label.new()
+	_floor_label.text = "Floor 1"
+	_floor_label.add_theme_font_size_override(&"font_size", 14)
+	_floor_label.position = Vector2(8, 152)
+	_floor_label.size = Vector2(120, 20)
+	add_child(_floor_label)
 
 
 ## Starts a float-accumulator HP bar animation toward [param target] hp value.
@@ -506,11 +516,13 @@ func _on_run_started() -> void:
 	if _dash_cooldown_icon != null:
 		_dash_cooldown_icon.color.a = 1.0
 		_dash_cooldown_icon.visible = false
+	if _floor_label != null:
+		_floor_label.text = "Floor 1"
 	_free_all_damage_labels()
 
 
 ## Handles preparation_started from GameStateManager.
-## Hides the chain-dot container between waves.
+## Hides the chain-dot container between waves; updates floor number label.
 func _on_preparation_started(_idx: int, _rem: int) -> void:
 	for tw in _dot_tweens:
 		if is_instance_valid(tw):
@@ -524,6 +536,9 @@ func _on_preparation_started(_idx: int, _rem: int) -> void:
 	if _dash_cooldown_icon != null:
 		_dash_cooldown_icon.color.a = 1.0
 		_dash_cooldown_icon.visible = false
+	if _floor_label != null:
+		var floor_num: int = RunManager.get_run_data().get("current_floor", 1)
+		_floor_label.text = "Floor %d" % floor_num
 
 
 ## Handles combat_started from GameStateManager.

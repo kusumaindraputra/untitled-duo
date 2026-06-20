@@ -19,6 +19,8 @@ const TemplateSplit    = preload("res://assets/data/room_templates/template_spli
 const TemplateCorridor = preload("res://assets/data/room_templates/template_corridor.tres")
 const TemplateArena    = preload("res://assets/data/room_templates/template_arena.tres")
 const TemplateGauntlet = preload("res://assets/data/room_templates/template_gauntlet.tres")
+const TemplateRest     = preload("res://assets/data/room_templates/template_rest.tres")
+const TemplateBoss     = preload("res://assets/data/room_templates/template_boss.tres")
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -53,13 +55,13 @@ func test_combat_rooms_get_template() -> void:
 		assert_object(sel.last_assigned_template(i)).is_not_null()
 
 
-func test_rest_and_boss_get_null_template() -> void:
+func test_rest_and_boss_get_templates() -> void:
 	var g: DungeonGraph = _linear_graph(3)
 	var sel := RoomSelector.new()
 	sel.assign(g)
 	# Rest is at index 3, Boss at index 4.
-	assert_object(sel.last_assigned_template(3)).is_null()
-	assert_object(sel.last_assigned_template(4)).is_null()
+	assert_object(sel.last_assigned_template(3)).is_equal(TemplateRest)
+	assert_object(sel.last_assigned_template(4)).is_equal(TemplateBoss)
 
 
 # ── Variety constraint ─────────────────────────────────────────────────────────
@@ -166,15 +168,15 @@ func test_assign_preserves_room_types() -> void:
 
 
 func test_assign_on_graph_with_no_combat_rooms() -> void:
-	# Graph with only Rest + Boss — no combat templates to assign.
+	# Graph with only Rest + Boss — rest and boss pools still apply.
 	var g := DungeonGraph.new()
 	g.add_room(DungeonGraph.ROOM_TYPE_REST)
 	g.add_room(DungeonGraph.ROOM_TYPE_BOSS)
 	g.add_edge(0, 1)
 	var sel := RoomSelector.new()
 	sel.assign(g)   # must not crash
-	assert_object(sel.last_assigned_template(0)).is_null()
-	assert_object(sel.last_assigned_template(1)).is_null()
+	assert_object(sel.last_assigned_template(0)).is_equal(TemplateRest)
+	assert_object(sel.last_assigned_template(1)).is_equal(TemplateBoss)
 
 
 # ── Probabilistic: coverage ────────────────────────────────────────────────────

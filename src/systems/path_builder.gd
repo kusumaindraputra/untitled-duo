@@ -41,7 +41,8 @@ func generate(room_count: int, layer: int = 1) -> DungeonGraph:
 
 	# ── Room type counts (from room-type-taxonomy.md § Room Selector Algorithm) ──
 	var remaining: int = room_count - 2   # minus Rest + Boss
-	var elite_count: int = 1 if remaining >= 5 else 0
+	# Two Elites when room count is large enough to branch: one on each path.
+	var elite_count: int = 2 if remaining >= 5 else 0
 	var combat_count: int = remaining - elite_count
 
 	# ── Phase 1: create all rooms ──────────────────────────────────────────────
@@ -63,23 +64,23 @@ func generate(room_count: int, layer: int = 1) -> DungeonGraph:
 		var left_count: int = ceili(float(after) / 2.0)
 		var right_count: int = after - left_count
 
-		# Left path chain.
-		var elite_placed: bool = false
+		# Left path chain — Elite at the last room of each path (symmetric pressure).
+		var elites_placed: int = 0
 		for i: int in range(left_count):
 			var is_last_left: bool = (i == left_count - 1)
-			var put_elite: bool = not elite_placed and elite_count > 0 and is_last_left and left_count >= right_count
+			var put_elite: bool = elites_placed < elite_count and is_last_left
 			if put_elite:
-				elite_placed = true
+				elites_placed += 1
 				g.add_room(DungeonGraph.ROOM_TYPE_ELITE)
 			else:
 				g.add_room(DungeonGraph.ROOM_TYPE_COMBAT)
 
-		# Right path chain.
+		# Right path chain — also ends with Elite when elite budget allows.
 		for i: int in range(right_count):
 			var is_last_right: bool = (i == right_count - 1)
-			var put_elite: bool = not elite_placed and elite_count > 0 and is_last_right
+			var put_elite: bool = elites_placed < elite_count and is_last_right
 			if put_elite:
-				elite_placed = true
+				elites_placed += 1
 				g.add_room(DungeonGraph.ROOM_TYPE_ELITE)
 			else:
 				g.add_room(DungeonGraph.ROOM_TYPE_COMBAT)

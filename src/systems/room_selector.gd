@@ -38,11 +38,21 @@ const L1_ELITE_PRELOADS: Array[Dictionary] = [
 	{"path": "res://assets/data/room_templates/template_gauntlet.tres", "weight": 1.0},
 ]
 
+const L1_REST_PRELOADS: Array[Dictionary] = [
+	{"path": "res://assets/data/room_templates/template_rest.tres", "weight": 1.0},
+]
+
+const L1_BOSS_PRELOADS: Array[Dictionary] = [
+	{"path": "res://assets/data/room_templates/template_boss.tres", "weight": 1.0},
+]
+
 
 # ── State ─────────────────────────────────────────────────────────────────────
 
 var _combat_pool: Array[Dictionary] = []   ## [{template: RoomTemplate, weight: float}]
 var _elite_pool:  Array[Dictionary] = []
+var _rest_pool:   Array[Dictionary] = []
+var _boss_pool:   Array[Dictionary] = []
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _last_template: RoomTemplate = null
 var _assigned: Array[RoomTemplate] = []    ## per-index record, for diagnostics
@@ -58,7 +68,7 @@ func _init() -> void:
 # ── Public API ─────────────────────────────────────────────────────────────────
 
 ## Assigns a RoomTemplate to each room in [param graph] based on its type.
-## Rooms of type Rest (2) and Boss (3) get null — they have no templates yet.
+## All four room types (Combat/Elite/Rest/Boss) draw from their respective pools.
 ## O(N) — walks rooms once in index order.
 func assign(graph: DungeonGraph) -> void:
 	_last_template = null
@@ -82,12 +92,16 @@ func last_assigned_template(idx: int) -> RoomTemplate:
 	return _assigned[idx]
 
 
-## Overrides the default Layer 1 pools. Each entry is {template, weight}.
+## Overrides all pools at once. Each entry is {template, weight}.
 ## Pass empty arrays to suppress template assignment for a type.
+## Resets ALL four pools — rest and boss default to empty (null assignment) if omitted.
 ## Used by tests to inject controlled pools.
-func set_pools(combat: Array[Dictionary], elite: Array[Dictionary]) -> void:
+func set_pools(combat: Array[Dictionary], elite: Array[Dictionary],
+		rest: Array[Dictionary] = [], boss: Array[Dictionary] = []) -> void:
 	_combat_pool = combat
 	_elite_pool = elite
+	_rest_pool = rest
+	_boss_pool = boss
 
 
 ## Returns the current combat pool (for test inspection).
@@ -105,6 +119,8 @@ func get_elite_pool() -> Array[Dictionary]:
 func _load_default_layer1_pools() -> void:
 	_combat_pool = _resolve_preloads(L1_COMBAT_PRELOADS)
 	_elite_pool  = _resolve_preloads(L1_ELITE_PRELOADS)
+	_rest_pool   = _resolve_preloads(L1_REST_PRELOADS)
+	_boss_pool   = _resolve_preloads(L1_BOSS_PRELOADS)
 
 
 func _resolve_preloads(entries: Array[Dictionary]) -> Array[Dictionary]:
@@ -125,6 +141,10 @@ func _get_pool_for_type(type: int) -> Array[Dictionary]:
 			return _combat_pool
 		DungeonGraph.ROOM_TYPE_ELITE:
 			return _elite_pool
+		DungeonGraph.ROOM_TYPE_REST:
+			return _rest_pool
+		DungeonGraph.ROOM_TYPE_BOSS:
+			return _boss_pool
 		_:
 			return []
 

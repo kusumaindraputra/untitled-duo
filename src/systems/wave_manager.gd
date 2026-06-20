@@ -79,6 +79,16 @@ const FP_RIFTER_COUNT: int = 2
 ## SEEKER + SWARMER guaranteed). (LD-03)
 @export var enemy_pool_config: EnemyPoolConfig = null
 
+## Enemy composition config used when room_type == BOSS (type 3).
+## If null, falls back to enemy_pool_config. Set by debug_game_loop in _ready().
+@export var boss_pool_config: EnemyPoolConfig = null
+
+## Current room type from DungeonGraph (COMBAT=0, ELITE=1, REST=2, BOSS=3).
+## REST rooms skip enemy spawn and emit wave_cleared immediately.
+## BOSS rooms use boss_pool_config if set.
+## Set by debug_game_loop after each room transition.
+@export var room_type: int = DungeonGraph.ROOM_TYPE_COMBAT
+
 ## True for the final (boss) room of the dungeon. Only the final room emits
 ## all_waves_cleared and boss_defeated — non-final rooms emit only wave_cleared,
 ## which unlocks exit doors and lets the player proceed to the next room.
@@ -158,10 +168,14 @@ func _exit_tree() -> void:
 ## Called at the start of every run, and between waves in multi-wave encounters.
 ## After this call the system is IDLE and ready for the next _spawn_wave().
 ## Story 002: also rebuilds _wave_composition from EnemyCatalog and FP constants.
+## Rest rooms (room_type=2) skip composition build — no enemies to preview or spawn.
 func _on_preparation_started(_wave_index: int, _waves_remaining: int) -> void:
 	_enemies_alive = 0
 	_enemies_total = 0
 	_wave_state = WaveState.IDLE
+	if room_type == DungeonGraph.ROOM_TYPE_REST:
+		_clear_wave_preview()
+		return
 	_build_wave_composition()
 	_show_wave_preview()
 
@@ -169,12 +183,17 @@ func _on_preparation_started(_wave_index: int, _waves_remaining: int) -> void:
 ## Handles combat phase start.
 ## FP-scope guard: boss combat_started is always a no-op — the boss is the same wave.
 ## (No separate boss encounter exists at FP scope; is_boss:true is a self-transition.)
-## If is_boss is false, delegate to _spawn_wave().
+## Rest rooms (room_type=2) emit wave_cleared immediately — no enemies to fight.
+## All other room types delegate to _spawn_wave().
 func _on_combat_started(is_boss: bool) -> void:
 	if is_boss:
 		push_warning("WaveManager: combat_started(is_boss:true) received while wave active — FP scope guard")
 		return
 	_clear_wave_preview()
+	if room_type == DungeonGraph.ROOM_TYPE_REST:
+		_wave_state = WaveState.WAVE_COMPLETE
+		wave_cleared.emit()
+		return
 	_spawn_wave()
 
 
@@ -197,8 +216,10 @@ func _on_enemy_killed(_instance_id: int, _type_id: int,
 # ── Internal ──────────────────────────────────────────────────────────────────
 
 ## Returns the active enemy pool config, loading defaults on first access. (LD-03)
-## Scene authors override via the @export enemy_pool_config in the inspector.
+## Boss rooms use boss_pool_config when set; all others use enemy_pool_config.
 func _get_pool_config() -> EnemyPoolConfig:
+	if room_type == DungeonGraph.ROOM_TYPE_BOSS and boss_pool_config != null:
+		return boss_pool_config
 	if enemy_pool_config == null:
 		enemy_pool_config = EnemyPoolConfig.new()
 	return enemy_pool_config
@@ -276,6 +297,9 @@ func _spawn_wave() -> void:
 			push_error("WaveManager: no spawn markers — cannot spawn enemies")
 			break
 		var enemy_scene: PackedScene = entry["scene"] as PackedScene
+		if enemy_scene == null:
+			push_warning("WaveManager: null scene for type_id %d — skipping spawn" % entry["type_id"])
+			continue
 		var enemy: EnemyInstance = enemy_scene.instantiate() as EnemyInstance
 		HealthAndDamage.register_enemy(enemy, entry["type_id"])  # ADR-0014: BEFORE add_child
 		add_child(enemy)

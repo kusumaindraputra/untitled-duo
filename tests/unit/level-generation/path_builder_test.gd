@@ -81,10 +81,10 @@ func test_generate_6_rooms_all_paths_reach_boss() -> void:
 # ── Branch (7 rooms) — has Elite ───────────────────────────────────────────────
 
 func test_generate_7_rooms_has_elite() -> void:
-	# remaining = 5 >= 5 → 1 Elite.
+	# remaining = 5 >= 5 → 2 Elites (one on each branch path).
 	var g: DungeonGraph = PathBuilder.new().generate(7)
 	var elites: Array[int] = g.get_rooms_by_type(DungeonGraph.ROOM_TYPE_ELITE)
-	assert_int(elites.size()).is_equal(1)
+	assert_int(elites.size()).is_equal(2)
 
 
 func test_generate_7_rooms_structure() -> void:
@@ -99,11 +99,11 @@ func test_generate_7_rooms_structure() -> void:
 # ── Branch (8 rooms) ───────────────────────────────────────────────────────────
 
 func test_generate_8_rooms_has_elite() -> void:
-	# remaining = 6 >= 5 → 1 Elite.
+	# remaining = 6 >= 5 → 2 Elites (one on each branch path).
 	var g: DungeonGraph = PathBuilder.new().generate(8)
 	assert_int(g.room_count()).is_equal(8)
 	var elites: Array[int] = g.get_rooms_by_type(DungeonGraph.ROOM_TYPE_ELITE)
-	assert_int(elites.size()).is_equal(1)
+	assert_int(elites.size()).is_equal(2)
 
 
 # ── AC-CM-06: Max exits never exceeds 3 ────────────────────────────────────────
