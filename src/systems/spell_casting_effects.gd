@@ -443,7 +443,6 @@ func _fire_attack(attack_index: int) -> void:
 			raw *= 1.50
 
 	# Step 9 — Elemental affiliation [FP inline — remove at MVP when EA&W implements this].
-	# Step 9 — Elemental affiliation [FP inline — remove at MVP when EA&W implements this].
 	# Deviation: uses int comparison (enemy_affiliation == pt) instead of
 	# PranaCatalog.get_type(pt).damage_class. DamageClass enum values (FIRE=0,
 	# SHADOW=1, LIGHTNING=2, ICE=3, NATURE=4) are 1:1 with primary_type integers.

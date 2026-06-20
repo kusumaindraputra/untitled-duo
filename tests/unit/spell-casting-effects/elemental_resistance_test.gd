@@ -130,3 +130,29 @@ func test_sce_any_prana_vs_none_affiliated_enemy_no_resistance() -> void:
 	remove_child(enemy)
 	enemy.free()
 	_teardown_sce(sce)
+
+
+# ── AC-RESIST-03: Matching Prana vs affiliated enemy → 2.0× (regression) ──────
+
+## GIVEN Ashfire T1 SpellEffect (bdm=1.25); enemy affiliation = FIRE (match)
+## WHEN _fire_attack(0) called
+## THEN apply_damage called with raw ≈ 25.0 × 2.0 = 50.0
+func test_sce_matching_prana_vs_affiliated_enemy_doubles_damage() -> void:
+	var hd := MockHealthAndDamage.new()
+	var sce = _make_sce(hd)
+	var se := _make_spell_effect(0, 1, 1.25)  # Ashfire T1 (FIRE = 0)
+	var enemy := MockEnemy.new()
+	enemy.prana_affiliation = GameEnums.DamageClass.FIRE  # Match — 2× applies
+	add_child(enemy)
+	_ready_sce(sce, se, enemy)
+	sce._combo_index = 1
+
+	sce._fire_attack(0)
+
+	# raw = 20 × 1.25 × 1.00 = 25.0; after 2.0× match: 50.0
+	assert_float(hd.last_raw_damage).is_equal_approx(50.0, 0.01)
+	assert_int(hd.call_count).is_equal(1)
+
+	remove_child(enemy)
+	enemy.free()
+	_teardown_sce(sce)
