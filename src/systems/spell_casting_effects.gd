@@ -146,6 +146,12 @@ const STORMGOLD_SNIPER_RANGE: float = 220.0
 ## Deferred: requires Enemy AI _is_attacking flag; currently inert at FP scope.
 const STORMGOLD_FOLLOW_THROUGH_MAX_DIST: float = 100.0
 
+## Damage multiplier when spell element matches enemy prana affiliation (Step 9).
+const AFFILIATION_MATCH_MULTIPLIER: float = 2.0
+
+## Damage multiplier when spell element does NOT match enemy prana affiliation (Step 9).
+const AFFILIATION_RESIST_MULTIPLIER: float = 0.5
+
 ## Number of arc segments used to approximate the cone for intersect_shape queries.
 const CONE_ARC_SEGMENTS: int = 8
 
@@ -452,10 +458,10 @@ func _fire_attack(attack_index: int) -> void:
 	var enemy_affiliation: int = raw_affiliation if raw_affiliation != null else GameEnums.DamageClass.NONE
 	if pt != GameEnums.DamageClass.NONE and enemy_affiliation != GameEnums.DamageClass.NONE:
 		if enemy_affiliation == pt:
-			raw *= 2.0
+			raw *= AFFILIATION_MATCH_MULTIPLIER
 			affiliation_bonus_hit.emit(target, pt)
 		else:
-			raw *= 0.5
+			raw *= AFFILIATION_RESIST_MULTIPLIER
 
 	# Step 10 — deliver damage through Health & Damage (ADR-0007).
 	# element = DamageClass.NONE: SC&E owns the elemental multiplier above (Step 9)

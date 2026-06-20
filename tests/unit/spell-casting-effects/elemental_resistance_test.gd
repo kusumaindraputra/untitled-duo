@@ -4,6 +4,7 @@
 ## Coverage:
 ##   AC-RESIST-01: Non-matching Prana vs affiliated enemy → raw × 0.5
 ##   AC-RESIST-02: Any Prana vs NONE-affiliated enemy → raw × 1.0 (no resistance)
+##   AC-RESIST-03: Matching Prana vs affiliated enemy → raw × 2.0 (regression)
 ##
 ## Framework: GdUnit4 v6.1.3 | Godot 4.6
 extends GdUnitTestSuite
@@ -47,6 +48,8 @@ class MockEnemy extends Node2D:
 	func apply_stun(_duration: float) -> void: pass
 
 
+## Creates a SpellCastingEffects instance parented to this suite so signals have
+## a valid SceneTree. Must be freed manually via _teardown_sce (not autofree).
 func _make_sce(mock_hd: MockHealthAndDamage = null) -> Node:
 	var sce: Node = SCEScript.new()
 	sce._health_and_damage = mock_hd if mock_hd != null else MockHealthAndDamage.new()
