@@ -51,6 +51,9 @@ var _boss_pool_configs: Array[EnemyPoolConfig] = []
 ## Guards hit-stop from stacking during the death slow-mo sequence.
 var _in_death_sequence: bool = false
 
+## Title-screen CanvasLayer shown at boot before the run starts. Freed on Begin.
+var _title_layer: CanvasLayer = null
+
 func _ready() -> void:
 	Engine.time_scale = 1.0  # reset from any prior slow-mo (scene reload via R key)
 	_register_input_actions()
@@ -87,7 +90,11 @@ func _ready() -> void:
 	GameStateManager.run_ended.connect(_on_run_ended)
 	GameStateManager.wave_ended.connect(_on_wave_ended)
 	GameStateManager.floor_completed.connect(_on_floor_completed)
-	GameStateManager.start_run()
+
+	# The full scene (arena, player, HUD) is now wired and visible. Gate the run
+	# behind a title card so the demo opens with context instead of dropping the
+	# player straight into combat. start_run() is deferred until the player begins.
+	_show_title_screen()
 
 
 func _input(event: InputEvent) -> void:
@@ -95,6 +102,87 @@ func _input(event: InputEvent) -> void:
 		if event.keycode == KEY_R:
 			Engine.time_scale = 1.0  # cancel slow-mo before reload
 			get_tree().reload_current_scene()
+
+
+# ── Title screen ──────────────────────────────────────────────────────────────
+
+## Builds the demo title card over the already-wired scene and pauses the tree so
+## Fayde stays put until the player begins. The overlay runs in PROCESS_MODE_ALWAYS
+## so its Begin button stays interactive while the rest of the tree is paused.
+## Reuses the CanvasLayer-overlay pattern from the end screen (_on_run_ended).
+func _show_title_screen() -> void:
+	get_tree().paused = true
+
+	_title_layer = CanvasLayer.new()
+	_title_layer.layer = 30
+	_title_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+
+	var bg := ColorRect.new()
+	bg.color = Color(0.04, 0.03, 0.06, 0.92)
+	bg.anchor_right = 1.0
+	bg.anchor_bottom = 1.0
+	_title_layer.add_child(bg)
+
+	var vbox := VBoxContainer.new()
+	vbox.anchor_right = 1.0
+	vbox.anchor_bottom = 1.0
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	_title_layer.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "THE LAST CIPHER"
+	title.add_theme_font_size_override(&"font_size", 72)
+	title.add_theme_color_override(&"font_color", Color(1.0, 0.85, 0.3))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+
+	var subtitle := Label.new()
+	subtitle.text = "Arrange Prana. Cast. Survive three floors."
+	subtitle.add_theme_font_size_override(&"font_size", 22)
+	subtitle.add_theme_color_override(&"font_color", Color(0.7, 0.7, 0.78))
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(subtitle)
+
+	vbox.add_child(_make_spacer(40))
+
+	var controls := Label.new()
+	controls.text = "WASD  Move      Shift  Dash      Space  Cast      Enter  Confirm Loadout"
+	controls.add_theme_font_size_override(&"font_size", 18)
+	controls.add_theme_color_override(&"font_color", Color(0.6, 0.6, 0.66))
+	controls.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(controls)
+
+	vbox.add_child(_make_spacer(48))
+
+	var begin := Button.new()
+	begin.text = "BEGIN RUN"
+	begin.custom_minimum_size = Vector2(240, 56)
+	begin.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	begin.add_theme_font_size_override(&"font_size", 26)
+	begin.pressed.connect(_begin_run)
+	vbox.add_child(begin)
+
+	add_child(_title_layer)
+	# Focus the button so keyboard (Enter/Space) and gamepad (ui_accept) start the run.
+	begin.grab_focus()
+
+
+## Returns a fixed-height invisible spacer Control for VBox layout.
+func _make_spacer(height: int) -> Control:
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, height)
+	return spacer
+
+
+## Dismisses the title card, unpauses the tree, and starts the run.
+## No-op if the title has already been dismissed (guards double-press).
+func _begin_run() -> void:
+	if _title_layer == null:
+		return
+	_title_layer.queue_free()
+	_title_layer = null
+	get_tree().paused = false
+	GameStateManager.start_run()
 
 
 # ── Private ───────────────────────────────────────────────────────────────────
