@@ -102,6 +102,21 @@ func _input(event: InputEvent) -> void:
 		if event.keycode == KEY_R:
 			Engine.time_scale = 1.0  # cancel slow-mo before reload
 			get_tree().reload_current_scene()
+		elif event.keycode == KEY_F1:
+			# DEBUG QA: toggle god mode (blocks ALL incoming damage) for full-loop playtest
+			HealthAndDamage._debug_god_mode = not HealthAndDamage._debug_god_mode
+		elif event.keycode == KEY_F2:
+			# DEBUG QA: instantly kill all enemies to advance wave/floor
+			HealthAndDamage.debug_kill_all_enemies()
+		elif event.keycode == KEY_F3:
+			# DEBUG QA: force-advance to next room in dungeon graph
+			var rtm: RoomTransitionManager = $RoomTransitionManager
+			var next_rooms: Array[int] = _dungeon_graph.get_outgoing(rtm.get_current_room_idx())
+			if next_rooms.is_empty():
+				# No outgoing edges = boss room completed, advance floor
+				GameStateManager.floor_completed.emit()
+			else:
+				rtm.request_transition(next_rooms[0])
 
 
 # ── Title screen ──────────────────────────────────────────────────────────────

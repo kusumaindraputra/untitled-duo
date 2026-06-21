@@ -87,6 +87,9 @@ var _fayde_current_hp: int = FAYDE_MAX_HP
 ## Whether Fayde is dead this run. Terminal until run_started.
 var _fayde_dead: bool = false
 
+## DEBUG QA ONLY — blocks all incoming damage to Fayde. Remove before ship.
+var _debug_god_mode: bool = false
+
 ## Whether a CONTACT i-frame window is currently active for Fayde.
 var _iframe_active: bool = false
 
@@ -180,6 +183,10 @@ func apply_damage(
 	source: GameEnums.DamageSource
 ) -> void:
 	var is_player: bool = target.is_in_group(&"player")
+
+	# DEBUG QA — block all damage to Fayde in god mode
+	if is_player and _debug_god_mode:
+		return
 
 	# Step 1a — Dash invincibility guard (Fayde + CONTACT only)
 	if is_player and source == GameEnums.DamageSource.CONTACT:
@@ -310,6 +317,18 @@ func apply_heal(target: Node, heal_amount: float) -> void:
 
 ## TEST SEAM ONLY — do not call from gameplay code.
 ##
+## DEBUG QA ONLY — instantly kills all living enemies and emits enemy_killed for each.
+## Allows the wave to complete so the QA run can progress through all floors.
+func debug_kill_all_enemies() -> void:
+	var ids: Array = _enemy_registry.keys()
+	for id: int in ids:
+		var rec: EnemyHPInstance = _enemy_registry[id]
+		if not rec.is_dead:
+			rec.is_dead = true
+			enemy_killed.emit(id, rec.type_id, rec.prana_affiliation)
+	_enemy_registry.clear()
+
+
 ## Immediately cancels the active i-frame window and resets the timer.
 ## No-op if no window is currently active.
 ## Required by AC-HD-07 and AC-HD-33 to test i-frame expiry without real time passage.
