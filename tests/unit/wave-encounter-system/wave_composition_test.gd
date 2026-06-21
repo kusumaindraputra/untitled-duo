@@ -123,3 +123,79 @@ func test_composition_uncapped_when_max_is_zero() -> void:
 	wm._build_wave_composition(0)
 	assert_int(wm._wave_composition.size()).is_greater(3)
 	_teardown_wm(wm)
+
+
+# ── min_counts: minimum 2 Clusters ───────────────────────────────────────────
+
+## GIVEN a pool config with min_counts = { 2: 2 } and guaranteed_types = [0] (no Cluster)
+## WHEN composition is built
+## THEN at least 2 entries have type_id == 2 (Cluster)
+func test_composition_min_counts_enforces_minimum_cluster_count() -> void:
+	var wm := _make_wm()
+	var cfg := EnemyPoolConfig.new()
+	cfg.threat_budget_min = 10
+	cfg.threat_budget_max = 10
+	cfg.threat_cost = { 0: 1, 2: 1 }
+	cfg.enemy_pool = [0, 2]
+	cfg.guaranteed_types = [0]
+	cfg.min_counts = { 2: 2 }
+	wm.enemy_pool_config = cfg
+	wm._build_wave_composition(0)
+	var cluster_count: int = 0
+	for entry: Dictionary in wm._wave_composition:
+		if int(entry["type_id"]) == 2:
+			cluster_count += 1
+	assert_int(cluster_count).is_greater_equal(2)
+	_teardown_wm(wm)
+
+
+## GIVEN min_counts = { 2: 2 } and guaranteed_types already includes type 2 once
+## WHEN composition is built
+## THEN still at least 2 Clusters (min_counts tops up, not doubles)
+func test_composition_min_counts_does_not_double_count_guaranteed() -> void:
+	var wm := _make_wm()
+	var cfg := EnemyPoolConfig.new()
+	cfg.threat_budget_min = 4
+	cfg.threat_budget_max = 4
+	cfg.threat_cost = { 0: 1, 2: 1 }
+	cfg.enemy_pool = [0, 2]
+	cfg.guaranteed_types = [0, 2]
+	cfg.min_counts = { 2: 2 }
+	wm.enemy_pool_config = cfg
+	wm._build_wave_composition(0)
+	var cluster_count: int = 0
+	for entry: Dictionary in wm._wave_composition:
+		if int(entry["type_id"]) == 2:
+			cluster_count += 1
+	assert_int(cluster_count).is_greater_equal(2)
+	_teardown_wm(wm)
+
+
+# ── Swarmer grouping ──────────────────────────────────────────────────────────
+
+## GIVEN a pool with both swarmer and non-swarmer types
+## WHEN composition is built
+## THEN all swarmer entries appear after all non-swarmer entries (no non-swarmer after first swarmer)
+func test_composition_swarmers_are_grouped_at_end() -> void:
+	var wm := _make_wm()
+	var cfg := EnemyPoolConfig.new()
+	cfg.threat_budget_min = 10
+	cfg.threat_budget_max = 10
+	cfg.threat_cost = { 0: 1, 1: 2, 2: 1 }
+	cfg.enemy_pool = [0, 1, 2]
+	cfg.guaranteed_types = [0, 1, 2]
+	cfg.min_counts = { 2: 2 }
+	wm.enemy_pool_config = cfg
+	wm._build_wave_composition(42)
+	# SWARMER archetype int value = 2 (GameEnums.EnemyArchetype.SWARMER)
+	var seen_swarmer := false
+	var non_swarmer_after_swarmer := false
+	for entry: Dictionary in wm._wave_composition:
+		var is_sw: bool = (int(entry.get("archetype", -1)) == 2)
+		if is_sw:
+			seen_swarmer = true
+		elif seen_swarmer:
+			non_swarmer_after_swarmer = true
+			break
+	assert_bool(non_swarmer_after_swarmer).is_false()
+	_teardown_wm(wm)

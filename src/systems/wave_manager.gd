@@ -284,6 +284,16 @@ func _build_wave_composition(seed: int = -1) -> void:
 	for type_id: int in cfg.guaranteed_types:
 		type_ids.append(type_id)
 		budget -= cfg.threat_cost.get(type_id, 1)
+	# Enforce min_counts — add extra copies beyond what guaranteed_types already placed.
+	for type_id: int in cfg.min_counts:
+		var min_count: int = int(cfg.min_counts[type_id])
+		var current_count: int = 0
+		for tid: int in type_ids:
+			if tid == type_id:
+				current_count += 1
+		for _j: int in range(max(0, min_count - current_count)):
+			type_ids.append(type_id)
+			budget -= cfg.threat_cost.get(type_id, 1)
 	while budget >= 1:
 		var affordable: Array[int] = []
 		for tid: int in cfg.enemy_pool:
@@ -294,21 +304,38 @@ func _build_wave_composition(seed: int = -1) -> void:
 		var pick: int = affordable[rng.randi_range(0, affordable.size() - 1)]
 		type_ids.append(pick)
 		budget -= cfg.threat_cost.get(pick, 1)
-	# Enemy count cap — trim excess pool-fill entries before shuffle.
-	# Guaranteed types are prepended first so they survive any trim.
+	# Enemy count cap — trim excess pool-fill entries before grouping.
+	# Guaranteed and min_count types are prepended first so they survive any trim.
 	if cfg.enemy_count_max > 0 and type_ids.size() > cfg.enemy_count_max:
 		type_ids.resize(cfg.enemy_count_max)
-	# Seeded Fisher-Yates — avoids first-type bias in spawn order.
-	for i: int in range(type_ids.size() - 1, 0, -1):
+	# Split into swarmer/non-swarmer groups. Swarmers go last so _spawn_wave()
+	# can assign them to the same marker for proximity spawning.
+	var non_swarmers: Array[int] = []
+	var swarmers: Array[int] = []
+	for tid: int in type_ids:
+		var et_check: EnemyType = EnemyCatalog.get_type(tid)
+		if et_check != null and et_check.archetype == GameEnums.EnemyArchetype.SWARMER:
+			swarmers.append(tid)
+		else:
+			non_swarmers.append(tid)
+	# Fisher-Yates shuffle on each group independently.
+	for i: int in range(non_swarmers.size() - 1, 0, -1):
 		var j: int = rng.randi_range(0, i)
-		var tmp: int = type_ids[i]
-		type_ids[i] = type_ids[j]
-		type_ids[j] = tmp
-	for type_id: int in type_ids:
+		var tmp: int = non_swarmers[i]
+		non_swarmers[i] = non_swarmers[j]
+		non_swarmers[j] = tmp
+	for i: int in range(swarmers.size() - 1, 0, -1):
+		var j: int = rng.randi_range(0, i)
+		var tmp: int = swarmers[i]
+		swarmers[i] = swarmers[j]
+		swarmers[j] = tmp
+	non_swarmers.append_array(swarmers)
+	for type_id: int in non_swarmers:
 		var et: EnemyType = EnemyCatalog.get_type(type_id)
 		var scene: PackedScene = et.scene if et != null else null
 		var base_scale: float = et.base_scale if et != null else 1.0
-		_wave_composition.append({ "type_id": type_id, "scene": scene, "base_scale": base_scale })
+		var archetype: int = et.archetype if et != null else GameEnums.EnemyArchetype.SEEKER
+		_wave_composition.append({ "type_id": type_id, "scene": scene, "base_scale": base_scale, "archetype": archetype })
 
 
 ## Returns the ordered array of spawn marker Node2Ds from spawn_points_container.
@@ -333,7 +360,10 @@ func _get_spawn_markers() -> Array[Node2D]:
 ## AC-WES-06: if markers run out, logs push_error, spawns up to marker count only.
 func _spawn_wave() -> void:
 	var markers: Array[Node2D] = _get_spawn_markers()
-	var spawn_idx: int = 0
+	var marker_idx: int = 0
+	var total_spawned: int = 0
+	var swarmer_base_pos: Vector2 = Vector2.ZERO
+	var swarmer_local_count: int = 0
 	for entry: Dictionary in _wave_composition:
 		if markers.is_empty():
 			push_error("WaveManager: no spawn markers — cannot spawn enemies")
@@ -342,16 +372,28 @@ func _spawn_wave() -> void:
 		if enemy_scene == null:
 			push_warning("WaveManager: null scene for type_id %d — skipping spawn" % entry["type_id"])
 			continue
+		var is_swarmer: bool = (int(entry.get("archetype", -1)) == GameEnums.EnemyArchetype.SWARMER)
+		var final_pos: Vector2
+		if is_swarmer:
+			if swarmer_local_count == 0:
+				swarmer_base_pos = markers[marker_idx % markers.size()].global_position
+				marker_idx += 1
+			var spread: Vector2 = Vector2(cos(swarmer_local_count * 2.4), sin(swarmer_local_count * 2.4)) * 8.0
+			final_pos = swarmer_base_pos + spread
+			swarmer_local_count += 1
+		else:
+			var base_pos: Vector2 = markers[marker_idx % markers.size()].global_position
+			var wrap_lap: int = marker_idx / markers.size()
+			# Cap jitter at 12 px — tile center is ≥14 px from its nearest wall edge,
+			# so enemies never spawn outside the walkable area regardless of direction.
+			var jitter: float = 12.0 if wrap_lap > 0 else 0.0
+			var spread: Vector2 = Vector2(cos(marker_idx * 2.4), sin(marker_idx * 2.4)) * jitter
+			final_pos = base_pos + spread
+			marker_idx += 1
 		var enemy: EnemyInstance = enemy_scene.instantiate() as EnemyInstance
 		HealthAndDamage.register_enemy(enemy, entry["type_id"])  # ADR-0014: BEFORE add_child
 		add_child(enemy)
-		var base_pos: Vector2 = markers[spawn_idx % markers.size()].global_position
-		var wrap_lap: int = spawn_idx / markers.size()
-		# Cap jitter at 12 px — tile center is ≥14 px from its nearest wall edge,
-		# so enemies never spawn outside the walkable area regardless of direction.
-		var jitter: float = 12.0 if wrap_lap > 0 else 0.0
-		var spread: Vector2 = Vector2(cos(spawn_idx * 2.4), sin(spawn_idx * 2.4)) * jitter
-		enemy.global_position = base_pos + spread
+		enemy.global_position = final_pos
 		enemy.init(entry["type_id"])
 		# Spawn VFX: pop-in scale tween (0→final_scale, BACK ease for slight overshoot).
 		# Boss enemies use base_scale > 1.0 from EnemyType so they spawn visually large.
@@ -367,8 +409,8 @@ func _spawn_wave() -> void:
 		tw.tween_callback(func() -> void:
 			if is_instance_valid(captured_enemy):
 				captured_enemy.set_physics_process(true))
-		spawn_idx += 1
-	_enemies_total = spawn_idx
+		total_spawned += 1
+	_enemies_total = total_spawned
 	_enemies_alive = _enemies_total
 	if _enemies_total == 0:
 		push_error("WaveManager: no enemies spawned — wave vacuously complete")
@@ -394,16 +436,30 @@ func _show_wave_preview() -> void:
 	var markers: Array[Node2D] = _get_spawn_markers()
 	if markers.is_empty():
 		return
-	var spawn_idx: int = 0
+	var marker_idx: int = 0
+	var swarmer_base_pos: Vector2 = Vector2.ZERO
+	var swarmer_local_count: int = 0
 	for entry: Dictionary in _wave_composition:
 		var enemy_scene: PackedScene = entry["scene"] as PackedScene
 		if enemy_scene == null:
-			spawn_idx += 1
+			marker_idx += 1
 			continue
-		var base_pos: Vector2 = markers[spawn_idx % markers.size()].global_position
-		var wrap_lap: int = spawn_idx / markers.size()
-		var jitter: float = 12.0 if wrap_lap > 0 else 0.0
-		var spread: Vector2 = Vector2(cos(spawn_idx * 2.4), sin(spawn_idx * 2.4)) * jitter
+		var is_swarmer: bool = (int(entry.get("archetype", -1)) == GameEnums.EnemyArchetype.SWARMER)
+		var final_pos: Vector2
+		if is_swarmer:
+			if swarmer_local_count == 0:
+				swarmer_base_pos = markers[marker_idx % markers.size()].global_position
+				marker_idx += 1
+			var spread: Vector2 = Vector2(cos(swarmer_local_count * 2.4), sin(swarmer_local_count * 2.4)) * 8.0
+			final_pos = swarmer_base_pos + spread
+			swarmer_local_count += 1
+		else:
+			var base_pos: Vector2 = markers[marker_idx % markers.size()].global_position
+			var wrap_lap: int = marker_idx / markers.size()
+			var jitter: float = 12.0 if wrap_lap > 0 else 0.0
+			var spread: Vector2 = Vector2(cos(marker_idx * 2.4), sin(marker_idx * 2.4)) * jitter
+			final_pos = base_pos + spread
+			marker_idx += 1
 		var enemy: EnemyInstance = enemy_scene.instantiate() as EnemyInstance
 		add_child(enemy)
 		# _ready() adds to "enemy" group — remove immediately so spell targeting and
@@ -421,7 +477,7 @@ func _show_wave_preview() -> void:
 		var preview_scale: float = entry.get("base_scale", 1.0)
 		enemy.scale = Vector2(preview_scale, preview_scale)
 		enemy.modulate.a = 0.5
-		enemy.global_position = base_pos + spread
+		enemy.global_position = final_pos
 		# Name label above the enemy so the player knows which type is spawning where.
 		var et: EnemyType = EnemyCatalog.get_type(entry["type_id"])
 		if et != null:
@@ -434,7 +490,6 @@ func _show_wave_preview() -> void:
 			lbl.modulate = Color(et.debug_color.r, et.debug_color.g, et.debug_color.b, 1.0)
 			enemy.add_child(lbl)
 		_preview_nodes.append(enemy)
-		spawn_idx += 1
 
 
 ## Frees all preview nodes created by _show_wave_preview().

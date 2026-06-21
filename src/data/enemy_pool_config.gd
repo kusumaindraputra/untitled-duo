@@ -23,6 +23,11 @@ extends Resource
 ## Type IDs guaranteed to appear at least once (subtracted from budget first).
 @export var guaranteed_types: Array[int] = [0, 2]
 
+## Minimum spawn count per type. Key = type_id (int), Value = minimum count (int).
+## Applied after guaranteed_types; adds extra copies if current count is below minimum.
+## Budget is reduced for each extra copy added.
+@export var min_counts: Dictionary = {}
+
 ## Hard cap on the number of enemies in a single wave. 0 = uncapped (default).
 ## Applied after pool-fill, before spawn — guaranteed types are never trimmed.
 @export var enemy_count_max: int = 0
