@@ -41,18 +41,14 @@
 ##   - _select_primary_target(): physics ray for real game (headless-incompatible)
 ##
 ## Story 003 deviations (approved 2026-06-06):
-##   Step 9: uses int comparison (enemy_affiliation == pt) instead of
-##     PranaCatalog.get_type(pt).damage_class — DamageClass enum values are 1:1
-##     with primary_type integers. PranaCatalog requires a live Autoload (breaks
-##     headless tests). Flagged for EA&W migration at MVP per GDD note.
+##   Elemental strong/weakness (affiliation match multiplier) was cut from scope
+##     2026-06-21. All hits are element-neutral; no per-element damage multiplier
+##     is applied. Enemy prana_affiliation survives for death-burst VFX color only.
 ##   apply_status(): NOT called in _fire_attack at FP scope. GDD Rule 8 specifies
 ##     field-write stubs only (target.set()) at FP — SEM is not wired to enemies
 ##     at FP. apply_status() wired at MVP per ADR-0011.
 ##   apply_damage() element param: GameEnums.DamageClass.NONE (not the spell's
-##     actual element). SC&E owns the elemental multiplier at Step 9 to avoid
-##     double-application by H&D's future elemental pipeline (ADR-0007). Once
-##     H&D's elemental multiplier is implemented at MVP, Step 9 must be removed
-##     and the correct DamageClass passed here instead.
+##     actual element). Damage delivery is element-neutral by design.
 ##
 ## Registration: Autoload #9 in project.godot (ADR-0002).
 ## No class_name — Godot 4 rejects class_name matching the Autoload node name.
@@ -91,15 +87,6 @@ signal cast_started(spell_effect: SpellEffect)
 ## [param window_duration] is COMBO_CONTINUATION_WINDOW (2.0s). SpellVFX uses this to
 ## spawn a depleting ring arc around Fayde — Gamefeel Pass 4 #6.
 signal combo_window_opened(window_duration: float)
-
-## Emitted when a hit triggers the elemental affiliation 2× bonus (Step 9).
-## CombatHUD uses this to spawn a "WEAK 2×" popup above the target.
-signal affiliation_bonus_hit(target: Node, prana_type_id: int)
-
-## Emitted when a hit triggers elemental resistance 0.5× penalty (Step 9).
-## CombatHUD spawns a muted "RESIST ½×" popup so the player can read both
-## directions of the matchup, not just the reward (Gamefeel Audit Issue 2.4).
-signal affiliation_resist_hit(target: Node, prana_type_id: int)
 
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -150,12 +137,6 @@ const STORMGOLD_SNIPER_RANGE: float = 220.0
 ## Player must sprint from sniper range into this zone during the Stun window.
 ## Deferred: requires Enemy AI _is_attacking flag; currently inert at FP scope.
 const STORMGOLD_FOLLOW_THROUGH_MAX_DIST: float = 100.0
-
-## Damage multiplier when spell element matches enemy prana affiliation (Step 9).
-const AFFILIATION_MATCH_MULTIPLIER: float = 2.0
-
-## Damage multiplier when spell element does NOT match enemy prana affiliation (Step 9).
-const AFFILIATION_RESIST_MULTIPLIER: float = 0.5
 
 ## Number of arc segments used to approximate the cone for intersect_shape queries.
 const CONE_ARC_SEGMENTS: int = 8
@@ -453,26 +434,10 @@ func _fire_attack(attack_index: int) -> void:
 		if ash_crit > 0.0 and _rng.randf() < ash_crit:
 			raw *= 1.50
 
-	# Step 9 — Elemental affiliation [FP inline — remove at MVP when EA&W implements this].
-	# Deviation: uses int comparison (enemy_affiliation == pt) instead of
-	# PranaCatalog.get_type(pt).damage_class. DamageClass enum values (FIRE=0,
-	# SHADOW=1, LIGHTNING=2, ICE=3, NATURE=4) are 1:1 with primary_type integers.
-	# PranaCatalog requires a live Autoload unavailable in headless tests.
-	# Approved 2026-06-06; see file header for full note.
-	var raw_affiliation: Variant = target.get(&"prana_affiliation")
-	var enemy_affiliation: int = raw_affiliation if raw_affiliation != null else GameEnums.DamageClass.NONE
-	if pt != GameEnums.DamageClass.NONE and enemy_affiliation != GameEnums.DamageClass.NONE:
-		if enemy_affiliation == pt:
-			raw *= AFFILIATION_MATCH_MULTIPLIER
-			affiliation_bonus_hit.emit(target, pt)
-		else:
-			raw *= AFFILIATION_RESIST_MULTIPLIER
-			affiliation_resist_hit.emit(target, pt)
-
-	# Step 10 — deliver damage through Health & Damage (ADR-0007).
-	# element = DamageClass.NONE: SC&E owns the elemental multiplier above (Step 9)
-	# to prevent double-application once H&D's elemental pipeline lands at MVP.
-	# See file header deviation note for the migration plan.
+	# Step 9 — deliver damage through Health & Damage (ADR-0007).
+	# Damage is element-neutral: the elemental strong/weakness (affiliation match)
+	# system was cut from scope (2026-06-21), so no per-element multiplier is applied
+	# here. prana_affiliation remains on enemies for death-burst VFX coloring only.
 	_health_and_damage.apply_damage(target, raw, GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
 
 	# Emit spell_hit_element for CombatHUD damage-number coloring (GDD Rule 1, B-1).

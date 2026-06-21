@@ -2,7 +2,7 @@
 ##
 ## Coverage:
 ##   AC-WES-INT-01: Full cast flow — apply_damage fires; cast_hit_started emitted once with 0.20 lock
-##   AC-WES-INT-02: Elemental affiliation 2× end-to-end — Ashfire vs FIRE enemy → 50.0 damage
+##   AC-WES-INT-02: Element-neutral damage end-to-end — Ashfire T1 → 25.0 (no affiliation multiplier)
 ##   AC-WES-INT-03: preparation_started resets SC&E — _state=IDLE, _current_spell_effect=null, _combo_index=0
 ##
 ## Setup pattern:
@@ -155,17 +155,18 @@ func test_full_cast_flow_apply_damage_and_cast_hit_started_fire() -> void:
 	_teardown_sce(sce)
 
 
-# ── AC-WES-INT-02: Elemental affiliation 2× end-to-end ───────────────────────
+# ── AC-WES-INT-02: element-neutral damage end-to-end ─────────────────────────
 
-## GIVEN MockEnemy(FIRE); Ashfire T1 SpellEffect (base_damage_modifier=1.25)
+## GIVEN MockEnemy (prana_affiliation irrelevant); Ashfire T1 SpellEffect (base_damage_modifier=1.25)
 ## WHEN full phase sequence → _trigger_cast()
-## THEN apply_damage called once; raw_damage ≈ 50.0 (BASE=20 × 1.25 × 1.00 × 2.0); tolerance ±0.01
-func test_elemental_affiliation_doubles_damage_ashfire_vs_fire_enemy() -> void:
+## THEN apply_damage called once; raw_damage ≈ 25.0 (BASE=20 × 1.25 × 1.00); no affiliation multiplier
+## (Elemental strong/weakness removed 2026-06-21 — damage is element-neutral.)
+func test_damage_is_element_neutral_ashfire_t1() -> void:
 	var sce: Node = _make_sce()
 	var mock_hd := MockHD.new()
 	var mock_sem := MockSEM.new()
 	var mock_enemy := MockEnemy.new()
-	mock_enemy.prana_affiliation = GameEnums.DamageClass.FIRE
+	mock_enemy.prana_affiliation = GameEnums.DamageClass.FIRE  # would have matched Ashfire pre-removal
 
 	sce._health_and_damage = mock_hd
 	sce._status_effects = mock_sem
@@ -175,7 +176,7 @@ func test_elemental_affiliation_doubles_damage_ashfire_vs_fire_enemy() -> void:
 	sce._trigger_cast()
 
 	assert_int(mock_hd.call_count).is_equal(1)
-	assert_float(mock_hd.last_raw_damage).is_equal_approx(50.0, 0.01)
+	assert_float(mock_hd.last_raw_damage).is_equal_approx(25.0, 0.01)
 
 	mock_enemy.free()
 	_teardown_sce(sce)

@@ -1,5 +1,12 @@
 # Difficulty Rebalance Implementation Plan
 
+> **⚠ Partially superseded (2026-06-21):** The enemy stat buffs (Section 1) shipped and
+> remain in effect. The **elemental resistance** half of this plan (0.5× non-matching,
+> 2.0× matching — "Step 9 branch") was later **removed entirely** along with the whole
+> elemental strong/weakness system. Damage is now element-neutral. The
+> `elemental_resistance_test.gd` / `resist_popup_test.gd` files described below were
+> deleted. Treat the resistance sections here as historical only.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make combat genuinely threatening by buffing enemy HP/damage and adding 0.5× elemental resistance for non-matching Prana.

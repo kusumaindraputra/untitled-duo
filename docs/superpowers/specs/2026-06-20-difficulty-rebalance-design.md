@@ -1,8 +1,14 @@
 # Difficulty Rebalance — Design Spec
 
 **Date:** 2026-06-20
-**Status:** Approved
+**Status:** Approved (Section 1 shipped) — **Section 2 SUPERSEDED 2026-06-21**
 **Author:** Kusuma Putra + Claude Code Game Studios
+
+> **⚠ Superseded note (2026-06-21):** Section 2 (Elemental Resistance — the 2.0× match /
+> 0.5× mismatch multiplier) was **removed from the game entirely**. The whole elemental
+> strong/weakness system was cut; damage is now element-neutral. Section 1 (enemy stat
+> rebalance) remains in effect. The "Drifter affiliation = FIRE/Ashfire" example below
+> was also incorrect — Drifter is Shadow/Voidblue.
 
 ---
 

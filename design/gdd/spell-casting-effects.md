@@ -7,11 +7,11 @@
 
 ## Overview
 
-Spell Casting & Effects is the execution layer that translates Fayde's Prana grid arrangement into combat damage. When `combat_started` fires, it receives the resolved `SpellEffect` payload from Combination Resolution via `combo_resolved` — containing the primary type, tier, non-primary modifiers, adjacency effects, and wave-scoped stat bonuses — and holds it for the wave. When the player presses the cast action, it fires the pre-arranged attack chain: a sequence of 1–3 attacks (determined by `primary_tier`) with a `combo_continuation_window` between each press. For each hit, SC&E resolves the full damage chain — primary type's `base_damage_modifier`, tier attack scalar, stat property bonuses, non-primary modifier bonuses, adjacency effect modifiers, and elemental affiliation multiplier (2× if the spell element matches the target's affiliation, 1× otherwise) — then calls `apply_damage(target, base_damage, element, DamageSource.DIRECT)` on Health & Damage. SC&E also acts as the wave-scoped stat broker: Status Effects and Health & Damage query it for relevant stat delta values from `aggregate_stat_bonus` rather than reading the `SpellEffect` payload directly.
+Spell Casting & Effects is the execution layer that translates Fayde's Prana grid arrangement into combat damage. When `combat_started` fires, it receives the resolved `SpellEffect` payload from Combination Resolution via `combo_resolved` — containing the primary type, tier, non-primary modifiers, adjacency effects, and wave-scoped stat bonuses — and holds it for the wave. When the player presses the cast action, it fires the pre-arranged attack chain: a sequence of 1–3 attacks (determined by `primary_tier`) with a `combo_continuation_window` between each press. For each hit, SC&E resolves the full damage chain — primary type's `base_damage_modifier`, tier attack scalar, stat property bonuses, non-primary modifier bonuses, and adjacency effect modifiers — then calls `apply_damage(target, base_damage, element, DamageSource.DIRECT)` on Health & Damage. (The elemental strong/weakness affiliation multiplier was cut from scope 2026-06-21 — damage is element-neutral.) SC&E also acts as the wave-scoped stat broker: Status Effects and Health & Damage query it for relevant stat delta values from `aggregate_stat_bonus` rather than reading the `SpellEffect` payload directly.
 
 At First Playable scope, the system is simplified — damage resolution and the full CR modifier chain are implemented; status effect tick systems are stubs (`apply_status(target, status, duration)`, with tick timing owned by the future Status Effects GDD); and visual effects are minimal. All gameplay positions and hit detection operate in 2D screen-space cartesian coordinates per **ADR-0001** — the isometric projection is visual only.
 
-From the player's perspective, SC&E is the payoff moment of every Preparation phase: the spell Fayde built for 5–15 seconds fires in a chain, and the Prana arrangement either exploits the wave's elemental affiliation or it doesn't. The system delivers no judgment — only the results of the decision the player already made.
+From the player's perspective, SC&E is the payoff moment of every Preparation phase: the spell Fayde built for 5–15 seconds fires in a chain, exactly as arranged. The system delivers no judgment — only the results of the decision the player already made. *(Note: the elemental strong/weakness payoff described below was cut 2026-06-21; the prep-phase payoff now rests on positioning, tier/combo arrangement, and status setup rather than affiliation matching.)*
 
 ## Player Fantasy
 
@@ -19,7 +19,7 @@ From the player's perspective, SC&E is the payoff moment of every Preparation ph
 
 SC&E is where the Preparation phase proves its worth. For 5–15 seconds before combat, the player built a plan — Deepfrost in the centre to root the Charger, Ashfire neighbours to burn through the pack the moment it's frozen. Spell Casting & Effects is the system that fires that plan.
 
-The primary fantasy is **confirmation of correct reading**: the chain resolves exactly as arranged, the elemental affiliation bonus doubles the damage on the enemy the player correctly identified, and the wave clears on the terms the player set. The satisfaction belongs entirely to the player. SC&E provided the mechanism; the player made the decision.
+The primary fantasy is **confirmation of correct reading**: the chain resolves exactly as arranged and the wave clears on the terms the player set. *(The elemental-affiliation damage bonus that previously rewarded correct enemy identification was cut 2026-06-21.)* The satisfaction belongs entirely to the player. SC&E provided the mechanism; the player made the decision.
 
 The secondary fantasy is **legible failure**. A misread arrangement — wrong primary type against a wave the player miscounted, non-primary modifiers that don't trigger because the fill count was too low — fires with full clarity. The player sees the numbers, sees the chain, and understands exactly which part of the arrangement was wrong. This is Pillar 3's contract: *surprise is a feature; confusion is a bug.* SC&E must never hide why a spell underperformed. The chain it fires is the chain the player built.
 
@@ -116,16 +116,18 @@ Step 7  IF target is Blinded:
 Step 8  IF this is the first chain attack AND ASH_CRIT applies:
             ash_crit = aggregate_stat_bonus.get("ASH_CRIT", 0.0)
             IF randf() < ash_crit: raw_damage *= 1.50
-Step 9  [Elemental affiliation — FP inline, remove at MVP]
-            spell_element = PranaCatalog.get_type(spell_effect.primary_type).damage_class
-            IF spell_element != DamageClass.NONE AND target.prana_affiliation == spell_element:
-                raw_damage *= 2.0
+Step 9  [REMOVED 2026-06-21 — elemental strong/weakness cut from scope]
+            (no-op: damage is element-neutral; no affiliation multiplier applied)
 Step 10 health_and_damage.apply_damage(target, raw_damage, null, DamageSource.DIRECT)
 ```
 
 `tier_attack_modifier` is looked up from the primary type's tier definition table (Formulas section) using `_combo_index` and `primary_tier`. `randf()` calls use `_rng: RandomNumberGenerator` injected via `@export` for test determinism.
 
-> **⚠ EA&W migration note**: At MVP, remove Step 9 and pass `DamageClass` as the `element` parameter to `apply_damage`. H&D queries EA&W for the multiplier. SC&E stops owning the affiliation check.
+> **⚠ Elemental affiliation removed (2026-06-21)**: The strong/weakness affiliation
+> multiplier (formerly Step 9: 2× on match, 0.5× on mismatch) was cut. All hits are
+> element-neutral. `target.prana_affiliation` survives only for death-burst VFX color
+> (Enemy Instance) and Prana drop typing — it no longer affects damage. The
+> "Elemental Affiliation & Weakness" system (#10) is removed from the systems index.
 
 **8. Status effect application.** After each hit, SC&E calls `apply_status(target, status_id, effective_duration, spell_base_damage)` for the primary type's `base_status` and any active non-primary status effects. For BURN, `spell_base_damage = raw_damage` (Step 4 value, before elemental multiplier) — this drives Burn tick damage in StatusEffectsManager. For all other statuses, `spell_base_damage = 0.0`. At FP scope:
 
@@ -188,17 +190,17 @@ Effective durations: Freeze = `2.0 + aggregate_stat_bonus.get("FROST_FREEZE_DUR"
 | **Game State & Scene Flow** | Listens for `combat_started` and `preparation_started` | Game State → SC&E |
 | **Player Controller** | Reads `get_world_position()` and `get_facing_direction()` as cast origin/direction; emits `cast_hit_started(duration)` for brief movement lock | SC&E reads + emits → PC |
 | **Health & Damage** | Calls `apply_damage(target, raw_damage, null, DamageSource.DIRECT)` per hit; calls `apply_heal(fayde, amplified_amount)` for Verdant effects; calls `grant_barrier(fayde, barrier_hp)` for Verdant T2 SELF shield pulse and ADJ_BARRIER_HIT; listens for `enemy_killed` signal (dynamic — ADJ_BARRIER_HIT only) | SC&E → H&D (calls + conditional listen) |
-| **Enemy instances** | Reads `global_position` and `prana_affiliation` for targeting and affiliation check; writes `status_*` fields for FP status stubs | SC&E reads/writes enemy nodes |
+| **Enemy instances** | Reads `global_position` for targeting; writes `status_*` fields for FP status stubs (`prana_affiliation` no longer read — affiliation multiplier removed 2026-06-21) | SC&E reads/writes enemy nodes |
 | **Audio System** | Calls `play_event(&"sfx_cast_[type_name]")` on each hit; `play_event(&"sfx_cast_miss")` on no-target cast | SC&E → Audio System |
 | **Combat HUD** | Exposes `get_cached_spell_effect() → SpellEffect` (read-only); emits `chain_index_changed(combo_index, combo_attack_count)` and `spell_hit_element(target: Node, prana_type_id: int)` after each `apply_damage` call (for damage-number coloring per Prana type) | SC&E → Combat HUD (emit); Combat HUD → SC&E (read) |
 | **Status Effects (MVP)** | Calls `SpellCastingEffects.get_stat_bonus(stat_id)` to query stat bonuses during tick application | Status Effects → SC&E (query) |
-| **Elemental Affiliation & Weakness (MVP)** | At MVP: SC&E passes `element` to H&D; H&D queries EA&W. At FP: SC&E applies 2× inline (Step 9 in damage chain) | SC&E → EA&W (at MVP) |
+| ~~**Elemental Affiliation & Weakness**~~ | **REMOVED 2026-06-21** — strong/weakness multiplier cut from scope. SC&E delivers element-neutral damage. | — |
 
 > **⚠ Cross-GDD change flags:**
 > 1. **Player Controller GDD** must add: `cast_hit_started(duration: float)` signal listener + CAST_LOCKED movement sub-state
 > 2. **Health & Damage GDD** must add: SC&E stat broker reference in Interactions table (`VER_HEAL_FLAT` and status-duration stat bonuses brokered through `SC&E.get_stat_bonus()`)
 > 3. ~~Combination Resolution GDD — Ashfire attack identity revision required~~ **RESOLVED** — CR Approved 2026-05-29 with melee dance / `AREA_AROUND_FAYDE` identity.
-> 4. **Elemental Affiliation & Weakness** is removed from the FP design order; SC&E owns the 2× check at FP scope
+> 4. ~~**Elemental Affiliation & Weakness** — SC&E owns the 2× check at FP scope~~ **System cut entirely 2026-06-21** — damage is element-neutral; no affiliation multiplier anywhere.
 > 5. **Health & Damage GDD** must add: `grant_barrier(target: Node, barrier_hp: int) → void` method — called by SC&E for Verdant T2 SELF shield pulse and ADJ_BARRIER_HIT adjacency effect (barrier_hp = Formula 8). H&D owns the barrier state and the per-hit absorption logic.
 
 ## Formulas
@@ -249,7 +251,7 @@ SC&E resolves each chain attack via `ATTACK_DATA[primary_type][primary_tier][att
 - T1 neutral: `round(20 × 1.25 × 1.00)` = **25**
 - T2 total neutral: 25 + `round(20 × 1.25 × 1.25)` = 25 + **31** = **56**
 - T3 eruption neutral per enemy: `round(20 × 1.25 × 1.50)` = **38**
-- T1 vs Ashfire-affiliated enemy (2× match): `round(25 × 2.0)` = **50 → clamp to Charger max HP 35** — one-shot
+- (Elemental affiliation 2× example removed 2026-06-21 — all damage is element-neutral.)
 
 ---
 
@@ -349,10 +351,7 @@ if _combo_index == 0:
     if ash_crit > 0.0 and _rng.randf() < ash_crit:
         raw_damage *= 1.50
 
-# Step 9 — Elemental affiliation [FP inline — remove at MVP]
-var spell_element = PranaCatalog.get_type(primary_type).damage_class
-if spell_element != DamageClass.NONE and target.prana_affiliation == spell_element:
-    raw_damage *= 2.0
+# Step 9 — REMOVED 2026-06-21 (elemental strong/weakness cut; damage element-neutral)
 
 # Step 10
 health_and_damage.apply_damage(target, raw_damage, null, DamageSource.DIRECT)
@@ -503,8 +502,8 @@ SC&E computes these before each `apply_status()` call:
 | 2 | **Player Controller (#5)** | `get_world_position()`, `get_facing_direction()` as cast origin/direction | Hard |
 | 3 | **Health & Damage (#6)** | `apply_damage(target, raw_damage, null, DamageSource.DIRECT)`, `apply_heal(fayde, amount)`, `grant_barrier(fayde, barrier_hp)` (Verdant T2 + ADJ_BARRIER_HIT); H&D also emits `enemy_killed` which SC&E subscribes to dynamically when ADJ_BARRIER_HIT is active | Hard |
 | 4 | **Game State & Scene Flow (#27)** | `combat_started`, `preparation_started` signals | Hard |
-| 5 | **Prana Data (#4)** | `PranaCatalog.get_type(id).damage_class` for elemental affiliation inline check | Hard (FP) |
-| 6 | **Enemy instances** | `global_position`, `prana_affiliation`, `status_*` fields, `_is_attacking` flag | Hard |
+| 5 | **Prana Data (#4)** | `PranaCatalog.get_type(id).damage_class` for damage-number coloring (affiliation check removed 2026-06-21) | Hard (FP) |
+| 6 | **Enemy instances** | `global_position`, `status_*` fields, `_is_attacking` flag (`prana_affiliation` no longer read) | Hard |
 | 7 | **Audio System (#29)** | `play_event(&"sfx_cast_[type_name]")`, `play_event(&"sfx_cast_miss")` | Soft (graceful no-op if absent) |
 | 8 | **Prana Grid (#1)** | Indirect — SC&E receives `SpellEffect` from CR which reads `committed_fragments` from PranaGrid. PranaGrid must be in the scene (via `prana_grid` group) before `combat_started` for CR to resolve the payload. SC&E has no direct PranaGrid API call. | Indirect (via CR) |
 
@@ -512,7 +511,7 @@ SC&E computes these before each `apply_status()` call:
 
 | System | What it needs | Bidirectional contract |
 |--------|--------------|----------------------|
-| **Elemental Affiliation & Weakness (#10)** | At MVP: SC&E passes element parameter to H&D; EA&W defines the multiplier interface. At FP: EA&W is removed from scope — SC&E inlines the 2× check | EA&W GDD must note SC&E as the caller at MVP |
+| ~~**Elemental Affiliation & Weakness (#10)**~~ | **REMOVED 2026-06-21** — strong/weakness multiplier cut from scope. No system consumes an affiliation multiplier from SC&E. | — |
 | **Status Effects (#7, MVP)** | `SpellCastingEffects.get_stat_bonus(stat_id: StringName) → float` — queries SC&E for status-modifying stat bonuses during tick application | Status Effects GDD must list SC&E as its stat source |
 | **Combat HUD (#22)** | `get_cached_spell_effect() → SpellEffect` (read-only); `chain_index_changed(combo_index, combo_attack_count)` signal for chain progress display | Combat HUD GDD must list SC&E as source for chain display data |
 | **Wave / Encounter System (#12)** | Indirectly — SC&E's `apply_damage` calls trigger `enemy_killed` in H&D, which Wave System listens to. No direct SC&E dependency. | H&D is the intermediary |
@@ -706,10 +705,10 @@ GIVEN Deepfrost T1 SpellEffect (`base_damage_modifier = 0.80`, `tier_attack_modi
 WHEN cast fires,
 THEN `apply_damage` is called with `raw_damage = round(20 × 0.80 × 1.00 × 1.25) = 20`.
 
-**[U] AC-SC-15** — Formula 3 Step 9: Elemental affiliation doubles damage
-GIVEN Ashfire T1 SpellEffect (base_damage_modifier = 1.25, tier_attack_modifier = 1.00), no stat bonuses, no status conditions, `target.prana_affiliation == DamageClass.FIRE` (matches Ashfire element),
-WHEN cast fires at index 0,
-THEN `apply_damage` is called with `raw_damage = round(25.0 × 2.0) = 50`.
+**[U] AC-SC-15** — ~~Formula 3 Step 9: Elemental affiliation doubles damage~~ **REMOVED 2026-06-21**
+The elemental strong/weakness multiplier was cut from scope. Damage is element-neutral
+regardless of `target.prana_affiliation`. Covered by the integration regression
+`test_damage_is_element_neutral_ashfire_t1` (Ashfire T1 → 25.0, no multiplier).
 
 **[U] AC-SC-16** — Formula 4: Stormgold T3 fork = step-4 × 0.60; Steps 5–9 excluded
 GIVEN Stormgold T3 SpellEffect (base_damage_modifier = 1.15, no stat bonuses), two distinct enemies present,

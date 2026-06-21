@@ -170,9 +170,16 @@ Fayde's path through the layers is unique.
 *Design test: If a feature makes two runs feel the same, cut it.*
 
 ### Pillar 2: Power is Earned Through Understanding
-Prana mastery comes from understanding elemental interactions and spatial
-combinations — not from grinding levels or stacking stats. A Cipher who
+Prana mastery comes from understanding combination interactions and spatial
+arrangement — not from grinding levels or stacking stats. A Cipher who
 understands the system will always outperform one who does not.
+
+> **⚠ Pillar tension (2026-06-21):** This pillar originally leaned partly on *elemental
+> interactions* — matching Prana to enemy weaknesses. That strong/weakness mechanic was
+> removed. The pillar now rests entirely on **combination resolution** (tier/adjacency/
+> non-primary modifiers) and **positioning/status setup**. Confirm during playtest that
+> these alone carry enough "earned understanding," or design a replacement for the
+> affiliation-reading depth that was cut.
 
 *Design test: If there is an obviously dominant strategy that requires no thought, rebalance until the answer is "it depends."*
 
@@ -246,7 +253,14 @@ A player who collects them gains everything emotionally.
 Every room runs as two distinct phases:
 
 **Preparation Phase (5–15 sec):**
-Enemies are visible in the arena in their starting positions → Fayde reads enemy types, their elemental affinities, and obstacle positions → drag Prana types into the 3×3 grid to exploit weaknesses → confirm and begin combat.
+Enemies are visible in the arena in their starting positions → Fayde reads enemy types, their archetype behaviors, and obstacle positions → drag Prana types into the 3×3 grid to assemble the combo/tier/status setup that best handles the wave → confirm and begin combat.
+
+> **Design change (2026-06-21):** The elemental strong/weakness mechanic (matching a
+> Prana element to an enemy's affiliation for bonus damage) was **removed**. Preparation
+> stakes now rest on combo/tier arrangement, status setup (Freeze/Burn etc.), and
+> positioning — not affiliation matching. See the note on Pillar 2 below; this is a
+> deliberate simplification that needs a follow-up pass on how the prep phase stays
+> meaningful. Enemy `prana_affiliation` survives only as death-VFX color and drop typing.
 
 **Combat Phase (15–30 sec):**
 Move and dodge → cast the pre-arranged Prana combination → reposition around
@@ -372,10 +386,10 @@ fight) intrinsically satisfying, and the mystery of Fayde's identity creates
 genuine narrative pull even within a single run.
 
 **Required for MVP:**
-1. Preparation Phase: enemies visible in arena with elemental affinity indicators
+1. Preparation Phase: enemies visible in arena with archetype/threat read (elemental-affinity *weakness* indicators removed 2026-06-21; affiliation color is cosmetic + drop-typing)
 2. Drag-and-drop Prana grid (3×3) with center-slot combo detection
 3. 5 Prana types with at least 5 meaningful combinations
-4. 3 robot enemy types with distinct archetypes and elemental affinities
+4. 4 robot enemy types with distinct archetypes (Drifter/Charger/Cluster/Rifter); affiliation is cosmetic/drop-only
 5. Basic obstacle interaction (at least 1 Prana type that pierces, 1 that doesn't)
 6. 1 dungeon layer with procedurally arranged hand-crafted rooms
 7. 1 boss encounter — triggers the plot twist revelation
