@@ -222,6 +222,7 @@ func _on_cast_hit_started(_lock_duration: float) -> void:
 	tween.tween_property(player as CanvasItem, "modulate", tint, 0.0)
 	tween.tween_property(player as CanvasItem, "modulate", Color.WHITE, _lock_duration)
 	_audio_play(&"sfx_fayde_cast_locked")
+	_spawn_swing_vfx()
 
 
 ## Tracks chain state so _on_spell_hit_element can detect and amplify the final attack.
@@ -590,6 +591,33 @@ func _free_range_cone() -> void:
 		_cone_indicator = null
 
 
+## Spawns a per-Prana swing VFX at Fayde's current position and facing.
+## Called on every cast_hit_started (every attack press). The node is top_level
+## and self-frees — no tracking needed. No-op during death cinematic or if player absent.
+func _spawn_swing_vfx() -> void:
+	if _dying or get_tree() == null:
+		return
+	var player: Node = get_tree().get_first_node_in_group(&"player")
+	if player == null or not player is Node2D:
+		return
+	var se: SpellEffect = SpellCastingEffects.get_cached_spell_effect()
+	if se == null:
+		return
+	var type_data: PranaType = PranaCatalog.get_type(se.primary_type)
+	if type_data == null:
+		return
+	var facing: Vector2 = Vector2.RIGHT
+	if player.has_method(&"get_facing_direction"):
+		facing = player.get_facing_direction()
+	var vfx := _SwingVFX.new()
+	vfx.prana_type = se.primary_type
+	vfx.swing_color = type_data.color
+	vfx.facing = facing
+	vfx.top_level = true
+	vfx.global_position = (player as Node2D).global_position
+	get_tree().root.add_child(vfx)
+
+
 ## Overbrightens [param ci] to white then returns it to normal over 0.1 s.
 ## Called for enemy nodes — reuses any existing modulate without conflict because
 ## the tween immediately sets Color.WHITE as its final state.
@@ -771,3 +799,141 @@ class _ConeIndicator extends Node2D:
 		draw_arc(Vector2.ZERO, cast_range,
 				base_angle - half_angle, base_angle + half_angle,
 				SEGMENTS, Color(cone_color, OUTLINE_ALPHA), OUTLINE_WIDTH, true)
+
+
+# ── Inner class: per-Prana swing / whiff VFX ─────────────────────────────────
+
+## Short-lived attack swing drawn at Fayde's position on every cast press.
+## Appears on both hits and misses — on hits it underlays the ImpactVFX burst.
+## Each Prana type has a distinct shape reflecting its semantic identity.
+## Captured [member facing] at spawn time (no live tracking).
+class _SwingVFX extends Node2D:
+	## DamageClass int (FIRE=0, SHADOW=1, LIGHTNING=2, ICE=3, NATURE=4).
+	var prana_type: int = 0
+	## Prana type color (from PranaCatalog).
+	var swing_color: Color = Color.WHITE
+	## Facing direction captured at spawn — fixed for the lifetime of this node.
+	var facing: Vector2 = Vector2.RIGHT
+	const DURATION_US: int = 200_000  # 0.20 s
+
+	var _start_us: int = 0
+
+	func _ready() -> void:
+		process_mode = PROCESS_MODE_ALWAYS
+		z_index = 80  # above cone (50), below combo ring (100) and impact (150)
+		_start_us = Time.get_ticks_usec()
+
+	func _process(_delta: float) -> void:
+		if Time.get_ticks_usec() - _start_us >= DURATION_US:
+			queue_free()
+		else:
+			queue_redraw()
+
+	func _draw() -> void:
+		var p: float = clampf(float(Time.get_ticks_usec() - _start_us) / float(DURATION_US), 0.0, 1.0)
+		match prana_type:
+			0: _draw_ashfire(p)
+			1: _draw_voidblue(p)
+			2: _draw_stormgold(p)
+			3: _draw_deepfrost(p)
+			4: _draw_verdant(p)
+
+	## Ashfire — wide sweeping arc (130°), thick, like a fire whip.
+	func _draw_ashfire(p: float) -> void:
+		var alpha: float = 1.0 - p
+		var span: float = deg_to_rad(130.0)
+		var base_angle: float = facing.angle()
+		# Outer arc: thick, overbright.
+		draw_arc(Vector2.ZERO, 65.0, base_angle - span * 0.5, base_angle + span * 0.5,
+				20, Color(swing_color * 1.6, alpha * 0.9), 4.0, true)
+		# Inner thinner trace at 60% radius, narrower span.
+		draw_arc(Vector2.ZERO, 40.0, base_angle - span * 0.4, base_angle + span * 0.4,
+				14, Color(swing_color, alpha * 0.5), 2.0, true)
+
+	## Voidblue — 3 parallel lunge lines stabbing forward, precise and silent.
+	func _draw_voidblue(p: float) -> void:
+		var alpha: float = 1.0 - p
+		# Lines grow outward quickly then hold.
+		var length: float = lerpf(10.0, 80.0, minf(p * 2.5, 1.0))
+		var dir: Vector2 = facing.normalized()
+		var perp: Vector2 = dir.orthogonal()
+		# Center line (brightest), two flanking lines (dimmer).
+		draw_line(Vector2.ZERO, dir * length,
+				Color(swing_color * 1.4, alpha * 1.0), 2.5, true)
+		draw_line(perp * 8.0, perp * 8.0 + dir * length * 0.85,
+				Color(swing_color, alpha * 0.55), 1.5, true)
+		draw_line(perp * -8.0, perp * -8.0 + dir * length * 0.85,
+				Color(swing_color, alpha * 0.55), 1.5, true)
+
+	## Stormgold — straight bolt forward, bright gold, snap fade.
+	func _draw_stormgold(p: float) -> void:
+		# Fades faster than other types — lightning is instantaneous.
+		var alpha: float = clampf(1.0 - p * 1.8, 0.0, 1.0)
+		var dir: Vector2 = facing.normalized()
+		# Main bolt.
+		draw_line(Vector2.ZERO, dir * 100.0,
+				Color(swing_color * 2.2, alpha), 3.5, true)
+		# Secondary thinner bolt (short inner glow).
+		draw_line(dir * 8.0, dir * 75.0,
+				Color(swing_color, alpha * 0.6), 1.5, true)
+
+	## Deepfrost — 5 crystal shards fanning 90°, geometric and cold.
+	func _draw_deepfrost(p: float) -> void:
+		var alpha: float = 1.0 - p
+		var span: float = deg_to_rad(90.0)
+		var base_angle: float = facing.angle()
+		var shard_len: float = lerpf(18.0, 58.0, minf(p * 2.0, 1.0))
+		for i: int in range(5):
+			var t: float = float(i) / 4.0
+			var angle: float = base_angle - span * 0.5 + t * span
+			var shard_dir: Vector2 = Vector2.from_angle(angle)
+			var tip: Vector2 = shard_dir * shard_len
+			var perp_s: Vector2 = shard_dir.orthogonal() * 4.5
+			# Brightness falls off toward outer shards.
+			var brightness: float = 1.0 - absf(t - 0.5) * 0.55
+			# Main shard line.
+			draw_line(Vector2.ZERO, tip,
+					Color(swing_color * 1.5, alpha * brightness), 2.5, true)
+			# Crystal facet edges.
+			draw_line(perp_s * 0.4, tip,
+					Color(swing_color, alpha * brightness * 0.45), 1.0, true)
+			draw_line(-perp_s * 0.4, tip,
+					Color(swing_color, alpha * brightness * 0.45), 1.0, true)
+
+	## Verdant — 2 organic vine curves sweeping from the flanks to forward.
+	func _draw_verdant(p: float) -> void:
+		var alpha: float = 1.0 - p
+		var dir: Vector2 = facing.normalized()
+		var perp: Vector2 = dir.orthogonal()
+		for side: int in range(2):
+			var s: float = 1.0 if side == 0 else -1.0
+			# Cubic bezier control points: start at flank, arc to forward tip.
+			var cp0: Vector2 = perp * s * 32.0
+			var cp1: Vector2 = perp * s * 20.0 + dir * 28.0
+			var cp2: Vector2 = perp * s * 5.0  + dir * 58.0
+			var cp3: Vector2 = dir * 72.0
+			var pts := PackedVector2Array()
+			for i: int in range(9):
+				var t: float = float(i) / 8.0
+				var q0: Vector2 = cp0.lerp(cp1, t)
+				var q1: Vector2 = cp1.lerp(cp2, t)
+				var q2: Vector2 = cp2.lerp(cp3, t)
+				var r0: Vector2 = q0.lerp(q1, t)
+				var r1: Vector2 = q1.lerp(q2, t)
+				pts.append(r0.lerp(r1, t))
+			draw_polyline(pts, Color(swing_color * 1.4, alpha * 0.9), 2.5, true)
+			# Outer tendril — wider arc, thinner, dimmer.
+			var op0: Vector2 = perp * s * 48.0
+			var op1: Vector2 = perp * s * 32.0 + dir * 18.0
+			var op2: Vector2 = perp * s * 10.0 + dir * 52.0
+			var op3: Vector2 = dir * 68.0 + perp * s * 6.0
+			var pts2 := PackedVector2Array()
+			for i: int in range(9):
+				var t: float = float(i) / 8.0
+				var q0: Vector2 = op0.lerp(op1, t)
+				var q1: Vector2 = op1.lerp(op2, t)
+				var q2: Vector2 = op2.lerp(op3, t)
+				var r0: Vector2 = q0.lerp(q1, t)
+				var r1: Vector2 = q1.lerp(q2, t)
+				pts2.append(r0.lerp(r1, t))
+			draw_polyline(pts2, Color(swing_color, alpha * 0.5), 1.5, true)
