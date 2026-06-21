@@ -339,17 +339,45 @@ func _build_floor_from_cells(cells: Array[Vector2i]) -> void:
 	_tile_map.clear()
 	if _tile_map.tile_set.has_source(_FLOOR_SOURCE_ID):
 		_tile_map.tile_set.remove_source(_FLOOR_SOURCE_ID)
-	var tex: Texture2D = load(_FLOOR_TILE_PATH) as Texture2D
-	if tex == null:
-		push_error("IsometricRoom: floor tile not found at %s" % _FLOOR_TILE_PATH)
-		return
 	var atlas := TileSetAtlasSource.new()
-	atlas.texture = tex
+	atlas.texture = _get_floor_texture()
 	atlas.texture_region_size = Vector2i(64, 32)
 	atlas.create_tile(_FLOOR_ATLAS_COORD)
 	_tile_map.tile_set.add_source(atlas, _FLOOR_SOURCE_ID)
 	for cell: Vector2i in cells:
 		_tile_map.set_cell(cell, _FLOOR_SOURCE_ID, _FLOOR_ATLAS_COORD)
+
+
+## Returns the floor tile texture for the TileSetAtlasSource.
+## Falls back to a runtime procedural placeholder diamond when no art tile exists
+## at _FLOOR_TILE_PATH (art-pipeline migration: clean slate before the new CC0
+## floor tile is dropped in). Once a real tile exists at that path, it wins.
+func _get_floor_texture() -> Texture2D:
+	var tex: Texture2D = load(_FLOOR_TILE_PATH) as Texture2D
+	if tex != null:
+		return tex
+	return _make_placeholder_floor_texture()
+
+
+## Builds a 64×32 isometric diamond placeholder tile (muted slate) at runtime.
+## Used only while _FLOOR_TILE_PATH is absent — keeps the arena floor visible
+## instead of erroring out to a black void.
+func _make_placeholder_floor_texture() -> Texture2D:
+	const W: int = 64
+	const H: int = 32
+	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var fill := Color(0.20, 0.22, 0.27, 1.0)
+	var edge := Color(0.30, 0.33, 0.40, 1.0)
+	var hw: float = W / 2.0
+	var hh: float = H / 2.0
+	for y: int in range(H):
+		for x: int in range(W):
+			# Diamond test centred on the tile: |dx|/hw + |dy|/hh <= 1.
+			var d: float = abs(x - hw + 0.5) / hw + abs(y - hh + 0.5) / hh
+			if d <= 1.0:
+				img.set_pixel(x, y, edge if d > 0.85 else fill)
+	return ImageTexture.create_from_image(img)
 
 
 ## Builds the floor tiles from room_template.tile_cells instead of the default diamond.
@@ -463,12 +491,8 @@ func _build_floor() -> void:
 	# Always reload — removes stale baked source from .tscn so the runtime path wins.
 	if _tile_map.tile_set.has_source(_FLOOR_SOURCE_ID):
 		_tile_map.tile_set.remove_source(_FLOOR_SOURCE_ID)
-	var tex: Texture2D = load(_FLOOR_TILE_PATH) as Texture2D
-	if tex == null:
-		push_error("IsometricRoom: floor tile not found at %s" % _FLOOR_TILE_PATH)
-		return
 	var atlas := TileSetAtlasSource.new()
-	atlas.texture = tex
+	atlas.texture = _get_floor_texture()
 	atlas.texture_region_size = Vector2i(64, 32)
 	atlas.create_tile(_FLOOR_ATLAS_COORD)
 	_tile_map.tile_set.add_source(atlas, _FLOOR_SOURCE_ID)

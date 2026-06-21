@@ -1,18 +1,11 @@
-[gd_scene load_steps=6 format=3 uid="uid://b_isometric_room"]
+[gd_scene load_steps=4 format=3 uid="uid://b_isometric_room"]
 
 [ext_resource type="Script" path="res://src/scenes/isometric_room.gd" id="1_IsometricRoom"]
 [ext_resource type="PackedScene" uid="uid://b_prana_grid" path="res://src/ui/PranaGrid.tscn" id="2_pg"]
-[ext_resource type="Texture2D" path="res://assets/art/tiles/iso_floor_stone2.png" id="3_tile"]
-
-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_floor"]
-texture = ExtResource("3_tile")
-texture_region_size = Vector2i(64, 32)
-0:0/0 = 0
 
 [sub_resource type="TileSet" id="TileSet_iso"]
 tile_shape = 1
 tile_size = Vector2i(64, 32)
-sources/0 = SubResource("TileSetAtlasSource_floor")
 
 [node name="IsometricRoom" type="Node2D"]
 y_sort_enabled = true
