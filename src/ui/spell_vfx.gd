@@ -113,6 +113,10 @@ var _heal_flash_tween: Tween = null
 ## Freed on combo expiry, new window open, preparation_started, or player_died.
 var _combo_ring: _ComboRing = null
 
+## Attack range cone indicator; null when not in combat.
+## Spawned on cast_started, freed on preparation_started or player_died.
+var _cone_indicator: _ConeIndicator = null
+
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
@@ -196,6 +200,7 @@ func _on_cast_started(spell_effect: SpellEffect) -> void:
 	tween.tween_property(player as CanvasItem, "modulate", pulse_color, 0.05)
 	tween.tween_property(player as CanvasItem, "modulate", Color.WHITE, 0.12)
 	_audio_play(&"sfx_spell_cast")
+	_show_range_cone(spell_effect)
 
 
 ## Zero-allocation hot path (ADR-0015): looks up pool node by shape,
@@ -259,6 +264,7 @@ func _on_chain_index_changed(combo_idx: int, combo_count: int) -> void:
 ## Frees the combo ring so it does not persist across waves.
 func _on_preparation_started(_idx: int, _rem: int) -> void:
 	_free_combo_ring()
+	_free_range_cone()
 
 
 ## Handles combo_window_opened from SpellCastingEffects.
@@ -493,6 +499,7 @@ func _on_player_died() -> void:
 		get_tree().root.add_child(ring)
 	_audio_play(&"sfx_fayde_death")
 	_free_combo_ring()
+	_free_range_cone()
 
 
 ## Counts down the death cinematic timer and restores normal time on expiry.
@@ -552,6 +559,58 @@ class _DeathRing extends Node2D:
 func _audio_play(event_name: StringName) -> void:
 	if _audio != null and _audio.has_method(&"has_event") and _audio.has_event(event_name):
 		_audio.play_event(event_name)
+
+
+# ── Range cone indicator ──────────────────────────────────────────────────────
+
+## Spawns (or replaces) the attack range cone for the current spell.
+## Range and angle come directly from SpellCastingEffects constants so the VFX
+## always matches the actual targeting cone used in _select_primary_target().
+func _show_range_cone(spell_effect: SpellEffect) -> void:
+	if get_tree() == null:
+		return
+	var player: Node = get_tree().get_first_node_in_group(&"player")
+	if player == null or not player is Node2D:
+		return
+	_free_range_cone()
+	var pt: int = spell_effect.primary_type if spell_effect != null else -1
+	var cast_range: float
+	var cone_angle: float
+	match pt:
+		0, 4:  # Ashfire / Verdant — pure melee
+			cast_range = SpellCastingEffects.MELEE_RANGE
+			cone_angle = SpellCastingEffects.CONE_ANGLE_MELEE
+		1, 3:  # Voidblue / Deepfrost — semi-melee
+			cast_range = SpellCastingEffects.SEMI_MELEE_RANGE
+			cone_angle = SpellCastingEffects.CONE_ANGLE_SEMI_MELEE
+		2:  # Stormgold — sniper
+			cast_range = SpellCastingEffects.STORMGOLD_SNIPER_RANGE
+			cone_angle = SpellCastingEffects.CONE_ANGLE_SNIPER
+		_:
+			cast_range = 150.0
+			cone_angle = SpellCastingEffects.CONE_ANGLE_RANGED
+	var color: Color = Color.WHITE
+	if spell_effect != null:
+		var type_data: PranaType = PranaCatalog.get_type(spell_effect.primary_type)
+		if type_data != null:
+			color = type_data.color
+	var cone := _ConeIndicator.new()
+	cone.cone_color = color
+	cone.cast_range = cast_range
+	cone.half_angle = deg_to_rad(cone_angle * 0.5)
+	cone.fayde_node = player as Node2D
+	cone.top_level = true
+	cone.global_position = (player as Node2D).global_position
+	get_tree().root.add_child(cone)
+	_cone_indicator = cone
+
+
+## Frees the active range cone. Idempotent.
+func _free_range_cone() -> void:
+	if _cone_indicator != null:
+		if is_instance_valid(_cone_indicator):
+			_cone_indicator.queue_free()
+		_cone_indicator = null
 
 
 # ── Pool ──────────────────────────────────────────────────────────────────────
@@ -1011,3 +1070,56 @@ class _HitVFX extends Node2D:
 			draw_polygon(PackedVector2Array([dir * outer, perp * half_w,
 					dir * inner, -perp * half_w]),
 					PackedColorArray([color]))
+
+
+# ── Inner class: attack range cone indicator ──────────────────────────────────
+
+## Persistent attack range cone shown during combat.
+## Follows Fayde (top_level + global_position update), draws transparent cone
+## whose angle and radius match the actual SC&E cone query for the current Prana type.
+## Color = Prana type color. Spawned on cast_started; freed on preparation_started / player_died.
+class _ConeIndicator extends Node2D:
+	## Prana type color for the cone outline and fill.
+	var cone_color: Color = Color.WHITE
+	## Attack range in pixels — matches SC&E MELEE/SEMI_MELEE/STORMGOLD constants.
+	var cast_range: float = 80.0
+	## Half-angle of the cone in radians (cone_angle_deg * 0.5 converted to rad).
+	var half_angle: float = PI / 4.0
+	## Reference to the player node. Updated each frame for position + facing.
+	var fayde_node: Node2D = null
+
+	const SEGMENTS: int = 12
+	const FILL_ALPHA: float = 0.08
+	const OUTLINE_ALPHA: float = 0.28
+	const OUTLINE_WIDTH: float = 1.5
+
+	func _ready() -> void:
+		process_mode = PROCESS_MODE_ALWAYS
+		z_index = 50
+
+	func _process(_delta: float) -> void:
+		if is_instance_valid(fayde_node):
+			global_position = fayde_node.global_position
+		queue_redraw()
+
+	func _draw() -> void:
+		var facing: Vector2 = Vector2.RIGHT
+		if is_instance_valid(fayde_node) and fayde_node.has_method(&"get_facing_direction"):
+			facing = fayde_node.get_facing_direction()
+		var base_angle: float = facing.angle()
+		# Build cone polygon: origin tip + arc points.
+		var pts := PackedVector2Array()
+		pts.append(Vector2.ZERO)
+		for i: int in range(SEGMENTS + 1):
+			var t: float = float(i) / float(SEGMENTS)
+			var a: float = base_angle - half_angle + t * half_angle * 2.0
+			pts.append(Vector2.from_angle(a) * cast_range)
+		# Filled transparent wedge.
+		draw_polygon(pts, PackedColorArray([Color(cone_color, FILL_ALPHA)]))
+		# Side edges (origin to arc extremes).
+		draw_line(Vector2.ZERO, pts[1], Color(cone_color, OUTLINE_ALPHA), OUTLINE_WIDTH, true)
+		draw_line(Vector2.ZERO, pts[pts.size() - 1], Color(cone_color, OUTLINE_ALPHA), OUTLINE_WIDTH, true)
+		# Arc edge.
+		draw_arc(Vector2.ZERO, cast_range,
+				base_angle - half_angle, base_angle + half_angle,
+				SEGMENTS, Color(cone_color, OUTLINE_ALPHA), OUTLINE_WIDTH, true)
