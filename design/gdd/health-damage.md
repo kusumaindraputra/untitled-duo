@@ -7,11 +7,11 @@
 
 ## Overview
 
-Health & Damage is the combat resource layer for The Last Cipher. It tracks two distinct HP pools: **Fayde's health** (a single shared pool initialized to 100 HP at run start) and **each enemy instance's health** (initialized from Enemy Data `base_hp` at spawn). When damage is applied to either pool, this system calculates the final damage value — accounting for the incoming base damage and any elemental modifiers from Elemental Affiliation & Weakness — subtracts it from the target's current HP, and emits the resulting state as signals. No other system stores HP values; all HP state lives here.
+Health & Damage is the combat resource layer for The Last Cipher. It tracks two distinct HP pools: **Fayde's health** (a single shared pool initialized to 100 HP at run start) and **each enemy instance's health** (initialized from Enemy Data `base_hp` at spawn). When damage is applied to either pool, this system calculates the final damage value from the incoming base damage (`damage_multiplier` is always 1.0 since the Elemental Affiliation & Weakness system was removed 2026-06-21 — damage is element-neutral), subtracts it from the target's current HP, and emits the resulting state as signals. No other system stores HP values; all HP state lives here.
 
 The system manages four events that other systems depend on: **damage taken** (HP decreased, Combat HUD updates, hit flash triggered), **death** (HP reaches zero or below, death signal emitted to Game State & Scene Flow and Audio System), **healing** (HP increased by Verdant Prana regen, capped at max HP), and **enemy killed** (enemy HP reaches zero, Prana Drop / Loot and Wave / Encounter System are notified). Damage-over-time effects (Burn from Ashfire) are applied as ticks by Status Effects, which calls back into Health & Damage for each tick application — Health & Damage does not own tick timing, only the application of damage values.
 
-On the player side, Health & Damage is the system that makes the roguelike stakes tangible: Fayde has one HP pool per run, healing is available only through deliberate grid investment in Verdant Prana, and death is permanent for the run. The scarcity of HP recovery is player-chosen — a player who slots Verdant trades offensive grid space for a modest heal (6 HP per cast, intentionally isolated-weak — see Tuning Knobs). The weight of surviving is highest when the player chose not to slot Verdant, and sharpest when they did and 6 HP wasn't enough. On the enemy side, it's what makes elemental affiliation matter — a Charger with 35 HP hit by an Ashfire spell with a 1.25× modifier takes more than a neutral-affiliation hit would.
+On the player side, Health & Damage is the system that makes the roguelike stakes tangible: Fayde has one HP pool per run, healing is available only through deliberate grid investment in Verdant Prana, and death is permanent for the run. The scarcity of HP recovery is player-chosen — a player who slots Verdant trades offensive grid space for a modest heal (6 HP per cast, intentionally isolated-weak — see Tuning Knobs). The weight of surviving is highest when the player chose not to slot Verdant, and sharpest when they did and 6 HP wasn't enough. On the enemy side, per-type `base_damage_modifier` (e.g. Ashfire's 1.25×) still differentiates Prana damage, but enemy affiliation no longer grants a bonus — the strong/weakness system was removed 2026-06-21.
 
 ## Player Fantasy
 
@@ -34,9 +34,9 @@ On the enemy side, the fantasy is *feedback legibility*: the Charger should feel
       - `DamageSource` enum: `CONTACT` (Enemy AI hit), `DOT` (Status Effects tick), `DIRECT` (anything else not subject to i-frames)
    1a. **Dash invincibility guard (Fayde + CONTACT only)**: If `target == fayde AND source == DamageSource.CONTACT`: query `PlayerController.is_invincible() -> bool` (accessed via `get_tree().get_first_node_in_group(&"player")` or an equivalent typed reference). If `true`, return immediately — no damage, no signal emitted. Covers Fayde's dash i-frame window (`DASHING` state in Player Controller) — distinct from Rule 3's post-hit i-frame window, which H&D manages internally via its own flag.
    2. **Dead-target guard**: If target is in `DEAD` state (`current_hp <= 0`), return immediately — no processing, no signal. *(Uses `<= 0` to match the state table definition of DEAD; the clamp in step 7 guarantees `current_hp` never goes negative in normal execution, but `<= 0` is the authoritative guard.)*
-   2b. **I-frame check (Fayde + CONTACT only)**: If `_iframe_active AND source == DamageSource.CONTACT AND target == fayde`: return immediately — no damage, no signal emitted. *(Distinct from the dead-target guard: target is alive here; i-frame is a separate INVINCIBLE state, not the DEAD state. Checked before elemental multiplier lookup to avoid unnecessary EA&W calls on blocked hits.)*
-   3. If `element != null` → request `damage_multiplier: float` from Elemental Affiliation & Weakness
-   4. If `element == null` → `damage_multiplier = 1.0`
+   2b. **I-frame check (Fayde + CONTACT only)**: If `_iframe_active AND source == DamageSource.CONTACT AND target == fayde`: return immediately — no damage, no signal emitted. *(Distinct from the dead-target guard: target is alive here; i-frame is a separate INVINCIBLE state, not the DEAD state.)*
+   3. `damage_multiplier = 1.0` always. *(The Elemental Affiliation & Weakness hook was removed 2026-06-21 — damage is element-neutral. The `element` parameter is retained for signal/coloring purposes but does not change the multiplier.)*
+   4. *(formerly the `element == null` branch — now folded into step 3.)*
    5. `final_damage = clamp(roundi(base_damage × damage_multiplier), 0, target.max_hp)` *(rounded to nearest int via `roundi()` — round-half-away-from-zero; clamped so final_damage never exceeds max_hp — prevents misleadingly large overkill values in signals)*
    6. **First-run mercy** (Fayde + CONTACT only): If `target == fayde AND source == CONTACT AND first_run_active`: `final_damage = clamp(roundi(float(final_damage) × FIRST_RUN_DAMAGE_MULTIPLIER), 0, target.max_hp)`. `first_run_active` is a flag set by Tutorial/Onboarding (on `run_started`) for the player's first lifetime run. Default multiplier is 0.5 (halves contact damage on the first run). See Tuning Knobs. *(This is H&D's contract; Tutorial/Onboarding GDD owns the lifecycle of the `first_run_active` flag.)*
    7. `target.current_hp = clamp(target.current_hp - final_damage, 0, target.max_hp)`
@@ -128,7 +128,7 @@ Enemies have no i-frames. All damage applies immediately.
 | System | Interface | Direction |
 |--------|-----------|-----------|
 | **Enemy Data** | Reads `base_hp`, `base_damage` per enemy type at spawn; reads `prana_affiliation` for inclusion in `enemy_killed` signal | Enemy Data → H&D |
-| **Elemental Affiliation & Weakness** | Called with `(attacker_element, target_affiliation)` → returns `damage_multiplier: float` | H&D calls EA&W |
+| ~~**Elemental Affiliation & Weakness**~~ | **REMOVED 2026-06-21** — `damage_multiplier` is always 1.0; H&D makes no EA&W call | — |
 | **Status Effects** | Calls `apply_damage(target, tick_damage, null, DamageSource.DOT)` and `apply_heal()` for each DoT/HoT tick | Status Effects → H&D |
 | **Spell Casting & Effects** | Calls `apply_damage(enemy_target, spell_base_damage, spell_element, DamageSource.DIRECT)` on hit | Spell Casting → H&D |
 | **Enemy AI** | Calls `apply_damage(fayde, enemy.base_damage, null, DamageSource.CONTACT)` on hit contact | Enemy AI → H&D |
@@ -158,29 +158,25 @@ Full call signature: `apply_damage(target, base_damage: float, element: DamageCl
 | Symbol | Type | Range | Description |
 |--------|------|-------|-------------|
 | `base_damage` | float | 0.0 – unbounded | Raw damage before modifiers — enemy `base_damage` or spell base damage (after Prana Data's `base_damage_modifier` chain) |
-| `damage_multiplier` | float | 0.0 – unbounded | Elemental multiplier from Elemental Affiliation & Weakness; `1.0` if `element == null` |
+| `damage_multiplier` | float | 1.0 (fixed) | Always `1.0` since 2026-06-21 (Elemental Affiliation & Weakness removed). Retained in the formula as a no-op for forward compatibility. |
 | `source` | DamageSource | CONTACT / DOT / DIRECT | Determines i-frame interaction; `CONTACT` checks i-frame window; `DOT` and `DIRECT` bypass it |
 | `target.max_hp` | int | 80 – 150 (Fayde); 1 – unbounded (enemies) | Per-target HP ceiling |
 | `final_damage` | int | 0 – `target.max_hp` | Final value applied to `target.current_hp`; emitted in signal only if `> 0` |
 
-**Worked examples (current catalog):**
+**Worked examples (current catalog, post 2026-06-20 rebalance — all element-neutral):**
 
 | Scenario | `base_damage` | `damage_multiplier` | `final_damage` |
 |----------|---------------|---------------------|----------------|
-| Cluster hit, neutral | 4.0 | 1.0 | 4 |
-| Charger hit, neutral | 20.0 | 1.0 | 20 |
-| Charger hit, Fire-weak enemy | 20.0 | 1.25 | 25 |
-| Voidblue spell, neutral enemy | 15.0 | 0.90 | 14 |
+| Cluster hit on Fayde | 10.0 | 1.0 | 10 |
+| Charger hit on Fayde | 30.0 | 1.0 | 30 |
+| Drifter hit on Fayde | 14.0 | 1.0 | 14 |
+| Ashfire T1 spell on enemy (`20 × 1.25` base chain) | 25.0 | 1.0 | 25 |
 | DoT tick (no element) | 3.0 | 1.0 | 3 |
-| Charger hit, first run (mercy 0.5) | 20.0 | 1.0 | 10 |
+| Charger hit, first run (mercy 0.5) | 30.0 | 1.0 | 15 |
 
-*Note: `damage_multiplier = 1.0` always applies when `element == null` (DoT ticks, neutral hits). The Elemental Affiliation & Weakness system owns all non-1.0 multipliers.*
+*Note: `damage_multiplier` is always `1.0`. Per-type damage differences come from Prana Data's `base_damage_modifier` (baked into `base_damage` before this formula), not from any elemental weakness multiplier.*
 
-**One-shot threshold flag**: A Charger (35 HP) can be one-shot only if `final_damage ≥ 35`, which requires `base_damage × damage_multiplier ≥ 35.0`.
-
-⚠️ **One-shot precision note**: GDScript's `roundi()` uses round-half-away-from-zero. `roundi(34.5) = 35` — a product of exactly 34.5 DOES one-shot a 35 HP Charger. However, `roundi(34.4) = 34`, leaving 1 HP. The safe threshold for a guaranteed one-shot is `base_damage × damage_multiplier ≥ 34.5`. Any value below that risks leaving 1 HP due to rounding.
-
-⚠️ **Compound chain note for Elemental Affiliation designers**: The `base_damage` entering this formula is already `raw_spell_power × base_damage_modifier` from Prana Data. The 1.75× figure above assumes no `base_damage_modifier` chain. For Ashfire (modifier = 1.25), the effective elemental multiplier threshold for one-shotting a Charger drops to `35.0 / (20 × 1.25) = 1.40×` — well within the plausible weakness range. Elemental Affiliation & Weakness GDD must account for per-type compound thresholds; do not use the 1.75× figure as a universal baseline.
+**Charger survivability**: Charger now has 90 HP (was 35). An Ashfire T1 hit (25) no longer one-shots it — it takes ~3–4 hits, consistent with the rebalance intent that enemies survive 1–2 well-placed hits and threaten back.
 
 ---
 
@@ -229,7 +225,7 @@ Cannot overheal. `heal_amount` is always a positive float (from Prana Data regen
 | # | System | Relationship | Direction | Notes |
 |---|--------|-------------|-----------|-------|
 | 1 | **Enemy Data** | Reads `base_hp` at spawn; reads `base_damage` at hit; reads `prana_affiliation` for inclusion in `enemy_killed` signal | Enemy Data → H&D | H&D does not own enemy stat definitions — only the HP instance and the signal payload |
-| 2 | **Elemental Affiliation & Weakness** | Called with `(attacker_element, target_affiliation)` → returns `damage_multiplier: float` | H&D calls EA&W | EA&W is the authority on all multiplier values; H&D receives and applies them |
+| 2 | ~~**Elemental Affiliation & Weakness**~~ | **REMOVED 2026-06-21** — strong/weakness system cut. `damage_multiplier` is hardcoded 1.0; H&D makes no EA&W call. | — | The `element` parameter is retained for signals/coloring but never alters damage. |
 | 3 | **Status Effects** | Calls `apply_damage(target, tick_damage, null, DamageSource.DOT)` and `apply_heal(target, tick_heal)` for each DoT/HoT tick | Status Effects → H&D | H&D does not know about tick timing or Burn/Regen duration — Status Effects owns that |
 | 4 | **Spell Casting & Effects** | Calls `apply_damage(enemy_target, spell_base_damage, spell_element, DamageSource.DIRECT)` on spell hit | Spell Casting → H&D | Spell Casting resolves hit detection; H&D resolves damage value and HP update |
 | 5 | **Enemy AI** | Calls `apply_damage(fayde, enemy.base_damage, null, DamageSource.CONTACT)` on contact hit; **must enforce a minimum inter-contact interval (`ENEMY_MIN_CONTACT_INTERVAL`, suggest 0.3s) for contact-damage enemies — H&D's i-frame protection against Cluster swarms relies on this; violation renders i-frame protection near-zero in dense swarms** | Enemy AI → H&D | Triggers exactly one call per contact event (not per frame); must not free enemy node until at least one frame after `enemy_killed` is emitted |

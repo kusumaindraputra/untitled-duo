@@ -15,8 +15,9 @@ systems: a **Prana/spell spine** (grid placement → combination resolution → 
 a **combat layer** (player movement, health/damage, status effects, enemy AI), an
 **encounter layer** (waves, wave-peek preview, obstacles, dungeon generation), and a
 **run/meta layer** (run lifecycle, loot, meta-progression). The core loop is a
-two-phase room cycle — Preparation (peek the wave → arrange the grid to exploit enemy
-elemental affiliation) and Combat (move, dash, cast the pre-arranged combo). The game
+two-phase room cycle — Preparation (peek the wave → arrange the grid into the best
+combo/tier/status setup for the enemies present) and Combat (move, dash, cast the
+pre-arranged combo). *(Elemental strong/weakness was removed 2026-06-21.)* The game
 pillars — *Every Run Tells a Different Story*, *Power is Earned Through Understanding*,
 *Chaos Has Consequences*, *Depth Over Breadth*, *Memory Returns* — make the
 system set intentionally **deep, not wide**: a small Prana catalog with rich combination
@@ -37,7 +38,7 @@ interactions, never a large shallow one.
 | 7 | Status Effects *(simplified)* | Gameplay | MVP | Approved | design/gdd/status-effects.md | Health & Damage |
 | 8 | Enemy AI *(simplified)* | Gameplay | First Playable | Approved | design/gdd/enemy-ai.md | Enemy Data, Player Controller, Health & Damage |
 | 9 | Enemy Data | Data | First Playable | Approved | design/gdd/enemy-data.md | — |
-| 10 | Elemental Affiliation & Weakness *(simplified)* | Gameplay | First Playable | Inlined | — (2× check inlined into SC&E at FP; extract to own GDD at MVP when resist/immune/UI needed) | Enemy Data, Prana Data, Spell Casting & Effects, Health & Damage |
+| 10 | ~~Elemental Affiliation & Weakness~~ | Gameplay | — | **REMOVED 2026-06-21** | Strong/weakness affiliation multiplier cut from scope. Damage is element-neutral. `prana_affiliation` survives only for death-burst VFX color and Prana drop typing. | — |
 | 11 | Boss Encounter | Gameplay | Vertical Slice | Not Started | — | Enemy AI, Spell Casting & Effects, Health & Damage, Wave / Encounter System |
 | 12 | Wave / Encounter System *(simplified)* | Gameplay | First Playable | Approved | design/gdd/wave-encounter-system.md | Enemy AI, Enemy Data, Health & Damage, Game State & Scene Flow |
 | 14 | Level Generation *(room obstacles + enemy composition)* | Gameplay | First Playable | Draft | design/gdd/level-generation.md | IsometricRoom, Wave / Encounter System, Enemy AI, Enemy Data |
@@ -63,7 +64,6 @@ interactions, never a large shallow one.
 > **Simplified scope notes**:
 > - **Spell Casting & Effects** (FP): hanya deal damage + efek visual minimal; status effects, VFX penuh, dan juice menyusul di MVP/VS
 > - **Enemy AI** (FP): move toward player + attack in range saja; pola kompleks dan ability menyusul di MVP
-> - **Elemental Affiliation** (FP): hanya 2× damage jika Prana match affiliation; resist/immune dan UI feedback lengkap menyusul di MVP
 > - **Wave / Encounter System** (FP): 1 arena hardcoded, 1–3 wave, 3–5 musuh per wave; tidak ada procedural, tidak ada loot
 > - **Status Effects** (MVP): 1–2 efek saja (misal: Freeze, Burn); tidak perlu full status matrix
 > - **Run Management** (MVP): mati = restart saja; tidak ada loot tracking, tidak ada meta-currency
@@ -76,7 +76,7 @@ interactions, never a large shallow one.
 | Category | Description | Systems in The Last Cipher |
 |----------|-------------|---------------------|
 | **Core** | Foundation systems everything depends on | Game State & Scene Flow, Player Controller |
-| **Gameplay** | The systems that make the game fun | Prana Grid, Combination Resolution, Spell Casting & Effects, Health & Damage, Status Effects, Enemy AI, Elemental Affiliation & Weakness, Boss Encounter, Wave / Encounter System, Obstacle System, Procedural Dungeon Generation, Game Feel / Juice |
+| **Gameplay** | The systems that make the game fun | Prana Grid, Combination Resolution, Spell Casting & Effects, Health & Damage, Status Effects, Enemy AI, Boss Encounter, Wave / Encounter System, Obstacle System, Procedural Dungeon Generation, Game Feel / Juice *(Elemental Affiliation & Weakness removed 2026-06-21)* |
 | **Data** | Pure data definitions consumed by gameplay systems | Prana Data, Enemy Data |
 | **Economy** | Resource creation and consumption | Prana Drop / Loot |
 | **Progression** | How the player grows over time | Run Management, Loadout Slots, Meta-Progression, Difficulty Tiers |
@@ -92,7 +92,7 @@ interactions, never a large shallow one.
 
 | Tier | Definition | Target Milestone | Systems | Design Urgency |
 |------|------------|------------------|---------|----------------|
-| **First Playable** | Minimum to test the core hypothesis in a single hardcoded arena: is the two-phase Preparation + Combat loop fun? Does elemental affiliation create meaningful decisions? | First internal playtest | 12 | Design NOW |
+| **First Playable** | Minimum to test the core hypothesis in a single hardcoded arena: is the two-phase Preparation + Combat loop fun? Does combination/positioning create meaningful decisions? | First internal playtest | 11 | Design NOW |
 | **MVP** | Shippable to players (itch.io / Steam demo): adds run lifecycle, main menu, and basic status effects above First Playable | Public demo / itch.io | 3 | Design AFTER FP |
 | **Vertical Slice** | One complete polished area — boss, dungeon generation, audio, juice, loot, meta-progression | Demo / press build | 10 | Design THIRD |
 | **Alpha** | All mechanical scope present in rough form — difficulty tiers, narrative | Alpha milestone | 2 | Design as reached |
@@ -125,7 +125,7 @@ Systems sorted by dependency order — design and build from top to bottom.
 ### Feature Layer (depends on Core)
 
 1. Wave / Encounter System — depends on: Enemy AI, Enemy Data, Health & Damage, Game State & Scene Flow
-2. Elemental Affiliation & Weakness — depends on: Enemy Data, Prana Data, Spell Casting & Effects, Health & Damage
+2. ~~Elemental Affiliation & Weakness~~ — **REMOVED 2026-06-21** (strong/weakness cut from scope)
 3. Obstacle System — depends on: Game State & Scene Flow, Spell Casting & Effects
 4. Boss Encounter — depends on: Enemy AI, Spell Casting & Effects, Health & Damage, Wave / Encounter System
 5. Procedural Dungeon Generation — depends on: Game State & Scene Flow, Obstacle System, Wave / Encounter System
@@ -170,7 +170,7 @@ Encounter System, Run Management.
 | 7 | Combination Resolution | Full spec | Core | L |
 | 8 | Spell Casting & Effects | Damage only, no juice | Core | M |
 | 9 | Enemy AI | Move + attack only | Core | M |
-| 10 | Elemental Affiliation & Weakness | 2× damage only | Feature | S |
+| 10 | ~~Elemental Affiliation & Weakness~~ | **REMOVED 2026-06-21** | — | — |
 | 11 | Wave / Encounter System | 1 arena, 1–3 waves | Feature | S |
 | 12 | Combat HUD | HP bar + grid only | Presentation | S |
 
@@ -217,12 +217,9 @@ Encounter System, Run Management.
 
 No **hard** circular dependencies found.
 
-- **Spell Casting & Effects ↔ Elemental Affiliation & Weakness** — *soft coupling*.
-  Spell Casting needs the elemental-bonus result when a spell hits an enemy; Elemental
-  Affiliation needs the hit event from Spell Casting. **Resolution**: a signal contract
-  — Spell Casting emits an element-tagged `hit` signal; Elemental Affiliation listens
-  and applies the bonus. Neither system imports the other directly. This must be stated
-  explicitly in both GDDs' Dependencies sections.
+- ~~**Spell Casting & Effects ↔ Elemental Affiliation & Weakness**~~ — **N/A as of 2026-06-21**:
+  Elemental Affiliation & Weakness was removed from scope, so this soft coupling no
+  longer exists. SC&E delivers element-neutral damage.
 
 ---
 
@@ -241,13 +238,13 @@ No **hard** circular dependencies found.
 
 | Metric | Count |
 |--------|-------|
-| Total systems identified | 31 |
-| First Playable systems | 12 |
+| Total systems identified | 30 (Elemental Affiliation & Weakness removed 2026-06-21) |
+| First Playable systems | 11 (was 12; EA&W cut) |
 | MVP systems (above FP) | 3 |
 | Vertical Slice systems | 14 |
 | Alpha systems | 2 |
 | Design docs approved | 11 (Prana Grid, Combination Resolution, Spell Casting & Effects, Prana Data, Player Controller, Health & Damage, Status Effects, Enemy Data, Run Management, Game State & Scene Flow, Audio System) |
-| First Playable systems designed | 12 / 12 — all First Playable systems designed |
+| First Playable systems designed | 11 / 11 — all First Playable systems designed |
 | MVP systems designed | 2 / 3 (Status Effects, Run Management designed; Main Menu not started) |
 
 ---
@@ -258,7 +255,7 @@ No **hard** circular dependencies found.
 - [ ] Design Player Controller GDD — Sprint 1 task S1-03
 - [ ] Design Prana Grid GDD — Sprint 1 task S1-04
 - [ ] Design Combination Resolution GDD — Sprint 1 task S1-05
-- [ ] Then: Spell Casting & Effects (simplified), Enemy AI (simplified), Elemental Affiliation (simplified), Wave/Encounter (simplified), Combat HUD (minimal)
+- [ ] Then: Spell Casting & Effects (simplified), Enemy AI (simplified), Wave/Encounter (simplified), Combat HUD (minimal)
 - [ ] Verify isometric TileMapLayer in Godot 4.6 with a test project (ADR-0001 prerequisite)
 - [ ] Run `/gate-check pre-production` when all First Playable GDDs are approved
 - [ ] First internal playtest after First Playable implementation complete

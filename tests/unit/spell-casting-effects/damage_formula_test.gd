@@ -7,7 +7,6 @@
 ##   AC-SC-12:  Formula 1: Ashfire T1 neutral → apply_damage(25.0)
 ##   AC-SC-13:  Formula 3 Step 1 type branch: Ashfire/Deepfrost/Stormgold flat stat keys
 ##   AC-SC-14:  Formula 3 Step 5 Shatter: Deepfrost T1 vs Frozen → raw ≈ 20
-##   AC-SC-15:  Formula 3 Step 9 Elemental affiliation: Ashfire T1 vs fire enemy → raw ≈ 50
 ##   AC-SC-19:  Formula 7 FP status stubs: Deepfrost freeze_timer=2.0; Stormgold stun_timer=0.8
 ##   AC-SC-20:  tier_attack_modifier==0.0 suppresses apply_damage (Verdant T2, Deepfrost T3)
 ##   AC-SC-23:  ASH_CRIT at _combo_index==1 only; suppressed at index 2+
@@ -313,30 +312,10 @@ func test_sce_deepfrost_t1_shatter_multiplies_raw_damage_to_20() -> void:
 	_teardown_sce(sce)
 
 
-# ── AC-SC-15: Formula 3 Step 9 Elemental affiliation ─────────────────────────
-
-## GIVEN Ashfire T1 SpellEffect; MockEnemy with prana_affiliation = DamageClass.FIRE (matches)
-## WHEN _fire_attack(0) called
-## THEN apply_damage called with raw ≈ round(25.0 × 2.0) = 50
-func test_sce_ashfire_t1_vs_fire_affiliated_enemy_doubles_damage_to_50() -> void:
-	var hd := MockHealthAndDamage.new()
-	var sce = _make_sce(hd)
-	var se := _make_spell_effect(0, 1, 1.25)  # Ashfire T1
-	var enemy := MockEnemy.new()
-	enemy.prana_affiliation = GameEnums.DamageClass.FIRE  # Matches Ashfire element
-	add_child(enemy)
-	_ready_sce(sce, se, enemy)
-	sce._combo_index = 1
-
-	sce._fire_attack(0)
-
-	# raw = 20 * 1.25 * 1.00 = 25.0; after 2× affiliation: 50.0
-	assert_float(hd.last_raw_damage).is_equal_approx(50.0, 0.01)
-	assert_int(hd.call_count).is_equal(1)
-
-	remove_child(enemy)
-	enemy.free()
-	_teardown_sce(sce)
+# ── Elemental affiliation removed 2026-06-21 ─────────────────────────────────
+# The strong/weakness affiliation multiplier (formerly Formula 3 Step 9, AC-SC-15)
+# was cut from scope. Damage is element-neutral; prana_affiliation no longer affects
+# damage. The element-neutral baseline is covered by the Formula 3 Steps 1–8 tests above.
 
 
 # ── AC-SC-19: Status effects applied via SEM — default durations ─────────────

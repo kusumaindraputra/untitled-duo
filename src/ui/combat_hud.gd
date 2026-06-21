@@ -196,8 +196,6 @@ func _ready() -> void:
 	SpellCastingEffects.chain_index_changed.connect(_on_chain_index_changed)
 	SpellCastingEffects.spell_hit_element.connect(_on_spell_hit_element)
 	SpellCastingEffects.cast_hit_started.connect(_on_cast_hit_started)
-	SpellCastingEffects.affiliation_bonus_hit.connect(_on_affiliation_bonus_hit)
-	SpellCastingEffects.affiliation_resist_hit.connect(_on_affiliation_resist_hit)
 	CombinationResolution.combo_resolved.connect(_on_combo_resolved)
 	if player_controller != null:
 		player_controller.dash_cooldown_changed.connect(_on_dash_cooldown_changed)
@@ -260,10 +258,6 @@ func _exit_tree() -> void:
 		SpellCastingEffects.spell_hit_element.disconnect(_on_spell_hit_element)
 	if SpellCastingEffects.cast_hit_started.is_connected(_on_cast_hit_started):
 		SpellCastingEffects.cast_hit_started.disconnect(_on_cast_hit_started)
-	if SpellCastingEffects.affiliation_bonus_hit.is_connected(_on_affiliation_bonus_hit):
-		SpellCastingEffects.affiliation_bonus_hit.disconnect(_on_affiliation_bonus_hit)
-	if SpellCastingEffects.affiliation_resist_hit.is_connected(_on_affiliation_resist_hit):
-		SpellCastingEffects.affiliation_resist_hit.disconnect(_on_affiliation_resist_hit)
 	if CombinationResolution.combo_resolved.is_connected(_on_combo_resolved):
 		CombinationResolution.combo_resolved.disconnect(_on_combo_resolved)
 	if is_instance_valid(player_controller) and \
@@ -747,62 +741,6 @@ func _on_cast_hit_started(_lock_duration: float) -> void:
 ## Stores the element for per-frame correlation with the subsequent damage_taken signal (TR-CH-005).
 func _on_spell_hit_element(target: Node, prana_type_id: int) -> void:
 	_pending_element[target] = prana_type_id
-
-
-## Handles affiliation_bonus_hit from SpellCastingEffects.
-## Spawns a "WEAK 2×" popup above the target in the prana type's color.
-func _on_affiliation_bonus_hit(target: Node, prana_type_id: int) -> void:
-	_spawn_affiliation_popup(target, prana_type_id)
-
-
-## Spawns a "WEAK 2×" floating label above [param target] in the element's color.
-## Shares the same float-up/fade animation as damage numbers but renders above them
-## with a larger font so the bonus is immediately legible.
-func _spawn_affiliation_popup(target: Node, prana_type_id: int) -> void:
-	_evict_if_at_cap()
-	var label := Label.new()
-	label.text = "WEAK 2×"
-	label.add_theme_font_size_override(&"font_size", 16)
-	var color: Color = Color.WHITE
-	var prana_type: PranaType = PranaCatalog.get_type(prana_type_id)
-	if prana_type != null:
-		color = prana_type.color
-	label.add_theme_color_override(&"font_color", color)
-	var world_pos: Vector2 = (target as Node2D).global_position if target is Node2D else Vector2.ZERO
-	var vp_pos: Vector2 = get_viewport().get_canvas_transform() * world_pos
-	# Offset upward past the damage number that fires in the same frame.
-	label.position = vp_pos + Vector2(randf_range(-8.0, 8.0), -20.0)
-	add_child(label)
-	_active_damage_labels.append(label)
-	_animate_damage_label(label)
-
-
-## Handles affiliation_resist_hit from SpellCastingEffects.
-## Spawns a muted "RESIST ½×" popup so the player can read the penalty direction.
-func _on_affiliation_resist_hit(target: Node, prana_type_id: int) -> void:
-	_spawn_resist_popup(target, prana_type_id)
-
-
-## Spawns a "RESIST ½×" floating label above [param target] in a desaturated element color.
-## Visually subordinate to the "WEAK 2×" popup — smaller font, muted palette.
-func _spawn_resist_popup(target: Node, prana_type_id: int) -> void:
-	_evict_if_at_cap()
-	var label := Label.new()
-	label.text = "RESIST ½×"
-	label.add_theme_font_size_override(&"font_size", 13)
-	var color: Color = Color(0.6, 0.6, 0.6, 1.0)  # default: neutral grey
-	var prana_type: PranaType = PranaCatalog.get_type(prana_type_id)
-	if prana_type != null:
-		# Desaturate the type color so it reads as "muted" vs the bold WEAK 2× color.
-		var hsv: Color = prana_type.color
-		color = Color.from_hsv(hsv.h, hsv.s * 0.35, hsv.v * 0.85, 1.0)
-	label.add_theme_color_override(&"font_color", color)
-	var world_pos: Vector2 = (target as Node2D).global_position if target is Node2D else Vector2.ZERO
-	var vp_pos: Vector2 = get_viewport().get_canvas_transform() * world_pos
-	label.position = vp_pos + Vector2(randf_range(-8.0, 8.0), -20.0)
-	add_child(label)
-	_active_damage_labels.append(label)
-	_animate_damage_label(label)
 
 
 ## Handles dash_cooldown_changed from PlayerController (AC-DH-04, AC-DH-05).

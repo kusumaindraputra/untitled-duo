@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-06-16"  # updated: Charger prana_affiliation corrected Ashfire→Deepfrost (wave-encounter-system GDD 2026-05-31 + enemy-data GDD; entities.yaml lagged); referenced_by updated in ashfire and deepfrost entries. Prior: 3 new constants (burn_contagion_range, burn_contagion_duration, shatter_multiplier); referenced_by extended for 13 entries (Status Effects GDD); 3 new constants (nonprimary_freeze_duration, chill_slow_pct, chill_duration) from /consistency-check
+last_updated: "2026-06-21"  # updated: (1) ELEMENTAL STRONG/WEAKNESS REMOVED — affiliation damage multiplier (2× match / 0.5× mismatch) cut from scope; prana_affiliation now serves death-burst VFX color + Prana drop typing only. (2) Enemy stats synced to .tres after 2026-06-20 difficulty rebalance: Drifter 20/8→50/14, Charger 35/20→90/30, Cluster 12/4→30/10. (3) Added Rifter (id 4, SHOOTER) and Vault Sentinel (id 5, BOSS vs_scope) — previously undocumented. (4) Warped Warden + Vault Sentinel confirmed vs_scope (wave_threat_value null). Prior 2026-06-16: Charger prana_affiliation corrected Ashfire→Deepfrost; 3 constants (burn_contagion_range/duration, shatter_multiplier); 3 constants (nonprimary_freeze_duration, chill_slow_pct, chill_duration)
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -135,17 +135,17 @@ entities:
       - design/gdd/enemy-ai.md  # archetype routing, base_damage, base_move_speed cached at spawn
     enemy_id: 0
     archetype: SEEKER
-    prana_affiliation: Voidblue  # Shadow / damage_class=Shadow
-    base_hp: 20  # provisional — finalize after Health & Damage GDD
-    base_damage: 8.0  # provisional
-    base_move_speed: 80  # px/s; provisional
+    prana_affiliation: Voidblue  # Shadow — VFX color + drop typing only (affiliation damage multiplier removed 2026-06-21)
+    base_hp: 50  # was 20; buffed 2026-06-20 difficulty rebalance
+    base_damage: 14.0  # was 8.0; buffed 2026-06-20 difficulty rebalance
+    base_move_speed: 80  # px/s
     wave_threat_value: 1
     drop_prana_type: 1  # Voidblue ID
     drop_rate: 0.50  # provisional — finalize after Prana Drop / Loot GDD
     sprite_size: "16x16"
     catalog_status: active
     added: 2026-05-23
-    revised: ""
+    revised: "2026-06-21"
 
   - name: charger
     status: active
@@ -155,17 +155,17 @@ entities:
       - design/gdd/enemy-ai.md  # archetype routing, base_damage, base_move_speed cached at spawn
     enemy_id: 1
     archetype: RUSHER
-    prana_affiliation: Deepfrost  # Ice / damage_class=Ice (was Ashfire; changed wave-encounter-system GDD 2026-05-31)
-    base_hp: 35  # provisional
-    base_damage: 20.0  # provisional
-    base_move_speed: 50  # px/s; provisional
+    prana_affiliation: Deepfrost  # Ice — VFX color + drop typing only (was Ashfire; changed 2026-05-31)
+    base_hp: 90  # was 35; buffed 2026-06-20 difficulty rebalance (tank — 3 hits = dead Fayde)
+    base_damage: 30.0  # was 20.0; buffed 2026-06-20 difficulty rebalance
+    base_move_speed: 50  # px/s
     wave_threat_value: 2
     drop_prana_type: 3  # Deepfrost ID (was 0 Ashfire; corrected 2026-06-16)
     drop_rate: 0.40  # provisional
     sprite_size: "12x20"
     catalog_status: active
     added: 2026-05-23
-    revised: "2026-06-16"
+    revised: "2026-06-21"
 
   - name: cluster
     status: active
@@ -175,17 +175,17 @@ entities:
       - design/gdd/enemy-ai.md  # archetype routing, base_damage, base_move_speed cached at spawn
     enemy_id: 2
     archetype: SWARMER
-    prana_affiliation: Stormgold  # Lightning / damage_class=Lightning
-    base_hp: 12  # provisional
-    base_damage: 4.0  # provisional
-    base_move_speed: 70  # px/s; provisional
+    prana_affiliation: Stormgold  # Lightning — VFX color + drop typing only (affiliation damage multiplier removed 2026-06-21)
+    base_hp: 30  # was 12; buffed 2026-06-20 difficulty rebalance
+    base_damage: 10.0  # was 4.0; buffed 2026-06-20 difficulty rebalance
+    base_move_speed: 70  # px/s
     wave_threat_value: 1
     drop_prana_type: 2  # Stormgold ID
     drop_rate: 0.60  # provisional
     sprite_size: "24x24"
     catalog_status: active
     added: 2026-05-23
-    revised: ""
+    revised: "2026-06-21"
 
   - name: warped_warden
     status: active  # catalog entry active; gameplay status = vs_scope (not spawnable at MVP)
@@ -205,6 +205,45 @@ entities:
     catalog_status: vs_scope  # ships inactive at MVP; activates with Boss Encounter GDD
     added: 2026-05-23
     revised: ""
+
+  - name: rifter
+    status: active
+    source: design/gdd/enemy-data.md
+    referenced_by:
+      - design/gdd/enemy-data.md
+      - design/gdd/enemy-ai.md  # SHOOTER archetype — ranged projectile behavior
+    enemy_id: 4
+    archetype: SHOOTER  # GameEnums.EnemyArchetype.SHOOTER = 4
+    prana_affiliation: Verdant  # Nature — VFX color + drop typing only; fills the prior "no Verdant enemy" FP gap
+    base_hp: 32  # 2026-06-20 difficulty rebalance (slow ranged unit; reward player who prioritizes it)
+    base_damage: 12.0  # 2026-06-20 difficulty rebalance
+    base_move_speed: 35  # px/s — slowest non-boss (keeps distance, fires projectiles)
+    wave_threat_value: 2
+    drop_prana_type: 4  # Verdant ID
+    drop_rate: 0.40  # provisional — finalize after Prana Drop / Loot GDD
+    sprite_size: "14x14"
+    catalog_status: active
+    added: 2026-06-20
+    revised: "2026-06-21"
+
+  - name: vault_sentinel
+    status: active  # catalog entry active; gameplay status = vs_scope (not spawnable at MVP)
+    source: design/gdd/enemy-data.md
+    referenced_by:
+      - design/gdd/enemy-data.md
+    enemy_id: 5
+    archetype: BOSS
+    prana_affiliation: null
+    base_hp: 250  # provisional — second boss-tier entry; tuning pass pending Boss Encounter GDD
+    base_damage: 25.0  # provisional
+    base_move_speed: 65  # px/s
+    wave_threat_value: null  # not spawnable via wave budgeting
+    drop_prana_type: null
+    drop_rate: null
+    sprite_size: "48x48"
+    catalog_status: vs_scope  # ships inactive at MVP; activates with Boss Encounter GDD
+    added: 2026-06-20
+    revised: "2026-06-21"
 
 # Example (remove when first real entry is added):
 #
@@ -272,11 +311,11 @@ formulas:
       - design/gdd/status-effects.md  # Burn/Regen ticks call apply_damage/apply_heal into this pipeline
     variables:
       - base_damage      # float 0.0–unbounded; from enemy base_damage or spell base
-      - damage_multiplier  # float 0.0–unbounded; from Elemental Affiliation & Weakness (1.0 if no element)
+      - damage_multiplier  # float 0.0–unbounded; always 1.0 since 2026-06-21 (elemental strong/weakness removed)
       - target_max_hp    # int 1–unbounded; per-target HP ceiling
     output_range: [0, target_max_hp]
     expression: "clamp(round(base_damage * damage_multiplier), 0, target_max_hp)"
-    notes: "Core damage formula for all hits. element=null sets damage_multiplier=1.0. DoT ticks always use element=null. One-shot threshold for Charger (35 HP): multiplier >= 1.75."
+    notes: "Core damage formula for all hits. damage_multiplier is always 1.0 — elemental strong/weakness (affiliation match) was removed 2026-06-21, so damage is element-neutral. DoT ticks also use element=null."
     added: 2026-05-23
     revised: ""
 

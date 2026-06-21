@@ -30,7 +30,7 @@ Accepted
 
 ### Problem Statement
 
-Five systems read Prana type definitions from PranaCatalog at runtime: PranaGrid (slot rendering), CombinationResolution (combo lookup), SpellCastingEffects (VFX/audio routing), Elemental Affiliation (weakness multiplier), and test suites. If any consumer modifies a returned `PranaType` instance — intentionally (testing) or accidentally (stale reference) — it must not corrupt the catalog for all other readers. Without immutability enforcement, a test that modifies `base_damage_modifier` for isolation purposes permanently changes the type for every subsequent call in that session.
+Several systems read Prana type definitions from PranaCatalog at runtime: PranaGrid (slot rendering), CombinationResolution (combo lookup), SpellCastingEffects (VFX/audio/color routing), and test suites. *(The Elemental Affiliation weakness-multiplier consumer named in the original ADR was removed 2026-06-21; the immutability rationale is unchanged.)* If any consumer modifies a returned `PranaType` instance — intentionally (testing) or accidentally (stale reference) — it must not corrupt the catalog for all other readers. Without immutability enforcement, a test that modifies `base_damage_modifier` for isolation purposes permanently changes the type for every subsequent call in that session.
 
 Additionally, PranaCatalog is Autoload #1 — any other Autoload that calls `get_type()` during its `_ready()` would succeed (PranaCatalog is guaranteed first). But the initialization guard (`_initialized` flag) must use `push_error()`, not `assert()`, because `assert()` is stripped from Godot 4.6 release builds.
 
