@@ -9,7 +9,6 @@ script = ExtResource("1_ei")
 
 [node name="IsoCharacter" type="Node2D" parent="."]
 script = ExtResource("3_iso")
-base_path = "res://assets/art/characters/skeleton/"
 sprite_scale = Vector2(1.5, 1.5)
 visible = false
 

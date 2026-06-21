@@ -5,6 +5,31 @@ Priority order: player-experience impact
 
 ---
 
+## STATUS — verified against code 2026-06-21 (demo push)
+
+Most of this list is already shipped. Verified live in `src/`:
+
+| Task | Status | Notes |
+|------|--------|-------|
+| T01 enemy count cap | ✅ Done | `EnemyPoolConfig.enemy_count_max`, clamp in `wave_manager.gd`, floor3=10 |
+| T02 damage numbers + popup | ✅ Done | wired in `combat_hud.gd` / `spell_vfx.gd` |
+| T03 trap loadout guard | ✅ Done | `_fire_secondary_effect` implements Verdant heal + Deepfrost glacial field; undefined combos `push_error` (logs, no crash) |
+| T04 room shape variety | ✅ Done | `RoomSelector` weighted pools → 5 layout styles via `IsometricRoom._resolve_layout_cells()` |
+| T05 REST visual feedback | ✅ Done | `REST_HEAL_VISUAL_DELAY` + floating "+N HP" |
+| T06 boss distance selection | ✅ Done | `_select_boss_attack(dist, enraged)` |
+| T07 SALVO player-aimed | ✅ Done | `_fire_salvo()` aims at Fayde |
+| T08 Rifter rebalance | ✅ Done | `base_damage = 12.0` |
+| T09 audio registry | ✅ Done | 30 audio files, music FSM wired |
+| T10 win/loss screen | ✅ Done | colored overlay + title + `Floor X · N Rooms Cleared` + replay |
+| T11 WarpedWarden | ✅ Done | wired as Floor-2 mid-boss (`enemy_pool_boss_f2.tres`) |
+
+**Remaining for a shippable demo (not in the original list):**
+- ✅ Title / start screen — added `_show_title_screen()` in `debug_game_loop.gd` (2026-06-21).
+- ⏳ Export presets + packaged build (Windows / Linux / HTML5) — requires the Godot editor; do locally.
+- ⏳ (optional) ESC pause menu — `GameStateManager.pause_game()` exists but is unbound to input.
+
+---
+
 ## BLOCKER (harus selesai sebelum first playable)
 
 ### T01 — Cap Floor 3 Enemy Count
