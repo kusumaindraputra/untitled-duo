@@ -391,62 +391,69 @@ func _fire_attack(attack_index: int) -> void:
 		_fire_secondary_effect(pt, tier, attack_index)
 		return
 
-	# Select target. _override_target is non-null only in tests; production uses ray cast.
-	var target: Node = _override_target if _override_target != null else _select_primary_target()
-
-	# No-target path: combo index has already advanced; no damage or status (GDD Edge Case 1).
-	if target == null:
-		return
-
-	# Step 1 — flat stat bonus (type-conditional; only Ashfire and Deepfrost get flat bonuses).
+	# Steps 1–4: per-cast base damage. Captured as step4_raw before per-target adjustments
+	# so the original Step-4 value is available for Burn DoT tick calculations (GDD Rule 8).
 	var flat_stat: float = 0.0
 	if pt == 0:
 		flat_stat = se.aggregate_stat_bonus.get(&"ASH_DMG", 0.0)
 	elif pt == 3:
 		flat_stat = se.aggregate_stat_bonus.get(&"FROST_DMG", 0.0)
-
-	# Step 2 — effective base damage.
 	var eff_base: float = BASE_SPELL_DAMAGE + flat_stat
-
-	# Step 3 — base_damage_modifier (burn_bonus via Ashfire NP — empty at FP; cap at 1.40).
 	var eff_mod: float = clampf(se.base_damage_modifier, 0.0, 1.40)
+	var step4_raw: float = eff_base * eff_mod * tier_mod
 
-	# Step 4 — core damage.
-	var raw: float = eff_base * eff_mod * tier_mod
-	var step4_raw: float = raw  # captured before Steps 5-7 for Burn DoT base (GDD Rule 8)
-
-	# Step 5 — Shatter (ADR-0011): delegates to SEM.
-	# At FP: check_and_apply_shatter returns raw unchanged (has_status returns false for stubs).
-	raw = _status_effects.check_and_apply_shatter(target, raw)
-
-	# Step 6 — Follow-Through: always 0.0 at FP (_followthrough_window not implemented at FP).
-	# When _followthrough_window is added: if _followthrough_window > 0.0 → raw *= (1.30 + bonus).
-
-	# Step 7 — Blind bonus.
-	# At FP: has_status always returns false for field-write stubs — bonus inert.
-	if _status_effects.has_status(target, GameEnums.BaseStatus.BLIND):
-		raw *= (1.0 + se.aggregate_stat_bonus.get(&"VOID_DMG_VS_BLIND", 0.0))
-
-	# Step 8 — ASH_CRIT (first chain attack only; any primary type).
-	# _combo_index == 1 here means this is the first press (incremented before _fire_attack).
+	# Step 8 — ASH_CRIT: rolled once per cast so all targets receive the same crit outcome.
+	# _combo_index == 1 means this is the first press (incremented before _fire_attack).
+	var crit_mult: float = 1.0
 	if _combo_index == 1:
 		var ash_crit: float = se.aggregate_stat_bonus.get(&"ASH_CRIT", 0.0)
 		if ash_crit > 0.0 and _rng.randf() < ash_crit:
-			raw *= 1.50
+			crit_mult = 1.50
 
-	# Step 9 — deliver damage through Health & Damage (ADR-0007).
-	# Damage is element-neutral: the elemental strong/weakness (affiliation match)
-	# system was cut from scope (2026-06-21), so no per-element multiplier is applied
-	# here. prana_affiliation remains on enemies for death-burst VFX coloring only.
+	if pt == 2:
+		# Stormgold — single-target projectile: disappears on the first enemy hit.
+		var target: Node = _override_target if _override_target != null else _select_primary_target()
+		if target == null:
+			return
+		_apply_hit(target, pt, tier_mod, se, step4_raw, crit_mult)
+	else:
+		# All other types — every enemy inside the facing cone takes damage.
+		# _override_target != null is the test-mode path (single injected target as array).
+		var targets: Array[Node] = []
+		if _override_target != null:
+			targets = [_override_target]
+		else:
+			targets = _select_all_targets_in_cone()
+		for target: Node in targets:
+			_apply_hit(target, pt, tier_mod, se, step4_raw, crit_mult)
+
+
+## Applies Steps 5–9 of Formula 3 to [param target] and emits spell_hit_element.
+## [param step4_raw] is the pre-shatter base for Burn DoT tick calcs (GDD Rule 8).
+## [param crit_mult] is the per-cast ASH_CRIT factor (1.0 or 1.50); applied after per-target steps.
+func _apply_hit(target: Node, pt: int, tier_mod: float, se: SpellEffect,
+		step4_raw: float, crit_mult: float) -> void:
+	var raw: float = step4_raw
+
+	# Step 5 — Shatter (per-target).
+	raw = _status_effects.check_and_apply_shatter(target, raw)
+
+	# Step 6 — Follow-Through: always 0.0 at FP.
+
+	# Step 7 — Blind bonus (per-target).
+	if _status_effects.has_status(target, GameEnums.BaseStatus.BLIND):
+		raw *= (1.0 + se.aggregate_stat_bonus.get(&"VOID_DMG_VS_BLIND", 0.0))
+
+	# Step 8 — apply crit multiplier (rolled once per cast, applied after per-target steps).
+	raw *= crit_mult
+
+	# Step 9 — deliver damage (element-neutral; affiliation cut 2026-06-21).
 	_health_and_damage.apply_damage(target, raw, GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
 
-	# Emit spell_hit_element for CombatHUD damage-number coloring (GDD Rule 1, B-1).
 	spell_hit_element.emit(target, pt)
 
-	# Apply primary type's status effect via StatusEffectsManager (ADR-0011).
 	_apply_status_effects(target, pt, se, step4_raw)
 
-	# Combo game feel: push the target away from Fayde on each successful hit.
 	if _fayde_ref != null:
 		_apply_knockback(target, tier_mod)
 
@@ -597,6 +604,59 @@ func _select_primary_target() -> Node:
 				nearest_dist = dist
 				nearest = collider
 	return nearest
+
+
+## Returns ALL living enemies within the facing cone for AoE Prana types (non-Stormgold).
+## Uses the same range/angle as [method _select_primary_target] for the current primary_type.
+## Never called for pt==2 (Stormgold); tests use _override_target instead.
+func _select_all_targets_in_cone() -> Array[Node]:
+	if _fayde_ref == null:
+		_fayde_ref = get_tree().get_first_node_in_group(&"player")
+	if _fayde_ref == null:
+		return []
+	var space: PhysicsDirectSpaceState2D = get_viewport().get_world_2d().direct_space_state
+	var origin: Vector2 = _fayde_ref.global_position
+	var facing: Vector2 = _fayde_ref.get_facing_direction() if _fayde_ref.has_method(&"get_facing_direction") else Vector2.RIGHT
+	var pt: int = _current_spell_effect.primary_type if _current_spell_effect != null else -1
+	var cast_range: float
+	var cone_angle: float
+	match pt:
+		0, 4:
+			cast_range = MELEE_RANGE
+			cone_angle = CONE_ANGLE_MELEE
+		1, 3:
+			cast_range = SEMI_MELEE_RANGE
+			cone_angle = CONE_ANGLE_SEMI_MELEE
+		_:
+			cast_range = 150.0
+			cone_angle = CONE_ANGLE_RANGED
+
+	var half_angle: float = deg_to_rad(cone_angle * 0.5)
+	var base_angle: float = facing.angle()
+	var points: PackedVector2Array = PackedVector2Array()
+	points.append(Vector2.ZERO)
+	for i in range(CONE_ARC_SEGMENTS + 1):
+		var t: float = float(i) / float(CONE_ARC_SEGMENTS)
+		var a: float = base_angle - half_angle + t * half_angle * 2.0
+		points.append(Vector2.from_angle(a) * cast_range)
+	var cone_shape := ConvexPolygonShape2D.new()
+	cone_shape.points = points
+
+	var query_transform := Transform2D(0.0, origin)
+	var query := PhysicsShapeQueryParameters2D.new()
+	query.shape = cone_shape
+	query.transform = query_transform
+	query.collision_mask = 5
+	query.collide_with_bodies = true
+	query.collide_with_areas = false
+
+	var results: Array[Dictionary] = space.intersect_shape(query)
+	var targets: Array[Node] = []
+	for result in results:
+		var collider: Node = result.get("collider")
+		if collider != null and collider.is_in_group(&"enemy") and collider.has_method(&"is_alive") and collider.is_alive():
+			targets.append(collider)
+	return targets
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
