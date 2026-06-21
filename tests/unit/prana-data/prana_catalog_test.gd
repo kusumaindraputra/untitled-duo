@@ -103,7 +103,6 @@ func test_prana_catalog_get_type_returns_consistent_properties_across_calls() ->
 	assert_bool(a.color == b.color).is_true()
 	assert_object(a.icon).is_not_null()
 	assert_object(b.icon).is_not_null()
-	assert_int(a.vfx_burst_shape).is_equal(b.vfx_burst_shape)
 	assert_object(a.audio_signature).is_not_null()
 	assert_object(b.audio_signature).is_not_null()
 	assert_int(a.cast_animation).is_equal(b.cast_animation)

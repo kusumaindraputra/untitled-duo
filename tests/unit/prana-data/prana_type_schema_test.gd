@@ -54,11 +54,6 @@ func test_prana_type_schema_icon_default_is_null() -> void:
 	assert_object(prana.icon).is_null()
 
 
-func test_prana_type_schema_vfx_burst_shape_default_is_burst_flame() -> void:
-	var prana := PranaType.new()
-	assert_int(prana.vfx_burst_shape).is_equal(GameEnums.VfxBurstShape.BURST_FLAME)
-
-
 func test_prana_type_schema_audio_signature_default_is_null() -> void:
 	# Null until .tres is authored in Story 004 — expected default per AC-PD-03.
 	var prana := PranaType.new()

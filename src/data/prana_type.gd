@@ -37,9 +37,6 @@ extends Resource
 ## Null until .tres is authored (Story 004) — PranaCatalog validates non-null at startup.
 @export var icon: Texture2D
 
-## Shape of the on-hit VFX burst spawned at the target on cast.
-@export var vfx_burst_shape: GameEnums.VfxBurstShape = GameEnums.VfxBurstShape.BURST_FLAME
-
 ## Audio cue played when a spell of this Prana type is cast.
 ## Null until .tres is authored (Story 004) — PranaCatalog validates non-null at startup.
 @export var audio_signature: AudioStream

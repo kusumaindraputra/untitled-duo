@@ -135,16 +135,6 @@ func test_game_enums_cast_animation_explicit_integers() -> void:
 	assert_int(GameEnums.CastAnimation.CAST_BLOOM).is_equal(4)
 
 
-# ── VfxBurstShape ─────────────────────────────────────────────────────────────
-
-func test_game_enums_vfx_burst_shape_explicit_integers() -> void:
-	assert_int(GameEnums.VfxBurstShape.BURST_FLAME).is_equal(0)
-	assert_int(GameEnums.VfxBurstShape.BURST_SPIRAL).is_equal(1)
-	assert_int(GameEnums.VfxBurstShape.BURST_LIGHTNING).is_equal(2)
-	assert_int(GameEnums.VfxBurstShape.BURST_CRYSTAL).is_equal(3)
-	assert_int(GameEnums.VfxBurstShape.BURST_VINE).is_equal(4)
-
-
 # ── Cross-type isolation sanity checks ────────────────────────────────────────
 
 func test_game_enums_damage_class_count_matches_spec() -> void:

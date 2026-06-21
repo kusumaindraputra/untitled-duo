@@ -21,22 +21,7 @@
 extends Node
 
 
-# Pre-allocated pool: one GPUParticles2D per VfxBurstShape (indices 0–4).
-# Shape params and materials are fully configured at _ready(). Hot path is zero-allocation:
-# only modulate color and global_position change per hit.
-var _pool: Dictionary = {}
-
 # ── Hitstop / Screen shake / Procedural VFX ───────────────────────────────────
-
-## [type_id][attack_index] — wall-clock duration per Prana type per attack (microseconds).
-## Types: 0=Ashfire  1=Voidblue  2=Stormgold  3=Deepfrost  4=Verdant
-const VFX_DURATION_US: Array = [
-	[200_000, 300_000, 500_000],  ## 0 Ashfire
-	[250_000, 350_000, 400_000],  ## 1 Voidblue
-	[120_000, 180_000, 250_000],  ## 2 Stormgold — faster for sniper feel
-	[300_000, 400_000, 500_000],  ## 3 Deepfrost
-	[200_000, 300_000, 450_000],  ## 4 Verdant
-]
 
 ## Seconds the game slows to on each spell hit.
 const HITSTOP_DURATION_US: int = 80_000
@@ -70,8 +55,6 @@ const HEAL_FLASH_DURATION: float = 0.5
 
 ## Tracked from chain_index_changed — true when the next hit is the final chain attack.
 var _next_is_ender: bool = false
-## 0-based index of the current attack in the combo (0=first, 1=second, 2=ender).
-var _last_attack_index: int = 0
 
 ## AudioSystem Autoload reference; null-safe — set in _ready(), overridable for tests.
 ## Variant (not Node) intentional — allows mock injection.
@@ -133,7 +116,6 @@ func _ready() -> void:
 	HealthAndDamage.health_restored.connect(_on_health_restored)
 	HealthAndDamage.player_died.connect(_on_player_died)
 	HealthAndDamage.player_hp_zone_changed.connect(_on_hp_zone_changed)
-	_init_pool()
 	_audio = get_node_or_null("/root/AudioSystem")
 	# Camera is looked up lazily on first shake — autoload _ready() fires before
 	# the game scene (and player) exist, so get_first_node_in_group would return null here.
@@ -203,19 +185,16 @@ func _on_cast_started(spell_effect: SpellEffect) -> void:
 	_show_range_cone(spell_effect)
 
 
-## Zero-allocation hot path (ADR-0015): looks up pool node by shape,
-## updates position and color, then restarts emission.
-## Also triggers per-type procedural draw VFX, hitstop, screen shake, and audio.
+## Spawns a hit impact VFX at the target, then triggers hitstop, screen shake, and audio.
 func _on_spell_hit_element(target: Node, prana_type_id: int) -> void:
 	var type_data: PranaType = PranaCatalog.get_type(prana_type_id)
 	if type_data == null:
-		push_warning("SpellVFX: PranaCatalog.get_type(%d) returned null — no burst." % prana_type_id)
+		push_warning("SpellVFX: PranaCatalog.get_type(%d) returned null — no impact." % prana_type_id)
 		return
 	var amplify: float = COMBO_ENDER_AMPLIFY if _next_is_ender else 1.0
 	_next_is_ender = false
 	if target is Node2D:
-		_reuse_from_pool((target as Node2D).global_position, type_data)
-		_spawn_hit_vfx(target as Node2D, prana_type_id, _last_attack_index)
+		_spawn_impact_vfx((target as Node2D).global_position, type_data.color)
 	_start_hitstop(amplify)
 	_start_shake(amplify)
 	_audio_play(&"sfx_spell_hit")
@@ -246,13 +225,11 @@ func _on_cast_hit_started(_lock_duration: float) -> void:
 
 
 ## Tracks chain state so _on_spell_hit_element can detect and amplify the final attack.
-## Sets _last_attack_index (0-based) so _spawn_hit_vfx selects the correct shape.
 ## chain_index_changed fires before spell_hit_element in the same call stack — safe ordering.
 func _on_chain_index_changed(combo_idx: int, combo_count: int) -> void:
 	if combo_idx > 0 and combo_idx == combo_count:
 		_next_is_ender = true
 		_audio_play(&"sfx_combo_ender")
-	_last_attack_index = clampi(combo_idx - 1, 0, 2)
 	# Free combo ring on expiry (combo_idx == 0 signals chain reset).
 	if combo_idx == 0:
 		_free_combo_ring()
@@ -613,88 +590,6 @@ func _free_range_cone() -> void:
 		_cone_indicator = null
 
 
-# ── Pool ──────────────────────────────────────────────────────────────────────
-
-## Pre-creates one GPUParticles2D + ParticleProcessMaterial per VfxBurstShape.
-## All shape params configured here — nothing created on the hot path after this.
-func _init_pool() -> void:
-	for shape: int in GameEnums.VfxBurstShape.values():
-		var node := GPUParticles2D.new()
-		var mat := ParticleProcessMaterial.new()
-		node.one_shot = true
-		node.emitting = false
-		node.process_material = mat
-		mat.gravity = Vector3(0.0, 0.0, 0.0)
-		_apply_burst_shape_params(node, mat, shape)
-		add_child(node)
-		_pool[shape] = node
-
-
-## Hot path: teleport pool node, update color, restart.
-## No allocation. Concurrent same-shape hits restart the previous burst.
-func _reuse_from_pool(pos: Vector2, type_data: PranaType) -> void:
-	var shape: int = type_data.vfx_burst_shape
-	if not _pool.has(shape):
-		push_warning("SpellVFX: no pool node for shape %d — skipping burst." % shape)
-		return
-	var node: GPUParticles2D = _pool[shape]
-	node.global_position = pos
-	node.modulate = type_data.color
-	node.restart()
-	node.emitting = true
-
-
-# ── Private helpers ────────────────────────────────────────────────────────────
-
-## Applies per-shape physics parameters. Called once per pool slot at init.
-func _apply_burst_shape_params(burst: GPUParticles2D, mat: ParticleProcessMaterial, shape: int) -> void:
-	match shape:
-		GameEnums.VfxBurstShape.BURST_FLAME:
-			burst.amount = 12
-			burst.lifetime = 0.3
-			mat.direction = Vector3(0.0, -1.0, 0.0)
-			mat.spread = 90.0
-			mat.initial_velocity_min = 120.0
-			mat.initial_velocity_max = 180.0
-			mat.gravity = Vector3(0.0, 40.0, 0.0)
-		GameEnums.VfxBurstShape.BURST_SPIRAL:
-			burst.amount = 8
-			burst.lifetime = 0.35
-			mat.direction = Vector3(0.0, -1.0, 0.0)
-			mat.spread = 180.0
-			mat.initial_velocity_min = 60.0
-			mat.initial_velocity_max = 80.0
-		GameEnums.VfxBurstShape.BURST_LIGHTNING:
-			burst.amount = 6
-			burst.lifetime = 0.15
-			mat.direction = Vector3(1.0, 0.0, 0.0)
-			mat.spread = 30.0
-			mat.initial_velocity_min = 200.0
-			mat.initial_velocity_max = 300.0
-		GameEnums.VfxBurstShape.BURST_CRYSTAL:
-			burst.amount = 8
-			burst.lifetime = 0.4
-			mat.direction = Vector3(0.0, -1.0, 0.0)
-			mat.spread = 180.0
-			mat.initial_velocity_min = 40.0
-			mat.initial_velocity_max = 80.0
-		GameEnums.VfxBurstShape.BURST_VINE:
-			burst.amount = 10
-			burst.lifetime = 0.3
-			mat.direction = Vector3(0.0, -1.0, 0.0)
-			mat.spread = 90.0
-			mat.initial_velocity_min = 60.0
-			mat.initial_velocity_max = 100.0
-			mat.gravity = Vector3(0.0, 20.0, 0.0)
-		_:
-			burst.amount = 8
-			burst.lifetime = 0.3
-			mat.direction = Vector3(0.0, -1.0, 0.0)
-			mat.spread = 180.0
-			mat.initial_velocity_min = 80.0
-			mat.initial_velocity_max = 120.0
-
-
 ## Overbrightens [param ci] to white then returns it to normal over 0.1 s.
 ## Called for enemy nodes — reuses any existing modulate without conflict because
 ## the tween immediately sets Color.WHITE as its final state.
@@ -743,43 +638,18 @@ func _tick_shake() -> void:
 		_camera.offset = Vector2.ZERO
 
 
-# ── Procedural per-type draw VFX ──────────────────────────────────────────────
+# ── Impact VFX ────────────────────────────────────────────────────────────────
 
-## Spawns a _HitVFX node that draws procedurally for its configured duration.
-## Ashfire (0) and Verdant (4) radiate from Fayde — children of the player so
-## they inherit world position. All other types anchor to target via top_level.
-func _spawn_hit_vfx(target: Node2D, type_id: int, attack_index: int = 0) -> void:
-	if type_id < 0 or type_id >= VFX_DURATION_US.size():
+## Spawns a _ImpactVFX node at world position [param pos] with [param color].
+## Always top_level — position is in world space.
+func _spawn_impact_vfx(pos: Vector2, color: Color) -> void:
+	if get_tree() == null or get_tree().root == null:
 		return
-	if get_tree() == null:
-		return
-	var vfx := _HitVFX.new()
-	vfx.type_id = type_id
-	vfx.attack_index = clampi(attack_index, 0, 2)
-	vfx.duration_us = VFX_DURATION_US[type_id][vfx.attack_index]
-	if type_id == 0 or type_id == 4:
-		# Ashfire / Verdant: radiate from Fayde
-		var player: Node = get_tree().get_first_node_in_group(&"player")
-		if player != null and player is Node2D:
-			(player as Node2D).add_child(vfx)
-			vfx.position = Vector2.ZERO
-		else:
-			vfx.free()
-			return
-	else:
-		# Other types: anchor to target world position
-		vfx.top_level = true
-		# Calculate shot direction (player→target, world space = local space for top_level).
-		var player_node: Node = get_tree().get_first_node_in_group(&"player")
-		if player_node != null and player_node is Node2D:
-			var diff: Vector2 = target.global_position - (player_node as Node2D).global_position
-			vfx.shot_direction = diff.normalized() if diff.length_squared() > 0.0 else Vector2.RIGHT
-		if get_tree().root != null:
-			get_tree().root.add_child(vfx)
-		else:
-			vfx.free()
-			return
-		vfx.global_position = target.global_position
+	var vfx := _ImpactVFX.new()
+	vfx.impact_color = color
+	vfx.top_level = true
+	get_tree().root.add_child(vfx)
+	vfx.global_position = pos
 
 
 # ── Inner class: combo window depleting ring (Gamefeel Pass 4 #6) ───────────────
@@ -817,259 +687,37 @@ class _ComboRing extends Node2D:
 				Color(ring_color, alpha), 3.5, true)
 
 
-# ── Inner class: single procedural VFX instance ───────────────────────────────
+# ── Inner class: hit impact VFX ──────────────────────────────────────────────
 
-class _HitVFX extends Node2D:
-	var type_id: int = 0
-	var attack_index: int = 0
-	var duration_us: int = 300_000
-	## World-space direction from player to target. Used by directional types (Stormgold).
-	var shot_direction: Vector2 = Vector2.RIGHT
+## Expanding ring burst at the enemy's position on hit.
+## Inner pop fades fast (≤0.4 normalized). Outer ring expands for full duration.
+## Color = Prana type color. Self-frees after DURATION_US microseconds.
+class _ImpactVFX extends Node2D:
+	var impact_color: Color = Color.WHITE
+	const DURATION_US: int = 200_000  # 0.20 s
 	var _start_us: int = 0
 
 	func _ready() -> void:
 		process_mode = PROCESS_MODE_ALWAYS
-		z_index = 100
+		z_index = 150
 		_start_us = Time.get_ticks_usec()
 
 	func _process(_delta: float) -> void:
-		if Time.get_ticks_usec() - _start_us >= duration_us:
+		if Time.get_ticks_usec() - _start_us >= DURATION_US:
 			queue_free()
 		else:
 			queue_redraw()
 
 	func _draw() -> void:
-		var p: float = clampf(float(Time.get_ticks_usec() - _start_us) / float(duration_us), 0.0, 1.0)
-		match type_id:
-			0: _draw_ashfire(p, attack_index)
-			1: _draw_voidblue(p, attack_index)
-			2: _draw_stormgold(p, attack_index)
-			3: _draw_deepfrost(p, attack_index)
-			4: _draw_verdant(p, attack_index)
-
-	# ── Ashfire (orange #F24C1D, spawns at Fayde) ─────────────────────────────
-
-	func _draw_ashfire(p: float, atk: int) -> void:
-		match atk:
-			0: _draw_ashfire_atk0(p)
-			1: _draw_ashfire_atk1(p)
-			_: _draw_ashfire_atk2(p)
-
-	## atk0 — palm strike: 3 filled flame wedges pointing upward.
-	func _draw_ashfire_atk0(p: float) -> void:
-		var alpha: float = 1.0 - p
-		var outer: float = 25.0 + p * 55.0
-		var c: Color = Color(1.0, 0.3, 0.07, alpha)
-		for i: int in 3:
-			var angle: float = -PI / 2.0 + (float(i) - 1.0) * 0.52
-			var dir: Vector2 = Vector2.from_angle(angle)
-			var perp: Vector2 = dir.rotated(PI / 2.0)
-			var half_w: float = 13.8 - p * 5.0
-			draw_polygon(PackedVector2Array([dir * outer, perp * half_w, -perp * half_w]),
-					PackedColorArray([c]))
-
-	## atk1 — sweeping kick: 5 filled wedges in a 140° fan + arc.
-	func _draw_ashfire_atk1(p: float) -> void:
-		var alpha: float = 1.0 - p
-		var outer: float = 50.0 + p * 75.0
-		var c: Color = Color(1.0, 0.45, 0.0, alpha)
-		for i: int in 5:
-			var angle: float = -PI * 0.7 + float(i) * (PI * 1.4 / 4.0)
-			var dir: Vector2 = Vector2.from_angle(angle)
-			var perp: Vector2 = dir.rotated(PI / 2.0)
-			var half_w: float = 17.5 - p * 7.5
-			draw_polygon(PackedVector2Array([dir * outer, perp * half_w, -perp * half_w]),
-					PackedColorArray([c]))
-		draw_arc(Vector2.ZERO, outer * 0.6, -PI * 0.7, PI * 0.7, 16,
-				Color(1.0, 0.7, 0.1, alpha * 0.4), 2.0, true)
-
-	## atk2 — 360° eruption: 8 filled wedges + outer ring.
-	func _draw_ashfire_atk2(p: float) -> void:
-		var alpha: float = 1.0 - p
-		var outer: float = 60.0 + p * 120.0
-		var c: Color = Color(1.0, 0.4, 0.0, alpha)
-		for i: int in 8:
-			var angle: float = (TAU / 8.0) * float(i)
-			var dir: Vector2 = Vector2.from_angle(angle)
-			var perp: Vector2 = dir.rotated(PI / 2.0)
-			var half_w: float = 20.0 - p * 10.0
-			draw_polygon(PackedVector2Array([dir * outer, perp * half_w, -perp * half_w]),
-					PackedColorArray([c]))
-		draw_arc(Vector2.ZERO, outer * 0.7, 0.0, TAU, 24,
-				Color(1.0, 0.7, 0.1, alpha * 0.5), 2.5, true)
-
-	# ── Voidblue (blue-purple #4A5EF5, spawns at target) ─────────────────────
-
-	func _draw_voidblue(p: float, atk: int) -> void:
-		match atk:
-			0: _draw_voidblue_atk0(p)
-			1: _draw_voidblue_atk1(p)
-			_: _draw_voidblue_atk2(p)
-
-	## atk0 — absorb: thick shrinking ring + inner glow circle.
-	func _draw_voidblue_atk0(p: float) -> void:
-		var alpha: float = 1.0 - p
-		var radius: float = 70.0 * (1.0 - p) + 10.0
-		draw_arc(Vector2.ZERO, radius, 0.0, TAU, 24,
-				Color(0.29, 0.37, 0.96, alpha), 10.0, true)
-		draw_circle(Vector2.ZERO, radius * 0.35, Color(0.55, 0.4, 1.0, alpha * 0.3))
-
-	## atk1 — shadow pull: triskelion arcs + growing filled center dot.
-	func _draw_voidblue_atk1(p: float) -> void:
-		var alpha: float = 1.0 - p
-		var radius: float = 50.0 - p * 20.0
-		var c: Color = Color(0.29, 0.37, 0.96, alpha)
-		for i: int in 3:
-			var start_a: float = (TAU / 3.0) * float(i)
-			draw_arc(Vector2.ZERO, radius, start_a,
-					start_a + TAU / 3.0 * 0.7, 14, c, 7.5, true)
-		draw_circle(Vector2.ZERO, 5.0 + p * 20.0, Color(0.55, 0.4, 1.0, alpha))
-
-	## atk2 — void collapse: 3 phase-staggered expanding rings.
-	func _draw_voidblue_atk2(p: float) -> void:
-		for i: int in 3:
-			var phase: float = clampf(p - float(i) * 0.15, 0.0, 1.0)
-			if phase <= 0.0:
-				continue
-			var width: float = maxf(8.8 - float(i) * 2.0, 3.8)
-			draw_arc(Vector2.ZERO, phase * (70.0 + float(i) * 25.0), 0.0, TAU, 24,
-					Color(0.29, 0.37, 0.96, 1.0 - phase), width, true)
-
-	# ── Stormgold (yellow #FFCC00, spawns at target, directional) ────────────
-
-	func _draw_stormgold(p: float, atk: int) -> void:
-		match atk:
-			0: _draw_stormgold_atk0(p)
-			1: _draw_stormgold_atk1(p)
-			_: _draw_stormgold_atk2(p)
-
-	## atk0 — snap shot: short bullet streak + impact diamond at center.
-	func _draw_stormgold_atk0(p: float) -> void:
-		var alpha: float = 1.0 - p
-		var len: float = 35.0 + p * 15.0
-		var sd: Vector2 = shot_direction
-		var perp: Vector2 = sd.rotated(PI / 2.0)
-		draw_line(-sd * 10.0, sd * len, Color(1.0, 0.9, 0.0, alpha), 10.0, true)
-		var flash: float = 12.5 * (1.0 - p)
-		var c_flash: Color = Color(1.0, 1.0, 0.6, alpha)
-		draw_polygon(PackedVector2Array([sd * (flash * 1.5), perp * flash,
-				-sd * (flash * 0.5), -perp * flash]),
-				PackedColorArray([c_flash]))
-
-	## atk1 — precision shot: medium streak + bright core + exit sparks.
-	func _draw_stormgold_atk1(p: float) -> void:
-		var alpha: float = 1.0 - p
-		var len: float = 70.0 + p * 20.0
-		var sd: Vector2 = shot_direction
-		draw_line(-sd * 15.0, sd * len, Color(1.0, 0.85, 0.0, alpha), 11.2, true)
-		draw_line(-sd * 10.0, sd * len * 0.65, Color(1.0, 1.0, 0.8, alpha * 0.7), 5.0, true)
-		var impact: Vector2 = sd * len
-		for sign in [1.0, -1.0]:
-			draw_line(impact, impact + sd.rotated(sign * 0.7) * (22.5 * (1.0 - p)),
-					Color(1.0, 0.9, 0.2, alpha * 0.7), 5.0, true)
-
-	## atk2 — critical beam: long streak + impact ring + exit sparks.
-	func _draw_stormgold_atk2(p: float) -> void:
-		var alpha: float = 1.0 - p
-		var len: float = 105.0 + p * 35.0
-		var sd: Vector2 = shot_direction
-		draw_line(-sd * 20.0, sd * len, Color(1.0, 0.85, 0.0, alpha), 15.0, true)
-		draw_line(-sd * 12.5, sd * len * 0.8, Color(1.0, 1.0, 0.9, alpha * 0.7), 6.2, true)
-		draw_arc(Vector2.ZERO, 25.0 + p * 55.0, 0.0, TAU, 20,
-				Color(1.0, 0.9, 0.0, alpha * 0.7), 6.2, true)
-		var impact: Vector2 = sd * len
-		for sign in [1.0, -1.0]:
-			draw_line(impact, impact + sd.rotated(sign * 0.65) * (35.0 * (1.0 - p)),
-					Color(1.0, 0.9, 0.2, alpha * 0.6), 5.0, true)
-
-	# ── Deepfrost (cyan #3DD9F0, spawns at target) ────────────────────────────
-
-	func _draw_deepfrost(p: float, atk: int) -> void:
-		match atk:
-			0: _draw_deepfrost_atk0(p)
-			1: _draw_deepfrost_atk1(p)
-			_: _draw_deepfrost_atk2(p)
-
-	## atk0 — push: filled hexagon expanding and fading.
-	func _draw_deepfrost_atk0(p: float) -> void:
-		var radius: float = 12.5 + p * 45.0
-		var alpha: float = 1.0 - p
-		_draw_hexagon_filled(Vector2.ZERO, radius,
-				Color(0.24, 0.85, 0.94, alpha * 0.35),
-				Color(0.24, 0.85, 0.94, alpha), 2.5)
-
-	## atk1 — frost line: 3 filled hexagons in horizontal line.
-	func _draw_deepfrost_atk1(p: float) -> void:
-		var alpha: float = 1.0 - p
-		var radius: float = 15.0 + p * 25.0
-		for i: int in 3:
-			_draw_hexagon_filled(Vector2((float(i) - 1.0) * 70.0, 0.0), radius,
-					Color(0.24, 0.85, 0.94, alpha * 0.35),
-					Color(0.24, 0.85, 0.94, alpha), 2.0)
-
-	## atk2 — glacial field: filled inner circle + two expanding rings.
-	func _draw_deepfrost_atk2(p: float) -> void:
-		var alpha: float = 1.0 - p
-		var inner_r: float = 20.0 + p * 65.0
-		draw_circle(Vector2.ZERO, inner_r, Color(0.24, 0.85, 0.94, alpha * 0.22))
-		draw_arc(Vector2.ZERO, 40.0 + p * 110.0, 0.0, TAU, 28,
-				Color(0.24, 0.85, 0.94, alpha * 0.85), 3.0, true)
-		draw_arc(Vector2.ZERO, inner_r, 0.0, TAU, 20,
-				Color(0.6, 0.95, 1.0, alpha * 0.55), 2.0, true)
-
-	## Shared helper: filled hexagon (flat-top) + outline.
-	func _draw_hexagon_filled(center: Vector2, radius: float, fill_color: Color,
-			outline_color: Color, width: float) -> void:
-		var pts: PackedVector2Array = PackedVector2Array()
-		for i: int in 6:
-			pts.push_back(center + Vector2.from_angle((TAU / 6.0) * float(i) - PI / 6.0) * radius)
-		draw_polygon(pts, PackedColorArray([fill_color]))
-		pts.push_back(pts[0])
-		draw_polyline(pts, outline_color, width, true)
-
-	# ── Verdant (green #1AC953, spawns at Fayde) ──────────────────────────────
-
-	func _draw_verdant(p: float, atk: int) -> void:
-		match atk:
-			0: _draw_verdant_atk0(p)
-			1: _draw_verdant_atk1(p)
-			_: _draw_verdant_atk2(p)
-
-	## atk0 — bloom strike: 5 filled diamond petals radiating outward.
-	func _draw_verdant_atk0(p: float) -> void:
-		var alpha: float = 1.0 - p
-		_draw_petals_filled(5, lerp(70.0, 20.0, p), Color(0.1, 0.79, 0.33, alpha))
-
-	## atk1 — shield pulse: expanding ring with inner fill.
-	func _draw_verdant_atk1(p: float) -> void:
-		var alpha: float = 1.0 - p
-		var r: float = 30.0 + p * 120.0
-		draw_circle(Vector2.ZERO, r * 0.55, Color(0.1, 0.79, 0.33, alpha * 0.2))
-		draw_arc(Vector2.ZERO, r, 0.0, TAU, 28,
-				Color(0.1, 0.79, 0.33, alpha), 3.5, true)
-
-	## atk2 — rejuvenating strike: 5 filled petals + 4 rising heal dots.
-	func _draw_verdant_atk2(p: float) -> void:
-		var alpha: float = 1.0 - p
-		_draw_petals_filled(5, lerp(85.0, 25.0, p), Color(0.1, 0.79, 0.33, alpha))
-		for i: int in 4:
-			draw_circle(
-				Vector2((float(i) - 1.5) * 30.0, -p * 70.0 - float(i) * 10.0),
-				8.8 * (1.0 - p),
-				Color(0.35, 1.0, 0.5, alpha * 0.9)
-			)
-
-	## Shared helper: n filled diamond petals radiating from origin.
-	func _draw_petals_filled(count: int, outer: float, color: Color) -> void:
-		var half_w: float = outer * 0.28
-		var inner: float = -outer * 0.2
-		for i: int in count:
-			var angle: float = (TAU / float(count)) * float(i)
-			var dir: Vector2 = Vector2.from_angle(angle)
-			var perp: Vector2 = dir.rotated(PI / 2.0)
-			draw_polygon(PackedVector2Array([dir * outer, perp * half_w,
-					dir * inner, -perp * half_w]),
-					PackedColorArray([color]))
+		var p: float = clampf(float(Time.get_ticks_usec() - _start_us) / float(DURATION_US), 0.0, 1.0)
+		# Outer shockwave ring — expands outward, fades.
+		draw_arc(Vector2.ZERO, 10.0 + p * 45.0, 0.0, TAU, 24,
+				Color(impact_color, 1.0 - p), 3.5, true)
+		# Inner pop — bright circle that shrinks and disappears by p=0.4.
+		var pop_p: float = minf(p / 0.4, 1.0)
+		var pop_r: float = lerpf(14.0, 0.0, pop_p)
+		if pop_r > 0.5:
+			draw_circle(Vector2.ZERO, pop_r, Color(impact_color * 1.5, 1.0 - pop_p))
 
 
 # ── Inner class: attack range cone indicator ──────────────────────────────────

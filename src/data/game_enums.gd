@@ -68,6 +68,3 @@ enum EnemyStatus { ACTIVE = 0, VS_SCOPE = 1, INACTIVE = 2 }
 enum CastAnimation { CAST_THRUST = 0, CAST_REACH = 1, CAST_SNAP = 2,
 					 CAST_PUSH = 3, CAST_BLOOM = 4 }
 
-## Shape of the on-hit VFX burst spawned at the target.
-enum VfxBurstShape { BURST_FLAME = 0, BURST_SPIRAL = 1, BURST_LIGHTNING = 2,
-					 BURST_CRYSTAL = 3, BURST_VINE = 4 }
