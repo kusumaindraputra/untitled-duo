@@ -268,6 +268,8 @@ func play_event(event_name: StringName) -> void:
 			_play_on_ui_player(data)
 		BUS_AMB:
 			push_error("AudioSystem: play_event('%s') targets BUS_AMB — use play_ambient() instead." % event_name)
+		BUS_MUSIC:
+			push_error("AudioSystem: play_event('%s') targets BUS_MUSIC — music is managed by the FSM; use override_combat_cue() to change tracks." % event_name)
 		_:
 			push_error("AudioSystem: Unknown bus '%s' for event '%s'." % [data.bus, event_name])
 
@@ -277,6 +279,24 @@ func play_event(event_name: StringName) -> void:
 ## (e.g., headless tests, early development before audio assets exist).
 func has_event(event_name: StringName) -> bool:
 	return _validated_events.has(event_name)
+
+
+## Overrides the COMBAT music cue for the next combat encounter.
+## Call this before the player enters a boss or elite room so the correct track
+## crossfades in when GameStateManager emits combat_started.
+## Valid event names: mus_combat_floor, mus_combat_elite, mus_combat_boss.
+func override_combat_cue(event_name: StringName) -> void:
+	if not _validated_events.has(event_name):
+		push_error("AudioSystem: override_combat_cue('%s') — event not registered." % event_name)
+		return
+	_music_cues[MusicState.COMBAT as int] = _validated_events[event_name].stream
+
+
+## Resets the COMBAT music cue to the default floor track (mus_combat_floor).
+## Call this after a room is cleared so the next normal room uses the default cue.
+func reset_combat_cue() -> void:
+	if _validated_events.has(&"mus_combat_floor"):
+		_music_cues[MusicState.COMBAT as int] = _validated_events[&"mus_combat_floor"].stream
 
 
 ## Starts crossfade from the current ambient player to [param event_name]'s stream.
@@ -305,6 +325,8 @@ func play_ambient(event_name: StringName) -> void:
 	var incoming: AudioStreamPlayer = _ambient_players[incoming_idx]
 	var outgoing: AudioStreamPlayer = _ambient_players[_active_ambient_idx]
 	incoming.stream = event.stream
+	if incoming.stream is AudioStreamMP3:
+		(incoming.stream as AudioStreamMP3).loop = true
 	incoming.volume_db = -80.0
 	incoming.play()
 	_active_ambient_tween = create_tween()
@@ -494,11 +516,28 @@ func _find_eviction_target(_incoming_priority: int) -> int:
 
 # ── Music state machine — implementation (Story 003) ─────────────────────────
 
-## Populates [member _music_cues] from audio-director-delivered resource paths.
-## Stub for Story 003 — assets are not yet delivered; cues are null by default.
-## Story 004 will replace this stub with actual resource loads.
+## Populates [member _music_cues] from the validated event registry.
+## PREPARATION → mus_rest (calming loop for rest/prep floors).
+## COMBAT → mus_combat_floor (default; overridable via override_combat_cue() for elite/boss rooms).
+## END_VICTORY / END_DEFEAT reuse the SFX stings already in the registry.
+## MAIN_MENU and DYING intentionally omitted — silent until menu cue is authored.
 func _load_music_cues() -> void:
-	pass  # Story 004: load cue resources from AudioEventRegistry or dedicated paths.
+	var pairs: Array = [
+		[MusicState.PREPARATION, &"mus_preparation"],
+		[MusicState.COMBAT,      &"mus_combat_floor"],
+		[MusicState.END_VICTORY, &"sfx_run_win"],
+		[MusicState.END_DEFEAT,  &"sfx_run_lose"],
+	]
+	for pair: Array in pairs:
+		var state: MusicState = pair[0] as MusicState
+		var event_name: StringName = pair[1]
+		if _validated_events.has(event_name):
+			_music_cues[state as int] = _validated_events[event_name].stream
+		else:
+			push_warning(
+				"AudioSystem: music cue '%s' not in registry — %s state will be silent."
+				% [event_name, MusicState.keys()[state as int]]
+			)
 
 
 ## Returns the [AudioStream] registered for [param state], or null if none.
@@ -549,6 +588,8 @@ func _crossfade_to(new_state: MusicState, fade_duration: float) -> void:
 
 	# Step 2: pre-set incoming volume BEFORE play() — prevents single-frame pop.
 	incoming.stream = cue
+	if incoming.stream is AudioStreamMP3:
+		(incoming.stream as AudioStreamMP3).loop = true
 	incoming.volume_db = -80.0
 
 	# Step 3: start incoming player.

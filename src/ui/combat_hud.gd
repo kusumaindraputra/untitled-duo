@@ -174,6 +174,12 @@ var _combo_counter_tween: Tween = null
 ## Floor indicator label — shows "Floor N" in the top-left corner.
 var _floor_label: Label = null
 
+## Full-screen danger vignette (DESPERATE zone only). Pulses at ≤1.25Hz per HUD
+## seizure-safety note. Separate from hp_bar pulse so edge signal is visible while
+## the player's focus is on the arena centre (Gamefeel Audit Issue 5.3).
+var _vignette: ColorRect = null
+var _vignette_tween: Tween = null
+
 
 # ── Built-in virtual methods ──────────────────────────────────────────────────
 
@@ -191,6 +197,7 @@ func _ready() -> void:
 	SpellCastingEffects.spell_hit_element.connect(_on_spell_hit_element)
 	SpellCastingEffects.cast_hit_started.connect(_on_cast_hit_started)
 	SpellCastingEffects.affiliation_bonus_hit.connect(_on_affiliation_bonus_hit)
+	SpellCastingEffects.affiliation_resist_hit.connect(_on_affiliation_resist_hit)
 	CombinationResolution.combo_resolved.connect(_on_combo_resolved)
 	if player_controller != null:
 		player_controller.dash_cooldown_changed.connect(_on_dash_cooldown_changed)
@@ -255,6 +262,8 @@ func _exit_tree() -> void:
 		SpellCastingEffects.cast_hit_started.disconnect(_on_cast_hit_started)
 	if SpellCastingEffects.affiliation_bonus_hit.is_connected(_on_affiliation_bonus_hit):
 		SpellCastingEffects.affiliation_bonus_hit.disconnect(_on_affiliation_bonus_hit)
+	if SpellCastingEffects.affiliation_resist_hit.is_connected(_on_affiliation_resist_hit):
+		SpellCastingEffects.affiliation_resist_hit.disconnect(_on_affiliation_resist_hit)
 	if CombinationResolution.combo_resolved.is_connected(_on_combo_resolved):
 		CombinationResolution.combo_resolved.disconnect(_on_combo_resolved)
 	if is_instance_valid(player_controller) and \
@@ -318,6 +327,16 @@ func _create_ui_nodes() -> void:
 	_floor_label.size = Vector2(120, 20)
 	add_child(_floor_label)
 
+	# DESPERATE vignette — full-screen dark red overlay, starts invisible.
+	# z_index below all other HUD elements so text/bars remain legible.
+	_vignette = ColorRect.new()
+	_vignette.color = Color(0.75, 0.0, 0.0, 0.0)
+	_vignette.anchor_right = 1.0
+	_vignette.anchor_bottom = 1.0
+	_vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_vignette.z_index = -1
+	add_child(_vignette)
+
 
 ## Starts a float-accumulator HP bar animation toward [param target] hp value.
 ## Captures the current visual position (hp_bar.value) as the start — this ensures
@@ -340,7 +359,7 @@ func _revert_zone_color() -> void:
 
 
 ## Starts the looping DESPERATE pulse animation on hp_bar.scale (AC-HUD-24).
-## No-op if a valid pulse tween is already running (idempotent).
+## Also starts the screen-edge vignette pulse. No-op if already running (idempotent).
 func _start_pulse() -> void:
 	if _pulse_tween and _pulse_tween.is_valid():
 		return
@@ -349,15 +368,39 @@ func _start_pulse() -> void:
 	_pulse_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	_pulse_tween.tween_property(hp_bar, "scale", Vector2(1.03, 1.03), 0.4)
 	_pulse_tween.tween_property(hp_bar, "scale", Vector2(1.0, 1.0), 0.4)
+	_start_vignette_pulse()
 
 
 ## Stops the DESPERATE pulse animation and snaps hp_bar.scale back to identity (AC-HUD-25).
-## No-op if no pulse is currently running.
+## Also stops the vignette pulse. No-op if no pulse is currently running.
 func _stop_pulse() -> void:
 	if _pulse_tween and _pulse_tween.is_valid():
 		_pulse_tween.kill()
 		_pulse_tween = null
 	hp_bar.scale = Vector2(1.0, 1.0)
+	_stop_vignette_pulse()
+
+
+## Starts a looping red vignette pulse at ≤1.25 Hz (0.4s per half-cycle = 0.8s period).
+## No-op if vignette is null (headless tests) or already pulsing.
+func _start_vignette_pulse() -> void:
+	if _vignette == null:
+		return
+	if _vignette_tween and _vignette_tween.is_valid():
+		return
+	_vignette_tween = create_tween().set_loops()
+	_vignette_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	_vignette_tween.tween_property(_vignette, "color:a", 0.28, 0.4)
+	_vignette_tween.tween_property(_vignette, "color:a", 0.0, 0.4)
+
+
+## Stops the vignette pulse and hides it. No-op if not running.
+func _stop_vignette_pulse() -> void:
+	if _vignette_tween and _vignette_tween.is_valid():
+		_vignette_tween.kill()
+		_vignette_tween = null
+	if _vignette != null:
+		_vignette.color.a = 0.0
 
 
 ## Frees all active floating damage label nodes and clears the pool.
@@ -523,6 +566,7 @@ func _on_run_started() -> void:
 	_hp_timer = 0.0
 	_tint_timer = 0.0
 	_stop_pulse()
+	_stop_vignette_pulse()
 	for tw in _dot_tweens:
 		if is_instance_valid(tw):
 			tw.kill()
@@ -727,6 +771,34 @@ func _spawn_affiliation_popup(target: Node, prana_type_id: int) -> void:
 	var world_pos: Vector2 = (target as Node2D).global_position if target is Node2D else Vector2.ZERO
 	var vp_pos: Vector2 = get_viewport().get_canvas_transform() * world_pos
 	# Offset upward past the damage number that fires in the same frame.
+	label.position = vp_pos + Vector2(randf_range(-8.0, 8.0), -20.0)
+	add_child(label)
+	_active_damage_labels.append(label)
+	_animate_damage_label(label)
+
+
+## Handles affiliation_resist_hit from SpellCastingEffects.
+## Spawns a muted "RESIST ½×" popup so the player can read the penalty direction.
+func _on_affiliation_resist_hit(target: Node, prana_type_id: int) -> void:
+	_spawn_resist_popup(target, prana_type_id)
+
+
+## Spawns a "RESIST ½×" floating label above [param target] in a desaturated element color.
+## Visually subordinate to the "WEAK 2×" popup — smaller font, muted palette.
+func _spawn_resist_popup(target: Node, prana_type_id: int) -> void:
+	_evict_if_at_cap()
+	var label := Label.new()
+	label.text = "RESIST ½×"
+	label.add_theme_font_size_override(&"font_size", 13)
+	var color: Color = Color(0.6, 0.6, 0.6, 1.0)  # default: neutral grey
+	var prana_type: PranaType = PranaCatalog.get_type(prana_type_id)
+	if prana_type != null:
+		# Desaturate the type color so it reads as "muted" vs the bold WEAK 2× color.
+		var hsv: Color = prana_type.color
+		color = Color.from_hsv(hsv.h, hsv.s * 0.35, hsv.v * 0.85, 1.0)
+	label.add_theme_color_override(&"font_color", color)
+	var world_pos: Vector2 = (target as Node2D).global_position if target is Node2D else Vector2.ZERO
+	var vp_pos: Vector2 = get_viewport().get_canvas_transform() * world_pos
 	label.position = vp_pos + Vector2(randf_range(-8.0, 8.0), -20.0)
 	add_child(label)
 	_active_damage_labels.append(label)

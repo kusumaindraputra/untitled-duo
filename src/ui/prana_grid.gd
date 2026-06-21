@@ -181,7 +181,9 @@ func fill_all(type_id: int) -> void:
 	_last_fill_type_id = type_id
 	_slots.fill(type_id)
 	for i in _slot_nodes.size():
-		(_slot_nodes[i] as PranaGridSlot).refresh(type_id)
+		var slot := _slot_nodes[i] as PranaGridSlot
+		slot.refresh(type_id)
+		_pop_slot_scale(slot)
 	_update_confirm_button()
 
 
@@ -261,7 +263,9 @@ func _place_token(idx: int, type_id: int) -> void:
 		return
 	_slots[idx] = type_id
 	if idx < _slot_nodes.size():
-		(_slot_nodes[idx] as PranaGridSlot).refresh(type_id)
+		var slot := _slot_nodes[idx] as PranaGridSlot
+		slot.refresh(type_id)
+		_pop_slot_scale(slot)
 	_update_confirm_button()
 
 
@@ -478,6 +482,16 @@ func _update_confirm_button() -> void:
 	var valid: bool = _slots.size() > 4 and _slots[4] != null
 	_confirm_button.disabled = not valid
 	_confirm_button.modulate.a = 1.0 if valid else 0.4
+
+
+## Scale-pop tween for placed/filled tokens: quick overshoot → settle at 1.0.
+## No-op when the slot is not in the tree (headless tests, _create_ui_nodes skipped).
+func _pop_slot_scale(slot: PranaGridSlot) -> void:
+	if not slot.is_inside_tree():
+		return
+	slot.scale = Vector2(1.2, 1.2)
+	var tw := slot.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(slot, "scale", Vector2.ONE, 0.14)
 
 
 ## Updates compact indicator dot colors to match _committed_fragments (AC-CG-04).

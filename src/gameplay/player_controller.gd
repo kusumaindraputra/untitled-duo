@@ -60,6 +60,14 @@ const CAST_LOCK_SPEED_FACTOR: float = 0.55
 const ZOOM_COMBAT: Vector2 = Vector2(1.5, 1.5)
 const ZOOM_PREP: Vector2 = Vector2(0.55, 0.55)
 const ZOOM_TWEEN_DURATION: float = 0.35
+## Faster TRANS_BACK punch-in for combat start — more energetic than the prep smooth-out.
+## Replaces the old black-flash snap so the zoom-in IS the combat-start signal.
+const ZOOM_COMBAT_PUNCH_DURATION: float = 0.22
+
+## Trauma-based camera shake parameters (Gamefeel Audit Issue 2.3).
+## Trauma decays at TRAUMA_DECAY units/sec; squared before applying to offset (quadratic feel).
+const TRAUMA_DECAY: float = 3.5
+const SHAKE_MAX_OFFSET: float = 10.0
 
 # ── Private variables ─────────────────────────────────────────────────────────
 
@@ -80,6 +88,14 @@ var audio_system: Variant = null
 var _footstep_timer: float = 0.0
 var _footstep_bag: Array[StringName] = []
 var _last_footstep_played: StringName = &""
+
+## Trauma-based camera shake accumulator. Range [0.0, 1.0]. Decays each frame.
+## Written by add_camera_trauma(); read in _physics_process() to compute offset.
+var _trauma: float = 0.0
+
+## Remaining seconds of post-hit i-frame blink (white, no tint — distinct from dash cyan).
+## Driven by HealthAndDamage.damage_taken so the player can read grace frames after being hit.
+var _post_hit_blink_timer: float = 0.0
 
 @onready var _camera: Camera2D = $Camera2D
 @onready var _iso_char: Node = $IsoCharacter
@@ -102,6 +118,8 @@ func _ready() -> void:
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	GameStateManager.room_cleared.connect(_on_room_cleared)
 	HealthAndDamage.player_died.connect(_on_player_died)
+	HealthAndDamage.heavy_hit.connect(_on_heavy_hit)
+	HealthAndDamage.damage_taken.connect(_on_player_damage_taken)
 	SpellCastingEffects.cast_hit_started.connect(_on_cast_hit_started)
 	CombinationResolution.combo_resolved.connect(_on_combo_resolved)
 	audio_system = get_node_or_null("/root/AudioSystem")
@@ -131,6 +149,10 @@ func _exit_tree() -> void:
 		GameStateManager.room_cleared.disconnect(_on_room_cleared)
 	if HealthAndDamage.player_died.is_connected(_on_player_died):
 		HealthAndDamage.player_died.disconnect(_on_player_died)
+	if HealthAndDamage.heavy_hit.is_connected(_on_heavy_hit):
+		HealthAndDamage.heavy_hit.disconnect(_on_heavy_hit)
+	if HealthAndDamage.damage_taken.is_connected(_on_player_damage_taken):
+		HealthAndDamage.damage_taken.disconnect(_on_player_damage_taken)
 	if SpellCastingEffects.cast_hit_started.is_connected(_on_cast_hit_started):
 		SpellCastingEffects.cast_hit_started.disconnect(_on_cast_hit_started)
 
@@ -145,16 +167,41 @@ func _physics_process(delta: float) -> void:
 	if _cast_beam_timer > 0.0:
 		_cast_beam_timer -= delta
 
-	# ── I-frame blink (S8-02) ────────────────────────────────────────────────────
+	# ── I-frame blink (S8-02, Gamefeel Audit Issue 5.2) ──────────────────────────
+	# Dash i-frame: cyan tint so the player can distinguish "I dashed safely"
+	# from post-hit grace frames (which use white alpha blink).
 	if _is_invincible:
 		_blink_timer += delta
 		if _blink_timer >= BLINK_INTERVAL:
 			_blink_timer -= BLINK_INTERVAL
+			var a: float = 0.25 if modulate.a > 0.5 else 1.0
+			modulate = Color(0.5, 1.0, 1.0, a)  # cyan — dash i-frame identity
+	elif _post_hit_blink_timer > 0.0:
+		_post_hit_blink_timer -= delta
+		_blink_timer += delta
+		if _blink_timer >= BLINK_INTERVAL:
+			_blink_timer -= BLINK_INTERVAL
 			modulate.a = 0.25 if modulate.a > 0.5 else 1.0
+			modulate.r = 1.0
+			modulate.g = 1.0
+			modulate.b = 1.0
 	else:
-		if modulate.a != 1.0:
-			modulate.a = 1.0
+		if modulate != Color.WHITE:
+			modulate = Color.WHITE
 		_blink_timer = 0.0
+
+	# ── Camera shake (Gamefeel Audit Issue 2.3) ──────────────────────────────────
+	if _trauma > 0.0:
+		_trauma = maxf(_trauma - TRAUMA_DECAY * delta, 0.0)
+		var shake: float = _trauma * _trauma  # quadratic: gentle at low trauma, sharp at high
+		if is_instance_valid(_camera) and shake > 0.001:
+			var t_ms: float = float(Time.get_ticks_msec())
+			_camera.offset = Vector2(
+				sin(t_ms * 0.073) * shake * SHAKE_MAX_OFFSET,
+				cos(t_ms * 0.091) * shake * SHAKE_MAX_OFFSET
+			)
+		elif is_instance_valid(_camera):
+			_camera.offset = Vector2.ZERO
 
 	if _controller_state == ControllerState.DISABLED:
 		velocity = Vector2.ZERO
@@ -345,12 +392,13 @@ func _compute_steps_per_second() -> float:
 
 func _on_combat_started(_is_boss: bool = false) -> void:
 	_controller_state = ControllerState.ENABLED
-	if _camera != null:
+	# TRANS_BACK punch-in replaces the old snap+flash (Gamefeel Audit Issue 4.1).
+	# The slight overshoot of EASE_OUT+BACK reads as energetic without jarring.
+	if is_instance_valid(_camera):
 		if _zoom_tween:
 			_zoom_tween.kill()
-			_zoom_tween = null
-		_camera.zoom = ZOOM_COMBAT
-	_play_combat_flash()
+		_zoom_tween = create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_zoom_tween.tween_property(_camera, "zoom", ZOOM_COMBAT, ZOOM_COMBAT_PUNCH_DURATION)
 
 
 func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) -> void:
@@ -358,8 +406,10 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	velocity = Vector2.ZERO
 	_is_invincible = false
 	collision_mask = COLLISION_MASK_NORMAL
-	modulate.a = 1.0
+	modulate = Color.WHITE
 	_blink_timer = 0.0
+	_post_hit_blink_timer = 0.0
+	_trauma = 0.0
 	_dash_duration_timer = 0.0
 	_dash_cooldown_timer = 0.0
 	_cast_lock_timer = 0.0
@@ -466,6 +516,7 @@ func _tween_zoom(target: Vector2) -> void:
 func _on_player_died() -> void:
 	_controller_state = ControllerState.DISABLED
 	velocity = Vector2.ZERO
+	add_camera_trauma(0.85)  # death shake: strong jolt before overlay appears
 
 
 ## Spawns a procedural dust burst at Fayde's feet when a dash starts.
@@ -511,6 +562,29 @@ func _spawn_dash_ghosts(dash_dir: Vector2) -> void:
 		var tw: Tween = create_tween()
 		tw.tween_property(ghost, "modulate:a", 0.0, 0.25)
 		tw.tween_callback(ghost.queue_free)
+
+
+## Adds [param amount] to the camera shake trauma accumulator (clamped to 1.0).
+## Values: 0.2 = light (Cluster hit), 0.5 = medium (Charger charge), 0.85 = heavy (death).
+## Trauma decays at TRAUMA_DECAY per second and is squared before offset application.
+func add_camera_trauma(amount: float) -> void:
+	_trauma = minf(_trauma + amount, 1.0)
+
+
+## Responds to heavy_hit (final_damage >= HEAVY_HIT_THRESHOLD) with camera trauma.
+## Trauma scales linearly with damage above the threshold, capped at heavy-charge level.
+func _on_heavy_hit(_target: Node, final_damage: int) -> void:
+	var t: float = lerpf(0.25, 0.55,
+		clampf((float(final_damage) - float(HealthAndDamage.HEAVY_HIT_THRESHOLD)) / 30.0, 0.0, 1.0))
+	add_camera_trauma(t)
+
+
+## Starts the post-hit white blink when Fayde takes damage.
+## Sets _post_hit_blink_timer to the H&D i-frame duration so blink matches grace period.
+func _on_player_damage_taken(target: Node, final_damage: int, _current_hp: int) -> void:
+	if target.is_in_group(&"player") and final_damage > 0:
+		_post_hit_blink_timer = HealthAndDamage.FAYDE_IFRAME_DURATION
+		_blink_timer = 0.0  # start fresh so first blink fires immediately
 
 
 ## Inner class: single procedural dash dust puff.

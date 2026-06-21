@@ -1,0 +1,36 @@
+{
+  "_comment": "Music generation manifest for ElevenLabs /v1/music endpoint.",
+  "_sonic_identity": "The Last Cipher — sci-fi dungeon crawler, android child (Fayde) vs robots underground. Progressive metal + electronic hybrid. Intensity rises from Rest → Combat Floor → Elite/Mini-boss → Boss. All tracks seamlessly loopable.",
+  "tracks": [
+    {
+      "event": "mus_preparation",
+      "file": "mus_preparation",
+      "duration_seconds": 24,
+      "prompt": "Atmospheric progressive rock instrumental for a sci-fi dungeon game preparation phase. Sparse clean guitar arpeggios over a slow synth pulse, minimal percussion, building underlying tension without exploding, contemplative and strategic. The android protagonist reads the battlefield and plans. Short seamlessly loopable loop, 24 seconds, no vocals."
+    },
+    {
+      "event": "mus_rest",
+      "file": "mus_rest",
+      "duration_seconds": 32,
+      "prompt": "Calm ambient instrumental for a sci-fi underground rest area in a dungeon game. Soft piano melody over warm synth pads, gentle and hopeful, subtle electronic texture, no drums, no distortion. The android protagonist breathes and heals. Peaceful, introspective, tender. Seamlessly loopable loop."
+    },
+    {
+      "event": "mus_combat_floor",
+      "file": "mus_combat_floor",
+      "duration_seconds": 45,
+      "prompt": "Progressive metal instrumental for a sci-fi dungeon combat encounter, intensity level 1 out of 3. Driving distorted guitar groove with electronic synth undertones, tight rhythmic pulse at 130 BPM, moderate aggression, clear and focused. Small android fights robots underground. Energetic but not overwhelming. Seamlessly loopable."
+    },
+    {
+      "event": "mus_combat_elite",
+      "file": "mus_combat_elite",
+      "duration_seconds": 45,
+      "prompt": "Intense progressive metal instrumental for a sci-fi dungeon mini-boss encounter, intensity level 2 out of 3. Complex polyrhythm distorted guitars with hard-hitting electronic percussion and synth stabs, 150 BPM, relentless and urgent, building tension. Android child vs elite robot commander. More aggressive than normal combat. Seamlessly loopable."
+    },
+    {
+      "event": "mus_combat_boss",
+      "file": "mus_combat_boss",
+      "duration_seconds": 60,
+      "prompt": "Epic orchestral progressive metal instrumental for a sci-fi dungeon boss fight, maximum intensity level 3. Heavy distorted guitars with sweeping cinematic synth orchestration, powerful low-end, dramatic dynamic shifts, thunderous drums, urgent and grand. Android child faces a massive robot overlord in the final confrontation deep underground. Climactic and heroic. Seamlessly loopable."
+    }
+  ]
+}

@@ -17,6 +17,18 @@ extends Node
 ## Total number of floors in a single run.
 const TOTAL_FLOORS: int = 3
 
+## Engine.time_scale applied during hit-stop (Gamefeel Audit Issue 2.2).
+## 0.05 = near-freeze for ~0.06s real time; restores automatically via timer.
+const _HIT_STOP_SCALE: float = 0.05
+## Real-time duration range for hit-stop based on damage magnitude.
+const _HIT_STOP_DURATION_MIN: float = 0.04
+const _HIT_STOP_DURATION_MAX: float = 0.08
+
+## Engine.time_scale during the death slow-mo beat (Gamefeel Audit Issue 5.1).
+const _DEATH_SLOW_SCALE: float = 0.15
+## Real-time duration of the slow-mo before the death overlay appears.
+const _DEATH_SLOW_DURATION: float = 0.75
+
 ## Paths to per-floor enemy pool configs. Index 0 = floor 1, etc.
 const _FLOOR_POOL_PATHS: Array[String] = [
 	"res://assets/data/enemy_pool_configs/enemy_pool_floor1.tres",
@@ -36,9 +48,14 @@ var _current_floor: int = 1
 var _floor_pool_configs: Array[EnemyPoolConfig] = []
 var _boss_pool_configs: Array[EnemyPoolConfig] = []
 
+## Guards hit-stop from stacking during the death slow-mo sequence.
+var _in_death_sequence: bool = false
+
 func _ready() -> void:
+	Engine.time_scale = 1.0  # reset from any prior slow-mo (scene reload via R key)
 	_register_input_actions()
 	_load_pool_configs()
+	HealthAndDamage.heavy_hit.connect(_on_heavy_hit)
 
 	# Tell SceneManager about the initial room already in main.tscn so the first
 	# room transition correctly frees it instead of leaving a duplicate.
@@ -76,6 +93,7 @@ func _ready() -> void:
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and not event.echo and event.pressed:
 		if event.keycode == KEY_R:
+			Engine.time_scale = 1.0  # cancel slow-mo before reload
 			get_tree().reload_current_scene()
 
 
@@ -162,7 +180,16 @@ func _apply_floor_pool_config() -> void:
 		$WaveManager.boss_pool_config = _boss_pool_configs[boss_idx]
 
 
+## Death slow-mo: brief 0.15× time-scale window so the player can read the final
+## board state before the overlay appears (Gamefeel Audit Issue 5.1).
+## Uses ignore_time_scale=true so the timer ticks in real seconds regardless of time_scale.
 func _on_run_ended(win: bool) -> void:
+	if not win and not _in_death_sequence:
+		_in_death_sequence = true
+		Engine.time_scale = _DEATH_SLOW_SCALE
+		await get_tree().create_timer(_DEATH_SLOW_DURATION, true, false, true).timeout
+		Engine.time_scale = 1.0
+
 	var audio: Node = get_node_or_null("/root/AudioSystem")
 	if audio != null and audio.has_method(&"has_event"):
 		var evt: StringName = &"sfx_run_win" if win else &"sfx_run_lose"
@@ -263,6 +290,22 @@ func _ensure_joypad_action(action: StringName, button: JoyButton) -> void:
 
 
 ## Registers an analog stick axis direction to an action. Safe to call multiple times.
+## Hit-stop: briefly freezes time on heavy hits so impacts feel weighty (Gamefeel Audit Issue 2.2).
+## Guarded against re-entry during death slow-mo and while a hit-stop is already active.
+## Uses ignore_time_scale=true timer so real-time duration is independent of time_scale.
+func _on_heavy_hit(_target: Node, final_damage: int) -> void:
+	if Engine.time_scale < 0.5 or _in_death_sequence:
+		return
+	var duration: float = lerpf(
+		_HIT_STOP_DURATION_MIN, _HIT_STOP_DURATION_MAX,
+		clampf((float(final_damage) - float(HealthAndDamage.HEAVY_HIT_THRESHOLD)) / 30.0, 0.0, 1.0)
+	)
+	Engine.time_scale = _HIT_STOP_SCALE
+	await get_tree().create_timer(duration, true, false, true).timeout
+	if not _in_death_sequence:  # death slow-mo may have started while we awaited
+		Engine.time_scale = 1.0
+
+
 func _ensure_joypad_motion_action(action: StringName, axis: JoyAxis, axis_value: float) -> void:
 	if not InputMap.has_action(action):
 		InputMap.add_action(action, 0.2)

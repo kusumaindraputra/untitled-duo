@@ -214,6 +214,7 @@ func _on_enemy_killed(_instance_id: int, _type_id: int,
 	_enemies_alive -= 1
 	if _enemies_alive <= 0:
 		_wave_state = WaveState.WAVE_COMPLETE
+		_apply_final_kill_punch()
 		wave_cleared.emit()
 		if is_final_room:
 			all_waves_cleared.emit()
@@ -238,6 +239,17 @@ func _apply_rest_heal() -> void:
 	HealthAndDamage.apply_heal(player, float(heal_amount))
 	if _audio != null and _audio.has_method(&"has_event") and _audio.has_event(&"sfx_rest_heal"):
 		_audio.play_event(&"sfx_rest_heal")
+
+
+## Final-kill punch: adds camera trauma to Fayde so the last kill feels impactful
+## (Gamefeel Audit Issue 3.3). Null-safe group query — skipped in headless tests
+## where no player node exists in the tree.
+func _apply_final_kill_punch() -> void:
+	if not is_inside_tree():
+		return
+	var player: Node = get_tree().get_first_node_in_group(&"player")
+	if player != null and player.has_method(&"add_camera_trauma"):
+		player.add_camera_trauma(0.45)
 
 
 ## Returns the active enemy pool config, loading defaults on first access. (LD-03)
@@ -345,8 +357,16 @@ func _spawn_wave() -> void:
 		# Boss enemies use base_scale > 1.0 from EnemyType so they spawn visually large.
 		var final_scale: float = entry.get("base_scale", 1.0)
 		enemy.scale = Vector2.ZERO
+		# Spawn stagger: pop-in tween 0→scale (0.18s) then hold 0.12s before activating
+		# physics so enemies appear before their AI engages (Gamefeel Audit Issue 3.1).
+		enemy.set_physics_process(false)
 		var tw: Tween = enemy.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tw.tween_property(enemy, "scale", Vector2(final_scale, final_scale), 0.18)
+		tw.tween_interval(0.12)
+		var captured_enemy := enemy
+		tw.tween_callback(func() -> void:
+			if is_instance_valid(captured_enemy):
+				captured_enemy.set_physics_process(true))
 		spawn_idx += 1
 	_enemies_total = spawn_idx
 	_enemies_alive = _enemies_total

@@ -96,6 +96,11 @@ signal combo_window_opened(window_duration: float)
 ## CombatHUD uses this to spawn a "WEAK 2×" popup above the target.
 signal affiliation_bonus_hit(target: Node, prana_type_id: int)
 
+## Emitted when a hit triggers elemental resistance 0.5× penalty (Step 9).
+## CombatHUD spawns a muted "RESIST ½×" popup so the player can read both
+## directions of the matchup, not just the reward (Gamefeel Audit Issue 2.4).
+signal affiliation_resist_hit(target: Node, prana_type_id: int)
+
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -462,6 +467,7 @@ func _fire_attack(attack_index: int) -> void:
 			affiliation_bonus_hit.emit(target, pt)
 		else:
 			raw *= AFFILIATION_RESIST_MULTIPLIER
+			affiliation_resist_hit.emit(target, pt)
 
 	# Step 10 — deliver damage through Health & Damage (ADR-0007).
 	# element = DamageClass.NONE: SC&E owns the elemental multiplier above (Step 9)
