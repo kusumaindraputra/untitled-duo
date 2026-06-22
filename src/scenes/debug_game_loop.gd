@@ -63,6 +63,9 @@ var _tutorial_layer: CanvasLayer = null
 ## combat/elite room clear.
 var _boon_manager: BoonManager = null
 
+## Run-scoped pool of Prana collected from enemy drops. Created in _ready().
+var _prana_inventory: PranaInventory = null
+
 func _ready() -> void:
 	Engine.time_scale = 1.0  # reset from any prior slow-mo (scene reload via R key)
 	_register_input_actions()
@@ -100,6 +103,11 @@ func _ready() -> void:
 	_boon_manager = BoonManager.new()
 	_boon_manager.name = "BoonManager"
 	add_child(_boon_manager)
+	# Prana drop pool: collected fragments tracked here, rendered by the HUD.
+	_prana_inventory = PranaInventory.new()
+	_prana_inventory.name = "PranaInventory"
+	add_child(_prana_inventory)
+	_prana_inventory.prana_collected.connect(hud._on_prana_collected)
 	GameStateManager.reset_to_main_menu()
 	GameStateManager.set_is_final_floor(_current_floor >= total_floors)
 	GameStateManager.run_ended.connect(_on_run_ended)
