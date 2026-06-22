@@ -227,6 +227,49 @@ func set_test_fragments(fragments: Array) -> void:
 	_test_fragments = fragments
 
 
+## Pure build-preview for the Preparation Phase readout (no state mutation, no signals).
+##
+## Given the in-progress grid as raw type_ids (length 9; null = empty slot), returns a
+## summary of what the build would resolve to in combat, using the same primary/non-primary
+## tier thresholds as _resolve() so the preview matches the real payload. FP scope assumes
+## every fragment is level 1, so effective counts equal the number of matching slots.
+##
+## Returns a Dictionary:
+##   primary_type:  int (-1 when slot 4 is empty)
+##   primary_tier:  int (0 when no core; else 1/2/3)
+##   primary_count: int (matching-type slots, incl. centre)
+##   nonprimary:    Array of { "type": int, "tier": int, "count": int } for each
+##                  non-primary type that is active (tier > 0), ordered by type id.
+func preview_build(type_ids: Array) -> Dictionary:
+	var result: Dictionary = {
+		"primary_type": -1, "primary_tier": 0, "primary_count": 0, "nonprimary": [],
+	}
+	if type_ids.size() <= 4 or type_ids[4] == null:
+		return result
+	var primary: int = int(type_ids[4])
+	result["primary_type"] = primary
+	var pcount: int = 0
+	for t: Variant in type_ids:
+		if t != null and int(t) == primary:
+			pcount += 1
+	result["primary_count"] = pcount
+	result["primary_tier"] = _compute_primary_tier(pcount)
+	var nps: Array = []
+	for type_t: int in ALL_TYPES:
+		if type_t == primary:
+			continue
+		var c: int = 0
+		for i: int in NON_CENTRE_SLOTS:
+			var t2: Variant = type_ids[i] if i < type_ids.size() else null
+			if t2 != null and int(t2) == type_t:
+				c += 1
+		var tier: int = _compute_nonprimary_tier(c)
+		if tier > 0:
+			nps.append({"type": type_t, "tier": tier, "count": c})
+	result["nonprimary"] = nps
+	return result
+
+
 # ── Private helpers ───────────────────────────────────────────────────────────
 
 ## Returns an Array of 9 nulls representing an empty Prana grid.

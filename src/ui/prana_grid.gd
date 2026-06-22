@@ -63,6 +63,10 @@ var _slot_nodes: Array[PranaGridSlot] = []
 ## Confirm button reference. Null in headless tests — all callers guard with != null.
 var _confirm_button: Button = null
 
+## Build readout (RichTextLabel) showing what the current arrangement resolves to —
+## primary element + tier and active non-primary modifiers (Stage 3). Null in headless.
+var _build_readout_label: RichTextLabel = null
+
 ## Full-size grid panel reference. Null in headless tests. Hidden during LOCKED state.
 var _grid_panel: Control = null
 
@@ -501,6 +505,18 @@ func _create_ui_nodes() -> void:
 		grid.add_child(slot)
 		_slot_nodes.append(slot)
 
+	# Build readout — shows what the current arrangement resolves to (Stage 3).
+	# Updated on every slot mutation via _update_build_readout().
+	_build_readout_label = RichTextLabel.new()
+	_build_readout_label.bbcode_enabled = true
+	_build_readout_label.scroll_active = false
+	_build_readout_label.fit_content = true
+	_build_readout_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_build_readout_label.custom_minimum_size = Vector2(0, 44)
+	_build_readout_label.add_theme_font_size_override(&"normal_font_size", 15)
+	_build_readout_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layout.add_child(_build_readout_label)
+
 	# Bag tray — the Prana acquired from post-room rewards, awaiting placement
 	# (grid-as-build model). One draggable token per fragment; click to select for
 	# click-to-place, or drag onto an empty slot. Populated by _refresh_bag_tray().
@@ -602,6 +618,41 @@ func _update_confirm_button() -> void:
 	var valid: bool = _slots.size() > 4 and _slots[4] != null
 	_confirm_button.disabled = not valid
 	_confirm_button.modulate.a = 1.0 if valid else 0.4
+	_update_build_readout()
+
+
+## Refreshes the build readout from the current arrangement via the shared
+## CombinationResolution.preview_build rules, so the preview matches what combat
+## will produce. No-op when the label is null (headless tests).
+func _update_build_readout() -> void:
+	if _build_readout_label == null:
+		return
+	var ids: Array = []
+	ids.resize(GRID_SIZE)
+	for i in GRID_SIZE:
+		ids[i] = _slots[i]
+	var build: Dictionary = CombinationResolution.preview_build(ids)
+	var primary: int = build["primary_type"]
+	if primary < 0:
+		_build_readout_label.text = "[color=#888888]Place a core Prana in the centre to begin your build.[/color]"
+		return
+	var parts: PackedStringArray = PackedStringArray()
+	parts.append("[b]%s[/b]  Tier %d" % [_colored_name(primary), build["primary_tier"]])
+	var nonprimary: Array = build["nonprimary"]
+	for np: Dictionary in nonprimary:
+		parts.append("+%s T%d" % [_colored_name(np["type"]), np["tier"]])
+	_build_readout_label.text = "  ".join(parts)
+
+
+## Returns a bbcode-coloured element name for [param type_id] using the Art Bible palette.
+func _colored_name(type_id: int) -> String:
+	var nm: String = "?"
+	if type_id >= 0 and type_id < PranaTypeToken.TYPE_NAMES.size():
+		nm = PranaTypeToken.TYPE_NAMES[type_id]
+	var col: Color = Color.WHITE
+	if type_id >= 0 and type_id < PranaTypeToken.TYPE_COLORS.size():
+		col = PranaTypeToken.TYPE_COLORS[type_id]
+	return "[color=#%s]%s[/color]" % [col.to_html(false), nm]
 
 
 ## Scale-pop tween for placed/filled tokens: quick overshoot → settle at 1.0.
