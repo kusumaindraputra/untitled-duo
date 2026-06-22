@@ -183,6 +183,29 @@ var _floor_label: Label = null
 ## room transition via set_room_progress(). null until _build_hud() runs.
 var _room_label: Label = null
 
+## Floor minimap — a top-right row of one marker per room on the current floor,
+## colour-coded by room type, with the current room outlined and cleared rooms
+## filled. Rebuilt each call to set_minimap(). null in headless tests.
+var _minimap_root: Control = null
+var _minimap_markers: Array[Panel] = []
+
+## Marker dimensions and spacing (px) for the floor minimap.
+const _MINIMAP_MARKER_SIZE: float = 20.0
+const _MINIMAP_MARKER_SEP: float = 8.0
+const _MINIMAP_MARGIN: float = 12.0
+
+## Room-type marker colours (mirrors DungeonGraph.ROOM_TYPE_* ordering: Combat/Elite/Rest/Boss).
+const _MINIMAP_TYPE_COLORS: Array[Color] = [
+	Color(0.55, 0.60, 0.72),  # Combat — cool slate
+	Color(0.82, 0.46, 0.92),  # Elite  — violet
+	Color(0.40, 0.80, 0.52),  # Rest   — green
+	Color(0.92, 0.32, 0.32),  # Boss   — red
+]
+
+## Per-type letter glyph so the minimap is readable without relying on colour alone
+## (colorblind accessibility, ui-code.md). Parallel to _MINIMAP_TYPE_COLORS.
+const _MINIMAP_TYPE_LETTERS: Array[String] = ["C", "E", "R", "B"]
+
 ## Full-screen danger vignette (DESPERATE zone only). Pulses at ≤1.25Hz per HUD
 ## seizure-safety note. Separate from hp_bar pulse so edge signal is visible while
 ## the player's focus is on the arena centre (Gamefeel Audit Issue 5.3).
@@ -346,6 +369,12 @@ func _create_ui_nodes() -> void:
 	_room_label.size = Vector2(120, 18)
 	add_child(_room_label)
 
+	# Floor minimap — top-right room-path strip. Empty until set_minimap() runs;
+	# markers are built/positioned there (viewport width is known by then).
+	_minimap_root = Control.new()
+	_minimap_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_minimap_root)
+
 	# DESPERATE vignette — full-screen dark red overlay, starts invisible.
 	# z_index below all other HUD elements so text/bars remain legible.
 	_vignette = ColorRect.new()
@@ -472,6 +501,12 @@ func _spawn_damage_label(target: Node, damage: int, color: Color) -> void:
 	var label := Label.new()
 	label.text = str(damage)
 	label.add_theme_color_override(&"font_color", color)
+	# Dark outline keeps numbers legible over any floor/enemy colour.
+	label.add_theme_color_override(&"font_outline_color", Color(0.0, 0.0, 0.0, 0.85))
+	label.add_theme_constant_override(&"outline_size", 5)
+	# Heavy hits punch larger so big damage reads at a glance.
+	if damage >= HealthAndDamage.HEAVY_HIT_THRESHOLD:
+		label.add_theme_font_size_override(&"font_size", 30)
 	var world_pos: Vector2 = (target as Node2D).global_position if target is Node2D else Vector2.ZERO
 	var vp_pos: Vector2 = get_viewport().get_canvas_transform() * world_pos
 	label.position = vp_pos + Vector2(randf_range(-8.0, 8.0), 0.0)
@@ -708,6 +743,70 @@ func _on_run_started() -> void:
 func set_room_progress(current: int, total: int) -> void:
 	if _room_label != null:
 		_room_label.text = "Room %d / %d" % [current, total]
+
+
+## Rebuilds the top-right floor minimap from the current graph snapshot. Display-only:
+## takes plain arrays so the HUD never holds a reference to game state (ui-code.md).
+## [param room_types] / [param room_states] are parallel arrays (one entry per room,
+## values from DungeonGraph.ROOM_TYPE_* / ROOM_STATE_*); [param current_idx] is the
+## room the player currently occupies. No-op before the HUD is built (headless tests).
+func set_minimap(room_types: Array, room_states: Array, current_idx: int) -> void:
+	if _minimap_root == null:
+		return
+	for m: Panel in _minimap_markers:
+		if is_instance_valid(m):
+			m.queue_free()
+	_minimap_markers.clear()
+
+	var count: int = room_types.size()
+	if count == 0:
+		return
+
+	for i: int in range(count):
+		var rtype: int = int(room_types[i])
+		var rstate: int = int(room_states[i]) if i < room_states.size() else 0
+		var is_current: bool = (i == current_idx)
+		var base_col: Color = _MINIMAP_TYPE_COLORS[rtype] if rtype >= 0 and rtype < _MINIMAP_TYPE_COLORS.size() else Color.GRAY
+
+		var marker := Panel.new()
+		marker.custom_minimum_size = Vector2(_MINIMAP_MARKER_SIZE, _MINIMAP_MARKER_SIZE)
+		marker.size = Vector2(_MINIMAP_MARKER_SIZE, _MINIMAP_MARKER_SIZE)
+		marker.position = Vector2(i * (_MINIMAP_MARKER_SIZE + _MINIMAP_MARKER_SEP), 0.0)
+		marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+		var style := StyleBoxFlat.new()
+		style.set_corner_radius_all(4)
+		# Cleared/current rooms read at full strength; unvisited rooms are dimmed.
+		var visited: bool = rstate != 0 or is_current  # 0 == UNVISITED
+		var fill: Color = base_col
+		fill.a = 1.0 if visited else 0.35
+		style.bg_color = fill
+		if is_current:
+			# Gold ring marks "you are here".
+			style.border_color = Color(1.0, 0.84, 0.3)
+			style.set_border_width_all(3)
+		marker.add_theme_stylebox_override(&"panel", style)
+
+		# Type letter — redundant non-colour cue so room types are distinguishable
+		# without relying on hue alone (colorblind accessibility).
+		var glyph := Label.new()
+		glyph.text = _MINIMAP_TYPE_LETTERS[rtype] if rtype >= 0 and rtype < _MINIMAP_TYPE_LETTERS.size() else "?"
+		glyph.add_theme_font_size_override(&"font_size", 12)
+		glyph.add_theme_color_override(&"font_color", Color(0.06, 0.05, 0.08, 1.0))
+		glyph.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		glyph.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		glyph.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		glyph.modulate.a = 1.0 if visited else 0.6
+		marker.add_child(glyph)
+
+		_minimap_root.add_child(marker)
+		_minimap_markers.append(marker)
+
+	# Pin the strip to the top-right of the viewport.
+	var total_w: float = count * _MINIMAP_MARKER_SIZE + maxf(0.0, count - 1) * _MINIMAP_MARKER_SEP
+	var vp_w: float = get_viewport_rect().size.x
+	_minimap_root.position = Vector2(vp_w - total_w - _MINIMAP_MARGIN, _MINIMAP_MARGIN)
 
 
 ## Handles preparation_started from GameStateManager.

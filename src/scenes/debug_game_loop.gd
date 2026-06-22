@@ -113,6 +113,7 @@ func _ready() -> void:
 	hud.player_controller = $PlayerController
 	hud.fayde_node = $PlayerController
 	hud.set_room_progress(_rooms_entered, _dungeon_graph.room_count())
+	_update_minimap()
 	# Boss-intro UI: WaveManager announces boss spawns; HUD shows name card + HP bar.
 	$WaveManager.boss_spawned.connect(hud._on_boss_spawned)
 	# Pause overlay: GameStateManager drives the paused/resumed transitions; we just
@@ -151,14 +152,15 @@ func _input(event: InputEvent) -> void:
 		elif event.keycode == KEY_R:
 			Engine.time_scale = 1.0  # cancel slow-mo before reload
 			get_tree().reload_current_scene()
-		elif event.keycode == KEY_F1:
-			# DEBUG QA: toggle god mode (blocks ALL incoming damage) for full-loop playtest
+		elif OS.is_debug_build() and event.keycode == KEY_F1:
+			# DEBUG QA: toggle god mode (blocks ALL incoming damage) for full-loop playtest.
+			# Gated to debug builds so an exported demo build can't trip these by accident.
 			HealthAndDamage._debug_god_mode = not HealthAndDamage._debug_god_mode
-		elif event.keycode == KEY_F2:
-			# DEBUG QA: instantly kill all enemies to advance wave/floor
+		elif OS.is_debug_build() and event.keycode == KEY_F2:
+			# DEBUG QA: instantly kill all enemies to advance wave/floor (debug builds only).
 			HealthAndDamage.debug_kill_all_enemies()
-		elif event.keycode == KEY_F3:
-			# DEBUG QA: force-advance to next room in dungeon graph
+		elif OS.is_debug_build() and event.keycode == KEY_F3:
+			# DEBUG QA: force-advance to next room in dungeon graph (debug builds only).
 			var rtm: RoomTransitionManager = $RoomTransitionManager
 			var next_rooms: Array[int] = _dungeon_graph.get_outgoing(rtm.get_current_room_idx())
 			if next_rooms.is_empty():
@@ -210,7 +212,7 @@ func _show_title_screen() -> void:
 	vbox.add_child(_make_spacer(40))
 
 	var controls := Label.new()
-	controls.text = "WASD  Move      Shift  Dash      Space  Cast      Enter  Confirm Loadout"
+	controls.text = "WASD / Stick  Move      Shift / X  Dash      Space / A  Cast      Enter / Y  Confirm\nGamepad: D-pad selects a grid slot · A places · B clears · RB cycles Prana"
 	controls.add_theme_font_size_override(&"font_size", 18)
 	controls.add_theme_color_override(&"font_color", Color(0.6, 0.6, 0.66))
 	controls.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -226,9 +228,32 @@ func _show_title_screen() -> void:
 	begin.pressed.connect(_begin_run)
 	vbox.add_child(begin)
 
+	vbox.add_child(_make_spacer(12))
+
+	var quit := Button.new()
+	quit.text = "QUIT"
+	quit.custom_minimum_size = Vector2(240, 44)
+	quit.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	quit.add_theme_font_size_override(&"font_size", 20)
+	quit.pressed.connect(_quit_game)
+	vbox.add_child(quit)
+
 	add_child(_title_layer)
 	# Focus the button so keyboard (Enter/Space) and gamepad (ui_accept) start the run.
 	begin.grab_focus()
+
+
+## Quits the game. Web/exported builds honour this; in the editor it stops the run.
+func _quit_game() -> void:
+	get_tree().quit()
+
+
+## Returns to the main menu scene. Unpauses and resets time scale first so the menu
+## (and any subsequent run) starts from a clean state.
+func _to_main_menu() -> void:
+	get_tree().paused = false
+	Engine.time_scale = 1.0
+	get_tree().change_scene_to_file("res://src/scenes/MainMenu.tscn")
 
 
 ## Builds the title-card subtitle, adapting the goal text to the run length so
@@ -462,6 +487,13 @@ func _on_game_paused() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title)
 
+	# Volume controls — one slider per player-facing bus, wired to AudioSystem.
+	vbox.add_child(_make_spacer(8))
+	_add_volume_slider(vbox, "Master", AudioSystem.get_master_volume(), AudioSystem.set_master_volume)
+	_add_volume_slider(vbox, "Music", AudioSystem.get_music_volume(), AudioSystem.set_music_volume)
+	_add_volume_slider(vbox, "SFX", AudioSystem.get_sfx_volume(), AudioSystem.set_sfx_volume)
+	vbox.add_child(_make_spacer(8))
+
 	var resume := Button.new()
 	resume.text = "Resume  (Esc)"
 	resume.custom_minimum_size = Vector2(240, 52)
@@ -478,8 +510,55 @@ func _on_game_paused() -> void:
 	restart.pressed.connect(_restart_from_pause)
 	vbox.add_child(restart)
 
+	var to_menu := Button.new()
+	to_menu.text = "Main Menu"
+	to_menu.custom_minimum_size = Vector2(240, 52)
+	to_menu.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	to_menu.add_theme_font_size_override(&"font_size", 22)
+	to_menu.pressed.connect(_to_main_menu)
+	vbox.add_child(to_menu)
+
+	var quit := Button.new()
+	quit.text = "Quit Game"
+	quit.custom_minimum_size = Vector2(240, 52)
+	quit.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	quit.add_theme_font_size_override(&"font_size", 22)
+	quit.pressed.connect(_quit_game)
+	vbox.add_child(quit)
+
 	add_child(_pause_layer)
 	resume.grab_focus()
+
+
+## Builds a labelled 0–100 volume slider on [param parent] for one audio bus.
+## [param current_db] seeds the handle; [param setter] receives the new dB on change.
+## dB↔slider maps linearly over the full [−80, 0] range; the AudioSystem setter clamps
+## per-bus invariants (e.g. Music caps at −3 dB), so the slider top is "as loud as allowed".
+func _add_volume_slider(parent: Node, bus_label: String, current_db: float, setter: Callable) -> void:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override(&"separation", 12)
+
+	var name_label := Label.new()
+	name_label.text = bus_label
+	name_label.custom_minimum_size = Vector2(86, 0)
+	name_label.add_theme_font_size_override(&"font_size", 18)
+	name_label.add_theme_color_override(&"font_color", Color(0.78, 0.78, 0.84))
+	row.add_child(name_label)
+
+	var slider := HSlider.new()
+	slider.custom_minimum_size = Vector2(220, 0)
+	slider.min_value = 0.0
+	slider.max_value = 100.0
+	slider.step = 1.0
+	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	slider.value = clampf((current_db + 80.0) / 80.0 * 100.0, 0.0, 100.0)
+	slider.value_changed.connect(func(v: float) -> void: setter.call(lerpf(-80.0, 0.0, v / 100.0)))
+	# Persist on release so the choice survives a restart, without thrashing disk per drag step.
+	slider.drag_ended.connect(func(_changed: bool) -> void: AudioSystem.save_audio_settings())
+	row.add_child(slider)
+
+	parent.add_child(row)
 
 
 ## Frees the pause overlay in response to GameStateManager.game_resumed.
@@ -515,7 +594,25 @@ func _on_room_transitioned(new_room_idx: int) -> void:
 	_rooms_entered += 1
 	var hud: CombatHUD = $CanvasLayer/CombatHUD
 	hud.set_room_progress(_rooms_entered, _dungeon_graph.room_count())
+	_update_minimap()
 	GameStateManager.restart_preparation()
+
+
+## Pushes the current floor's room layout to the HUD minimap. Builds plain type/state
+## arrays from the graph (no graph reference leaks into the HUD) and marks the room the
+## player currently occupies. No-op before the graph exists.
+func _update_minimap() -> void:
+	if _dungeon_graph == null:
+		return
+	var hud: CombatHUD = $CanvasLayer/CombatHUD
+	var rtm: RoomTransitionManager = $RoomTransitionManager
+	var types: Array[int] = []
+	var states: Array[int] = []
+	for i: int in _dungeon_graph.room_count():
+		var room: Dictionary = _dungeon_graph.get_room(i)
+		types.append(int(room.get("type", DungeonGraph.ROOM_TYPE_COMBAT)))
+		states.append(int(room.get("state", DungeonGraph.ROOM_STATE_UNVISITED)))
+	hud.set_minimap(types, states, rtm.get_current_room_idx())
 
 
 ## Configures WaveManager for the room at [param room_idx]: sets room_type and is_final_room.
@@ -569,6 +666,12 @@ func _register_input_actions() -> void:
 	_ensure_joypad_action(&"prana_confirm",    JOY_BUTTON_Y)
 	_ensure_key_action(&"prana_confirm",       KEY_ENTER)
 	_ensure_joypad_action(&"prana_type_cycle", JOY_BUTTON_RIGHT_SHOULDER)
+	# Keyboard grid controls (arrows move the cursor via built-in ui_* actions):
+	# E places the selected Prana, Q discards a slot, C cycles the selected type.
+	# Chosen to avoid conflicts (Space=cast, R=reload, Enter=confirm, WASD=move).
+	_ensure_key_action(&"prana_place",      KEY_E)
+	_ensure_key_action(&"prana_clear",      KEY_Q)
+	_ensure_key_action(&"prana_type_cycle", KEY_C)
 
 
 ## Called when the boss of a non-final floor is defeated.
@@ -688,7 +791,29 @@ func _on_run_ended(win: bool) -> void:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(hint)
 
+	vbox.add_child(_make_spacer(16))
+
+	var button_row := HBoxContainer.new()
+	button_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	button_row.add_theme_constant_override(&"separation", 16)
+	vbox.add_child(button_row)
+
+	var again := Button.new()
+	again.text = "Play Again  (R)"
+	again.custom_minimum_size = Vector2(200, 48)
+	again.add_theme_font_size_override(&"font_size", 20)
+	again.pressed.connect(_restart_from_pause)
+	button_row.add_child(again)
+
+	var to_menu := Button.new()
+	to_menu.text = "Main Menu"
+	to_menu.custom_minimum_size = Vector2(200, 48)
+	to_menu.add_theme_font_size_override(&"font_size", 20)
+	to_menu.pressed.connect(_to_main_menu)
+	button_row.add_child(to_menu)
+
 	add_child(overlay)
+	again.grab_focus()
 
 
 ## Room-clear warm wash overlay — gold flash on wave_ended (Art Bible §2.4).

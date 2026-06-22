@@ -148,6 +148,12 @@ func _input(event: InputEvent) -> void:
 		_cursor_visible = false
 		if _gamepad_cursor != null:
 			_gamepad_cursor.visible = false
+	elif event is InputEventKey and not event.echo and event.pressed and _is_grid_nav_key(event):
+		# Keyboard players drive the same slot cursor as the gamepad. Only grid-relevant
+		# keys flip the cursor on, so ordinary typing/shortcuts don't reveal it.
+		_cursor_visible = true
+		if _gamepad_cursor != null:
+			_gamepad_cursor.visible = true
 	# Motion events have no "just pressed" state — skip all action checks.
 	if event is InputEventMouseMotion or event is InputEventJoypadMotion:
 		return
@@ -173,6 +179,15 @@ func _input(event: InputEvent) -> void:
 		_gamepad_clear()
 	elif Input.is_action_just_pressed(&"prana_confirm"):
 		_on_confirm_pressed()
+
+
+## True when [param event] matches a grid keyboard control (arrow navigation or the
+## place/clear/cycle keys), used to reveal the slot cursor for keyboard-only players.
+func _is_grid_nav_key(event: InputEvent) -> bool:
+	return event.is_action(&"ui_left") or event.is_action(&"ui_right") \
+		or event.is_action(&"ui_up") or event.is_action(&"ui_down") \
+		or event.is_action(&"prana_place") or event.is_action(&"prana_clear") \
+		or event.is_action(&"prana_type_cycle")
 
 
 ## Ticks the error-flash timer and hides the error label when it expires (AC-PG-05).
@@ -489,7 +504,7 @@ func _create_ui_nodes() -> void:
 	layout.add_child(header)
 
 	var hint := Label.new()
-	hint.text = "Drag your Prana into a slot  •  Right-click a slot to discard  •  Then Confirm"
+	hint.text = "Drag a Prana into a slot, or use Arrows + E (place) / Q (discard) / C (cycle)  •  Then Confirm"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	layout.add_child(hint)

@@ -164,6 +164,8 @@ func _ready() -> void:
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	GameStateManager.death_started.connect(_on_death_started)
 	GameStateManager.run_ended.connect(_on_run_ended)
+	# Restore the player's saved volume preferences (no-op on first run / in CI).
+	load_audio_settings()
 
 # ── Bus setup ─────────────────────────────────────────────────────────────────
 
@@ -445,6 +447,38 @@ func get_ui_volume() -> float:
 ## Returns the current AMB bus volume in dB (reads AudioServer directly — not cached).
 func get_amb_volume() -> float:
 	return AudioServer.get_bus_volume_db(AudioServer.get_bus_index(BUS_AMB))
+
+
+# ── Settings persistence ──────────────────────────────────────────────────────
+
+## ConfigFile path for persisted audio preferences (user:// is platform-writable).
+const _SETTINGS_PATH: String = "user://settings.cfg"
+const _SETTINGS_SECTION: String = "audio"
+
+## Writes the current Master/Music/SFX bus volumes to user://settings.cfg.
+## Call this after a settings UI changes a bus volume so the choice survives a restart.
+func save_audio_settings() -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(_SETTINGS_PATH)  # preserve any unrelated keys; ignore "file not found"
+	cfg.set_value(_SETTINGS_SECTION, "master_db", get_master_volume())
+	cfg.set_value(_SETTINGS_SECTION, "music_db", get_music_volume())
+	cfg.set_value(_SETTINGS_SECTION, "sfx_db", get_sfx_volume())
+	cfg.save(_SETTINGS_PATH)
+
+
+## Applies saved Master/Music/SFX volumes from user://settings.cfg, if present.
+## No-op when the file is absent (first launch, fresh CI container) so defaults stand.
+## Routes through the clamping setters, so out-of-range stored values stay safe.
+func load_audio_settings() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(_SETTINGS_PATH) != OK:
+		return
+	if cfg.has_section_key(_SETTINGS_SECTION, "master_db"):
+		set_master_volume(float(cfg.get_value(_SETTINGS_SECTION, "master_db")))
+	if cfg.has_section_key(_SETTINGS_SECTION, "music_db"):
+		set_music_volume(float(cfg.get_value(_SETTINGS_SECTION, "music_db")))
+	if cfg.has_section_key(_SETTINGS_SECTION, "sfx_db"):
+		set_sfx_volume(float(cfg.get_value(_SETTINGS_SECTION, "sfx_db")))
 
 
 ## ONE_SHOT callback: stinger finished naturally — restore Music bus.
