@@ -11,4 +11,4 @@ enemy_pool = Array[int]([0, 1, 2, 4])
 guaranteed_types = Array[int]([0, 1, 2, 4])
 min_counts = { 2: 2 }
 enemy_count_max = 10
-max_enemies_per_marker = 3
+max_enemies_per_marker = 2

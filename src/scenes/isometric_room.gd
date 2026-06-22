@@ -528,6 +528,16 @@ func _build_floor() -> void:
 			_tile_map.erase_cell(c)
 
 
+## Returns [param n] angles evenly spaced around the circle: TAU * i / n for i in [0, n).
+## Each spawn marker gets a distinct target direction, so any marker count (3, 6, …)
+## spreads evenly around the arena instead of clustering. Pure function — unit-tested.
+func _even_spawn_angles(n: int) -> Array[float]:
+	var angles: Array[float] = []
+	for i: int in range(n):
+		angles.append(TAU * float(i) / float(maxi(n, 1)))
+	return angles
+
+
 ## Repositions Marker2D children under SpawnMarkers to tile centers that are
 ## guaranteed inside the walkable area.  This runs after _build_floor() so
 ## get_used_cells() is always authoritative — no hardcoded positions needed.
@@ -550,11 +560,15 @@ func _place_spawn_markers() -> void:
 	# the player's starting zone so PREP→BATTLE doesn't feel like an ambush.
 	var sw_pos: Vector2 = _find_sw_position()
 
-	var target_angles: Array[float] = [0.0, TAU / 3.0, 2.0 * TAU / 3.0]
+	# Distribute markers evenly around the arena: angle = TAU * i / N. This scales to
+	# any marker count (3, 6, …) so adding SpawnZone_D/E/F in the scene spreads the wave
+	# instead of leaving the extra markers stacked at their .tscn default positions.
 	var markers: Array[Node] = _spawn_markers.get_children()
+	var marker_count: int = markers.size()
+	var target_angles: Array[float] = _even_spawn_angles(marker_count)
 	var used_cells: Dictionary = {}
 	var placed_positions: Array[Vector2] = []
-	for i: int in range(min(markers.size(), target_angles.size())):
+	for i: int in range(marker_count):
 		if not (markers[i] is Marker2D):
 			continue
 		var target: float = target_angles[i]

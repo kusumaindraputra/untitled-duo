@@ -10,4 +10,5 @@ threat_cost = { 0: 1, 1: 2, 2: 1, 4: 1 }
 enemy_pool = Array[int]([0, 1, 2, 4])
 guaranteed_types = Array[int]([0, 1, 2])
 min_counts = { 2: 2 }
-max_enemies_per_marker = 3
+enemy_count_max = 12
+max_enemies_per_marker = 2

@@ -74,6 +74,13 @@ var _prana_loadout: PranaLoadout = null
 ## Core-pick CanvasLayer shown after Begin, before the run starts. Freed on pick.
 var _core_pick_layer: CanvasLayer = null
 
+## Pause overlay CanvasLayer. Built on game_paused (ESC during play), freed on
+## game_resumed. PROCESS_MODE_ALWAYS so its buttons stay live while the tree is paused.
+var _pause_layer: CanvasLayer = null
+
+## Rooms entered on the current floor (1-based) — drives the HUD "Room X / Y" breadcrumb.
+var _rooms_entered: int = 1
+
 func _ready() -> void:
 	Engine.time_scale = 1.0  # reset from any prior slow-mo (scene reload via R key)
 	_register_input_actions()
@@ -105,8 +112,13 @@ func _ready() -> void:
 	var hud: CombatHUD = $CanvasLayer/CombatHUD
 	hud.player_controller = $PlayerController
 	hud.fayde_node = $PlayerController
+	hud.set_room_progress(_rooms_entered, _dungeon_graph.room_count())
 	# Boss-intro UI: WaveManager announces boss spawns; HUD shows name card + HP bar.
 	$WaveManager.boss_spawned.connect(hud._on_boss_spawned)
+	# Pause overlay: GameStateManager drives the paused/resumed transitions; we just
+	# build/free the overlay in response so ESC works from PREP and COMBAT alike.
+	GameStateManager.game_paused.connect(_on_game_paused)
+	GameStateManager.game_resumed.connect(_on_game_resumed)
 	# Between-room boons: created here so both main.tscn and demo.tscn get it.
 	_boon_manager = BoonManager.new()
 	_boon_manager.name = "BoonManager"
@@ -134,7 +146,9 @@ func _ready() -> void:
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and not event.echo and event.pressed:
-		if event.keycode == KEY_R:
+		if event.keycode == KEY_ESCAPE:
+			_toggle_pause()
+		elif event.keycode == KEY_R:
 			Engine.time_scale = 1.0  # cancel slow-mo before reload
 			get_tree().reload_current_scene()
 		elif event.keycode == KEY_F1:
@@ -405,6 +419,83 @@ func _dismiss_tutorial(_is_boss: bool = false) -> void:
 		_tutorial_layer = null
 
 
+# ── Pause ───────────────────────────────────────────────────────────────────
+
+## ESC handler. Resumes if already paused, otherwise asks GameStateManager to pause.
+## Ignored while the title/core-pick overlays are up (the tree is already paused there).
+## pause_game() no-ops outside PREPARATION/COMBAT, so this is safe to call any time.
+func _toggle_pause() -> void:
+	if _title_layer != null or _core_pick_layer != null:
+		return
+	if _pause_layer != null:
+		GameStateManager.resume_game()
+	else:
+		GameStateManager.pause_game()
+
+
+## Builds the pause overlay in response to GameStateManager.game_paused.
+## PROCESS_MODE_ALWAYS keeps the buttons interactive while the tree is paused.
+func _on_game_paused() -> void:
+	if _pause_layer != null:
+		return
+	_pause_layer = CanvasLayer.new()
+	_pause_layer.layer = 28
+	_pause_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+
+	var bg := ColorRect.new()
+	bg.color = Color(0.04, 0.03, 0.06, 0.85)
+	bg.anchor_right = 1.0
+	bg.anchor_bottom = 1.0
+	_pause_layer.add_child(bg)
+
+	var vbox := VBoxContainer.new()
+	vbox.anchor_right = 1.0
+	vbox.anchor_bottom = 1.0
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_theme_constant_override(&"separation", 18)
+	_pause_layer.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "PAUSED"
+	title.add_theme_font_size_override(&"font_size", 56)
+	title.add_theme_color_override(&"font_color", Color(1.0, 0.85, 0.3))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+
+	var resume := Button.new()
+	resume.text = "Resume  (Esc)"
+	resume.custom_minimum_size = Vector2(240, 52)
+	resume.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	resume.add_theme_font_size_override(&"font_size", 22)
+	resume.pressed.connect(GameStateManager.resume_game)
+	vbox.add_child(resume)
+
+	var restart := Button.new()
+	restart.text = "Restart Run  (R)"
+	restart.custom_minimum_size = Vector2(240, 52)
+	restart.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	restart.add_theme_font_size_override(&"font_size", 22)
+	restart.pressed.connect(_restart_from_pause)
+	vbox.add_child(restart)
+
+	add_child(_pause_layer)
+	resume.grab_focus()
+
+
+## Frees the pause overlay in response to GameStateManager.game_resumed.
+func _on_game_resumed() -> void:
+	if _pause_layer != null:
+		_pause_layer.queue_free()
+		_pause_layer = null
+
+
+## Restart button: unpause, reset time scale, reload the scene for a fresh run.
+func _restart_from_pause() -> void:
+	get_tree().paused = false
+	Engine.time_scale = 1.0
+	get_tree().reload_current_scene()
+
+
 # ── Private ───────────────────────────────────────────────────────────────────
 
 ## Called after each room transition completes. Rewires WaveManager to the new
@@ -421,6 +512,9 @@ func _on_room_transitioned(new_room_idx: int) -> void:
 	_configure_wave_manager_for_room(new_room_idx)
 	if new_room is IsometricRoom:
 		$PlayerController.position = (new_room as IsometricRoom).get_player_spawn_position()
+	_rooms_entered += 1
+	var hud: CombatHUD = $CanvasLayer/CombatHUD
+	hud.set_room_progress(_rooms_entered, _dungeon_graph.room_count())
 	GameStateManager.restart_preparation()
 
 
@@ -482,6 +576,8 @@ func _register_input_actions() -> void:
 ## spawn rewiring + restart_preparation() when load_floor() completes.
 func _on_floor_completed() -> void:
 	_current_floor += 1
+	# Reset to 0 so the entry-room transition of the new floor increments it back to 1.
+	_rooms_entered = 0
 	_dungeon_graph = _gen.generate(7, _current_floor)
 	GameStateManager.set_is_final_floor(_current_floor >= total_floors)
 	_apply_floor_pool_config()

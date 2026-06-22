@@ -178,6 +178,11 @@ var _combo_counter_tween: Tween = null
 ## Floor indicator label — shows "Floor N" in the top-left corner.
 var _floor_label: Label = null
 
+## Run-progress breadcrumb — shows "Room X / Y" under the floor label so the player
+## can sense how far into the floor they are. Driven by debug_game_loop on each
+## room transition via set_room_progress(). null until _build_hud() runs.
+var _room_label: Label = null
+
 ## Full-screen danger vignette (DESPERATE zone only). Pulses at ≤1.25Hz per HUD
 ## seizure-safety note. Separate from hp_bar pulse so edge signal is visible while
 ## the player's focus is on the arena centre (Gamefeel Audit Issue 5.3).
@@ -332,6 +337,14 @@ func _create_ui_nodes() -> void:
 	_floor_label.position = Vector2(8, 152)
 	_floor_label.size = Vector2(120, 20)
 	add_child(_floor_label)
+
+	_room_label = Label.new()
+	_room_label.text = "Room 1 / 7"
+	_room_label.add_theme_font_size_override(&"font_size", 12)
+	_room_label.add_theme_color_override(&"font_color", Color(0.7, 0.7, 0.78))
+	_room_label.position = Vector2(8, 170)
+	_room_label.size = Vector2(120, 18)
+	add_child(_room_label)
 
 	# DESPERATE vignette — full-screen dark red overlay, starts invisible.
 	# z_index below all other HUD elements so text/bars remain legible.
@@ -688,6 +701,13 @@ func _on_run_started() -> void:
 	if _floor_label != null:
 		_floor_label.text = "Floor 1"
 	_free_all_damage_labels()
+
+
+## Updates the run-progress breadcrumb ("Room X / Y"). Called by debug_game_loop on
+## the initial room and after each room transition. No-op before the HUD is built.
+func set_room_progress(current: int, total: int) -> void:
+	if _room_label != null:
+		_room_label.text = "Room %d / %d" % [current, total]
 
 
 ## Handles preparation_started from GameStateManager.
