@@ -56,6 +56,9 @@ var _in_death_sequence: bool = false
 ## Title-screen CanvasLayer shown at boot before the run starts. Freed on Begin.
 var _title_layer: CanvasLayer = null
 
+## First-prep coaching overlay. Shown once on Begin, auto-freed when combat starts.
+var _tutorial_layer: CanvasLayer = null
+
 func _ready() -> void:
 	Engine.time_scale = 1.0  # reset from any prior slow-mo (scene reload via R key)
 	_register_input_actions()
@@ -236,6 +239,72 @@ func _begin_run() -> void:
 	_title_layer = null
 	get_tree().paused = false
 	GameStateManager.start_run()
+	_show_tutorial_overlay()
+
+
+## Builds a one-time coaching panel on the LEFT (the Prana grid sits on the right,
+## so it stays clear) explaining the core loop during the first Preparation phase.
+## Non-blocking — the player can arrange while reading. Auto-dismisses when the
+## first combat starts, or via the "Got it" button.
+func _show_tutorial_overlay() -> void:
+	_tutorial_layer = CanvasLayer.new()
+	_tutorial_layer.layer = 25
+
+	var panel := PanelContainer.new()
+	panel.anchor_top = 0.5
+	panel.offset_top = -150.0
+	panel.offset_left = 24.0
+	panel.add_theme_constant_override(&"margin_left", 18)
+	panel.add_theme_constant_override(&"margin_right", 18)
+	panel.add_theme_constant_override(&"margin_top", 14)
+	panel.add_theme_constant_override(&"margin_bottom", 14)
+	var pstyle := StyleBoxFlat.new()
+	pstyle.bg_color = Color(0.05, 0.04, 0.08, 0.92)
+	pstyle.border_color = Color(1.0, 0.85, 0.4, 0.7)
+	pstyle.set_border_width_all(2)
+	pstyle.set_corner_radius_all(6)
+	panel.add_theme_stylebox_override(&"panel", pstyle)
+	_tutorial_layer.add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override(&"separation", 8)
+	panel.add_child(vbox)
+
+	var heading := Label.new()
+	heading.text = "HOW TO FIGHT"
+	heading.add_theme_font_size_override(&"font_size", 22)
+	heading.add_theme_color_override(&"font_color", Color(1.0, 0.85, 0.4))
+	vbox.add_child(heading)
+
+	var steps: Array[String] = [
+		"1.  Pick an element on the right, then fill the grid slots.",
+		"2.  The CENTER slot sets your primary element.",
+		"3.  3+ of one type = a stronger spell Tier.",
+		"4.  Press ENTER to confirm, then SPACE to cast in battle.",
+	]
+	for line: String in steps:
+		var step := Label.new()
+		step.text = line
+		step.add_theme_font_size_override(&"font_size", 16)
+		step.add_theme_color_override(&"font_color", Color(0.82, 0.82, 0.88))
+		vbox.add_child(step)
+
+	var dismiss := Button.new()
+	dismiss.text = "Got it"
+	dismiss.add_theme_font_size_override(&"font_size", 16)
+	dismiss.pressed.connect(_dismiss_tutorial)
+	vbox.add_child(dismiss)
+
+	add_child(_tutorial_layer)
+	# Auto-dismiss the moment the player confirms their first loadout.
+	GameStateManager.combat_started.connect(_dismiss_tutorial, CONNECT_ONE_SHOT)
+
+
+## Frees the tutorial overlay if present. Safe to call multiple times.
+func _dismiss_tutorial(_is_boss: bool = false) -> void:
+	if _tutorial_layer != null:
+		_tutorial_layer.queue_free()
+		_tutorial_layer = null
 
 
 # ── Private ───────────────────────────────────────────────────────────────────
