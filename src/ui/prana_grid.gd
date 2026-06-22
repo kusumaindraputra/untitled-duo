@@ -464,6 +464,8 @@ static func slot_col(index: int) -> int:
 ## Builds all UI child nodes programmatically (follows CombatHUD pattern).
 ## Called once from _ready(). Headless unit tests use .new() and never call
 ## _ready(), so this method is never executed in the test harness.
+## TODO(i18n): demo debt — the player-facing labels built below are hardcoded;
+## route them through the localization system before this graduates the demo (ui-code.md).
 func _create_ui_nodes() -> void:
 	# Panel pinned to the right side of the viewport using absolute position+size
 	# (same pattern as CombatHUD — anchors on CanvasLayer children are unreliable

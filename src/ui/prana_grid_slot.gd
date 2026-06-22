@@ -11,8 +11,9 @@
 ##
 ## ADR-0013 constraints enforced here:
 ##   - grab_focus() NEVER called in any mouse handler.
-##   - Drag payload is { "type_id": int } — no other keys.
-##   - _can_drop_data rejects any payload that is not a Dictionary with "type_id".
+##   - Drag payload always carries "type_id"; inter-slot drags add "source_slot" and
+##     bag placements add "from_bag" (grid-as-build). _can_drop_data rejects any payload
+##     that is not a Dictionary with "type_id".
 class_name PranaGridSlot
 extends Panel  # Panel so add_theme_stylebox_override("panel", ...) renders correctly
 

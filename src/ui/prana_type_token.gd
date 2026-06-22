@@ -10,6 +10,8 @@ class_name PranaTypeToken
 extends Panel
 
 ## Art Bible palette — matches PranaGridSlot.TYPE_COLORS (QA plan S4-04 checklist).
+## TODO(data-driven): demo debt — source colours/names from PranaCatalog (the canonical
+## type data) instead of these hardcoded arrays so there is a single source of truth.
 const TYPE_COLORS: Array[Color] = [
 	Color("#F24C1D"),  # 0 Ashfire
 	Color("#4A5EF5"),  # 1 Voidblue

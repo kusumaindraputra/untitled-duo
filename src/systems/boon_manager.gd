@@ -20,6 +20,8 @@ extends Node
 signal boon_applied(boon_id: StringName)
 
 # ── Boon tuning values (demo) ─────────────────────────────────────────────────
+# TODO(data-driven): demo debt — these tuning values and the element names below
+# should load from a config resource, not be hardcoded (coding-standards.md).
 const _DMG_BOON: float = 1.20        ## +20% spell damage
 const _DMG_BOON_BIG: float = 1.35    ## +35% spell damage
 const _MOVE_BOON: float = 1.15       ## +15% move speed
@@ -195,6 +197,8 @@ func offer_boons() -> void:
 
 # ── Private ───────────────────────────────────────────────────────────────────
 
+## TODO(i18n): demo debt — card titles/descriptions and the overlay heading are
+## hardcoded user-facing strings; route through the localization system (ui-code.md).
 ## Builds a single clickable reward card button. Prana cards (carrying a "prana_type"
 ## key) are tinted with the element's Art Bible colour so they read distinctly from
 ## stat boons in the mixed menu.
