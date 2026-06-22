@@ -199,6 +199,7 @@ func _ready() -> void:
 	process_mode = PROCESS_MODE_ALWAYS
 	_create_ui_nodes()
 	HealthAndDamage.damage_taken.connect(_on_damage_taken)
+	HealthAndDamage.enemy_killed.connect(_on_enemy_killed)
 	HealthAndDamage.health_restored.connect(_on_health_restored)
 	HealthAndDamage.player_died.connect(_on_player_died)
 	HealthAndDamage.player_hp_zone_changed.connect(_on_hp_zone_changed)
@@ -560,6 +561,14 @@ func _on_boss_spawned(boss: Node) -> void:
 	# Camera reveal — only touches zoom, safe against look-ahead (PlayerController).
 	if is_instance_valid(player_controller) and player_controller.has_method(&"boss_reveal_zoom"):
 		player_controller.boss_reveal_zoom()
+
+
+## Hides the boss intro UI when the tracked boss is killed. Covers death paths
+## that bypass damage_taken (e.g. the F2 debug kill) so the name card/bar never
+## linger onto the end screen.
+func _on_enemy_killed(instance_id: int, _type_id: int, _affiliation: GameEnums.DamageClass) -> void:
+	if is_instance_valid(_boss_ref) and _boss_ref.get_instance_id() == instance_id:
+		_hide_boss_ui()
 
 
 ## Hides the boss intro UI and clears the boss reference (on death or teardown).

@@ -26,10 +26,10 @@ const _HEAL_BOON: float = 40.0       ## flat HP restored
 ## Static boon catalog. Each entry: id, title, desc. The effect is dispatched by
 ## id in apply_boon(). Kept as a data table so roll/apply logic is value-driven.
 const _CATALOG: Array[Dictionary] = [
-	{"id": &"damage",     "title": "Sharpened Cipher", "desc": "+20%% spell damage"},
-	{"id": &"overcharge", "title": "Overcharge",       "desc": "+35%% spell damage"},
-	{"id": &"move_speed", "title": "Swift Step",        "desc": "+15%% move speed"},
-	{"id": &"dash_cd",    "title": "Quick Recovery",    "desc": "-25%% dash cooldown"},
+	{"id": &"damage",     "title": "Sharpened Cipher", "desc": "+20% spell damage"},
+	{"id": &"overcharge", "title": "Overcharge",       "desc": "+35% spell damage"},
+	{"id": &"move_speed", "title": "Swift Step",        "desc": "+15% move speed"},
+	{"id": &"dash_cd",    "title": "Quick Recovery",    "desc": "-25% dash cooldown"},
 	{"id": &"heal",       "title": "Second Wind",       "desc": "Restore 40 HP"},
 ]
 
