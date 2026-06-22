@@ -66,6 +66,13 @@ var _boon_manager: BoonManager = null
 ## Run-scoped pool of Prana collected from enemy drops. Created in _ready().
 var _prana_inventory: PranaInventory = null
 
+## Persistent 9-slot Prana build carried across rooms. Seeded with the core at run
+## start; the per-room PranaGrid restores/saves it. Created in _ready().
+var _prana_loadout: PranaLoadout = null
+
+## Core-pick CanvasLayer shown after Begin, before the run starts. Freed on pick.
+var _core_pick_layer: CanvasLayer = null
+
 func _ready() -> void:
 	Engine.time_scale = 1.0  # reset from any prior slow-mo (scene reload via R key)
 	_register_input_actions()
@@ -108,6 +115,10 @@ func _ready() -> void:
 	_prana_inventory.name = "PranaInventory"
 	add_child(_prana_inventory)
 	_prana_inventory.prana_collected.connect(hud._on_prana_collected)
+	# Persistent Prana build (carried across rooms by PranaLoadout, restored by the grid).
+	_prana_loadout = PranaLoadout.new()
+	_prana_loadout.name = "PranaLoadout"
+	add_child(_prana_loadout)
 	GameStateManager.reset_to_main_menu()
 	GameStateManager.set_is_final_floor(_current_floor >= total_floors)
 	GameStateManager.run_ended.connect(_on_run_ended)
@@ -253,6 +264,76 @@ func _begin_run() -> void:
 		return
 	_title_layer.queue_free()
 	_title_layer = null
+	# Pick the core Prana before the run starts. The tree stays paused until a core
+	# is chosen; _on_core_picked() seeds the loadout and starts the run.
+	_show_core_pick()
+
+
+## Builds the "choose your core Prana" overlay (5 element cards). Tree remains paused
+## (PROCESS_MODE_ALWAYS overlay) until a card is picked.
+func _show_core_pick() -> void:
+	_core_pick_layer = CanvasLayer.new()
+	_core_pick_layer.layer = 30
+	_core_pick_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+
+	var bg := ColorRect.new()
+	bg.color = Color(0.04, 0.03, 0.06, 0.95)
+	bg.anchor_right = 1.0
+	bg.anchor_bottom = 1.0
+	_core_pick_layer.add_child(bg)
+
+	var vbox := VBoxContainer.new()
+	vbox.anchor_right = 1.0
+	vbox.anchor_bottom = 1.0
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_theme_constant_override(&"separation", 18)
+	_core_pick_layer.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "CHOOSE YOUR CORE PRANA"
+	title.add_theme_font_size_override(&"font_size", 38)
+	title.add_theme_color_override(&"font_color", Color(1.0, 0.85, 0.4))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+
+	var sub := Label.new()
+	sub.text = "It anchors the centre slot. Build the rest from room rewards."
+	sub.add_theme_font_size_override(&"font_size", 18)
+	sub.add_theme_color_override(&"font_color", Color(0.7, 0.7, 0.78))
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(sub)
+
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override(&"separation", 14)
+	vbox.add_child(row)
+
+	var first_button: Button = null
+	for type_id in PranaTypeToken.TYPE_NAMES.size():
+		var card := Button.new()
+		card.custom_minimum_size = Vector2(150, 110)
+		card.add_theme_font_size_override(&"font_size", 22)
+		card.text = PranaTypeToken.TYPE_NAMES[type_id]
+		if type_id < PranaTypeToken.TYPE_COLORS.size():
+			card.add_theme_color_override(&"font_color", PranaTypeToken.TYPE_COLORS[type_id])
+		var captured_id: int = type_id
+		card.pressed.connect(func() -> void: _on_core_picked(captured_id))
+		row.add_child(card)
+		if first_button == null:
+			first_button = card
+
+	add_child(_core_pick_layer)
+	if first_button != null:
+		first_button.grab_focus()
+
+
+## Seeds the loadout with the chosen core, dismisses the picker, and starts the run.
+func _on_core_picked(type_id: int) -> void:
+	if _prana_loadout != null:
+		_prana_loadout.seed_core(type_id)
+	if _core_pick_layer != null:
+		_core_pick_layer.queue_free()
+		_core_pick_layer = null
 	get_tree().paused = false
 	GameStateManager.start_run()
 	_show_tutorial_overlay()
@@ -293,8 +374,8 @@ func _show_tutorial_overlay() -> void:
 	vbox.add_child(heading)
 
 	var steps: Array[String] = [
-		"1.  Pick an element on the right, then fill the grid slots.",
-		"2.  The CENTER slot sets your primary element.",
+		"1.  Your CORE Prana sits centre — it's your primary element.",
+		"2.  Clear rooms to earn Prana, then add them to your grid.",
 		"3.  3+ of one type = a stronger spell Tier.",
 		"4.  Press ENTER to confirm, then SPACE to cast in battle.",
 	]

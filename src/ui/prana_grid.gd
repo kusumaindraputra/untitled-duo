@@ -187,11 +187,18 @@ func fill_all(type_id: int) -> void:
 	_update_confirm_button()
 
 
-## Pre-fills all 9 slots with the last chosen type and enters ARRANGEMENT state.
-## On the very first wave _last_fill_type_id is 0 (Ashfire default).
+## Restores the persistent build from PranaLoadout (the grid is rebuilt per room, so
+## the run's build lives in the loadout holder) and enters ARRANGEMENT state. When no
+## loadout exists (headless tests / standalone), starts from an empty grid.
 ## Called on every new wave start, from any prior state.
 func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) -> void:
-	_slots.fill(_last_fill_type_id)
+	var loadout: Node = _get_loadout()
+	if loadout != null:
+		var saved: Array = loadout.get_slots()
+		for i in GRID_SIZE:
+			_slots[i] = saved[i] if i < saved.size() else null
+	else:
+		_slots.fill(null)
 	_committed_fragments.fill(null)
 	_state = State.ARRANGEMENT
 	if _compact_indicator != null:
@@ -199,9 +206,15 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	if _grid_panel != null:
 		_grid_panel.visible = true
 	for i in _slot_nodes.size():
-		(_slot_nodes[i] as PranaGridSlot).refresh(_last_fill_type_id)
+		var v: Variant = _slots[i]
+		(_slot_nodes[i] as PranaGridSlot).refresh(v if v != null else -1)
 	_update_confirm_button()
 	visible = true
+
+
+## Resolves the persistent PranaLoadout via group, or null if none (tests).
+func _get_loadout() -> Node:
+	return get_tree().get_first_node_in_group(&"prana_loadout") if is_inside_tree() else null
 
 
 ## Transitions to LOCKED state: hides the full panel, shows the compact dot indicator.
@@ -252,6 +265,11 @@ func _on_confirm_pressed() -> void:
 		else:
 			fragments[i] = null
 	_committed_fragments = fragments
+	# Persist the build so the next room's grid restores it (the grid is rebuilt
+	# per room; the run's loadout lives in the PranaLoadout holder).
+	var loadout: Node = _get_loadout()
+	if loadout != null:
+		loadout.set_slots(_slots)
 	arrangement_confirmed.emit()
 
 
@@ -356,7 +374,7 @@ func _create_ui_nodes() -> void:
 	layout.add_child(header)
 
 	var hint := Label.new()
-	hint.text = "Click a type to fill all  •  Right-click slot to clear  •  Then Confirm"
+	hint.text = "Drag Prana to arrange  •  Right-click to remove  •  Then Confirm"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	layout.add_child(hint)
@@ -379,15 +397,19 @@ func _create_ui_nodes() -> void:
 		grid.add_child(slot)
 		_slot_nodes.append(slot)
 
-	# Type selector
+	# Type selector — hidden under the build-your-loadout model (no free-fill: Prana
+	# is acquired from post-room rewards, not conjured here). Nodes kept for the
+	# gamepad path and possible reuse, but not shown for mouse play.
 	var sel_label := Label.new()
 	sel_label.text = "─── SELECT TYPE ───"
 	sel_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sel_label.visible = false
 	layout.add_child(sel_label)
 
 	var selector := HBoxContainer.new()
 	selector.add_theme_constant_override(&"separation", 4)
 	selector.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	selector.visible = false
 	layout.add_child(selector)
 
 	for type_id in 5:
@@ -402,9 +424,11 @@ func _create_ui_nodes() -> void:
 	buttons.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	layout.add_child(buttons)
 
+	# Clear All hidden — clearing would wipe the persistent build including the core.
 	var clear_btn := Button.new()
 	clear_btn.text = "Clear All"
 	clear_btn.pressed.connect(clear_all)
+	clear_btn.visible = false
 	buttons.add_child(clear_btn)
 
 	_confirm_button = Button.new()
