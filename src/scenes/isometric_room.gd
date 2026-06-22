@@ -739,16 +739,98 @@ func _get_sample_extents() -> Dictionary:
 	return {"x": wx * cfg.inner_scale, "y": wy * cfg.inner_scale}
 
 
+## Returns the room-local centers of every "interior" floor tile — a filled tile whose
+## four orthogonal neighbours are ALSO filled. Debris placed at an interior center (radius
+## _DEBRIS_RADIUS) is therefore fully surrounded by floor and can never overhang a wall,
+## for ANY layout: default diamond, narrow, arena, corridor, split, or hand-authored cells.
+##
+## Derived from the live TileMapLayer (authoritative after _build_floor*), so it tracks the
+## actual generated shape rather than the default-diamond WALL_HALF constants. Returns an
+## empty array when no tile map exists (headless/pure tests) — callers fall back to the
+## legacy diamond sampler. (LD-02 — out-of-bounds obstacle fix)
+func _interior_tile_centers() -> Array[Vector2]:
+	var centers: Array[Vector2] = []
+	if _tile_map == null:
+		return centers
+	var used: Dictionary = {}
+	for c: Vector2i in _tile_map.get_used_cells():
+		used[c] = true
+	var dirs: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	for c: Vector2i in used:
+		var interior: bool = true
+		for d: Vector2i in dirs:
+			if not used.has(c + d):
+				interior = false
+				break
+		if interior:
+			centers.append(_tile_map.map_to_local(c))
+	return centers
+
+
+## Selects obstacle positions by sampling from [param candidates] — on-floor interior tile
+## centers — instead of sampling free (x, y) against an approximate zone. Because every chosen
+## point is a real floor-tile center, obstacles can never land outside the arena regardless of
+## room layout. Enforces the same clearance constraints as _generate_debris_positions:
+## min_center_dist from origin, min_spawn_dist from spawn markers, min_between_dist between
+## obstacles. Candidates are shuffled so placement varies each run. (LD-02 — OOB fix)
+##
+## [param zone_check] optional extra filter (e.g. a template's valid_zone_rects). When valid,
+##  a candidate must ALSO pass it — the on-floor mask remains the hard bound either way.
+func _generate_debris_on_floor(spawn_positions: Array[Vector2], candidates: Array[Vector2], zone_check: Callable = Callable()) -> Array[Vector2]:
+	var cfg: ObstacleConfig = _get_obstacle_config()
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var count: int = rng.randi_range(cfg.count_min, cfg.count_max)
+	# Fisher-Yates shuffle a working copy so the chosen subset (and its order) varies per run.
+	var pool: Array[Vector2] = candidates.duplicate()
+	for i: int in range(pool.size() - 1, 0, -1):
+		var j: int = rng.randi_range(0, i)
+		var tmp: Vector2 = pool[i]
+		pool[i] = pool[j]
+		pool[j] = tmp
+	var placed: Array[Vector2] = []
+	for cand: Vector2 in pool:
+		if placed.size() >= count:
+			break
+		if cand.length() < cfg.min_center_dist:
+			continue
+		if zone_check.is_valid() and not zone_check.call(cand):
+			continue
+		var skip: bool = false
+		for sp: Vector2 in spawn_positions:
+			if cand.distance_to(sp) < cfg.min_spawn_dist:
+				skip = true
+				break
+		if not skip:
+			for p: Vector2 in placed:
+				if cand.distance_to(p) < cfg.min_between_dist:
+					skip = true
+					break
+		if skip:
+			continue
+		placed.append(cand)
+	return placed
+
+
 ## Spawns half-cover debris obstacles (S9-09, design/quick-specs/arena-cover-types.md).
 ## Debris blocks movement (physics layer 16) but not Prana spells or projectiles.
 ## Each debris also has a NavigationObstacle2D for enemy avoidance.
-## Positions are randomised each run via _generate_debris_positions (level-generation.md).
-## When a room_template is set, passes the template's zone_check and sample extents. (LD-12)
+##
+## Positions come from interior floor-tile centers (_generate_debris_on_floor) so obstacles
+## are guaranteed inside the arena for every layout. When no tile map is present (headless
+## edge case) it falls back to the legacy diamond sampler. A room_template's valid_zone_rects,
+## when set, further constrains placement on top of the on-floor mask. (LD-02, LD-12)
 func _build_debris_obstacles() -> void:
 	var spawn_positions: Array[Vector2] = get_spawn_markers()
 	var zone_check: Callable = _get_zone_check()
-	var extents: Dictionary = _get_sample_extents()
-	for pos: Vector2 in _generate_debris_positions(spawn_positions, zone_check, extents["x"], extents["y"]):
+	var candidates: Array[Vector2] = _interior_tile_centers()
+	var positions: Array[Vector2]
+	if candidates.is_empty():
+		var extents: Dictionary = _get_sample_extents()
+		positions = _generate_debris_positions(spawn_positions, zone_check, extents["x"], extents["y"])
+	else:
+		positions = _generate_debris_on_floor(spawn_positions, candidates, zone_check)
+	for pos: Vector2 in positions:
 		var body := StaticBody2D.new()
 		body.name = "Debris"
 		body.position = pos

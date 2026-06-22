@@ -28,13 +28,13 @@ extends RefCounted
 const L1_COMBAT_PRELOADS: Array[Dictionary] = [
 	{"path": "res://assets/data/room_templates/template_diamond.tres",  "weight": 3.0},
 	{"path": "res://assets/data/room_templates/template_split.tres",    "weight": 2.0},
-	{"path": "res://assets/data/room_templates/template_corridor.tres", "weight": 1.0},
+	{"path": "res://assets/data/room_templates/template_corridor.tres", "weight": 2.0},
 	{"path": "res://assets/data/room_templates/template_arena.tres",    "weight": 2.0},
 ]
 
 const L1_ELITE_PRELOADS: Array[Dictionary] = [
 	{"path": "res://assets/data/room_templates/template_split.tres",    "weight": 2.0},
-	{"path": "res://assets/data/room_templates/template_corridor.tres", "weight": 1.0},
+	{"path": "res://assets/data/room_templates/template_corridor.tres", "weight": 2.0},
 	{"path": "res://assets/data/room_templates/template_gauntlet.tres", "weight": 1.0},
 ]
 
@@ -47,6 +47,16 @@ const L1_BOSS_PRELOADS: Array[Dictionary] = [
 ]
 
 
+# ── Variety constraint ─────────────────────────────────────────────────────────
+
+## How many of the most-recently-assigned templates to avoid when picking the next
+## one. 1 = only avoid the immediately-previous template (no back-to-back repeats).
+## 2 = avoid the last two, forcing any three consecutive rooms to be distinct shapes —
+## the default, which noticeably diversifies a floor. Always clamped to pool.size()-1
+## so a pick can never exhaust its pool (single-template pools still reuse). (LD-18)
+var variety_window: int = 2
+
+
 # ── State ─────────────────────────────────────────────────────────────────────
 
 var _combat_pool: Array[Dictionary] = []   ## [{template: RoomTemplate, weight: float}]
@@ -54,7 +64,7 @@ var _elite_pool:  Array[Dictionary] = []
 var _rest_pool:   Array[Dictionary] = []
 var _boss_pool:   Array[Dictionary] = []
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
-var _last_template: RoomTemplate = null
+var _recent: Array[RoomTemplate] = []      ## rolling history of assigned templates (variety window)
 var _assigned: Array[RoomTemplate] = []    ## per-index record, for diagnostics
 
 
@@ -71,17 +81,17 @@ func _init() -> void:
 ## All four room types (Combat/Elite/Rest/Boss) draw from their respective pools.
 ## O(N) — walks rooms once in index order.
 func assign(graph: DungeonGraph) -> void:
-	_last_template = null
+	_recent.clear()
 	_assigned.clear()
 	for i: int in range(graph.room_count()):
 		var room: Dictionary = graph.get_room(i)
 		var pool: Array[Dictionary] = _get_pool_for_type(int(room["type"]))
 		var tmpl: RoomTemplate = null
 		if not pool.is_empty():
-			tmpl = _pick(pool, _last_template)
+			tmpl = _pick(pool, _recent)
 		room["template"] = tmpl
 		_assigned.append(tmpl)
-		_last_template = tmpl
+		_recent.append(tmpl)
 
 
 ## Returns the template assigned to room [param idx] after the last assign() call.
@@ -149,17 +159,30 @@ func _get_pool_for_type(type: int) -> Array[Dictionary]:
 			return []
 
 
-## Weighted random pick from [param pool], avoiding [param avoid] unless the pool
-## has only one entry (in which case consecutive reuse is allowed).
-func _pick(pool: Array[Dictionary], avoid: RoomTemplate) -> RoomTemplate:
+## Weighted random pick from [param pool], avoiding the templates most recently
+## assigned. The avoid set is the last min(variety_window, pool.size()-1) entries of
+## [param recent], so a three-room run draws three distinct shapes when variety_window
+## is 2. The pool.size()-1 clamp guarantees at least one candidate always survives, so
+## single-template pools still reuse and the function never falls through empty. (LD-18)
+func _pick(pool: Array[Dictionary], recent: Array[RoomTemplate]) -> RoomTemplate:
 	var candidates: Array[Dictionary] = pool
-	if avoid != null and pool.size() > 1:
-		candidates = []
-		for e: Dictionary in pool:
-			if e["template"] != avoid:
-				candidates.append(e)
-		if candidates.is_empty():
-			candidates = pool   # all entries were avoid — fall back to full pool
+	var window: int = mini(maxi(variety_window, 0), pool.size() - 1)
+	if window > 0 and not recent.is_empty():
+		var avoid: Dictionary = {}
+		for k: int in range(1, window + 1):
+			var idx: int = recent.size() - k
+			if idx < 0:
+				break
+			var t: RoomTemplate = recent[idx]
+			if t != null:
+				avoid[t] = true
+		if not avoid.is_empty():
+			candidates = []
+			for e: Dictionary in pool:
+				if not avoid.has(e["template"]):
+					candidates.append(e)
+			if candidates.is_empty():
+				candidates = pool   # all entries were avoided — fall back to full pool
 
 	var total: float = 0.0
 	for c: Dictionary in candidates:

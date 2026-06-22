@@ -30,12 +30,15 @@ positioning dasar, dan perbedaan perilaku antar archetype.
 |----------|------|-------------|---------|
 | The Diamond | Combat | 3 | Baseline tutorial — "ini cara baca room" |
 | The Split | Combat/Elite | 2 | Lane commitment — "pilih kiri atau kanan" |
-| The Corridor | Combat/Elite | 1 | Linear funnel — "musuh dari satu arah" |
+| The Corridor | Combat/Elite | 2 | Linear funnel — "musuh dari satu arah" |
 | The Arena | Combat | 2 | Open space — "tidak ada cover = movement is defense" |
 | The Gauntlet | Elite | 1 | AOE value — "satu lorong, semua musuh" |
 
-> **Weight**: Higher = lebih sering muncul. Diamond template = 3× lebih sering dari Corridor.
->   Player akan lihat Diamond paling sering, membangun baseline mental.
+> **Weight**: Higher = lebih sering muncul. Diamond template tetap yang paling sering
+>   (1.5× dari Split/Corridor/Arena) sehingga player membangun baseline mental lewat
+>   Diamond — tapi ketiga shape lain kini sama-sama umum, jadi sebuah floor terasa lebih
+>   beragam. Variety window (RoomSelector.variety_window = 2) juga menjamin tidak ada
+>   shape yang sama muncul dalam tiga room berturut-turut.
 
 ### Obstacle Palette
 
