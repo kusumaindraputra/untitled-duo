@@ -26,6 +26,10 @@ extends Control
 ## Fayde's maximum HP — matches HealthAndDamage.FAYDE_MAX_HP.
 const FAYDE_MAX_HP: int = 100
 
+## Boss HP bar dimensions (px) — wide, thin banner anchored top-centre.
+const BOSS_BAR_WIDTH: float = 520.0
+const BOSS_BAR_HEIGHT: float = 18.0
+
 ## Duration in seconds for the HP bar drain animation on damage (AC-HUD-01, AC-HUD-02a).
 const HP_BAR_DRAIN_DURATION: float = 0.15
 
@@ -180,6 +184,14 @@ var _floor_label: Label = null
 var _vignette: ColorRect = null
 var _vignette_tween: Tween = null
 
+## Boss intro UI — name card label and a large top-centre HP bar. Hidden until a
+## boss spawns (WaveManager.boss_spawned). _boss_ref tracks the live boss so
+## _on_damage_taken can drain the bar; cleared when the boss dies.
+var _boss_name_label: Label = null
+var _boss_bar: ProgressBar = null
+var _boss_ref: Node = null
+var _boss_intro_tween: Tween = null
+
 
 # ── Built-in virtual methods ──────────────────────────────────────────────────
 
@@ -331,6 +343,38 @@ func _create_ui_nodes() -> void:
 	_vignette.z_index = -1
 	add_child(_vignette)
 
+	# Boss HP bar — wide, anchored top-centre. Hidden until a boss spawns.
+	_boss_bar = ProgressBar.new()
+	_boss_bar.show_percentage = false
+	_boss_bar.anchor_left = 0.5
+	_boss_bar.anchor_right = 0.5
+	_boss_bar.offset_left = -BOSS_BAR_WIDTH * 0.5
+	_boss_bar.offset_right = BOSS_BAR_WIDTH * 0.5
+	_boss_bar.offset_top = 24.0
+	_boss_bar.offset_bottom = 24.0 + BOSS_BAR_HEIGHT
+	_boss_bar.add_theme_color_override(&"font_color", Color(1, 1, 1, 1))
+	var bar_fill := StyleBoxFlat.new()
+	bar_fill.bg_color = Color(0.78, 0.16, 0.18)
+	var bar_bg := StyleBoxFlat.new()
+	bar_bg.bg_color = Color(0.12, 0.04, 0.05, 0.85)
+	_boss_bar.add_theme_stylebox_override(&"fill", bar_fill)
+	_boss_bar.add_theme_stylebox_override(&"background", bar_bg)
+	_boss_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_boss_bar.visible = false
+	add_child(_boss_bar)
+
+	# Boss name card — centred title that fades in on spawn, sits above the bar.
+	_boss_name_label = Label.new()
+	_boss_name_label.add_theme_font_size_override(&"font_size", 30)
+	_boss_name_label.add_theme_color_override(&"font_color", Color(1.0, 0.86, 0.4))
+	_boss_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_boss_name_label.anchor_left = 0.0
+	_boss_name_label.anchor_right = 1.0
+	_boss_name_label.offset_top = 56.0
+	_boss_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_boss_name_label.visible = false
+	add_child(_boss_name_label)
+
 
 ## Starts a float-accumulator HP bar animation toward [param target] hp value.
 ## Captures the current visual position (hp_bar.value) as the start — this ensures
@@ -468,6 +512,10 @@ func is_pulse_active() -> bool:
 ## Player HP bar updates and grey label spawn are skipped if Fayde is dead.
 func _on_damage_taken(target: Node, final_damage: int, current_hp: int) -> void:
 	if not target.is_in_group(&"player"):
+		if target == _boss_ref:
+			_boss_bar.value = float(current_hp)
+			if current_hp <= 0:
+				_hide_boss_ui()
 		if final_damage > 0:
 			var color: Color = Color("#FFFFFF")
 			if _pending_element.has(target):
@@ -483,6 +531,58 @@ func _on_damage_taken(target: Node, final_damage: int, current_hp: int) -> void:
 	_start_hp_animation(float(current_hp), HP_BAR_DRAIN_DURATION)
 	if final_damage > 0:
 		_spawn_damage_label(target, final_damage, Color("#AAAAAA"))
+
+
+## Boss-intro handler: connected to WaveManager.boss_spawned by the game loop.
+## Shows the name card + top-centre HP bar and triggers the camera reveal zoom.
+func _on_boss_spawned(boss: Node) -> void:
+	if not is_instance_valid(boss):
+		return
+	_boss_ref = boss
+	var max_hp: float = float(boss.get_max_hp()) if boss.has_method(&"get_max_hp") else 100.0
+	_boss_bar.max_value = max_hp
+	_boss_bar.value = max_hp
+	_boss_bar.visible = true
+
+	var raw_name: String = boss.get_display_name() if boss.has_method(&"get_display_name") else "BOSS"
+	_boss_name_label.text = _humanize_name(raw_name)
+	_boss_name_label.visible = true
+
+	# Name card fade: in fast, hold, then fade to a dim persistent label over the bar.
+	if _boss_intro_tween:
+		_boss_intro_tween.kill()
+	_boss_name_label.modulate = Color(1, 1, 1, 0)
+	_boss_intro_tween = create_tween()
+	_boss_intro_tween.tween_property(_boss_name_label, "modulate:a", 1.0, 0.4)
+	_boss_intro_tween.tween_interval(1.6)
+	_boss_intro_tween.tween_property(_boss_name_label, "modulate:a", 0.65, 0.5)
+
+	# Camera reveal — only touches zoom, safe against look-ahead (PlayerController).
+	if is_instance_valid(player_controller) and player_controller.has_method(&"boss_reveal_zoom"):
+		player_controller.boss_reveal_zoom()
+
+
+## Hides the boss intro UI and clears the boss reference (on death or teardown).
+func _hide_boss_ui() -> void:
+	_boss_ref = null
+	if _boss_intro_tween:
+		_boss_intro_tween.kill()
+	if is_instance_valid(_boss_bar):
+		_boss_bar.visible = false
+	if is_instance_valid(_boss_name_label):
+		_boss_name_label.visible = false
+
+
+## Converts a PascalCase EnemyType name ("VaultSentinel") to a spaced upper-case
+## display title ("VAULT SENTINEL").
+func _humanize_name(raw: String) -> String:
+	var spaced: String = ""
+	for i: int in raw.length():
+		var ch: String = raw[i]
+		if i > 0 and ch == ch.to_upper() and ch != ch.to_lower():
+			spaced += " "
+		spaced += ch
+	return spaced.to_upper()
 
 
 ## Handles health_restored from HealthAndDamage.
@@ -586,6 +686,7 @@ func _on_run_started() -> void:
 ## Handles preparation_started from GameStateManager.
 ## Hides the chain-dot container between waves; updates floor number label.
 func _on_preparation_started(_idx: int, _rem: int) -> void:
+	_hide_boss_ui()
 	for tw in _dot_tweens:
 		if is_instance_valid(tw):
 			tw.kill()

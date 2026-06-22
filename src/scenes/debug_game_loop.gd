@@ -87,6 +87,8 @@ func _ready() -> void:
 	var hud: CombatHUD = $CanvasLayer/CombatHUD
 	hud.player_controller = $PlayerController
 	hud.fayde_node = $PlayerController
+	# Boss-intro UI: WaveManager announces boss spawns; HUD shows name card + HP bar.
+	$WaveManager.boss_spawned.connect(hud._on_boss_spawned)
 	GameStateManager.reset_to_main_menu()
 	GameStateManager.set_is_final_floor(_current_floor >= total_floors)
 	GameStateManager.run_ended.connect(_on_run_ended)

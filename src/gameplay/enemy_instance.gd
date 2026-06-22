@@ -59,6 +59,8 @@ var _max_hp: int = 0
 var _current_hp: int = 0
 ## HP bar visual node created in init(). Null until first init() call.
 var _hp_bar: _EnemyHPBar = null
+## Enemy display name from EnemyType.name (e.g. "VaultSentinel"). Set in init().
+var _enemy_name: String = ""
 
 ## BOSS archetype — active attack index: 0=SLAM, 1=CHARGE, 2=SALVO.
 var _boss_attack: int = 0
@@ -299,6 +301,7 @@ func init(enemy_type_id: int, catalog: Variant = null) -> void:
 		push_error("EnemyInstance.init(): catalog returned null for type_id %d" % enemy_type_id)
 		return
 	_archetype = et.archetype
+	_enemy_name = et.name
 	_base_damage = et.base_damage
 	_move_speed = et.base_move_speed
 	_max_hp = et.base_hp
@@ -327,6 +330,23 @@ func init(enemy_type_id: int, catalog: Variant = null) -> void:
 ## Required by ADR-0011 (StatusEffectsManager API Contract).
 func is_alive() -> bool:
 	return _state != EnemyState.DEAD
+
+
+## Returns true if this enemy is a BOSS archetype. Used by WaveManager to emit
+## boss_spawned for the boss-intro UI.
+func is_boss() -> bool:
+	return _archetype == GameEnums.EnemyArchetype.BOSS
+
+
+## Returns the raw EnemyType.name (e.g. "VaultSentinel"). Presentation layer
+## (CombatHUD) handles humanisation for display.
+func get_display_name() -> String:
+	return _enemy_name
+
+
+## Returns this enemy's max HP (from EnemyType.base_hp). Used by the boss HP bar.
+func get_max_hp() -> int:
+	return _max_hp
 
 
 ## Required by ADR-0011 (StatusEffectsManager API Contract).

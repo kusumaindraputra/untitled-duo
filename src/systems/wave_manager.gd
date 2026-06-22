@@ -114,6 +114,11 @@ signal all_waves_cleared
 ## At FP scope both fire in the same handler. (TR-WES-001, TR-WES-005)
 signal boss_defeated
 
+## Emitted when a BOSS-archetype enemy is spawned, carrying the boss node.
+## Drives the boss-intro UI (name card + boss HP bar) in CombatHUD. Presentation
+## only — no gameplay system consumes this. [param boss] is the EnemyInstance.
+signal boss_spawned(boss: Node)
+
 # ── Private state ─────────────────────────────────────────────────────────────
 
 ## Current wave lifecycle phase.
@@ -395,6 +400,8 @@ func _spawn_wave() -> void:
 		add_child(enemy)
 		enemy.global_position = final_pos
 		enemy.init(entry["type_id"])
+		if enemy.is_boss():
+			boss_spawned.emit(enemy)
 		# Spawn VFX: pop-in scale tween (0→final_scale, BACK ease for slight overshoot).
 		# Boss enemies use base_scale > 1.0 from EnemyType so they spawn visually large.
 		var final_scale: float = entry.get("base_scale", 1.0)

@@ -63,6 +63,10 @@ const ZOOM_TWEEN_DURATION: float = 0.35
 ## Faster TRANS_BACK punch-in for combat start — more energetic than the prep smooth-out.
 ## Replaces the old black-flash snap so the zoom-in IS the combat-start signal.
 const ZOOM_COMBAT_PUNCH_DURATION: float = 0.22
+## Boss-reveal zoom-out target (wider than ZOOM_COMBAT so the boss is framed in).
+const BOSS_REVEAL_ZOOM: Vector2 = Vector2(1.0, 1.0)
+## Seconds the camera holds at BOSS_REVEAL_ZOOM before easing back to ZOOM_COMBAT.
+const BOSS_REVEAL_HOLD_SEC: float = 0.9
 
 ## Trauma-based camera shake parameters (Gamefeel Audit Issue 2.3).
 ## Trauma decays at TRAUMA_DECAY units/sec; squared before applying to offset (quadratic feel).
@@ -511,6 +515,21 @@ func _tween_zoom(target: Vector2) -> void:
 		_zoom_tween.kill()
 	_zoom_tween = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	_zoom_tween.tween_property(_camera, "zoom", target, ZOOM_TWEEN_DURATION)
+
+
+## Cinematic boss-reveal beat: pulls the camera out to show more of the arena,
+## holds, then eases back to combat zoom. Only touches zoom (never position), so
+## it does not fight the per-frame look-ahead. Called by CombatHUD on boss spawn.
+## No-op in headless tests where the Camera2D child is absent.
+func boss_reveal_zoom() -> void:
+	if not is_instance_valid(_camera):
+		return
+	if _zoom_tween:
+		_zoom_tween.kill()
+	_zoom_tween = create_tween().set_trans(Tween.TRANS_SINE)
+	_zoom_tween.tween_property(_camera, "zoom", BOSS_REVEAL_ZOOM, 0.5).set_ease(Tween.EASE_OUT)
+	_zoom_tween.tween_interval(BOSS_REVEAL_HOLD_SEC)
+	_zoom_tween.tween_property(_camera, "zoom", ZOOM_COMBAT, 0.6).set_ease(Tween.EASE_IN_OUT)
 
 
 func _on_player_died() -> void:
