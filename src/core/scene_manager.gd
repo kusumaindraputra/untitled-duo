@@ -46,11 +46,20 @@ func get_current_scene() -> Node:
 	return _current_scene
 
 
-## Registers [param scene] as the initial room that already exists in main.tscn.
+## Registers [param scene] as the initial room that already exists in the launch scene.
 ## Call once from debug_game_loop._ready() so the first change_room() correctly
 ## frees the bootstrapped room instead of leaving a duplicate under SubSceneRoot.
+##
+## Also caches [param scene]'s parent as the SubSceneRoot for future swaps. This
+## decouples change_room() from the launch scene's root node name — main.tscn uses
+## "main", demo.tscn uses "demo", and integration tests use throwaway roots; all
+## work because the initial room is always a direct child of SubSceneRoot.
 func set_initial_scene(scene: Node) -> void:
 	_current_scene = scene
+	if scene != null:
+		var parent: Node = scene.get_parent()
+		if parent is Node2D:
+			_sub_scene_root = parent as Node2D
 
 
 ## Swaps the active sub-scene to a new instantiation of [param packed_scene].
@@ -72,11 +81,17 @@ func change_room(packed_scene: PackedScene, pre_configure: Callable = Callable()
 	if _is_swapping:
 		push_error("[SceneManager] change_room() called while swap in progress — rejected")
 		return
-	# Lazy init — Autoload _ready() fires before main.tscn loads; resolve on first use.
+	# Lazy init — Autoload _ready() fires before the launch scene loads; resolve on
+	# first use. Prefer the active scene's SubSceneRoot (works for any root node name),
+	# then fall back to the legacy /root/main path.
 	if _sub_scene_root == null:
-		_sub_scene_root = get_node_or_null("/root/main/SubSceneRoot") as Node2D
+		var root_scene: Node = get_tree().current_scene
+		if root_scene != null:
+			_sub_scene_root = root_scene.get_node_or_null("SubSceneRoot") as Node2D
 		if _sub_scene_root == null:
-			push_error("[SceneManager] SubSceneRoot not found in /root/main — is main.tscn the project Main Scene?")
+			_sub_scene_root = get_node_or_null("/root/main/SubSceneRoot") as Node2D
+		if _sub_scene_root == null:
+			push_error("[SceneManager] SubSceneRoot not found in active scene or /root/main — is a launch scene loaded?")
 			return
 	_is_swapping = true
 
