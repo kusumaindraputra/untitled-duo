@@ -14,8 +14,10 @@
 ## Remove when a proper game menu and run-start flow are implemented.
 extends Node
 
-## Total number of floors in a single run.
-const TOTAL_FLOORS: int = 3
+## Total number of floors in a single run. Exported so alternate launch scenes
+## (e.g. demo.tscn) can shorten the run — when _current_floor reaches this value
+## the floor's boss defeat ends the run as a win instead of advancing a floor.
+@export var total_floors: int = 3
 
 ## Engine.time_scale applied during hit-stop (Gamefeel Audit Issue 2.2).
 ## 0.05 = near-freeze for ~0.06s real time; restores automatically via timer.
@@ -86,7 +88,7 @@ func _ready() -> void:
 	hud.player_controller = $PlayerController
 	hud.fayde_node = $PlayerController
 	GameStateManager.reset_to_main_menu()
-	GameStateManager.set_is_final_floor(_current_floor >= TOTAL_FLOORS)
+	GameStateManager.set_is_final_floor(_current_floor >= total_floors)
 	GameStateManager.run_ended.connect(_on_run_ended)
 	GameStateManager.wave_ended.connect(_on_wave_ended)
 	GameStateManager.floor_completed.connect(_on_floor_completed)
@@ -152,7 +154,7 @@ func _show_title_screen() -> void:
 	vbox.add_child(title)
 
 	var subtitle := Label.new()
-	subtitle.text = "Arrange Prana. Cast. Survive three floors."
+	subtitle.text = _make_subtitle_text()
 	subtitle.add_theme_font_size_override(&"font_size", 22)
 	subtitle.add_theme_color_override(&"font_color", Color(0.7, 0.7, 0.78))
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -180,6 +182,16 @@ func _show_title_screen() -> void:
 	add_child(_title_layer)
 	# Focus the button so keyboard (Enter/Space) and gamepad (ui_accept) start the run.
 	begin.grab_focus()
+
+
+## Builds the title-card subtitle, adapting the goal text to the run length so
+## the demo (single floor) doesn't promise "three floors".
+func _make_subtitle_text() -> String:
+	if total_floors <= 1:
+		return "Arrange Prana. Cast. Defeat the floor boss."
+	var words: Array[String] = ["one", "two", "three", "four", "five"]
+	var count_word: String = words[total_floors - 1] if total_floors <= words.size() else str(total_floors)
+	return "Arrange Prana. Cast. Survive %s floors." % count_word
 
 
 ## Returns a fixed-height invisible spacer Control for VBox layout.
@@ -256,7 +268,7 @@ func _register_input_actions() -> void:
 func _on_floor_completed() -> void:
 	_current_floor += 1
 	_dungeon_graph = _gen.generate(7, _current_floor)
-	GameStateManager.set_is_final_floor(_current_floor >= TOTAL_FLOORS)
+	GameStateManager.set_is_final_floor(_current_floor >= total_floors)
 	_apply_floor_pool_config()
 	$RoomTransitionManager.load_floor(_dungeon_graph)
 

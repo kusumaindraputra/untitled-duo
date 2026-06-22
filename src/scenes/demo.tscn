@@ -1,0 +1,32 @@
+[gd_scene format=3 uid="uid://d3m0lastc1pher0"]
+
+[ext_resource type="Script" uid="uid://dwmuvuysk8mva" path="res://src/scenes/debug_game_loop.gd" id="1_debug"]
+[ext_resource type="PackedScene" path="res://src/scenes/CombatHUD.tscn" id="2_hud"]
+[ext_resource type="PackedScene" path="res://src/scenes/IsometricRoom.tscn" id="3_room"]
+[ext_resource type="PackedScene" path="res://src/scenes/PlayerController.tscn" id="4_player"]
+[ext_resource type="Script" uid="uid://b2mnhwlifl6ew" path="res://src/systems/wave_manager.gd" id="5_wm"]
+[ext_resource type="Script" path="res://src/systems/room_transition_manager.gd" id="6_rtm"]
+
+[node name="demo" type="Node" unique_id=1390226148]
+script = ExtResource("1_debug")
+total_floors = 1
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1527315455]
+process_mode = 3
+layer = 10
+
+[node name="CombatHUD" parent="CanvasLayer" unique_id=1559835442 instance=ExtResource("2_hud")]
+layout_mode = 3
+anchors_preset = 0
+
+[node name="SubSceneRoot" type="Node2D" parent="." unique_id=919958038]
+
+[node name="IsometricRoom" parent="SubSceneRoot" unique_id=1314145270 instance=ExtResource("3_room")]
+
+[node name="PlayerController" parent="." unique_id=1106121546 instance=ExtResource("4_player")]
+
+[node name="WaveManager" type="Node" parent="." unique_id=98225122]
+script = ExtResource("5_wm")
+
+[node name="RoomTransitionManager" type="Node" parent="." unique_id=210447894]
+script = ExtResource("6_rtm")
