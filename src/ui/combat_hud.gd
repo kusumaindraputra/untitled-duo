@@ -192,13 +192,6 @@ var _boss_bar: ProgressBar = null
 var _boss_ref: Node = null
 var _boss_intro_tween: Tween = null
 
-## Prana drop counter — a single bbcode label (top-left, below the floor label)
-## showing per-type tallies in their Prana colours. _prana_counts mirrors the pool
-## so the label text can be rebuilt on each pickup.
-var _prana_counter_label: RichTextLabel = null
-var _prana_counts: Dictionary[int, int] = {}
-
-
 # ── Built-in virtual methods ──────────────────────────────────────────────────
 
 func _ready() -> void:
@@ -381,20 +374,6 @@ func _create_ui_nodes() -> void:
 	_boss_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_boss_name_label.visible = false
 	add_child(_boss_name_label)
-
-	# Prana drop counter — bbcode label below the floor label (absolute position,
-	# mirroring the combo counter pattern so layout is reliable).
-	_prana_counter_label = RichTextLabel.new()
-	_prana_counter_label.bbcode_enabled = true
-	_prana_counter_label.scroll_active = false
-	_prana_counter_label.fit_content = true
-	_prana_counter_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	_prana_counter_label.position = Vector2(8, 176)
-	_prana_counter_label.custom_minimum_size = Vector2(360, 22)
-	_prana_counter_label.add_theme_font_size_override(&"normal_font_size", 15)
-	_prana_counter_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_prana_counter_label)
-
 
 ## Starts a float-accumulator HP bar animation toward [param target] hp value.
 ## Captures the current visual position (hp_bar.value) as the start — this ensures
@@ -582,43 +561,6 @@ func _on_boss_spawned(boss: Node) -> void:
 		player_controller.boss_reveal_zoom()
 
 
-## PranaInventory.prana_collected handler — records the new tally for [param type_id]
-## and rebuilds the counter label with one coloured "NAME N" entry per collected type.
-func _on_prana_collected(type_id: int, new_count: int) -> void:
-	_prana_counts[type_id] = new_count
-	_refresh_prana_counter()
-	# Brief pop to punctuate the pickup.
-	_prana_counter_label.pivot_offset = _prana_counter_label.size * 0.5
-	var tw: Tween = create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_prana_counter_label.scale = Vector2(1.12, 1.12)
-	tw.tween_property(_prana_counter_label, "scale", Vector2.ONE, 0.16)
-
-
-## Rebuilds the bbcode counter text from _prana_counts, ordered by type id.
-func _refresh_prana_counter() -> void:
-	if _prana_counter_label == null:
-		return
-	var parts: Array[String] = []
-	var ids: Array = _prana_counts.keys()
-	ids.sort()
-	for type_id: int in ids:
-		var type_name: String = "?"
-		if type_id >= 0 and type_id < PranaTypeToken.TYPE_NAMES.size():
-			type_name = PranaTypeToken.TYPE_NAMES[type_id]
-		var col: Color = Color.WHITE
-		if type_id >= 0 and type_id < PranaTypeToken.TYPE_COLORS.size():
-			col = PranaTypeToken.TYPE_COLORS[type_id]
-		parts.append("[color=#%s]%s %d[/color]" % [col.to_html(false), type_name, _prana_counts[type_id]])
-	_prana_counter_label.text = "  ".join(parts)
-
-
-## Clears the Prana counter (new run): empties the tally map and the label text.
-func _clear_prana_counter() -> void:
-	_prana_counts.clear()
-	if is_instance_valid(_prana_counter_label):
-		_prana_counter_label.text = ""
-
-
 ## Hides the boss intro UI when the tracked boss is killed. Covers death paths
 ## that bypass damage_taken (e.g. the F2 debug kill) so the name card/bar never
 ## linger onto the end screen.
@@ -724,7 +666,6 @@ func _on_run_started() -> void:
 	_dead = false
 	_hp_timer = 0.0
 	_tint_timer = 0.0
-	_clear_prana_counter()
 	_stop_pulse()
 	_stop_vignette_pulse()
 	for tw in _dot_tweens:

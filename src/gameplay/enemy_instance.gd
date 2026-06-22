@@ -61,9 +61,6 @@ var _current_hp: int = 0
 var _hp_bar: _EnemyHPBar = null
 ## Enemy display name from EnemyType.name (e.g. "VaultSentinel"). Set in init().
 var _enemy_name: String = ""
-## Prana drop config from EnemyType (Variant: int/float or null when no drop). Set in init().
-var _drop_prana_type: Variant = null
-var _drop_rate: Variant = null
 
 ## BOSS archetype — active attack index: 0=SLAM, 1=CHARGE, 2=SALVO.
 var _boss_attack: int = 0
@@ -305,8 +302,6 @@ func init(enemy_type_id: int, catalog: Variant = null) -> void:
 		return
 	_archetype = et.archetype
 	_enemy_name = et.name
-	_drop_prana_type = et.drop_prana_type
-	_drop_rate = et.drop_rate
 	_base_damage = et.base_damage
 	_move_speed = et.base_move_speed
 	_max_hp = et.base_hp
@@ -624,8 +619,6 @@ func _on_enemy_killed(instance_id: int, _type_id: int, prana_affiliation: GameEn
 	# Spawn death burst VFX — color bloom outward per Art Bible principle.
 	# PranaType.color mapped from prana_affiliation; neutral enemies burst white.
 	_spawn_death_burst(prana_affiliation)
-	# Roll a Prana drop from this enemy's EnemyType drop table.
-	_try_spawn_prana_drop()
 	# Audio: fire-and-forget, null-safe.
 	if _audio != null and _audio.has_method(&"has_event") and _audio.has_event(&"sfx_enemy_death"):
 		_audio.play_event(&"sfx_enemy_death")
@@ -894,30 +887,7 @@ func _fire_salvo() -> void:
 ## Spawns a procedural _DeathBurst node that draws an expanding ring + outward dots
 ## at the enemy's position. Color is mapped from [param prana_affiliation] via
 ## PranaCatalog; neutral (NONE) enemies burst white. Duration: 0.35 s.
-##
 ## Guard: no-op when not inside the scene tree (headless test safety).
-## Rolls EnemyType.drop_rate and, on success, spawns a PranaDrop of drop_prana_type
-## at this enemy's position. No-op when the enemy has no drop config (null fields,
-## e.g. the boss) or when detached from the tree (test context). Attaches the drop
-## as a sibling so it survives this enemy's queue_free().
-func _try_spawn_prana_drop() -> void:
-	if _drop_prana_type == null or _drop_rate == null:
-		return
-	if not is_inside_tree():
-		return
-	var parent_node: Node = get_parent()
-	if parent_node == null:
-		return
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	if rng.randf() > float(_drop_rate):
-		return
-	var drop := PranaDrop.new()
-	drop.setup(int(_drop_prana_type))
-	drop.global_position = global_position
-	parent_node.add_child(drop)
-
-
 func _spawn_death_burst(prana_affiliation: GameEnums.DamageClass) -> void:
 	if not is_inside_tree():
 		return

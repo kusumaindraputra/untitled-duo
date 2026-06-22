@@ -77,12 +77,18 @@ var _dot_nodes: Array[ColorRect] = []
 var _selected_slot_index: int = 4
 ## Gamepad: overlay visibility — true when last input was joypad. Event-driven, never polled. (ADR-0013)
 var _cursor_visible: bool = false
-## Gamepad: Prana type currently selected for placement. Cycles 0–4.
-var _selected_type_id: int = 0
 ## Gamepad cursor overlay Control. Created in _create_ui_nodes(); repositioned on each d-pad press. (ADR-0013)
 var _gamepad_cursor: Control = null
 ## Type indicator label displayed in the gamepad HUD strip. Null in headless tests.
 var _type_indicator_label: Label = null
+
+## Bag UI: HBoxContainer holding one draggable token per PranaBag fragment. Null headless.
+var _bag_container: HBoxContainer = null
+## Bag UI: header label showing the bag count ("YOUR PRANA (n)"). Null headless.
+var _bag_label: Label = null
+## Bag Prana type currently selected for click-to-place / gamepad placement (-1 = none).
+## Shared by the mouse click-to-place path and the gamepad cycle/place path.
+var _selected_bag_type: int = -1
 
 
 func _ready() -> void:
@@ -208,6 +214,8 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	for i in _slot_nodes.size():
 		var v: Variant = _slots[i]
 		(_slot_nodes[i] as PranaGridSlot).refresh(v if v != null else -1)
+	_selected_bag_type = -1
+	_refresh_bag_tray()
 	_update_confirm_button()
 	visible = true
 
@@ -215,6 +223,11 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 ## Resolves the persistent PranaLoadout via group, or null if none (tests).
 func _get_loadout() -> Node:
 	return get_tree().get_first_node_in_group(&"prana_loadout") if is_inside_tree() else null
+
+
+## Resolves the run's transient PranaBag via group, or null if none (headless tests).
+func _get_bag() -> Node:
+	return get_tree().get_first_node_in_group(&"prana_bag") if is_inside_tree() else null
 
 
 ## Transitions to LOCKED state: hides the full panel, shows the compact dot indicator.
@@ -270,6 +283,12 @@ func _on_confirm_pressed() -> void:
 	var loadout: Node = _get_loadout()
 	if loadout != null:
 		loadout.set_slots(_slots)
+	# Discard any un-placed bag fragments — the bag is transient to one prep phase.
+	var bag: Node = _get_bag()
+	if bag != null and bag.has_method(&"clear"):
+		bag.clear()
+	_selected_bag_type = -1
+	_refresh_bag_tray()
 	arrangement_confirmed.emit()
 
 
@@ -307,6 +326,91 @@ func clear_all() -> void:
 	for i in _slot_nodes.size():
 		(_slot_nodes[i] as PranaGridSlot).refresh(-1)
 	_update_confirm_button()
+
+
+# ── Bag-sourced placement (grid-as-build) ──────────────────────────────────────
+
+## Rebuilds the bag tray: clears it and adds one draggable token per fragment in the
+## PranaBag, plus updates the header count and gamepad type indicator. No-op when the
+## tray container is null (headless tests).
+func _refresh_bag_tray() -> void:
+	if _bag_container == null:
+		return
+	for child: Node in _bag_container.get_children():
+		child.queue_free()
+	var bag: Node = _get_bag()
+	var items: Array = bag.get_items() if bag != null and bag.has_method(&"get_items") else []
+	if _bag_label != null:
+		_bag_label.text = "─── YOUR PRANA (%d) ───" % items.size() if not items.is_empty() \
+			else "─── YOUR PRANA — empty ───"
+	# Drop a stale selection whose type is no longer in the bag.
+	if _selected_bag_type != -1 and not items.has(_selected_bag_type):
+		_selected_bag_type = -1
+	for tid: int in items:
+		var token := PranaTypeToken.new()
+		token.type_id = tid
+		token.from_bag = true
+		token._prana_grid = self
+		_bag_container.add_child(token)
+	_highlight_selected_bag_token()
+	_update_type_indicator()
+
+
+## Dims bag tokens whose type isn't the current selection so the selected fragment
+## reads clearly. No dimming when nothing is selected. No-op headless.
+func _highlight_selected_bag_token() -> void:
+	if _bag_container == null:
+		return
+	for child: Node in _bag_container.get_children():
+		var token := child as PranaTypeToken
+		if token == null:
+			continue
+		if _selected_bag_type == -1:
+			token.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		else:
+			token.modulate = Color(1.0, 1.0, 1.0, 1.0) if token.type_id == _selected_bag_type \
+				else Color(1.0, 1.0, 1.0, 0.45)
+
+
+## Selects (or toggles off) a bag Prana type for click-to-place (mouse) and gamepad
+## placement. Re-selecting the same type clears the selection. No-op outside ARRANGEMENT.
+func _select_bag_type(type_id: int) -> void:
+	if _state != State.ARRANGEMENT:
+		return
+	_selected_bag_type = -1 if _selected_bag_type == type_id else type_id
+	_highlight_selected_bag_token()
+	_update_type_indicator()
+
+
+## Places one fragment of [param type_id] from the bag into empty slot [param idx],
+## consuming it from the bag. No-op outside ARRANGEMENT, on a filled slot, or when the
+## bag holds no such fragment. In headless tests (no bag in the tree) the placement is
+## allowed so slot logic stays unit-testable. Returns true on success.
+func _place_from_bag(idx: int, type_id: int) -> bool:
+	if _state != State.ARRANGEMENT:
+		return false
+	if idx < 0 or idx >= _slots.size() or _slots[idx] != null:
+		return false
+	var bag: Node = _get_bag()
+	if bag != null and bag.has_method(&"remove_one"):
+		if not bag.remove_one(type_id):
+			return false
+	_slots[idx] = type_id
+	if idx < _slot_nodes.size():
+		var slot := _slot_nodes[idx] as PranaGridSlot
+		slot.refresh(type_id)
+		_pop_slot_scale(slot)
+	_refresh_bag_tray()
+	_update_confirm_button()
+	return true
+
+
+## Click-to-place from a slot's left-click: places the currently selected bag fragment
+## into [param idx]. No-op when no bag type is selected.
+func _place_selected_bag_into(idx: int) -> void:
+	if _selected_bag_type == -1:
+		return
+	_place_from_bag(idx, _selected_bag_type)
 
 
 ## Returns true when slot 4 (centre) is non-null (TR-PG-006).
@@ -374,7 +478,7 @@ func _create_ui_nodes() -> void:
 	layout.add_child(header)
 
 	var hint := Label.new()
-	hint.text = "Drag Prana to arrange  •  Right-click to remove  •  Then Confirm"
+	hint.text = "Drag your Prana into a slot  •  Right-click a slot to discard  •  Then Confirm"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	layout.add_child(hint)
@@ -397,26 +501,18 @@ func _create_ui_nodes() -> void:
 		grid.add_child(slot)
 		_slot_nodes.append(slot)
 
-	# Type selector — hidden under the build-your-loadout model (no free-fill: Prana
-	# is acquired from post-room rewards, not conjured here). Nodes kept for the
-	# gamepad path and possible reuse, but not shown for mouse play.
-	var sel_label := Label.new()
-	sel_label.text = "─── SELECT TYPE ───"
-	sel_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sel_label.visible = false
-	layout.add_child(sel_label)
+	# Bag tray — the Prana acquired from post-room rewards, awaiting placement
+	# (grid-as-build model). One draggable token per fragment; click to select for
+	# click-to-place, or drag onto an empty slot. Populated by _refresh_bag_tray().
+	_bag_label = Label.new()
+	_bag_label.text = "─── YOUR PRANA ───"
+	_bag_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	layout.add_child(_bag_label)
 
-	var selector := HBoxContainer.new()
-	selector.add_theme_constant_override(&"separation", 4)
-	selector.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	selector.visible = false
-	layout.add_child(selector)
-
-	for type_id in 5:
-		var token := PranaTypeToken.new()
-		token.type_id = type_id
-		token._prana_grid = self
-		selector.add_child(token)
+	_bag_container = HBoxContainer.new()
+	_bag_container.add_theme_constant_override(&"separation", 4)
+	_bag_container.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	layout.add_child(_bag_container)
 
 	# Buttons row
 	var buttons := HBoxContainer.new()
@@ -458,8 +554,8 @@ func _create_ui_nodes() -> void:
 	gp_strip.add_child(gp_hint)
 
 	_type_indicator_label = Label.new()
-	_type_indicator_label.text = "TYPE: " + PranaTypeToken.TYPE_NAMES[0]
-	_type_indicator_label.add_theme_color_override(&"font_color", PranaTypeToken.TYPE_COLORS[0])
+	_type_indicator_label.text = "BAG EMPTY"
+	_type_indicator_label.add_theme_color_override(&"font_color", Color(0.6, 0.6, 0.66))
 	gp_strip.add_child(_type_indicator_label)
 
 	# Compact 3×3 dot indicator shown during LOCKED state (AC-CG-04).
@@ -554,27 +650,57 @@ func _move_cursor_to(index: int) -> void:
 	_gamepad_cursor.size = slot_node.size
 
 
-## Cycles _selected_type_id through 0-4 (wraps). Updates the type indicator label.
+## Cycles the selected bag Prana type through the DISTINCT types currently in the bag
+## (gamepad placement source). Sets the selection to -1 when the bag is empty.
 func _cycle_selected_type() -> void:
-	_selected_type_id = (_selected_type_id + 1) % 5
+	var bag: Node = _get_bag()
+	var items: Array = bag.get_items() if bag != null and bag.has_method(&"get_items") else []
+	var distinct: Array[int] = []
+	for tid: int in items:
+		if not distinct.has(tid):
+			distinct.append(tid)
+	if distinct.is_empty():
+		_selected_bag_type = -1
+	else:
+		var cur: int = distinct.find(_selected_bag_type)
+		_selected_bag_type = distinct[(cur + 1) % distinct.size()]
+	_highlight_selected_bag_token()
 	_update_type_indicator()
 
 
-## Places the currently selected Prana type into the currently selected slot.
+## Places the selected bag fragment into the currently selected slot. Auto-selects the
+## first available bag type when none is selected; no-op when the bag is empty.
 func _gamepad_place() -> void:
-	_place_token(_selected_slot_index, _selected_type_id)
+	if _selected_bag_type == -1:
+		_cycle_selected_type()
+		if _selected_bag_type == -1:
+			return
+	_place_from_bag(_selected_slot_index, _selected_bag_type)
 
 
-## Clears the currently selected slot.
+## Clears (discards) the currently selected slot, freeing it for a new placement.
 func _gamepad_clear() -> void:
 	_clear_slot(_selected_slot_index)
 
 
-## Updates the type indicator label to show the current selected type name and color.
-## Uses PranaTypeToken as the single source of truth for the Art Bible palette. (ADR-0013)
-## No-op when _type_indicator_label is null (headless context).
+## Updates the gamepad type indicator to show the selected bag Prana and its remaining
+## count, or "BAG EMPTY" when nothing is selectable. Uses PranaTypeToken as the single
+## source of truth for the Art Bible palette. (ADR-0013) No-op when the label is null.
 func _update_type_indicator() -> void:
 	if _type_indicator_label == null:
 		return
-	_type_indicator_label.text = "TYPE: " + PranaTypeToken.TYPE_NAMES[_selected_type_id]
-	_type_indicator_label.add_theme_color_override(&"font_color", PranaTypeToken.TYPE_COLORS[_selected_type_id])
+	if _selected_bag_type < 0 or _selected_bag_type >= PranaTypeToken.TYPE_NAMES.size():
+		# Distinguish a truly empty bag from "bag has Prana but none selected yet".
+		var b: Node = _get_bag()
+		var has_items: bool = b != null and b.has_method(&"is_empty") and not b.is_empty()
+		_type_indicator_label.text = "SELECT PRANA" if has_items else "BAG EMPTY"
+		_type_indicator_label.add_theme_color_override(&"font_color", Color(0.6, 0.6, 0.66))
+		return
+	var bag: Node = _get_bag()
+	var count: int = 0
+	if bag != null and bag.has_method(&"get_items"):
+		for tid: int in bag.get_items():
+			if tid == _selected_bag_type:
+				count += 1
+	_type_indicator_label.text = "%s ×%d" % [PranaTypeToken.TYPE_NAMES[_selected_bag_type], count]
+	_type_indicator_label.add_theme_color_override(&"font_color", PranaTypeToken.TYPE_COLORS[_selected_bag_type])

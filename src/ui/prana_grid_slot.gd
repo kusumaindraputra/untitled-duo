@@ -69,16 +69,26 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 
 
 ## Accepts drop only when payload is a Dictionary containing "type_id" (ADR-0013).
+## Bag drops ("from_bag") are rejected on a filled slot — bag fragments may only land
+## on an empty slot (grid-as-build: free a slot first by removing an existing fragment).
 func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
-	return data is Dictionary and data.has("type_id")
+	if not (data is Dictionary and data.has("type_id")):
+		return false
+	if data.has("from_bag") and _displayed_type_id != -1:
+		return false
+	return true
 
 
 ## Handles the drop: places the incoming token on this slot.
-## If the payload carries a "source_slot" key (inter-slot drag), the source slot
-## is cleared first so the token moves rather than copies.
+## Bag drops ("from_bag") consume one bag fragment and only land on an empty slot.
+## Inter-slot drags (payload carries "source_slot") clear the source so the token
+## moves rather than copies.
 func _drop_data(_at_position: Vector2, data: Variant) -> void:
 	if _prana_grid == null:
 		push_error("PranaGridSlot: _prana_grid not set — slot_index %d orphaned" % slot_index)
+		return
+	if data.has("from_bag"):
+		_prana_grid._place_from_bag(slot_index, data["type_id"])
 		return
 	# Clear source slot on inter-slot drag (slot-to-slot swap path, GDD Rule 9).
 	if data.has("source_slot") and data["source_slot"] != slot_index:
@@ -86,7 +96,7 @@ func _drop_data(_at_position: Vector2, data: Variant) -> void:
 	_prana_grid._place_token(slot_index, data["type_id"])
 
 
-## Handles right-click-to-clear (AC-PG-07) and future click-to-place events.
+## Handles right-click-to-clear (AC-PG-07) and left-click-to-place from the bag.
 ## Mouse button events only — keyboard/gamepad actions handled by PranaGrid directly.
 func _gui_input(event: InputEvent) -> void:
 	if not event is InputEventMouseButton:
@@ -95,8 +105,14 @@ func _gui_input(event: InputEvent) -> void:
 	if not mb.pressed:
 		return
 	if mb.button_index == MOUSE_BUTTON_RIGHT:
+		# Right-click discards the fragment in this slot, freeing it for a new placement.
 		if _prana_grid != null:
 			_prana_grid._clear_slot(slot_index)
+		accept_event()
+	elif mb.button_index == MOUSE_BUTTON_LEFT:
+		# Left-click places the currently selected bag fragment into this empty slot.
+		if _prana_grid != null:
+			_prana_grid._place_selected_bag_into(slot_index)
 		accept_event()
 
 

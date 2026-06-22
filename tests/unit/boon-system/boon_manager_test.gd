@@ -25,6 +25,13 @@ class _FakePlayer extends Node:
 		dash_calls.append(factor)
 
 
+## Minimal stand-in for PranaBag that records add() calls.
+class _FakeBag extends Node:
+	var added: Array[int] = []
+	func add(type_id: int) -> void:
+		added.append(type_id)
+
+
 ## Creates a BoonManager NOT added to the tree (these tests never call offer_boons,
 ## so no SceneTree is required). Caller frees it via bm.free().
 func _make_bm() -> BoonManager:
@@ -140,6 +147,44 @@ func test_boon_manager_apply_unknown_boon_does_not_emit() -> void:
 	assert_int(received.size()).is_equal(0)
 
 	bm.free()
+
+
+# ── AC-BM-08: reward pool includes Prana cards ───────────────────────────────
+
+func test_boon_manager_catalog_includes_prana_cards() -> void:
+	var bm: BoonManager = _make_bm()
+
+	var catalog: Array[Dictionary] = bm.get_catalog()
+
+	# Pool = 5 stat boons + 5 Prana cards (one per type).
+	assert_int(catalog.size()).is_equal(10)
+	var prana_ids: Array = []
+	for c: Dictionary in catalog:
+		if String(c["id"]).begins_with("prana_"):
+			prana_ids.append(c["id"])
+	assert_int(prana_ids.size()).is_equal(5)
+
+	bm.free()
+
+
+# ── AC-BM-09: apply Prana card adds to the bag and emits ──────────────────────
+
+func test_boon_manager_apply_prana_card_adds_to_bag() -> void:
+	var bm: BoonManager = _make_bm()
+	var fake_bag := _FakeBag.new()
+	bm.set_bag_provider(func() -> Node: return fake_bag)
+	var received: Array = []
+	bm.boon_applied.connect(func(id: StringName) -> void: received.append(id))
+
+	bm.apply_boon(&"prana_3")
+
+	assert_int(fake_bag.added.size()).is_equal(1)
+	assert_int(fake_bag.added[0]).is_equal(3)
+	assert_int(received.size()).is_equal(1)
+	assert_str(str(received[0])).is_equal("prana_3")
+
+	bm.free()
+	fake_bag.free()
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────

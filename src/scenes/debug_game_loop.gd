@@ -63,8 +63,9 @@ var _tutorial_layer: CanvasLayer = null
 ## combat/elite room clear.
 var _boon_manager: BoonManager = null
 
-## Run-scoped pool of Prana collected from enemy drops. Created in _ready().
-var _prana_inventory: PranaInventory = null
+## Run-scoped transient bag of Prana acquired from post-room rewards, awaiting
+## placement into the grid during the next prep phase. Created in _ready().
+var _prana_bag: PranaBag = null
 
 ## Persistent 9-slot Prana build carried across rooms. Seeded with the core at run
 ## start; the per-room PranaGrid restores/saves it. Created in _ready().
@@ -110,11 +111,11 @@ func _ready() -> void:
 	_boon_manager = BoonManager.new()
 	_boon_manager.name = "BoonManager"
 	add_child(_boon_manager)
-	# Prana drop pool: collected fragments tracked here, rendered by the HUD.
-	_prana_inventory = PranaInventory.new()
-	_prana_inventory.name = "PranaInventory"
-	add_child(_prana_inventory)
-	_prana_inventory.prana_collected.connect(hud._on_prana_collected)
+	# Transient reward bag: Prana picked from post-room rewards land here, then the
+	# prep grid places them. Found by BoonManager (writer) + PranaGrid (reader) via group.
+	_prana_bag = PranaBag.new()
+	_prana_bag.name = "PranaBag"
+	add_child(_prana_bag)
 	# Persistent Prana build (carried across rooms by PranaLoadout, restored by the grid).
 	_prana_loadout = PranaLoadout.new()
 	_prana_loadout.name = "PranaLoadout"
