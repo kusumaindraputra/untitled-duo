@@ -232,6 +232,9 @@ func _on_room_transitioned(new_room_idx: int) -> void:
 
 
 ## Configures WaveManager for the room at [param room_idx]: sets room_type and is_final_room.
+## Also selects the per-room-type music track so boss/elite/rest rooms get their own
+## cue instead of all playing mus_combat_floor. The override is applied before the
+## room's combat_started fires, so AudioSystem crossfades the correct track in.
 func _configure_wave_manager_for_room(room_idx: int) -> void:
 	if _dungeon_graph == null:
 		return
@@ -239,6 +242,25 @@ func _configure_wave_manager_for_room(room_idx: int) -> void:
 	var rtype: int = room.get("type", DungeonGraph.ROOM_TYPE_COMBAT)
 	$WaveManager.room_type = rtype
 	$WaveManager.is_final_room = (rtype == DungeonGraph.ROOM_TYPE_BOSS)
+	_select_room_music(rtype)
+
+
+## Picks the combat-state music cue for [param rtype] via AudioSystem.
+## Boss/elite/rest rooms each get a dedicated track; all other rooms reset to the
+## default floor track. No-op if AudioSystem is unavailable (e.g. headless tests).
+func _select_room_music(rtype: int) -> void:
+	var audio: Node = get_node_or_null("/root/AudioSystem")
+	if audio == null or not audio.has_method(&"override_combat_cue"):
+		return
+	match rtype:
+		DungeonGraph.ROOM_TYPE_BOSS:
+			audio.override_combat_cue(&"mus_combat_boss")
+		DungeonGraph.ROOM_TYPE_ELITE:
+			audio.override_combat_cue(&"mus_combat_elite")
+		DungeonGraph.ROOM_TYPE_REST:
+			audio.override_combat_cue(&"mus_rest")
+		_:
+			audio.reset_combat_cue()
 
 func _register_input_actions() -> void:
 	_ensure_key_action(&"move_left",  KEY_A)
