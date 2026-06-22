@@ -299,6 +299,8 @@ func _build_wave_composition(seed: int = -1) -> void:
 		for _j: int in range(max(0, min_count - current_count)):
 			type_ids.append(type_id)
 			budget -= cfg.threat_cost.get(type_id, 1)
+	# Guaranteed + min_count entries placed so far are protected from any cap trim.
+	var protected_count: int = type_ids.size()
 	while budget >= 1:
 		var affordable: Array[int] = []
 		for tid: int in cfg.enemy_pool:
@@ -309,10 +311,16 @@ func _build_wave_composition(seed: int = -1) -> void:
 		var pick: int = affordable[rng.randi_range(0, affordable.size() - 1)]
 		type_ids.append(pick)
 		budget -= cfg.threat_cost.get(pick, 1)
-	# Enemy count cap — trim excess pool-fill entries before grouping.
-	# Guaranteed and min_count types are prepended first so they survive any trim.
-	if cfg.enemy_count_max > 0 and type_ids.size() > cfg.enemy_count_max:
-		type_ids.resize(cfg.enemy_count_max)
+	# Apply enemy caps — trim excess pool-fill entries before grouping. The effective
+	# cap is the smaller of the absolute cap (enemy_count_max) and the geometry-relative
+	# cap (spawn markers × max_enemies_per_marker), so dense rooms can't overwhelm the
+	# player. Guaranteed/min_count entries are prepended first and never trimmed below
+	# protected_count.
+	var effective_max: int = _effective_enemy_cap(cfg)
+	if effective_max > 0:
+		effective_max = maxi(effective_max, protected_count)
+		if type_ids.size() > effective_max:
+			type_ids.resize(effective_max)
 	# Split into swarmer/non-swarmer groups. Swarmers go last so _spawn_wave()
 	# can assign them to the same marker for proximity spawning.
 	var non_swarmers: Array[int] = []
@@ -341,6 +349,35 @@ func _build_wave_composition(seed: int = -1) -> void:
 		var base_scale: float = et.base_scale if et != null else 1.0
 		var archetype: int = et.archetype if et != null else GameEnums.EnemyArchetype.SEEKER
 		_wave_composition.append({ "type_id": type_id, "scene": scene, "base_scale": base_scale, "archetype": archetype })
+
+
+## Returns the number of spawn markers in spawn_points_container, or 0 when unset.
+## Unlike _get_spawn_markers(), never logs an error — it runs during composition where
+## markers may legitimately be absent (headless tests, pre-room-wiring).
+func _spawn_marker_count() -> int:
+	if spawn_points_container == null:
+		return 0
+	var n: int = 0
+	for child: Node in spawn_points_container.get_children():
+		if child is Node2D:
+			n += 1
+	return n
+
+
+## Computes the effective per-wave enemy cap from [param cfg]: the smaller of the
+## absolute cap (enemy_count_max) and the geometry cap (markers × max_enemies_per_marker).
+## Returns 0 when neither cap applies (uncapped).
+func _effective_enemy_cap(cfg: EnemyPoolConfig) -> int:
+	var caps: Array[int] = []
+	if cfg.enemy_count_max > 0:
+		caps.append(cfg.enemy_count_max)
+	if cfg.max_enemies_per_marker > 0:
+		var marker_count: int = _spawn_marker_count()
+		if marker_count > 0:
+			caps.append(marker_count * cfg.max_enemies_per_marker)
+	if caps.is_empty():
+		return 0
+	return caps.min()
 
 
 ## Returns the ordered array of spawn marker Node2Ds from spawn_points_container.

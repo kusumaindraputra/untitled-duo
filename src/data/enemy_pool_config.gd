@@ -31,3 +31,10 @@ extends Resource
 ## Hard cap on the number of enemies in a single wave. 0 = uncapped (default).
 ## Applied after pool-fill, before spawn — guaranteed types are never trimmed.
 @export var enemy_count_max: int = 0
+
+## Density cap relative to room geometry: max enemies per spawn marker. 0 = disabled.
+## The effective wave size is also limited to (spawn_marker_count * this), so small
+## rooms never get visually overwhelmed regardless of threat budget. Combined with
+## enemy_count_max, the smaller of the two caps wins. Guaranteed/min_count types are
+## never trimmed below their required counts.
+@export var max_enemies_per_marker: int = 0
