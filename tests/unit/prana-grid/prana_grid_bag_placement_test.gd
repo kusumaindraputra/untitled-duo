@@ -10,6 +10,7 @@
 ##   AC-BP-03: _place_from_bag outside ARRANGEMENT is rejected
 ##   AC-BP-04: _select_bag_type sets the selection; re-selecting toggles it off
 ##   AC-BP-05: _place_selected_bag_into places the selected type; no-op when unselected
+##   AC-BP-06: _is_grid_full reflects whether every slot is occupied (Stage 4)
 ##
 ## Framework: GdUnit4 | Godot 4.6
 extends GdUnitTestSuite
@@ -93,5 +94,22 @@ func test_place_selected_bag_into_places_when_selected() -> void:
 	pg._select_bag_type(0)
 	pg._place_selected_bag_into(1)
 	assert_int(pg._slots[1]).is_equal(0)
+
+	pg.free()
+
+
+# ── AC-BP-06: _is_grid_full ──────────────────────────────────────────────────
+
+func test_is_grid_full_true_only_when_all_slots_filled() -> void:
+	var pg: PranaGrid = _make_grid()
+
+	assert_bool(pg._is_grid_full()).is_false()  # all empty
+
+	for i in PranaGrid.GRID_SIZE:
+		pg._slots[i] = 0
+	assert_bool(pg._is_grid_full()).is_true()  # all filled
+
+	pg._slots[5] = null  # free one
+	assert_bool(pg._is_grid_full()).is_false()
 
 	pg.free()

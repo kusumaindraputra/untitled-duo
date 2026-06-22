@@ -67,6 +67,10 @@ var _confirm_button: Button = null
 ## primary element + tier and active non-primary modifiers (Stage 3). Null in headless.
 var _build_readout_label: RichTextLabel = null
 
+## Warning shown when the grid is full and the bag still holds Prana — prompts the
+## player to right-click a slot to discard and make room (Stage 4, rule #5). Null headless.
+var _full_grid_hint: Label = null
+
 ## Full-size grid panel reference. Null in headless tests. Hidden during LOCKED state.
 var _grid_panel: Control = null
 
@@ -358,6 +362,7 @@ func _refresh_bag_tray() -> void:
 		_bag_container.add_child(token)
 	_highlight_selected_bag_token()
 	_update_type_indicator()
+	_update_full_grid_hint()
 
 
 ## Dims bag tokens whose type isn't the current selection so the selected fragment
@@ -530,6 +535,17 @@ func _create_ui_nodes() -> void:
 	_bag_container.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	layout.add_child(_bag_container)
 
+	# Full-grid swap prompt (Stage 4, rule #5): visible only when the grid is full
+	# and the bag still has Prana, telling the player to free a slot first.
+	_full_grid_hint = Label.new()
+	_full_grid_hint.text = "Grid full — right-click a slot to discard and make room."
+	_full_grid_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_full_grid_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_full_grid_hint.add_theme_font_size_override(&"font_size", 14)
+	_full_grid_hint.add_theme_color_override(&"font_color", Color(1.0, 0.78, 0.3))
+	_full_grid_hint.visible = false
+	layout.add_child(_full_grid_hint)
+
 	# Buttons row
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override(&"separation", 8)
@@ -619,6 +635,7 @@ func _update_confirm_button() -> void:
 	_confirm_button.disabled = not valid
 	_confirm_button.modulate.a = 1.0 if valid else 0.4
 	_update_build_readout()
+	_update_full_grid_hint()
 
 
 ## Refreshes the build readout from the current arrangement via the shared
@@ -653,6 +670,30 @@ func _colored_name(type_id: int) -> String:
 	if type_id >= 0 and type_id < PranaTypeToken.TYPE_COLORS.size():
 		col = PranaTypeToken.TYPE_COLORS[type_id]
 	return "[color=#%s]%s[/color]" % [col.to_html(false), nm]
+
+
+## True when every slot holds a fragment (no empty slot remains).
+func _is_grid_full() -> bool:
+	for v in _slots:
+		if v == null:
+			return false
+	return true
+
+
+## True when the full-grid swap prompt should show: in ARRANGEMENT, grid full, and
+## the bag still holds Prana that cannot be placed until a slot is freed (rule #5).
+func _should_show_full_grid_hint() -> bool:
+	if _state != State.ARRANGEMENT or not _is_grid_full():
+		return false
+	var bag: Node = _get_bag()
+	return bag != null and bag.has_method(&"is_empty") and not bag.is_empty()
+
+
+## Syncs the full-grid swap prompt visibility. No-op when the label is null (headless).
+func _update_full_grid_hint() -> void:
+	if _full_grid_hint == null:
+		return
+	_full_grid_hint.visible = _should_show_full_grid_hint()
 
 
 ## Scale-pop tween for placed/filled tokens: quick overshoot → settle at 1.0.

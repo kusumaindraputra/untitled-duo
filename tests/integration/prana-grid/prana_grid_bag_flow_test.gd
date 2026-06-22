@@ -89,3 +89,25 @@ func test_confirm_clears_unplaced_bag_fragments() -> void:
 	assert_bool(bag.is_empty()).is_true()
 
 	_teardown(pg, bag)
+
+
+# ── full-grid hint: shown only when grid full AND bag still has Prana ─────────
+
+func test_full_grid_hint_predicate_reflects_full_grid_and_nonempty_bag() -> void:
+	var bag: Node = _make_bag()
+	var pg: PranaGrid = _make_pg()
+
+	# Grid not full, bag has Prana → no prompt.
+	bag.add(2)
+	assert_bool(pg._should_show_full_grid_hint()).is_false()
+
+	# Fill the grid completely; bag still has Prana → prompt should show.
+	for i in PranaGrid.GRID_SIZE:
+		pg._slots[i] = 0
+	assert_bool(pg._should_show_full_grid_hint()).is_true()
+
+	# Empty the bag → no prompt even though the grid is full.
+	bag.clear()
+	assert_bool(pg._should_show_full_grid_hint()).is_false()
+
+	_teardown(pg, bag)
