@@ -80,6 +80,11 @@ var _is_invincible: bool = false
 var _last_facing_dir: Vector2 = Vector2.RIGHT
 var _dash_duration_timer: float = 0.0  # countdown; > 0.0 means currently dashing
 var _dash_cooldown_timer: float = 0.0  # countdown; > 0.0 means on cooldown
+
+## Run boon multipliers (1.0 = no boon). Persist across rooms; reset only on a
+## fresh scene/run. Applied to MOVE_SPEED and DASH_COOLDOWN at their use sites.
+var _move_speed_mult: float = 1.0
+var _dash_cooldown_mult: float = 1.0
 var _cast_beam_timer: float = 0.0     # countdown; > 0.0 means cast beam visible (debug)
 var _cast_prana_type: int = -1        # primary type of last resolved spell; -1 = none
 var _blink_timer: float = 0.0         # counts up; toggles modulate.a every BLINK_INTERVAL
@@ -227,7 +232,7 @@ func _physics_process(delta: float) -> void:
 			var move_factor: float = 1.0 - pow(1.0 - MOVE_ACCELERATION, delta * 60.0)
 			var friction_factor: float = 1.0 - pow(1.0 - MOVE_FRICTION, delta * 60.0)
 			if input_dir != Vector2.ZERO:
-				velocity = velocity.lerp(input_dir.normalized() * MOVE_SPEED, move_factor)
+				velocity = velocity.lerp(input_dir.normalized() * MOVE_SPEED * _move_speed_mult, move_factor)
 				_last_facing_dir = _snap_to_8dir(input_dir)
 			else:
 				velocity = velocity.lerp(Vector2.ZERO, friction_factor)
@@ -261,7 +266,7 @@ func _physics_process(delta: float) -> void:
 			_controller_state = ControllerState.ENABLED
 			_is_invincible = false
 			collision_mask = COLLISION_MASK_NORMAL
-			_dash_cooldown_timer = DASH_COOLDOWN
+			_dash_cooldown_timer = DASH_COOLDOWN * _dash_cooldown_mult
 
 	# ── Dash cooldown countdown (unconditional) ───────────────────────────────
 	if _dash_cooldown_timer > 0.0:
@@ -515,6 +520,18 @@ func _tween_zoom(target: Vector2) -> void:
 		_zoom_tween.kill()
 	_zoom_tween = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	_zoom_tween.tween_property(_camera, "zoom", target, ZOOM_TWEEN_DURATION)
+
+
+## Boon: multiplies the move-speed multiplier by [param factor] (e.g. 1.15 = +15%).
+## Stacks multiplicatively with prior speed boons. Persists for the rest of the run.
+func apply_move_speed_mult(factor: float) -> void:
+	_move_speed_mult *= factor
+
+
+## Boon: multiplies the dash-cooldown multiplier by [param factor] (e.g. 0.75 = -25%).
+## Lower is better. Stacks multiplicatively. Persists for the rest of the run.
+func apply_dash_cooldown_mult(factor: float) -> void:
+	_dash_cooldown_mult *= factor
 
 
 ## Cinematic boss-reveal beat: pulls the camera out to show more of the arena,

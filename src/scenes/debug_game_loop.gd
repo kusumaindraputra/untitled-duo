@@ -59,6 +59,10 @@ var _title_layer: CanvasLayer = null
 ## First-prep coaching overlay. Shown once on Begin, auto-freed when combat starts.
 var _tutorial_layer: CanvasLayer = null
 
+## Between-room reward system. Created in _ready(); offers a boon after each
+## combat/elite room clear.
+var _boon_manager: BoonManager = null
+
 func _ready() -> void:
 	Engine.time_scale = 1.0  # reset from any prior slow-mo (scene reload via R key)
 	_register_input_actions()
@@ -92,6 +96,10 @@ func _ready() -> void:
 	hud.fayde_node = $PlayerController
 	# Boss-intro UI: WaveManager announces boss spawns; HUD shows name card + HP bar.
 	$WaveManager.boss_spawned.connect(hud._on_boss_spawned)
+	# Between-room boons: created here so both main.tscn and demo.tscn get it.
+	_boon_manager = BoonManager.new()
+	_boon_manager.name = "BoonManager"
+	add_child(_boon_manager)
 	GameStateManager.reset_to_main_menu()
 	GameStateManager.set_is_final_floor(_current_floor >= total_floors)
 	GameStateManager.run_ended.connect(_on_run_ended)
@@ -514,6 +522,14 @@ func _on_wave_ended() -> void:
 	tw.tween_interval(0.6)
 	tw.tween_property(wash, "color:a", 0.0, 0.5).set_ease(Tween.EASE_IN)
 	tw.tween_callback(wash.queue_free)
+
+	# Between-room reward: offer a boon after combat/elite clears (skip rest/boss).
+	# wave_ended also fires in the boss room, but its room_type is BOSS so it's skipped.
+	var rtype: int = $WaveManager.room_type
+	if _boon_manager != null \
+			and (rtype == DungeonGraph.ROOM_TYPE_COMBAT or rtype == DungeonGraph.ROOM_TYPE_ELITE):
+		await get_tree().create_timer(0.5).timeout
+		_boon_manager.offer_boons()
 
 
 func _ensure_key_action(action: StringName, keycode: Key) -> void:
