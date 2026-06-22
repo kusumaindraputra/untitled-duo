@@ -347,3 +347,90 @@ func test_run_manager_run_started_resets_current_floor_and_rooms_cleared() -> vo
 	assert_int(rm._rooms_cleared).is_equal(0)
 
 	_teardown_rm(rm)
+
+
+# ── AC-RM-16: enemy_killed during active run → enemies_killed increments ──────
+
+## GIVEN run is active
+## WHEN HealthAndDamage.enemy_killed emitted twice
+## THEN _enemies_killed=2 AND get_run_data()["enemies_killed"]==2
+func test_run_manager_enemy_killed_during_run_increments_enemies_killed() -> void:
+	var rm: Node = _make_rm()
+	GameStateManager.run_started.emit()
+
+	HealthAndDamage.enemy_killed.emit(101, 0, GameEnums.DamageClass.FIRE)
+	HealthAndDamage.enemy_killed.emit(102, 0, GameEnums.DamageClass.FIRE)
+
+	assert_int(rm._enemies_killed).is_equal(2)
+	assert_int(rm.get_run_data()["enemies_killed"]).is_equal(2)
+
+	_teardown_rm(rm)
+
+
+# ── AC-RM-17: enemy_killed while no run active → no increment ─────────────────
+
+## GIVEN no active run (initial state)
+## WHEN enemy_killed emitted
+## THEN _enemies_killed stays 0 (kills outside a run are not counted)
+func test_run_manager_enemy_killed_without_active_run_does_not_count() -> void:
+	var rm: Node = _make_rm()
+
+	HealthAndDamage.enemy_killed.emit(101, 0, GameEnums.DamageClass.FIRE)
+
+	assert_int(rm._enemies_killed).is_equal(0)
+
+	_teardown_rm(rm)
+
+
+# ── AC-RM-18: chain_index_changed tracks the highest combo, ignores lower ─────
+
+## GIVEN run is active
+## WHEN chain_index_changed emits 3, then 5, then resets to 0
+## THEN _best_combo holds the peak (5), not the latest value
+func test_run_manager_chain_index_changed_tracks_peak_combo() -> void:
+	var rm: Node = _make_rm()
+	GameStateManager.run_started.emit()
+
+	SpellCastingEffects.chain_index_changed.emit(3, 8)
+	SpellCastingEffects.chain_index_changed.emit(5, 8)
+	SpellCastingEffects.chain_index_changed.emit(0, 8)
+
+	assert_int(rm._best_combo).is_equal(5)
+	assert_int(rm.get_run_data()["best_combo"]).is_equal(5)
+
+	_teardown_rm(rm)
+
+
+# ── AC-RM-19: run_started resets enemies_killed and best_combo ────────────────
+
+## GIVEN dirty stats (_enemies_killed=9, _best_combo=4)
+## WHEN run_started emitted
+## THEN both reset to 0
+func test_run_manager_run_started_resets_enemies_killed_and_best_combo() -> void:
+	var rm: Node = _make_rm()
+	rm._enemies_killed = 9
+	rm._best_combo = 4
+
+	GameStateManager.run_started.emit()
+
+	assert_int(rm._enemies_killed).is_equal(0)
+	assert_int(rm._best_combo).is_equal(0)
+
+	_teardown_rm(rm)
+
+
+# ── AC-RM-20: get_run_data() includes the new stat keys ──────────────────────
+
+## GIVEN a fresh RunManager
+## WHEN get_run_data() is called
+## THEN it contains enemies_killed, best_combo, and run_time_sec keys
+func test_run_manager_get_run_data_includes_new_stat_keys() -> void:
+	var rm: Node = _make_rm()
+
+	var data: Dictionary = rm.get_run_data()
+
+	assert_bool(data.has("enemies_killed")).is_true()
+	assert_bool(data.has("best_combo")).is_true()
+	assert_bool(data.has("run_time_sec")).is_true()
+
+	_teardown_rm(rm)

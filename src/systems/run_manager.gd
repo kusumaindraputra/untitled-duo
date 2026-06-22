@@ -32,6 +32,18 @@ var _rooms_cleared: int = 0
 ## Current floor number within this run (1-based). Incremented on floor_completed.
 var _current_floor: int = 1
 
+## Total enemies killed this run (incremented on each HealthAndDamage.enemy_killed).
+var _enemies_killed: int = 0
+
+## Highest combo chain index reached this run (from SpellCastingEffects.chain_index_changed).
+var _best_combo: int = 0
+
+## Wall-clock ticks (msec) captured at run_started; basis for run_time_sec.
+var _run_start_msec: int = 0
+
+## Final run duration in seconds, computed once on run_ended. 0.0 while a run is active.
+var _run_elapsed_sec: float = 0.0
+
 # ── Built-in ──────────────────────────────────────────────────────────────────
 
 func _ready() -> void:
@@ -40,6 +52,8 @@ func _ready() -> void:
 	GameStateManager.room_cleared.connect(_on_room_cleared)
 	GameStateManager.floor_completed.connect(_on_floor_completed)
 	GameStateManager.run_ended.connect(_on_run_ended)
+	HealthAndDamage.enemy_killed.connect(_on_enemy_killed)
+	SpellCastingEffects.chain_index_changed.connect(_on_chain_index_changed)
 
 
 func _exit_tree() -> void:
@@ -53,6 +67,10 @@ func _exit_tree() -> void:
 		GameStateManager.floor_completed.disconnect(_on_floor_completed)
 	if GameStateManager.run_ended.is_connected(_on_run_ended):
 		GameStateManager.run_ended.disconnect(_on_run_ended)
+	if HealthAndDamage.enemy_killed.is_connected(_on_enemy_killed):
+		HealthAndDamage.enemy_killed.disconnect(_on_enemy_killed)
+	if SpellCastingEffects.chain_index_changed.is_connected(_on_chain_index_changed):
+		SpellCastingEffects.chain_index_changed.disconnect(_on_chain_index_changed)
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
@@ -64,6 +82,9 @@ func _exit_tree() -> void:
 ##   "waves_completed" — int: number of waves completed this run
 ##   "rooms_cleared"   — int: number of rooms cleared this run
 ##   "current_floor"   — int: current floor number (1-based)
+##   "enemies_killed"  — int: total enemies defeated this run
+##   "best_combo"      — int: highest combo chain index reached this run
+##   "run_time_sec"    — float: run duration in seconds (0.0 until run_ended)
 ##
 ## The returned Dictionary is a shallow copy — mutating it does not affect
 ## RunManager's internal state (all values are primitives).
@@ -79,6 +100,9 @@ func get_run_data() -> Dictionary:
 		"waves_completed": _waves_completed,
 		"rooms_cleared": _rooms_cleared,
 		"current_floor": _current_floor,
+		"enemies_killed": _enemies_killed,
+		"best_combo": _best_combo,
+		"run_time_sec": _run_elapsed_sec,
 	}.duplicate()
 
 # ── Signal callbacks ───────────────────────────────────────────────────────────
@@ -95,6 +119,10 @@ func _on_run_started() -> void:
 	_waves_completed = 0
 	_rooms_cleared = 0
 	_current_floor = 1
+	_enemies_killed = 0
+	_best_combo = 0
+	_run_start_msec = Time.get_ticks_msec()
+	_run_elapsed_sec = 0.0
 
 
 ## Increments waves_completed on each wave_ended signal.
@@ -129,7 +157,21 @@ func _on_run_ended(win: bool) -> void:
 		)
 		return
 	_run_active = false
+	_run_elapsed_sec = float(Time.get_ticks_msec() - _run_start_msec) / 1000.0
 	if win:
 		_run_outcome = GameEnums.RunOutcome.WIN
 	elif _run_outcome == GameEnums.RunOutcome.NONE:
 		_run_outcome = GameEnums.RunOutcome.LOSS
+
+
+## Increments enemies_killed on each HealthAndDamage.enemy_killed during an active run.
+func _on_enemy_killed(_instance_id: int, _type_id: int,
+		_prana_affiliation: GameEnums.DamageClass) -> void:
+	if _run_active:
+		_enemies_killed += 1
+
+
+## Tracks the highest combo chain index reached this run.
+func _on_chain_index_changed(combo_index: int, _combo_attack_count: int) -> void:
+	if _run_active and combo_index > _best_combo:
+		_best_combo = combo_index

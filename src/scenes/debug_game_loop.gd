@@ -194,6 +194,30 @@ func _make_subtitle_text() -> String:
 	return "Arrange Prana. Cast. Survive %s floors." % count_word
 
 
+## Adds a label|value row to the end-screen stat [param grid].
+## Label is dim grey and left-aligned; value is bright and right-aligned.
+func _add_stat_row(grid: GridContainer, label_text: String, value_text: String) -> void:
+	var name_label := Label.new()
+	name_label.text = label_text
+	name_label.add_theme_font_size_override(&"font_size", 22)
+	name_label.add_theme_color_override(&"font_color", Color(0.62, 0.62, 0.68))
+	grid.add_child(name_label)
+
+	var value_label := Label.new()
+	value_label.text = value_text
+	value_label.add_theme_font_size_override(&"font_size", 22)
+	value_label.add_theme_color_override(&"font_color", Color(1.0, 0.92, 0.7))
+	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_child(value_label)
+
+
+## Formats [param seconds] as "M:SS" (e.g. 252.0 → "4:12").
+func _format_run_time(seconds: float) -> String:
+	var total: int = int(seconds)
+	return "%d:%02d" % [total / 60, total % 60]
+
+
 ## Returns a fixed-height invisible spacer Control for VBox layout.
 func _make_spacer(height: int) -> Control:
 	var spacer := Control.new()
@@ -336,6 +360,9 @@ func _on_run_ended(win: bool) -> void:
 	var run_data: Dictionary = RunManager.get_run_data()
 	var floor_reached: int = run_data.get("current_floor", 1)
 	var rooms_cleared: int = run_data.get("rooms_cleared", 0)
+	var enemies_killed: int = run_data.get("enemies_killed", 0)
+	var best_combo: int = run_data.get("best_combo", 0)
+	var run_time_sec: float = run_data.get("run_time_sec", 0.0)
 
 	var overlay := CanvasLayer.new()
 	overlay.layer = 20
@@ -360,15 +387,30 @@ func _on_run_ended(win: bool) -> void:
 	vbox.add_child(title)
 
 	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, 24)
+	spacer.custom_minimum_size = Vector2(0, 16)
 	vbox.add_child(spacer)
 
-	var stats := Label.new()
-	stats.text = "Floor %d  ·  %d Room%s Cleared" % [floor_reached, rooms_cleared, "" if rooms_cleared == 1 else "s"]
-	stats.add_theme_font_size_override(&"font_size", 28)
-	stats.add_theme_color_override(&"font_color", Color(0.8, 0.8, 0.8))
-	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(stats)
+	var subtitle := Label.new()
+	subtitle.text = "Floor %d  ·  %d Room%s Cleared" % [floor_reached, rooms_cleared, "" if rooms_cleared == 1 else "s"]
+	subtitle.add_theme_font_size_override(&"font_size", 26)
+	subtitle.add_theme_color_override(&"font_color", Color(0.85, 0.85, 0.85))
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(subtitle)
+
+	var stat_spacer := Control.new()
+	stat_spacer.custom_minimum_size = Vector2(0, 22)
+	vbox.add_child(stat_spacer)
+
+	# Stat breakdown — a centered 2-column grid (label | value) for replay appeal.
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	grid.add_theme_constant_override(&"h_separation", 36)
+	grid.add_theme_constant_override(&"v_separation", 8)
+	vbox.add_child(grid)
+	_add_stat_row(grid, "Enemies Slain", str(enemies_killed))
+	_add_stat_row(grid, "Best Combo", "x%d" % best_combo)
+	_add_stat_row(grid, "Time", _format_run_time(run_time_sec))
 
 	var spacer2 := Control.new()
 	spacer2.custom_minimum_size = Vector2(0, 40)
