@@ -58,12 +58,12 @@ func test_ui_copy_resource_fields_are_non_empty() -> void:
 	assert_int(copy.type_abbrevs.size()).is_equal(PranaCatalog.type_count())
 
 
-# ── BoonConfig drives boon tuning + Prana names come from PranaCatalog ────────
+# ── SigilConfig drives sigil tuning + Prana names come from PranaCatalog ──────
 
-func test_boon_prana_card_names_come_from_prana_catalog() -> void:
-	var bm := preload("res://src/systems/boon_manager.gd").new()
+func test_sigil_prana_card_names_come_from_prana_catalog() -> void:
+	var sm := preload("res://src/systems/sigil_manager.gd").new()
 
-	var pool: Array[Dictionary] = bm.get_catalog()
+	var pool: Array[Dictionary] = sm.get_catalog()
 
 	# Every Prana card's title embeds the canonical catalog name for its type.
 	var checked := 0
@@ -75,4 +75,4 @@ func test_boon_prana_card_names_come_from_prana_catalog() -> void:
 			checked += 1
 	assert_int(checked).is_equal(PranaCatalog.type_count())
 
-	bm.free()
+	sm.free()

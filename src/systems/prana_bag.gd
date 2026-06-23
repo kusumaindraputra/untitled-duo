@@ -8,7 +8,7 @@
 ## Unlike PranaLoadout (the persistent 9-slot build), the bag holds only the Prana waiting
 ## to be placed — an ordered Array of type_ids (duplicates allowed, since two of the same
 ## type can be acquired). Created programmatically by debug_game_loop (no Autoload) and
-## registered in the "prana_bag" group so BoonManager (writer) and PranaGrid (reader)
+## registered in the "prana_bag" group so SigilManager (writer) and PranaGrid (reader)
 ## find it without a hard reference. Resets on run_started.
 class_name PranaBag
 extends Node

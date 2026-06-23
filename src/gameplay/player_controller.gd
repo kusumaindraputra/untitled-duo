@@ -81,7 +81,7 @@ var _last_facing_dir: Vector2 = Vector2.RIGHT
 var _dash_duration_timer: float = 0.0  # countdown; > 0.0 means currently dashing
 var _dash_cooldown_timer: float = 0.0  # countdown; > 0.0 means on cooldown
 
-## Run boon multipliers (1.0 = no boon). Persist across rooms; reset only on a
+## Run sigil multipliers (1.0 = no sigil). Persist across rooms; reset only on a
 ## fresh scene/run. Applied to MOVE_SPEED and DASH_COOLDOWN at their use sites.
 var _move_speed_mult: float = 1.0
 var _dash_cooldown_mult: float = 1.0
@@ -522,13 +522,13 @@ func _tween_zoom(target: Vector2) -> void:
 	_zoom_tween.tween_property(_camera, "zoom", target, ZOOM_TWEEN_DURATION)
 
 
-## Boon: multiplies the move-speed multiplier by [param factor] (e.g. 1.15 = +15%).
-## Stacks multiplicatively with prior speed boons. Persists for the rest of the run.
+## Sigil: multiplies the move-speed multiplier by [param factor] (e.g. 1.15 = +15%).
+## Stacks multiplicatively with prior speed sigils. Persists for the rest of the run.
 func apply_move_speed_mult(factor: float) -> void:
 	_move_speed_mult *= factor
 
 
-## Boon: multiplies the dash-cooldown multiplier by [param factor] (e.g. 0.75 = -25%).
+## Sigil: multiplies the dash-cooldown multiplier by [param factor] (e.g. 0.75 = -25%).
 ## Lower is better. Stacks multiplicatively. Persists for the rest of the run.
 func apply_dash_cooldown_mult(factor: float) -> void:
 	_dash_cooldown_mult *= factor

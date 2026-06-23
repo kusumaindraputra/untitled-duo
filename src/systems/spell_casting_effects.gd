@@ -206,8 +206,8 @@ var _override_target: Node = null
 ## Cached reference to Fayde (player node). Resolved in _ready() via player group.
 var _fayde_ref: Node = null
 
-## Run-wide boon damage multiplier (1.0 = no boon). Multiplied into every hit's
-## raw damage at step 8b. Set by boons via apply_damage_mult(); persists for the run.
+## Run-wide sigil damage multiplier (1.0 = no sigil). Multiplied into every hit's
+## raw damage at step 8b. Set by sigils via apply_damage_mult(); persists for the run.
 var _run_damage_mult: float = 1.0
 
 
@@ -451,7 +451,7 @@ func _apply_hit(target: Node, pt: int, tier_mod: float, se: SpellEffect,
 	# Step 8 — apply crit multiplier (rolled once per cast, applied after per-target steps).
 	raw *= crit_mult
 
-	# Step 8b — apply run-wide boon damage multiplier (1.0 = no boon).
+	# Step 8b — apply run-wide sigil damage multiplier (1.0 = no sigil).
 	raw *= _run_damage_mult
 
 	# Step 9 — deliver damage (element-neutral; affiliation cut 2026-06-21).
@@ -668,13 +668,13 @@ func _select_all_targets_in_cone() -> Array[Node]:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-## Boon: multiplies the run-wide spell damage multiplier by [param factor]
+## Sigil: multiplies the run-wide spell damage multiplier by [param factor]
 ## (e.g. 1.20 = +20% damage). Stacks multiplicatively; persists for the run.
 func apply_damage_mult(factor: float) -> void:
 	_run_damage_mult *= factor
 
 
-## Returns the current run-wide damage multiplier. Exposed for tests and boon UI.
+## Returns the current run-wide damage multiplier. Exposed for tests and sigil UI.
 func get_damage_mult() -> float:
 	return _run_damage_mult
 

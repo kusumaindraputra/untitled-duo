@@ -1,34 +1,38 @@
-## BoonManager — between-room reward system for the demo run.
+## SigilManager — between-room reward system for the demo run.
 ##
-## After clearing a combat/elite room, offer_boons() presents a choice of three
-## random reward cards drawn from a mixed pool: persistent stat boons AND Prana
-## cards. A boon applies a run modifier through its owning system (PlayerController
-## speed/dash, SpellCastingEffects damage, HealthAndDamage heal); a Prana card drops
-## one fragment into the PranaBag for placement in the next preparation phase
-## (grid-as-build model). No central stat store — each system stays authoritative.
+## After clearing a combat/elite room, offer_sigils() presents a choice of three
+## random reward cards drawn from a mixed pool: persistent stat sigils AND Prana
+## sigils. A stat sigil applies a run modifier through its owning system
+## (PlayerController speed/dash, SpellCastingEffects damage, HealthAndDamage heal);
+## a Prana sigil drops one fragment into the PranaBag for placement in the next
+## preparation phase (grid-as-build model). No central stat store — each system
+## stays authoritative.
 ##
-## Logic (catalog / roll_choices / apply_boon) is separated from presentation
-## (offer_boons builds the overlay) so the selection math is unit-testable headlessly.
+## "Sigil" is the project's umbrella term for the between-room reward (replacing the
+## genre-generic "boon"): an inscribed mark Fayde takes to grow his recovered power.
+##
+## Logic (catalog / roll_choices / apply_sigil) is separated from presentation
+## (offer_sigils builds the overlay) so the selection math is unit-testable headlessly.
 ##
 ## Created programmatically by debug_game_loop so both main.tscn and demo.tscn get
 ## it without scene edits. Not an Autoload — it is run-scoped, freed with the scene.
-class_name BoonManager
+class_name SigilManager
 extends Node
 
-## Emitted after a reward is applied, carrying its id (boon id or "prana_<n>").
+## Emitted after a reward is applied, carrying its id (sigil id or "prana_<n>").
 ## For HUD/audio feedback.
-signal boon_applied(boon_id: StringName)
+signal sigil_applied(sigil_id: StringName)
 
 # ── Config ────────────────────────────────────────────────────────────────────
-## Data-driven boon tuning + copy: multipliers, catalog, heading, and Prana-card
-## templates. Preloaded as a const so it resolves without _ready() — BoonManager is
-## unit-tested via .new() with no SceneTree (see boon_manager_test.gd). Element
+## Data-driven sigil tuning + copy: multipliers, catalog, heading, and Prana-card
+## templates. Preloaded as a const so it resolves without _ready() — SigilManager is
+## unit-tested via .new() with no SceneTree (see sigil_manager_test.gd). Element
 ## names and colours come from PranaCatalog (the canonical Prana type data), so no
 ## Prana names are duplicated here.
-const CONFIG: BoonConfig = preload("res://assets/data/boon_config.tres")
+const CONFIG: SigilConfig = preload("res://assets/data/sigil_config.tres")
 
-## Id prefix marking a Prana reward card. apply_boon() detects this prefix and
-## routes the card to the PranaBag instead of the boon dispatch table.
+## Id prefix marking a Prana reward card. apply_sigil() detects this prefix and
+## routes the card to the PranaBag instead of the sigil dispatch table.
 const _PRANA_ID_PREFIX: String = "prana_"
 
 ## Resolves the player node. Overridable in tests via set_player_provider().
@@ -44,22 +48,22 @@ var _overlay: CanvasLayer = null
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-## Returns a copy of the full reward pool (stat boons + one Prana card per type).
+## Returns a copy of the full reward pool (stat sigils + one Prana sigil per type).
 func get_catalog() -> Array[Dictionary]:
 	return _build_reward_pool()
 
 
-## Builds the combined reward pool: all stat boons followed by one Prana card per
+## Builds the combined reward pool: all stat sigils followed by one Prana sigil per
 ## Prana type. Rebuilt each call (cheap) so callers always get fresh copies.
 func _build_reward_pool() -> Array[Dictionary]:
-	var pool: Array[Dictionary] = CONFIG.boons.duplicate(true)
+	var pool: Array[Dictionary] = CONFIG.sigils.duplicate(true)
 	pool.append_array(_build_prana_cards())
 	return pool
 
 
 ## Builds one Prana reward card per Prana type. Names come from PranaCatalog (the
 ## canonical type data) and the title/desc templates from CONFIG. Each card carries
-## a "prana_type" key so the overlay can tint it and apply_boon() can route it to
+## a "prana_type" key so the overlay can tint it and apply_sigil() can route it to
 ## the bag.
 func _build_prana_cards() -> Array[Dictionary]:
 	var cards: Array[Dictionary] = []
@@ -93,20 +97,20 @@ func roll_choices(count: int, rng: RandomNumberGenerator = null) -> Array[Dictio
 	return pool.slice(0, mini(count, pool.size()))
 
 
-## Applies the reward identified by [param boon_id] to its owning system.
-## Prana cards ("prana_<n>") drop a fragment into the PranaBag; stat boons dispatch
+## Applies the reward identified by [param sigil_id] to its owning system.
+## Prana sigils ("prana_<n>") drop a fragment into the PranaBag; stat sigils dispatch
 ## through the table below. No-op with a push_warning for an unknown id. Emits
-## boon_applied on success.
-func apply_boon(boon_id: StringName) -> void:
-	var id_str: String = String(boon_id)
+## sigil_applied on success.
+func apply_sigil(sigil_id: StringName) -> void:
+	var id_str: String = String(sigil_id)
 	if id_str.begins_with(_PRANA_ID_PREFIX):
 		var type_id: int = id_str.substr(_PRANA_ID_PREFIX.length()).to_int()
 		var bag: Node = _bag_provider.call()
 		if is_instance_valid(bag) and bag.has_method(&"add"):
 			bag.add(type_id)
-		boon_applied.emit(boon_id)
+		sigil_applied.emit(sigil_id)
 		return
-	match boon_id:
+	match sigil_id:
 		&"damage":
 			SpellCastingEffects.apply_damage_mult(CONFIG.damage_mult)
 		&"overcharge":
@@ -124,9 +128,9 @@ func apply_boon(boon_id: StringName) -> void:
 			if is_instance_valid(p3):
 				HealthAndDamage.apply_heal(p3, CONFIG.heal_amount)
 		_:
-			push_warning("BoonManager.apply_boon: unknown boon id '%s'" % boon_id)
+			push_warning("SigilManager.apply_sigil: unknown sigil id '%s'" % sigil_id)
 			return
-	boon_applied.emit(boon_id)
+	sigil_applied.emit(sigil_id)
 
 
 ## Test seam: overrides how the player node is resolved.
@@ -139,9 +143,9 @@ func set_bag_provider(provider: Callable) -> void:
 	_bag_provider = provider
 
 
-## Builds the modal choice overlay with three boons and pauses the tree until the
+## Builds the modal choice overlay with three sigils and pauses the tree until the
 ## player picks one. No-op if an overlay is already open.
-func offer_boons() -> void:
+func offer_sigils() -> void:
 	if _overlay != null:
 		return
 	var choices: Array[Dictionary] = roll_choices(3)
@@ -176,8 +180,8 @@ func offer_boons() -> void:
 	row.add_theme_constant_override(&"separation", 20)
 	vbox.add_child(row)
 
-	for boon: Dictionary in choices:
-		row.add_child(_make_boon_card(boon))
+	for sigil: Dictionary in choices:
+		row.add_child(_make_sigil_card(sigil))
 
 	add_child(_overlay)
 
@@ -185,27 +189,27 @@ func offer_boons() -> void:
 # ── Private ───────────────────────────────────────────────────────────────────
 
 ## Builds a single clickable reward card button. Card titles/descriptions come from
-## CONFIG (centralized copy, staged for localization — see /localize). Prana cards
+## CONFIG (centralized copy, staged for localization — see /localize). Prana sigils
 ## (carrying a "prana_type" key) are tinted with the element's canonical colour from
-## PranaCatalog so they read distinctly from stat boons in the mixed menu.
-func _make_boon_card(boon: Dictionary) -> Button:
+## PranaCatalog so they read distinctly from stat sigils in the mixed menu.
+func _make_sigil_card(sigil: Dictionary) -> Button:
 	var card := Button.new()
 	card.custom_minimum_size = Vector2(220, 120)
 	card.add_theme_font_size_override(&"font_size", 18)
-	card.text = "%s\n\n%s" % [boon["title"], boon["desc"]]
+	card.text = "%s\n\n%s" % [sigil["title"], sigil["desc"]]
 	card.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	if boon.has("prana_type"):
-		var type_id: int = boon["prana_type"]
+	if sigil.has("prana_type"):
+		var type_id: int = sigil["prana_type"]
 		if type_id >= 0 and type_id < PranaCatalog.type_count():
 			card.add_theme_color_override(&"font_color", PranaCatalog.get_type_color(type_id))
-	var id: StringName = boon["id"]
-	card.pressed.connect(func() -> void: _on_boon_chosen(id))
+	var id: StringName = sigil["id"]
+	card.pressed.connect(func() -> void: _on_sigil_chosen(id))
 	return card
 
 
-## Applies the chosen boon, tears down the overlay, and unpauses the tree.
-func _on_boon_chosen(boon_id: StringName) -> void:
-	apply_boon(boon_id)
+## Applies the chosen sigil, tears down the overlay, and unpauses the tree.
+func _on_sigil_chosen(sigil_id: StringName) -> void:
+	apply_sigil(sigil_id)
 	if _overlay != null:
 		_overlay.queue_free()
 		_overlay = null

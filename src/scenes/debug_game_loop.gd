@@ -59,9 +59,9 @@ var _title_layer: CanvasLayer = null
 ## First-prep coaching overlay. Shown once on Begin, auto-freed when combat starts.
 var _tutorial_layer: CanvasLayer = null
 
-## Between-room reward system. Created in _ready(); offers a boon after each
+## Between-room reward system. Created in _ready(); offers a sigil after each
 ## combat/elite room clear.
-var _boon_manager: BoonManager = null
+var _sigil_manager: SigilManager = null
 
 ## Run-scoped transient bag of Prana acquired from post-room rewards, awaiting
 ## placement into the grid during the next prep phase. Created in _ready().
@@ -120,12 +120,12 @@ func _ready() -> void:
 	# build/free the overlay in response so ESC works from PREP and COMBAT alike.
 	GameStateManager.game_paused.connect(_on_game_paused)
 	GameStateManager.game_resumed.connect(_on_game_resumed)
-	# Between-room boons: created here so both main.tscn and demo.tscn get it.
-	_boon_manager = BoonManager.new()
-	_boon_manager.name = "BoonManager"
-	add_child(_boon_manager)
+	# Between-room sigils: created here so both main.tscn and demo.tscn get it.
+	_sigil_manager = SigilManager.new()
+	_sigil_manager.name = "SigilManager"
+	add_child(_sigil_manager)
 	# Transient reward bag: Prana picked from post-room rewards land here, then the
-	# prep grid places them. Found by BoonManager (writer) + PranaGrid (reader) via group.
+	# prep grid places them. Found by SigilManager (writer) + PranaGrid (reader) via group.
 	_prana_bag = PranaBag.new()
 	_prana_bag.name = "PranaBag"
 	add_child(_prana_bag)
@@ -833,13 +833,13 @@ func _on_wave_ended() -> void:
 	tw.tween_property(wash, "color:a", 0.0, 0.5).set_ease(Tween.EASE_IN)
 	tw.tween_callback(wash.queue_free)
 
-	# Between-room reward: offer a boon after combat/elite clears (skip rest/boss).
+	# Between-room reward: offer a sigil after combat/elite clears (skip rest/boss).
 	# wave_ended also fires in the boss room, but its room_type is BOSS so it's skipped.
 	var rtype: int = $WaveManager.room_type
-	if _boon_manager != null \
+	if _sigil_manager != null \
 			and (rtype == DungeonGraph.ROOM_TYPE_COMBAT or rtype == DungeonGraph.ROOM_TYPE_ELITE):
 		await get_tree().create_timer(0.5).timeout
-		_boon_manager.offer_boons()
+		_sigil_manager.offer_sigils()
 
 
 func _ensure_key_action(action: StringName, keycode: Key) -> void:
