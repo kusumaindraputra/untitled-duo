@@ -19,33 +19,17 @@ extends Node
 ## For HUD/audio feedback.
 signal boon_applied(boon_id: StringName)
 
-# ── Boon tuning values (demo) ─────────────────────────────────────────────────
-# TODO(data-driven): demo debt — these tuning values and the element names below
-# should load from a config resource, not be hardcoded (coding-standards.md).
-const _DMG_BOON: float = 1.20        ## +20% spell damage
-const _DMG_BOON_BIG: float = 1.35    ## +35% spell damage
-const _MOVE_BOON: float = 1.15       ## +15% move speed
-const _DASH_BOON: float = 0.75       ## -25% dash cooldown
-const _HEAL_BOON: float = 40.0       ## flat HP restored
+# ── Config ────────────────────────────────────────────────────────────────────
+## Data-driven boon tuning + copy: multipliers, catalog, heading, and Prana-card
+## templates. Preloaded as a const so it resolves without _ready() — BoonManager is
+## unit-tested via .new() with no SceneTree (see boon_manager_test.gd). Element
+## names and colours come from PranaCatalog (the canonical Prana type data), so no
+## Prana names are duplicated here.
+const CONFIG: BoonConfig = preload("res://assets/data/boon_config.tres")
 
 ## Id prefix marking a Prana reward card. apply_boon() detects this prefix and
 ## routes the card to the PranaBag instead of the boon dispatch table.
 const _PRANA_ID_PREFIX: String = "prana_"
-
-## Full element names per Prana type_id (0–4), used in Prana card titles. Mirrors the
-## Art Bible palette order in PranaTypeToken.TYPE_COLORS / TYPE_NAMES.
-const _PRANA_FULL_NAMES: Array[String] = ["Ashfire", "Voidblue", "Stormgold", "Deepfrost", "Verdant"]
-
-## Static boon catalog. Each entry: id, title, desc. The effect is dispatched by
-## id in apply_boon(). Kept as a data table so roll/apply logic is value-driven.
-## The full reward pool also includes Prana cards built in _build_prana_cards().
-const _CATALOG: Array[Dictionary] = [
-	{"id": &"damage",     "title": "Sharpened Cipher", "desc": "+20% spell damage"},
-	{"id": &"overcharge", "title": "Overcharge",       "desc": "+35% spell damage"},
-	{"id": &"move_speed", "title": "Swift Step",        "desc": "+15% move speed"},
-	{"id": &"dash_cd",    "title": "Quick Recovery",    "desc": "-25% dash cooldown"},
-	{"id": &"heal",       "title": "Second Wind",       "desc": "Restore 40 HP"},
-]
 
 ## Resolves the player node. Overridable in tests via set_player_provider().
 var _player_provider: Callable = func() -> Node:
@@ -68,21 +52,24 @@ func get_catalog() -> Array[Dictionary]:
 ## Builds the combined reward pool: all stat boons followed by one Prana card per
 ## Prana type. Rebuilt each call (cheap) so callers always get fresh copies.
 func _build_reward_pool() -> Array[Dictionary]:
-	var pool: Array[Dictionary] = _CATALOG.duplicate(true)
+	var pool: Array[Dictionary] = CONFIG.boons.duplicate(true)
 	pool.append_array(_build_prana_cards())
 	return pool
 
 
-## Builds one Prana reward card per type_id (0–4). Each card carries a "prana_type"
-## key so the overlay can tint it and apply_boon() can route it to the bag.
+## Builds one Prana reward card per Prana type. Names come from PranaCatalog (the
+## canonical type data) and the title/desc templates from CONFIG. Each card carries
+## a "prana_type" key so the overlay can tint it and apply_boon() can route it to
+## the bag.
 func _build_prana_cards() -> Array[Dictionary]:
 	var cards: Array[Dictionary] = []
-	for type_id: int in _PRANA_FULL_NAMES.size():
-		var full_name: String = _PRANA_FULL_NAMES[type_id]
+	for type_id: int in PranaCatalog.type_count():
+		var type_data: PranaType = PranaCatalog.get_type(type_id)
+		var full_name: String = type_data.name if type_data != null else "Prana"
 		cards.append({
 			"id": StringName(_PRANA_ID_PREFIX + str(type_id)),
-			"title": "Gain %s" % full_name,
-			"desc": "+1 %s Prana to your bag" % full_name,
+			"title": CONFIG.prana_card_title % full_name,
+			"desc": CONFIG.prana_card_desc % full_name,
 			"prana_type": type_id,
 		})
 	return cards
@@ -121,21 +108,21 @@ func apply_boon(boon_id: StringName) -> void:
 		return
 	match boon_id:
 		&"damage":
-			SpellCastingEffects.apply_damage_mult(_DMG_BOON)
+			SpellCastingEffects.apply_damage_mult(CONFIG.damage_mult)
 		&"overcharge":
-			SpellCastingEffects.apply_damage_mult(_DMG_BOON_BIG)
+			SpellCastingEffects.apply_damage_mult(CONFIG.overcharge_mult)
 		&"move_speed":
 			var p1: Node = _player_provider.call()
 			if is_instance_valid(p1) and p1.has_method(&"apply_move_speed_mult"):
-				p1.apply_move_speed_mult(_MOVE_BOON)
+				p1.apply_move_speed_mult(CONFIG.move_speed_mult)
 		&"dash_cd":
 			var p2: Node = _player_provider.call()
 			if is_instance_valid(p2) and p2.has_method(&"apply_dash_cooldown_mult"):
-				p2.apply_dash_cooldown_mult(_DASH_BOON)
+				p2.apply_dash_cooldown_mult(CONFIG.dash_cooldown_mult)
 		&"heal":
 			var p3: Node = _player_provider.call()
 			if is_instance_valid(p3):
-				HealthAndDamage.apply_heal(p3, _HEAL_BOON)
+				HealthAndDamage.apply_heal(p3, CONFIG.heal_amount)
 		_:
 			push_warning("BoonManager.apply_boon: unknown boon id '%s'" % boon_id)
 			return
@@ -178,7 +165,7 @@ func offer_boons() -> void:
 	_overlay.add_child(vbox)
 
 	var heading := Label.new()
-	heading.text = "ROOM CLEARED — Choose a Reward"
+	heading.text = CONFIG.heading
 	heading.add_theme_font_size_override(&"font_size", 32)
 	heading.add_theme_color_override(&"font_color", Color(1.0, 0.85, 0.4))
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -197,11 +184,10 @@ func offer_boons() -> void:
 
 # ── Private ───────────────────────────────────────────────────────────────────
 
-## TODO(i18n): demo debt — card titles/descriptions and the overlay heading are
-## hardcoded user-facing strings; route through the localization system (ui-code.md).
-## Builds a single clickable reward card button. Prana cards (carrying a "prana_type"
-## key) are tinted with the element's Art Bible colour so they read distinctly from
-## stat boons in the mixed menu.
+## Builds a single clickable reward card button. Card titles/descriptions come from
+## CONFIG (centralized copy, staged for localization — see /localize). Prana cards
+## (carrying a "prana_type" key) are tinted with the element's canonical colour from
+## PranaCatalog so they read distinctly from stat boons in the mixed menu.
 func _make_boon_card(boon: Dictionary) -> Button:
 	var card := Button.new()
 	card.custom_minimum_size = Vector2(220, 120)
@@ -210,8 +196,8 @@ func _make_boon_card(boon: Dictionary) -> Button:
 	card.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	if boon.has("prana_type"):
 		var type_id: int = boon["prana_type"]
-		if type_id >= 0 and type_id < PranaTypeToken.TYPE_COLORS.size():
-			card.add_theme_color_override(&"font_color", PranaTypeToken.TYPE_COLORS[type_id])
+		if type_id >= 0 and type_id < PranaCatalog.type_count():
+			card.add_theme_color_override(&"font_color", PranaCatalog.get_type_color(type_id))
 	var id: StringName = boon["id"]
 	card.pressed.connect(func() -> void: _on_boon_chosen(id))
 	return card

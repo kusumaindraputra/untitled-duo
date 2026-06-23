@@ -1,0 +1,6 @@
+[gd_resource type="Resource" script_class="UICopy" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/ui_copy.gd" id="1_uicopy"]
+
+[resource]
+script = ExtResource("1_uicopy")

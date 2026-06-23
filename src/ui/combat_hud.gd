@@ -76,9 +76,9 @@ const DAMAGE_FADE_START: float = 0.5
 ## Opacity of DashCooldownIcon when dash is on cooldown (AC-DH-04).
 const DASH_COOLDOWN_DIMMED_ALPHA: float = 0.4
 
-## Hint text shown to player during first combat encounter (AC-DH-03).
-# TODO(l10n): localize before shipping
-const DASH_HINT_TEXT: String = "Shift / LT — Dash"
+## Centralized player-facing UI copy (dash hint, etc.), staged for localization
+## (see /localize). Preloaded so it resolves without _ready() in headless tests.
+const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
 
 ## Upward pixel offset for chain dots above Fayde's world position in screen-space (AC-HUD-27).
 const DOT_OFFSET_ABOVE_PLAYER: float = 48.0
@@ -333,7 +333,7 @@ func _create_ui_nodes() -> void:
 	add_child(chain_dots_container)
 
 	_dash_hint_label = Label.new()
-	_dash_hint_label.text = DASH_HINT_TEXT
+	_dash_hint_label.text = _COPY.dash_hint
 	_dash_hint_label.position = Vector2(8, 80)
 	_dash_hint_label.size = Vector2(200, 20)
 	_dash_hint_label.visible = false

@@ -349,13 +349,12 @@ func _show_core_pick() -> void:
 	vbox.add_child(row)
 
 	var first_button: Button = null
-	for type_id in PranaTypeToken.TYPE_NAMES.size():
+	for type_id in PranaTypeToken.type_count():
 		var card := Button.new()
 		card.custom_minimum_size = Vector2(150, 110)
 		card.add_theme_font_size_override(&"font_size", 22)
-		card.text = PranaTypeToken.TYPE_NAMES[type_id]
-		if type_id < PranaTypeToken.TYPE_COLORS.size():
-			card.add_theme_color_override(&"font_color", PranaTypeToken.TYPE_COLORS[type_id])
+		card.text = PranaTypeToken.type_abbrev(type_id)
+		card.add_theme_color_override(&"font_color", PranaTypeToken.type_color(type_id))
 		var captured_id: int = type_id
 		card.pressed.connect(func() -> void: _on_core_picked(captured_id))
 		row.add_child(card)

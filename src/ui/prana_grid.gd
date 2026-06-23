@@ -21,6 +21,10 @@ signal arrangement_confirmed
 ## Number of slots in the grid (3×3).
 const GRID_SIZE := 9
 
+## Centralized player-facing copy for the preparation panel (staged for localization
+## — see /localize). Preloaded so it resolves without _ready() in headless tests.
+const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
+
 ## Duration in seconds for the centre-slot error flash indicator (AC-PG-05).
 const ERROR_FLASH_DURATION := 0.4
 
@@ -479,8 +483,7 @@ static func slot_col(index: int) -> int:
 ## Builds all UI child nodes programmatically (follows CombatHUD pattern).
 ## Called once from _ready(). Headless unit tests use .new() and never call
 ## _ready(), so this method is never executed in the test harness.
-## TODO(i18n): demo debt — the player-facing labels built below are hardcoded;
-## route them through the localization system before this graduates the demo (ui-code.md).
+## Player-facing labels read from _COPY (centralized UI copy, staged for localization).
 func _create_ui_nodes() -> void:
 	# Panel pinned to the right side of the viewport using absolute position+size
 	# (same pattern as CombatHUD — anchors on CanvasLayer children are unreliable
@@ -499,12 +502,12 @@ func _create_ui_nodes() -> void:
 
 	# Header
 	var header := Label.new()
-	header.text = "PREPARATION PHASE"
+	header.text = _COPY.prep_header
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	layout.add_child(header)
 
 	var hint := Label.new()
-	hint.text = "Drag a Prana into a slot, or use Arrows + E (place) / Q (discard) / C (cycle)  •  Then Confirm"
+	hint.text = _COPY.prep_hint
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	layout.add_child(hint)
@@ -543,7 +546,7 @@ func _create_ui_nodes() -> void:
 	# (grid-as-build model). One draggable token per fragment; click to select for
 	# click-to-place, or drag onto an empty slot. Populated by _refresh_bag_tray().
 	_bag_label = Label.new()
-	_bag_label.text = "─── YOUR PRANA ───"
+	_bag_label.text = _COPY.bag_label
 	_bag_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	layout.add_child(_bag_label)
 
@@ -555,7 +558,7 @@ func _create_ui_nodes() -> void:
 	# Full-grid swap prompt (Stage 4, rule #5): visible only when the grid is full
 	# and the bag still has Prana, telling the player to free a slot first.
 	_full_grid_hint = Label.new()
-	_full_grid_hint.text = "Grid full — right-click a slot to discard and make room."
+	_full_grid_hint.text = _COPY.full_grid_hint
 	_full_grid_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_full_grid_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_full_grid_hint.add_theme_font_size_override(&"font_size", 14)
@@ -571,13 +574,13 @@ func _create_ui_nodes() -> void:
 
 	# Clear All hidden — clearing would wipe the persistent build including the core.
 	var clear_btn := Button.new()
-	clear_btn.text = "Clear All"
+	clear_btn.text = _COPY.clear_all_button
 	clear_btn.pressed.connect(clear_all)
 	clear_btn.visible = false
 	buttons.add_child(clear_btn)
 
 	_confirm_button = Button.new()
-	_confirm_button.text = "Confirm"
+	_confirm_button.text = _COPY.confirm_button
 	_confirm_button.modulate.a = 0.4
 	_confirm_button.disabled = true
 	_confirm_button.pressed.connect(_on_confirm_pressed)
@@ -585,7 +588,7 @@ func _create_ui_nodes() -> void:
 
 	# Error label (hidden until slot 4 empty + confirm attempted)
 	_error_label = Label.new()
-	_error_label.text = "Place a fragment in the centre slot"
+	_error_label.text = _COPY.error_center_slot
 	_error_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_error_label.add_theme_color_override(&"font_color", Color("#FF3333"))
 	_error_label.visible = false
@@ -599,11 +602,11 @@ func _create_ui_nodes() -> void:
 	layout.add_child(gp_strip)
 
 	var gp_hint := Label.new()
-	gp_hint.text = "PAD: "
+	gp_hint.text = _COPY.pad_prefix
 	gp_strip.add_child(gp_hint)
 
 	_type_indicator_label = Label.new()
-	_type_indicator_label.text = "BAG EMPTY"
+	_type_indicator_label.text = _COPY.bag_empty
 	_type_indicator_label.add_theme_color_override(&"font_color", Color(0.6, 0.6, 0.66))
 	gp_strip.add_child(_type_indicator_label)
 
@@ -680,12 +683,10 @@ func _update_build_readout() -> void:
 
 ## Returns a bbcode-coloured element name for [param type_id] using the Art Bible palette.
 func _colored_name(type_id: int) -> String:
-	var nm: String = "?"
-	if type_id >= 0 and type_id < PranaTypeToken.TYPE_NAMES.size():
-		nm = PranaTypeToken.TYPE_NAMES[type_id]
+	var nm: String = PranaTypeToken.type_abbrev(type_id)
 	var col: Color = Color.WHITE
-	if type_id >= 0 and type_id < PranaTypeToken.TYPE_COLORS.size():
-		col = PranaTypeToken.TYPE_COLORS[type_id]
+	if type_id >= 0 and type_id < PranaTypeToken.type_count():
+		col = PranaTypeToken.type_color(type_id)
 	return "[color=#%s]%s[/color]" % [col.to_html(false), nm]
 
 
@@ -798,11 +799,11 @@ func _gamepad_clear() -> void:
 func _update_type_indicator() -> void:
 	if _type_indicator_label == null:
 		return
-	if _selected_bag_type < 0 or _selected_bag_type >= PranaTypeToken.TYPE_NAMES.size():
+	if _selected_bag_type < 0 or _selected_bag_type >= PranaTypeToken.type_count():
 		# Distinguish a truly empty bag from "bag has Prana but none selected yet".
 		var b: Node = _get_bag()
 		var has_items: bool = b != null and b.has_method(&"is_empty") and not b.is_empty()
-		_type_indicator_label.text = "SELECT PRANA" if has_items else "BAG EMPTY"
+		_type_indicator_label.text = _COPY.select_prana if has_items else _COPY.bag_empty
 		_type_indicator_label.add_theme_color_override(&"font_color", Color(0.6, 0.6, 0.66))
 		return
 	var bag: Node = _get_bag()
@@ -811,5 +812,5 @@ func _update_type_indicator() -> void:
 		for tid: int in bag.get_items():
 			if tid == _selected_bag_type:
 				count += 1
-	_type_indicator_label.text = "%s ×%d" % [PranaTypeToken.TYPE_NAMES[_selected_bag_type], count]
-	_type_indicator_label.add_theme_color_override(&"font_color", PranaTypeToken.TYPE_COLORS[_selected_bag_type])
+	_type_indicator_label.text = "%s ×%d" % [PranaTypeToken.type_abbrev(_selected_bag_type), count]
+	_type_indicator_label.add_theme_color_override(&"font_color", PranaTypeToken.type_color(_selected_bag_type))

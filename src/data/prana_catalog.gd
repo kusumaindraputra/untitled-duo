@@ -73,6 +73,25 @@ func get_type(id: int) -> PranaType:
 	return _types[id].duplicate_deep()
 
 
+## Returns the number of loaded Prana types without copying any resource.
+##
+## Cheap O(1) accessor for UI loop bounds and validity checks — prefer this over
+## get_all_types().size(), which deep-copies every type. Returns 0 before _ready().
+func type_count() -> int:
+	return _types.size()
+
+
+## Returns just the display [Color] of the type with the given [param id].
+##
+## Cheap accessor for UI tints (grid slots, tokens, reward cards) that avoids the
+## duplicate_deep() cost of get_type(). Returns a neutral grey for an out-of-range
+## id or before _ready() (callers treat this as "unknown type").
+func get_type_color(id: int) -> Color:
+	if not _initialized or id < 0 or id >= _types.size():
+		return Color(0.3, 0.3, 0.3)
+	return _types[id].color
+
+
 ## Returns an independent deep copy of every PranaType in catalog order.
 ##
 ## Each element is an isolated duplicate; mutations are invisible to the catalog.

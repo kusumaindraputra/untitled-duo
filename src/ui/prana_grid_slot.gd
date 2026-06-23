@@ -135,4 +135,4 @@ func _on_mouse_exited() -> void:
 func refresh(type_id: int) -> void:
 	_displayed_type_id = type_id
 	if _color_rect != null:
-		_color_rect.color = EMPTY_COLOR if type_id == -1 else PranaTypeToken.TYPE_COLORS[type_id]
+		_color_rect.color = EMPTY_COLOR if type_id == -1 else PranaTypeToken.type_color(type_id)

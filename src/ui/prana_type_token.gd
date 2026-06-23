@@ -9,19 +9,30 @@
 class_name PranaTypeToken
 extends Panel
 
-## Art Bible palette — matches PranaGridSlot.TYPE_COLORS (QA plan S4-04 checklist).
-## TODO(data-driven): demo debt — source colours/names from PranaCatalog (the canonical
-## type data) instead of these hardcoded arrays so there is a single source of truth.
-const TYPE_COLORS: Array[Color] = [
-	Color("#F24C1D"),  # 0 Ashfire
-	Color("#4A5EF5"),  # 1 Voidblue
-	Color("#FFCC00"),  # 2 Stormgold
-	Color("#3DD9F0"),  # 3 Deepfrost
-	Color("#1AC953"),  # 4 Verdant
-]
+## Centralized UI copy — supplies the short type abbreviations. Full names and
+## colours come from PranaCatalog (the canonical Prana type data), so there is a
+## single source of truth and nothing is duplicated here.
+const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
 
-## Short display names shown on each token.
-const TYPE_NAMES: Array[String] = ["ASH", "VOID", "STRM", "DEEP", "VERD"]
+
+## Number of Prana types, from PranaCatalog (single source of truth). Used for
+## loop bounds and validity checks by token consumers.
+static func type_count() -> int:
+	return PranaCatalog.type_count()
+
+
+## Canonical display [Color] for [param type_id], from PranaCatalog. Returns a
+## neutral grey for an out-of-range id.
+static func type_color(type_id: int) -> Color:
+	return PranaCatalog.get_type_color(type_id)
+
+
+## Short display abbreviation for [param type_id] (e.g. "ASH"), from UICopy.
+## Returns "?" for an out-of-range id.
+static func type_abbrev(type_id: int) -> String:
+	if type_id < 0 or type_id >= _COPY.type_abbrevs.size():
+		return "?"
+	return _COPY.type_abbrevs[type_id]
 
 ## Prana type index (0–4). Set by PranaGrid._create_ui_nodes() before add_child().
 var type_id: int = -1
@@ -43,12 +54,11 @@ func _ready() -> void:
 	var bg := ColorRect.new()
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bg.color = TYPE_COLORS[type_id] if type_id >= 0 and type_id < TYPE_COLORS.size() \
-		else Color(0.3, 0.3, 0.3)
+	bg.color = type_color(type_id)
 	add_child(bg)
 
 	var label := Label.new()
-	label.text = TYPE_NAMES[type_id] if type_id >= 0 and type_id < TYPE_NAMES.size() else "?"
+	label.text = type_abbrev(type_id)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -78,7 +88,7 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 	if type_id < 0:
 		return null
 	var preview := Label.new()
-	preview.text = TYPE_NAMES[type_id] if type_id < TYPE_NAMES.size() else str(type_id)
+	preview.text = type_abbrev(type_id)
 	set_drag_preview(preview)
 	var payload: Dictionary = { "type_id": type_id }
 	if from_bag:
