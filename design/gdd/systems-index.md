@@ -2,7 +2,7 @@
 
 > **Status**: Draft
 > **Created**: 2026-05-20
-> **Last Updated**: 2026-05-26
+> **Last Updated**: 2026-06-24
 > **Source Concept**: design/gdd/game-concept.md
 
 ---
@@ -30,7 +30,7 @@ interactions, never a large shallow one.
 | # | System Name | Category | Priority | Status | Design Doc | Depends On |
 |---|-------------|----------|----------|--------|------------|------------|
 | 1 | Prana Grid | Gameplay | First Playable | Approved | design/gdd/prana-grid.md | Prana Data, Game State & Scene Flow |
-| 2 | Combination Resolution | Gameplay | First Playable | Approved | design/gdd/combination-resolution.md | Prana Grid, Prana Data |
+| 2 | Combination Resolution | Gameplay | First Playable | Approved *(4-layer: +Prana Reactions & Cascade, 2026-06-24 — ADR-0016)* | design/gdd/combination-resolution.md | Prana Grid, Prana Data |
 | 3 | Spell Casting & Effects *(simplified)* | Gameplay | First Playable | Approved | design/gdd/spell-casting-effects.md | Combination Resolution, Player Controller, Health & Damage |
 | 4 | Prana Data | Data | First Playable | Approved | design/gdd/prana-data.md | — |
 | 5 | Player Controller | Core | First Playable | Approved | design/gdd/player-controller.md | Game State & Scene Flow |

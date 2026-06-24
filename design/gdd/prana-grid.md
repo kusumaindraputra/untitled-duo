@@ -90,7 +90,7 @@ The failure version matters equally. A misread wave — the wrong type, the comb
 |--------|-------------|-----------|
 | **Game State & Scene Flow** | `preparation_started` → clear grid, enter ARRANGEMENT. `grid_locked` → enter LOCKED. `grid_hidden` → enter HIDDEN. Prana Grid emits `arrangement_confirmed`; Game State listens and owns the PREPARATION→COMBAT transition — it emits `grid_locked` (locking the grid) then `combat_started` as part of that transition. | Bidirectional (signal listener + signal emitter) |
 | **Prana Data** | Grid reads `id`, `name`, `color`, and `icon` per type to render the Type Selector panel and placed slot tokens. All reads via `PranaCatalog.get_type(id)`. | Prana Grid → Prana Data |
-| **Combination Resolution** | Reads `committed_fragments: Array[PranaFragment]` (length 9, null = empty slot) via a public getter after `combat_started`. Never writes to it. | Combination Resolution → Prana Grid |
+| **Combination Resolution** | (a) Reads `committed_fragments: Array[PranaFragment]` (length 9, null = empty slot) via a public getter after `combat_started`; never writes to it. (b) **Prep preview (new 2026-06-24):** Prana Grid calls the stateless `CombinationResolution.compute_recognition(working_fragments)` on every token place/move during Preparation Phase and renders the armed Prana Reactions + Cascade live (CR Rules 16f / 17g). | Combination Resolution ↔ Prana Grid |
 | **Spell Casting & Effects** | Reads `committed_fragments` (same getter) to route VFX and audio per type on cast event; uses `type_id` per non-null element. | Spell Casting & Effects → Prana Grid |
 | **Combat HUD** *(MVP+)* | At First Playable, Prana Grid owns its own display node in screen space. At MVP, Combat HUD integrates the grid display into the broader HUD; the layout contract is defined in the Combat HUD GDD. | Prana Grid ↔ Combat HUD |
 
@@ -196,7 +196,7 @@ committed_fragments = [
 
 | System | What it needs | Nature |
 |--------|---------------|--------|
-| **Combination Resolution** (#2, First Playable) | `committed_fragments: Array[PranaFragment]` (length 9, null = empty slot) after `combat_started` — reads type_id, level, stat_property, and adjacency_effects per slot to resolve spell effects | Hard — cannot resolve any spells without the arrangement |
+| **Combination Resolution** (#2, First Playable) | `committed_fragments: Array[PranaFragment]` (length 9, null = empty slot) after `combat_started` — reads type_id, level, stat_property, and adjacency_effects per slot to resolve spell effects; also exposes the stateless `compute_recognition(fragments)` that Prana Grid calls every place/move to render the live reaction/cascade preview | Hard — cannot resolve any spells without the arrangement |
 | **Spell Casting & Effects** (#3, First Playable) | `committed_fragments` — reads type_id per non-null element to route VFX burst shape and audio signature per type on cast | Hard — cannot route type-specific effects without knowing what was placed |
 | **Combat HUD** (#22, First Playable) | Grid display node and/or arrangement state for rendering the grid panel in the HUD during both PREPARATION and COMBAT phases | Soft at FP (Prana Grid owns its own display); hard at MVP when Combat HUD integrates the display |
 | **Loadout Slots** (#18, Vertical Slice) | Read/write access to committed arrangements for saving and restoring preset loadouts | Soft — deferred to VS scope; the Prana Grid write interface for preset load is not specified at MVP |
@@ -211,6 +211,7 @@ committed_fragments = [
 
 **Bidirectional consistency notes:**
 - Combination Resolution GDD must list Prana Grid as an upstream dependency and specify that it reads `committed_fragments` as a length-9 `Array[PranaFragment]` (null = empty slot). ✓ Confirmed in Combination Resolution GDD.
+- Combination Resolution GDD (2026-06-24) additionally requires Prana Grid to render the live Prana Reaction + Cascade preview during Preparation Phase via the stateless `compute_recognition()` (CR Rules 16f / 17g). Added to the Interactions table above and the UI Layout (preview panel). The preview operates on the in-progress (uncommitted) working arrangement — it does not require `committed_fragments`.
 - Spell Casting & Effects GDD must list Prana Grid as an upstream dependency and specify the `committed_fragments` interface (reads `type_id` per non-null element for VFX and audio routing).
 - Game State & Scene Flow GDD must confirm that `arrangement_confirmed` is a valid signal source for the PREPARATION→COMBAT transition. ⚠ **Cross-GDD interlock (open):** The approved Game State GDD's signal contract and Downstream Dependents table do not yet explicitly list `arrangement_confirmed` as a signal it subscribes to. The approved GDD must be updated (or a producer-level errata issued) before the PREPARATION→COMBAT transition can be implemented. This GDD correctly documents the intent; the gap is on the Game State side.
 - Combat HUD GDD must specify whether it owns the Prana Grid display at MVP or delegates display to the Prana Grid node.
@@ -269,11 +270,12 @@ Prana Grid is a UI/input surface rather than a balance-sensitive gameplay system
 
 ### Layout
 
-The Prana Grid UI consists of three components displayed together during Preparation Phase:
+The Prana Grid UI consists of four components displayed together during Preparation Phase:
 
 1. **Grid panel** — the 3×3 slot matrix
 2. **Type Selector panel** — the source of draggable Prana tokens (mouse) / current-type indicator (gamepad)
 3. **Action buttons** — Confirm and Clear All
+4. **Reaction preview panel** *(new 2026-06-24)* — lists the Prana Reactions and the Cascade currently armed by the working arrangement, updated live on every token place/move via `CombinationResolution.compute_recognition()`. This is the grid's self-teaching surface (CR Rule 16f / 17g): the player rearranges and watches the armed list change, learning the element-pair and core-anchored rules without tooltips. Exact placement and per-entry presentation (name + icon, lead/modifier glyphs for the Cascade) deferred to the Combat HUD GDD; this GDD requires only that the panel exist and update live during ARRANGEMENT.
 
 During LOCKED state (Combat Phase), the full Grid panel **hides**; the Type Selector panel and Action buttons also hide. A compact indicator (≤60×60px, read-only) appears in the bottom-right corner showing the committed arrangement as colored dots — see Rule 3 for the full compact indicator specification.
 

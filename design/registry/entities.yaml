@@ -573,10 +573,11 @@ constants:
     referenced_by:
       - design/gdd/prana-data.md
       - design/gdd/status-effects.md  # Formula 4: shattered_base_damage = base_damage × SHATTER_MULTIPLIER
+      - design/gdd/combination-resolution.md  # Thermal Shock reaction (REACT_THERMAL_BONUS=0.25 → ×1.25) must equal this and MUST NOT stack with Shatter on one hit (Rule 16 / Formula step 4). Keep aligned when tuning either.
     value: 1.25
     unit: damage multiplier
     added: 2026-05-29
-    revised: ""
+    revised: "2026-06-24"  # was referenced_by [prana-data, status-effects]; added combination-resolution (Thermal Shock alignment invariant)
 
   - name: nonprimary_freeze_duration
     status: active

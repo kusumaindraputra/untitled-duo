@@ -129,7 +129,7 @@ Therefore: `sfx_fayde_heal` is **not required at FP scope**. Audio System GDD mu
 |--------|-----------|-----------|
 | **Health & Damage** | Listens for `damage_taken`, `health_restored`, `player_died`, `player_hp_zone_changed` | H&D → HUD |
 | **Spell Casting & Effects** | Listens for `chain_index_changed(combo_index, combo_attack_count)` and `spell_hit_element(target, prana_type_id)` (new FP signal) | SC&E → HUD |
-| **Combination Resolution** | Reads primary type ID via `SC&E.get_cached_spell_effect()` for chain dot color | HUD → SC&E (read) |
+| **Combination Resolution** | Reads `primary_type` via `SC&E.get_cached_spell_effect()` for chain dot color; **MAY** also read `active_reactions` + `active_cascade` from the cached `SpellEffect` to display armed reactions/Cascade during combat (optional, MVP+). The live Preparation-Phase reaction preview is owned by Prana Grid (CR Rule 16f); this GDD defines that panel's per-entry visual presentation (name + icon, Cascade lead/modifier glyphs). | HUD → SC&E (read) |
 | **Game State & Scene Flow** | Listens for `combat_started`, `preparation_started`, `run_started` | GS&SF → HUD |
 | **Prana Grid** | Screen region contract — HUD does not overlap Prana Grid panel region (Rule 8); Prana Grid locks on `combat_started` | Contractual |
 | **Audio System** | Satisfies `sfx_fayde_heal` silence contract via heal tween + green tint (Rule 6) | Contractual |
@@ -226,7 +226,7 @@ Combat HUD derives no combat math — all damage, HP, and zone values come from 
 |---|--------|-----------------------|--------|
 | 1 | **Health & Damage** (#6) | `damage_taken`, `health_restored`, `player_died`, `player_hp_zone_changed` signals; HP values delivered via signals — no polling | Hard |
 | 2 | **Spell Casting & Effects** (#3) | `chain_index_changed(combo_index, combo_attack_count)` signal; `spell_hit_element(target, prana_type_id)` signal (new FP); `get_cached_spell_effect()` read-only for chain dot primary type | Hard (FP) |
-| 3 | **Combination Resolution** (#2) | `primary_type` from `SpellEffect` — accessed via SC&E, not directly | Soft (via SC&E) |
+| 3 | **Combination Resolution** (#2) | `primary_type` from `SpellEffect` — accessed via SC&E, not directly; optionally `active_reactions` + `active_cascade` for in-combat reaction/Cascade display, plus the visual-presentation spec for Prana Grid's prep reaction-preview panel (CR Rules 16f/17g, 2026-06-24) | Soft (via SC&E) |
 | 4 | **Game State & Scene Flow** (#27) | `combat_started`, `preparation_started`, `run_started` signals for phase state | Hard |
 | 5 | **Prana Data** (#4) | `PranaCatalog.get_type(id).color` for Prana type colors in damage numbers and chain dots | Hard |
 | 6 | **Prana Grid** (#1) | Screen region contract — Prana Grid reserves the bottom region; locks input on `combat_started` | Contractual |

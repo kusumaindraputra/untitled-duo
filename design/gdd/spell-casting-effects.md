@@ -164,6 +164,18 @@ Effective durations: Freeze = `2.0 + aggregate_stat_bonus.get("FROST_FREEZE_DUR"
 
 **12. No-op SpellEffect handling.** If `combo_resolved` emits with `primary_type = -1`: `push_error()`, do not enter READY state. All cast presses this wave are no-ops.
 
+**13. Prana Reaction & Cascade application.** SC&E reads two additional `SpellEffect` fields produced by Combination Resolution (CR Rules 16–17, Formulas 9–10):
+
+- **`active_reactions: Array[ReactionDef]`** — each armed pairwise reaction. SC&E applies one branch per `effect_kind` (`THERMAL_SHOCK`, `DETONATE`, `WITCHFIRE`, `WILDFIRE`, `SHORT_CIRCUIT`, `WHITEOUT`, `SIPHON`, `SUPERCONDUCT`, `SURGE`, `PERMAFROST`), scaled by each effect's `magnitude` knob. Every reaction reuses a primitive already specified in this GDD (Burn/Blind/Stun/Freeze via Status Effects, lifesteal/heal via `apply_heal`, AoE/arc via the targeting helpers, window via `combo_continuation_window`). Reactions apply on top of the resolved chain — they do not replace primary/non-primary behavior.
+- **`active_cascade: CascadeEffect` (or null)** — when present, SC&E fires one core-led Cascade burst after the chain resolves. `lead_type` selects the burst shape (Fire nova / Shadow collapse / Lightning chain / Frost field / Bloom pulse); each entry in `modifiers` attaches its facet (Burn / Blind / arc / Freeze / lifesteal) per CR Formula 10. `cascade_damage = clamp(round(base_damage × base_damage_modifier(lead_type) × cascade_mult), 0, target_max_hp)`.
+
+**Ownership rules SC&E must honor:**
+- **Thermal-Shock vs Shatter (non-stacking):** on a single hit, apply the larger of the Shatter bonus (Frozen + impact) and the `THERMAL_SHOCK` bonus — never both (Formula step 4 / CR Edge Cases).
+- **Short Circuit interrupt exception:** when `SHORT_CIRCUIT` is armed, the first Stun this cast is forced to qualify for Follow-Through even against an idle enemy (the documented exception to Prana Data's idle-Stun rule).
+- **Merge applied upstream:** CR already removes the core↔neighbor pairwise reactions a Cascade consumes; SC&E never sees both for the same pair — it applies exactly what `active_reactions` and `active_cascade` contain.
+- **No-target suppression:** any reaction/cascade facet needing a secondary/area target with none present is suppressed for that facet only; the rest still apply (no error).
+- **Clear on `preparation_started`:** `active_reactions` and `active_cascade` drop with the rest of the cache.
+
 ---
 
 ### States and Transitions
@@ -186,7 +198,7 @@ Effective durations: Freeze = `2.0 + aggregate_stat_bonus.get("FROST_FREEZE_DUR"
 
 | System | Interaction | Direction |
 |--------|-------------|-----------|
-| **Combination Resolution** | Listens for `combo_resolved(spell_effect)` to receive the wave payload | CR → SC&E |
+| **Combination Resolution** | Listens for `combo_resolved(spell_effect)` to receive the wave payload — including `active_reactions` (apply by `effect_kind`) and `active_cascade` (apply the core-led burst by `lead_type` + `modifiers`); see Rule 13 | CR → SC&E |
 | **Game State & Scene Flow** | Listens for `combat_started` and `preparation_started` | Game State → SC&E |
 | **Player Controller** | Reads `get_world_position()` and `get_facing_direction()` as cast origin/direction; emits `cast_hit_started(duration)` for brief movement lock | SC&E reads + emits → PC |
 | **Health & Damage** | Calls `apply_damage(target, raw_damage, null, DamageSource.DIRECT)` per hit; calls `apply_heal(fayde, amplified_amount)` for Verdant effects; calls `grant_barrier(fayde, barrier_hp)` for Verdant T2 SELF shield pulse and ADJ_BARRIER_HIT; listens for `enemy_killed` signal (dynamic — ADJ_BARRIER_HIT only) | SC&E → H&D (calls + conditional listen) |
@@ -498,7 +510,7 @@ SC&E computes these before each `apply_status()` call:
 
 | # | System | What SC&E needs | Dependency type |
 |---|--------|----------------|----------------|
-| 1 | **Combination Resolution (#2)** | `combo_resolved(spell_effect)` signal — the wave payload | Hard |
+| 1 | **Combination Resolution (#2)** | `combo_resolved(spell_effect)` signal — the wave payload, including `active_reactions` + `active_cascade` (Rule 13; CR Rules 16–17 / Formulas 9–10) | Hard |
 | 2 | **Player Controller (#5)** | `get_world_position()`, `get_facing_direction()` as cast origin/direction | Hard |
 | 3 | **Health & Damage (#6)** | `apply_damage(target, raw_damage, null, DamageSource.DIRECT)`, `apply_heal(fayde, amount)`, `grant_barrier(fayde, barrier_hp)` (Verdant T2 + ADJ_BARRIER_HIT); H&D also emits `enemy_killed` which SC&E subscribes to dynamically when ADJ_BARRIER_HIT is active | Hard |
 | 4 | **Game State & Scene Flow (#27)** | `combat_started`, `preparation_started` signals | Hard |
@@ -517,7 +529,7 @@ SC&E computes these before each `apply_status()` call:
 | **Wave / Encounter System (#12)** | Indirectly — SC&E's `apply_damage` calls trigger `enemy_killed` in H&D, which Wave System listens to. No direct SC&E dependency. | H&D is the intermediary |
 
 **Bidirectionality cross-checks:**
-- Combination Resolution GDD lists SC&E as a downstream dependent ✓
+- Combination Resolution GDD lists SC&E as a downstream dependent ✓ — and (2026-06-24) flags SC&E to apply `active_reactions` / `active_cascade`; consumed here via Rule 13
 - **Player Controller GDD update required** ⚠: add SC&E as dependent system; add `cast_hit_started(duration: float)` signal listener; add CAST_LOCKED movement sub-state
 - **Health & Damage GDD update required** ⚠: add SC&E as a calling system in the Interactions table; note that `VER_HEAL_FLAT` and status-duration stat bonuses are brokered through `SC&E.get_stat_bonus()`
 
@@ -776,9 +788,22 @@ GIVEN an Ashfire T1 SpellEffect (`primary_type = 0`), a valid enemy target in ra
 WHEN cast fires (one hit),
 THEN spy receives exactly one call with `(target, 0)` — `prana_type_id` matches `primary_type`. No call emitted on a miss (no target in range).
 
+**[U] AC-SC-27** — `active_reactions` applied by `effect_kind`; Thermal Shock does not stack with Shatter
+GIVEN a Deepfrost T1 SpellEffect whose `active_reactions` contains a `THERMAL_SHOCK` ReactionDef (`magnitude = 0.25`) and a target that is also Frozen (Shatter-eligible),
+WHEN the first hit resolves,
+THEN the first-hit multiplier includes ×1.25 exactly once (the larger of Shatter 1.25 and Thermal Shock 1.25) — never ×1.5625; the two never stack on one hit (Rule 13).
+
+**[U] AC-SC-28** — `active_cascade` fires one core-led burst with one facet per modifier
+GIVEN an Ashfire SpellEffect with `active_cascade = {lead_type: 0, modifiers: [1, 2], cascade_mult: 1.20}` and `BASE_SPELL_DAMAGE = 20`,
+WHEN the chain resolves,
+THEN exactly one cascade burst fires: `cascade_damage == round(20 × 1.25 × 1.20) == 30` per nova target; Blind is applied (Voidblue facet) and the burst arcs to one extra enemy (Stormgold facet).
+GIVEN the same SpellEffect with `active_cascade == null`,
+WHEN the chain resolves,
+THEN no cascade burst fires.
+
 ---
 
-*Coverage: AC-SC-01–06 = Core Rules 1–6 (state machine); AC-SC-07–09 = Rule 6–9 (targeting); AC-SC-10 = Rule 8 (cast lock); AC-SC-11 = Rule 10 (Follow-Through gate); AC-SC-12 = Formula 1; AC-SC-13 = Formula 3 Step 1 type branch; AC-SC-14 = Formula 3 Step 5 (Shatter); AC-SC-15 = Formula 3 Step 9 (affiliation); AC-SC-16 = Formula 4 (fork); AC-SC-17 = Formula 5 (ADJ_DOUBLE_HIT); AC-SC-18 = Formula 6 (ADJ_ECHO); [FP] AC-SC-19, AC-SC-25 = Formula 7 (status durations — FP field-write stubs; remove from MVP test suite when StatusEffectsManager is wired); AC-SC-20–22 = tier_modifier==0 + echo cancellation edge cases; AC-SC-23 = Rule 11 (ASH_CRIT gate); AC-SC-24 = Rule 12 (no-op SpellEffect).*
+*Coverage: AC-SC-01–06 = Core Rules 1–6 (state machine); AC-SC-07–09 = Rule 6–9 (targeting); AC-SC-10 = Rule 8 (cast lock); AC-SC-11 = Rule 10 (Follow-Through gate); AC-SC-12 = Formula 1; AC-SC-13 = Formula 3 Step 1 type branch; AC-SC-14 = Formula 3 Step 5 (Shatter); AC-SC-15 = Formula 3 Step 9 (affiliation); AC-SC-16 = Formula 4 (fork); AC-SC-17 = Formula 5 (ADJ_DOUBLE_HIT); AC-SC-18 = Formula 6 (ADJ_ECHO); [FP] AC-SC-19, AC-SC-25 = Formula 7 (status durations — FP field-write stubs; remove from MVP test suite when StatusEffectsManager is wired); AC-SC-20–22 = tier_modifier==0 + echo cancellation edge cases; AC-SC-23 = Rule 11 (ASH_CRIT gate); AC-SC-24 = Rule 12 (no-op SpellEffect); AC-SC-26 = Combat HUD element signal; AC-SC-27–28 = Rule 13 (Prana Reaction application by effect_kind incl. Thermal-Shock/Shatter non-stacking; Cascade core-led burst).*
 
 ## Open Questions
 
