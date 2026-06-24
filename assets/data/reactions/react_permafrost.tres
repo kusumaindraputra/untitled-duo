@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ReactionDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/reaction_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"REACT_PERMAFROST"
+name = "Permafrost"
+type_a = 3
+type_b = 4
+effect_kind = 9
+magnitude = 1.5
+description = "While at least one enemy is Frozen, Fayde's Regen ticks are amplified — a safe healing window."

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ReactionDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/reaction_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"REACT_DETONATE"
+name = "Detonate"
+type_a = 0
+type_b = 2
+effect_kind = 1
+magnitude = 0.5
+description = "The first kill in the chain triggers an AoE burst at the kill position."

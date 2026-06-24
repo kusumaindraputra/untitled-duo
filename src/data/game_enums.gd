@@ -68,3 +68,13 @@ enum EnemyStatus { ACTIVE = 0, VS_SCOPE = 1, INACTIVE = 2 }
 enum CastAnimation { CAST_THRUST = 0, CAST_REACH = 1, CAST_SNAP = 2,
 					 CAST_PUSH = 3, CAST_BLOOM = 4 }
 
+# ── Prana Reaction routing (ADR-0016 / Combination Resolution Rule 16) ─────────
+## Identifies which pairwise Prana Reaction is armed, routing SC&E application.
+## One value per unordered type pair in the Reaction Matrix (Formula 9, 10 entries
+## at MVP). Stored on ReactionDef.effect_kind and serialized as an integer in .tres.
+## Append-only — never reorder or renumber existing values (.tres stability, ADR-0006).
+enum ReactionKind {
+	THERMAL_SHOCK = 0, DETONATE = 1, WITCHFIRE = 2, WILDFIRE = 3, SHORT_CIRCUIT = 4,
+	WHITEOUT = 5, SIPHON = 6, SUPERCONDUCT = 7, SURGE = 8, PERMAFROST = 9,
+}
+

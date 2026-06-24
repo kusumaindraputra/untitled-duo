@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ReactionDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/reaction_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"REACT_SIPHON"
+name = "Siphon"
+type_a = 1
+type_b = 4
+effect_kind = 6
+magnitude = 0.2
+description = "Damage dealt to Blinded enemies heals Fayde for a fraction of the final damage."

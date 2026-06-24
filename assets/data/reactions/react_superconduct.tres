@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ReactionDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/reaction_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"REACT_SUPERCONDUCT"
+name = "Superconduct"
+type_a = 2
+type_b = 3
+effect_kind = 7
+magnitude = 0.6
+description = "When the primary target is Frozen or slowed, chain attacks arc to one extra nearest enemy — ice conducts lightning."

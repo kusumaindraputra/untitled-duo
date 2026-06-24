@@ -49,3 +49,17 @@ extends Resource
 ## Array[StringName] effect IDs, e.g. [&"ADJ_DOUBLE_HIT", &"ADJ_PIERCE"].
 ## SpellCastingEffects applies these during chain execution.
 @export var active_adjacency_effects: Array = []
+
+## Active Prana Reactions armed this wave (GDD Rule 16 / Formula 9).
+## Array[ReactionDef], one per distinct cardinally-adjacent cross-type pair, ordered
+## ascending by (type_a, type_b). Entries consumed by a firing Cascade (Rule 17d) are
+## absent. Holds shared read-only ReactionDef instances from the matrix — never mutate.
+## SpellCastingEffects applies each by `effect_kind`. Empty if no two different types
+## are cardinally adjacent.
+@export var active_reactions: Array = []
+
+## The core-anchored Cascade armed this wave (GDD Rule 17 / Formula 10), or null when the
+## core has fewer than 2 distinct cardinal-neighbor types. Runtime-only (CascadeEffect is
+## RefCounted, not serialized) — not @export. When present, the core↔neighbor pairwise
+## reactions it consumes are absent from active_reactions.
+var active_cascade: CascadeEffect = null

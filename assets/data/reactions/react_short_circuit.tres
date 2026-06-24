@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ReactionDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/reaction_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"REACT_SHORT_CIRCUIT"
+name = "Short Circuit"
+type_a = 1
+type_b = 2
+effect_kind = 4
+magnitude = 0.8
+description = "The first Stun this cast is a guaranteed interrupt and also stuns the nearest second enemy — silence before the strike."

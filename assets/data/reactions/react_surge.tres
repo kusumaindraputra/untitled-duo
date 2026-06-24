@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ReactionDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/reaction_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"REACT_SURGE"
+name = "Surge"
+type_a = 2
+type_b = 4
+effect_kind = 8
+magnitude = 0.4
+description = "The combo continuation window is extended and each chain hit heals Fayde."

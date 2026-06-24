@@ -68,6 +68,47 @@ const ADJ_ECHO_DELAY: float = 0.8
 ## StringName identifier for the Echo Strike adjacency effect (GDD adjacency pool).
 const ADJ_ECHO_EFFECT_ID: StringName = &"ADJ_ECHO"
 
+# ── Prana Reaction & Cascade layer (Rule 16–17 / Formula 9–10, ADR-0016) ──────
+
+## Directory holding the ReactionDef .tres files (one per unordered Prana pair).
+const _REACTIONS_DIR: String = "res://assets/data/reactions/"
+
+## ReactionDef .tres basenames. Order is irrelevant — the matrix keys on (type_a, type_b).
+const _REACTION_FILES: Array[String] = [
+	"react_witchfire.tres",      # Ashfire(0) + Voidblue(1)
+	"react_detonate.tres",       # Ashfire(0) + Stormgold(2)
+	"react_thermal_shock.tres",  # Ashfire(0) + Deepfrost(3)
+	"react_wildfire.tres",       # Ashfire(0) + Verdant(4)
+	"react_short_circuit.tres",  # Voidblue(1) + Stormgold(2)
+	"react_whiteout.tres",       # Voidblue(1) + Deepfrost(3)
+	"react_siphon.tres",         # Voidblue(1) + Verdant(4)
+	"react_superconduct.tres",   # Stormgold(2) + Deepfrost(3)
+	"react_surge.tres",          # Stormgold(2) + Verdant(4)
+	"react_permafrost.tres",     # Deepfrost(3) + Verdant(4)
+]
+
+## The four cardinal neighbors of the centre (slot 4): ABOVE, LEFT, RIGHT, BELOW.
+## Only these slots feed the Cascade (corners are diagonal — Rule 17f).
+const CORE_CARDINAL_SLOTS: Array[int] = [1, 3, 5, 7]
+
+## Caps the number of pairwise reactions emitted into active_reactions.
+## 0 = unlimited (MVP). When > 0, excess reactions are dropped in ascending
+## (type_a, type_b) order so the kept set is deterministic. Tuning knob — Rule 16d.
+const MAX_ACTIVE_REACTIONS: int = 0
+
+## Maximum distinct neighbor types a Cascade carries as modifiers.
+## 4 = the cardinal-neighbor maximum on a 3×3 grid (no drop). Tuning knob — Rule 17b.
+const MAX_CASCADE_MODIFIERS: int = 4
+
+## Base Cascade burst multiplier before per-modifier bonuses. Tuning knob — Formula 10.
+const CASCADE_LEAD_MULT: float = 1.0
+
+## Added to cascade_mult per distinct modifier — rewards core commitment. Formula 10.
+const CASCADE_MOD_DMG_BONUS: float = 0.10
+
+## Hard ceiling on cascade_mult regardless of modifier count. Tuning knob — Formula 10.
+const CASCADE_MULT_CAP: float = 1.6
+
 
 # ── Signals ───────────────────────────────────────────────────────────────────
 
@@ -101,10 +142,19 @@ var _cached_spell_effect: SpellEffect = null
 ## Untyped Array — slots hold mixed null/PranaFragment; typed Array cannot hold null.
 var _test_fragments: Array = []
 
+## Reaction Matrix, keyed by Vector2i(type_a, type_b) → ReactionDef (ADR-0016).
+## Built once, lazily, from the _REACTION_FILES .tres on first recognition call
+## (also eagerly in _ready() for production startup validation). Immutable after load.
+var _reaction_matrix: Dictionary = {}
+
+## Guards _ensure_reaction_matrix() so the matrix is loaded and validated exactly once.
+var _matrix_loaded: bool = false
+
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 func _ready() -> void:
+	_ensure_reaction_matrix()
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	GameStateManager.combat_started.connect(_on_combat_started)
 
@@ -216,6 +266,11 @@ func _resolve(fragments: Array) -> SpellEffect:
 	# Collect adjacency effects from all placed fragments (Story 005).
 	effect.active_adjacency_effects = _collect_adjacency_effects(fragments)
 
+	# Recognition layer: Prana Reactions + Cascade, merged in one pass (ADR-0016).
+	var recognition: Dictionary = compute_recognition(fragments)
+	effect.active_reactions = recognition["reactions"]
+	effect.active_cascade = recognition["cascade"]
+
 	return effect
 
 
@@ -268,6 +323,182 @@ func preview_build(type_ids: Array) -> Dictionary:
 			nps.append({"type": type_t, "tier": tier, "count": c})
 	result["nonprimary"] = nps
 	return result
+
+
+# ── Recognition layer: Prana Reactions + Cascade (Rule 16–17 / Formula 9–10) ──
+
+## Single source of truth for the recognition layer (ADR-0016). Pure function of the
+## fragment array — no node state, no RNG, no timers — so the prep-phase preview and the
+## combat_started resolution share one deterministic path (Pillar 3 / AC-CR-36).
+##
+## Computes pairwise Prana Reactions (Formula 9) and the core-anchored Cascade (Formula 10),
+## then merges them in a single pass: a firing Cascade consumes the core↔neighbor pairwise
+## reactions it supersedes (Rule 17d), so no consumer ever observes the un-merged set.
+##
+## fragments: Array of length 9; null entries represent empty slots.
+## Returns a Dictionary:
+##   "reactions": Array[ReactionDef]  — armed pairwise reactions, ascending by (type_a, type_b),
+##                                       cascade-consumed pairs removed, MAX_ACTIVE_REACTIONS applied.
+##   "cascade":   CascadeEffect or null — the core-led Cascade, or null when |M| < 2.
+func compute_recognition(fragments: Array) -> Dictionary:
+	var reactions: Array = _compute_reactions_raw(fragments)
+	var cascade: CascadeEffect = _compute_cascade(fragments)
+
+	if cascade != null:
+		# Rule 17d merge — drop the core↔modifier pairwise reactions the Cascade consumes.
+		var consumed: Dictionary = {}
+		for m: int in cascade.modifiers:
+			consumed[_pair_key(cascade.lead_type, m)] = true
+		var kept: Array = []
+		for rdef: ReactionDef in reactions:
+			if consumed.has(_pair_key(rdef.type_a, rdef.type_b)):
+				continue
+			kept.append(rdef)
+		reactions = kept
+
+	# Optional combinatorial-depth cap (Rule 16d). Default 0 = unlimited (no drop).
+	if MAX_ACTIVE_REACTIONS > 0 and reactions.size() > MAX_ACTIVE_REACTIONS:
+		reactions = reactions.slice(0, MAX_ACTIVE_REACTIONS)
+
+	return {"reactions": reactions, "cascade": cascade}
+
+
+## Stateless reaction-only view used by the Prana Grid live preview (GDD Rule 16f).
+## Returns the post-merge active_reactions array for the given working arrangement, so the
+## preview matches exactly what fires in combat. Delegates to compute_recognition() — the
+## single source of truth — guaranteeing preview/combat parity (AC-CR-36).
+##
+## fragments: Array of length 9; null entries represent empty slots.
+## Returns Array[ReactionDef] (may be empty).
+func compute_reactions(fragments: Array) -> Array:
+	return compute_recognition(fragments)["reactions"]
+
+
+## Scans every cardinal-adjacent cross-type pair and arms its matrix reaction (Formula 9).
+## Each distinct unordered pair contributes exactly one reaction (deduped). Same-type and
+## diagonal adjacencies arm nothing. Output is sorted ascending by (type_a, type_b) for
+## determinism. Does NOT apply the Cascade merge — compute_recognition() owns that.
+##
+## fragments: Array of length 9 (nulls allowed).
+## Returns Array[ReactionDef] (may be empty).
+func _compute_reactions_raw(fragments: Array) -> Array:
+	_ensure_reaction_matrix()
+	var result: Array = []
+	var seen: Dictionary = {}
+	for i: int in range(9):
+		var frag_i = fragments[i] if i < fragments.size() else null
+		if frag_i == null:
+			continue
+		for direction: int in [DIRECTION_ABOVE, DIRECTION_BELOW, DIRECTION_LEFT, DIRECTION_RIGHT]:
+			var j: int = _get_neighbor_slot(i, direction)
+			if j == -1:
+				continue
+			var frag_j = fragments[j]
+			if frag_j == null:
+				continue
+			if frag_i.type_id == frag_j.type_id:
+				continue
+			var a: int = mini(frag_i.type_id, frag_j.type_id)
+			var b: int = maxi(frag_i.type_id, frag_j.type_id)
+			var key: Vector2i = _pair_key(a, b)
+			if seen.has(key):
+				continue
+			seen[key] = true
+			var rdef: ReactionDef = _reaction_matrix.get(key, null)
+			if rdef != null:
+				result.append(rdef)
+	result.sort_custom(_compare_reactions)
+	return result
+
+
+## Sort comparator — ascending by (type_a, type_b). type_a is already the lower id, so the
+## primary key fully orders the matrix at MVP; type_b breaks ties defensively.
+func _compare_reactions(x: ReactionDef, y: ReactionDef) -> bool:
+	if x.type_a != y.type_a:
+		return x.type_a < y.type_a
+	return x.type_b < y.type_b
+
+
+## Computes the core-anchored Cascade for the given arrangement (Formula 10).
+## The core is slot 4. M = the set of distinct non-core type ids among the four cardinal
+## neighbors (slots 1/3/5/7). A Cascade fires iff |M| >= 2; otherwise returns null. The
+## lead is the core type (sets burst shape); modifiers are M, sorted and capped to
+## MAX_CASCADE_MODIFIERS. cascade_mult ramps with |M|, clamped to CASCADE_MULT_CAP.
+##
+## fragments: Array of length 9 (nulls allowed).
+## Returns a CascadeEffect, or null when the core is empty or |M| < 2.
+func _compute_cascade(fragments: Array) -> CascadeEffect:
+	var centre = fragments[4] if fragments.size() > 4 else null
+	if centre == null:
+		return null
+	var core_type: int = centre.type_id
+
+	var distinct: Dictionary = {}
+	for slot: int in CORE_CARDINAL_SLOTS:
+		var frag = fragments[slot] if slot < fragments.size() else null
+		if frag != null and frag.type_id != core_type:
+			distinct[frag.type_id] = true
+
+	if distinct.size() < 2:
+		return null
+
+	var mods: Array = distinct.keys()
+	mods.sort()
+	if mods.size() > MAX_CASCADE_MODIFIERS:
+		mods = mods.slice(0, MAX_CASCADE_MODIFIERS)
+
+	var typed_mods: Array[int] = []
+	for m in mods:
+		typed_mods.append(int(m))
+
+	var cascade: CascadeEffect = CascadeEffect.new()
+	cascade.lead_type = core_type
+	cascade.modifiers = typed_mods
+	cascade.cascade_mult = minf(
+		CASCADE_LEAD_MULT + float(typed_mods.size()) * CASCADE_MOD_DMG_BONUS, CASCADE_MULT_CAP
+	)
+	return cascade
+
+
+## Returns the canonical matrix key for an unordered type pair: Vector2i(min, max).
+## Callers must pass already-ordered (a <= b) ids; this re-orders defensively.
+func _pair_key(a: int, b: int) -> Vector2i:
+	return Vector2i(mini(a, b), maxi(a, b))
+
+
+## Loads the Reaction Matrix from the _REACTION_FILES .tres exactly once (ADR-0016).
+## Lazy + idempotent: callable from a standalone (.new(), not-in-tree) instance in unit
+## tests as well as from _ready() in production. Each ReactionDef is keyed by its sorted
+## (type_a, type_b) pair. After load, validates full coverage of all defined-type pairs.
+func _ensure_reaction_matrix() -> void:
+	if _matrix_loaded:
+		return
+	_matrix_loaded = true
+	for fname: String in _REACTION_FILES:
+		var path: String = _REACTIONS_DIR + fname
+		if not ResourceLoader.exists(path):
+			push_warning("CombinationResolution: ReactionDef not found at '%s'" % path)
+			continue
+		var res: Resource = ResourceLoader.load(path)
+		if res is ReactionDef:
+			_reaction_matrix[_pair_key(res.type_a, res.type_b)] = res
+		else:
+			push_error("CombinationResolution: resource at '%s' is not a ReactionDef" % path)
+	_validate_matrix_coverage()
+
+
+## Warns once per unordered defined-type pair that has no matrix entry (GDD Edge Cases).
+## Surfaces gaps during development (e.g. a new Prana type added without its ReactionDefs)
+## rather than silently producing dead adjacencies.
+func _validate_matrix_coverage() -> void:
+	for a: int in ALL_TYPES:
+		for b: int in ALL_TYPES:
+			if a >= b:
+				continue
+			if not _reaction_matrix.has(_pair_key(a, b)):
+				push_warning(
+					"CombinationResolution: Reaction Matrix missing entry for pair (%d, %d)" % [a, b]
+				)
 
 
 # ── Private helpers ───────────────────────────────────────────────────────────

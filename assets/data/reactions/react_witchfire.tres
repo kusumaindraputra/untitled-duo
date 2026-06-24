@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ReactionDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/reaction_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"REACT_WITCHFIRE"
+name = "Witchfire"
+type_a = 0
+type_b = 1
+effect_kind = 2
+magnitude = 1.0
+description = "Any Burn applied this cast also applies Blind — burning enemies flail."
