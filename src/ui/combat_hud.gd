@@ -175,6 +175,12 @@ var _dot_tweens: Array[Tween] = []
 var _combo_counter_label: Label = null
 var _combo_counter_tween: Tween = null
 
+## Recognition callout — a centred top banner announcing a fired Cascade or armed
+## Prana Reaction on combo_resolved, making the ADR-0016 recognition layer legible.
+## Pop-in scale + auto-fade, mirroring the combo counter's feedback style.
+var _recognition_callout_label: Label = null
+var _recognition_callout_tween: Tween = null
+
 ## Floor indicator label — shows "Floor N" in the top-left corner.
 var _floor_label: Label = null
 
@@ -353,6 +359,19 @@ func _create_ui_nodes() -> void:
 	_combo_counter_label.add_theme_font_size_override(&"font_size", 18)
 	_combo_counter_label.position = Vector2(8, 128)
 	add_child(_combo_counter_label)
+
+	# Recognition callout — full-width top-centre banner for Cascades / Reactions
+	# (ADR-0016). Anchored so it stays centred at any resolution; ignores mouse.
+	_recognition_callout_label = Label.new()
+	_recognition_callout_label.visible = false
+	_recognition_callout_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_recognition_callout_label.add_theme_font_size_override(&"font_size", 26)
+	_recognition_callout_label.anchor_left = 0.0
+	_recognition_callout_label.anchor_right = 1.0
+	_recognition_callout_label.offset_top = 96.0
+	_recognition_callout_label.offset_bottom = 140.0
+	_recognition_callout_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_recognition_callout_label)
 
 	_floor_label = Label.new()
 	_floor_label.text = "Floor 1"
@@ -728,6 +747,8 @@ func _on_run_started() -> void:
 	chain_dots_container.visible = false
 	if is_instance_valid(_combo_counter_label):
 		_combo_counter_label.visible = false
+	if is_instance_valid(_recognition_callout_label):
+		_recognition_callout_label.visible = false
 	if _dash_hint_label != null:
 		_dash_hint_label.visible = false
 	if _dash_cooldown_icon != null:
@@ -822,6 +843,8 @@ func _on_preparation_started(_idx: int, _rem: int) -> void:
 	if is_instance_valid(_combo_counter_label):
 		_combo_counter_label.visible = false
 		_dash_hint_label.visible = false
+	if is_instance_valid(_recognition_callout_label):
+		_recognition_callout_label.visible = false
 	if _dash_cooldown_icon != null:
 		_dash_cooldown_icon.color.a = 1.0
 		_dash_cooldown_icon.visible = false
@@ -952,9 +975,51 @@ func _animate_active_dot(dot: ColorRect, type_id: int, base_color: Color) -> Twe
 			return null
 
 
-## Caches the primary Prana type from a resolved spell for use in chain dot coloring.
+## Caches the primary Prana type from a resolved spell for chain dot colouring,
+## then surfaces the wave's Cascade / Reaction callout (ADR-0016 recognition layer).
 func _on_combo_resolved(spell_effect: SpellEffect) -> void:
 	_current_primary_type = spell_effect.primary_type
+	_show_recognition_callout(spell_effect)
+
+
+## Announces this wave's recognition result (ADR-0016) via a centred pop-in banner.
+## Priority: a fired Cascade (coloured by its lead Prana type, showing the burst
+## multiplier) outranks armed Reactions. A reaction-only result shows the first
+## reaction's name with a "+N" suffix when more are armed. Does nothing when neither
+## fired, so plain single-type casts stay silent.
+func _show_recognition_callout(spell_effect: SpellEffect) -> void:
+	if not is_instance_valid(_recognition_callout_label):
+		return
+	var text: String = ""
+	var color: Color = Color("#FFD66B")  # warm gold — default for Reactions
+	var cascade: CascadeEffect = spell_effect.active_cascade
+	if cascade != null:
+		text = "✦ %s ×%.1f" % [_COPY.cascade_label, cascade.cascade_mult]
+		var lead: PranaType = PranaCatalog.get_type(cascade.lead_type)
+		if lead != null:
+			color = lead.color
+	elif not spell_effect.active_reactions.is_empty():
+		var first: ReactionDef = spell_effect.active_reactions[0]
+		text = "⚡ %s" % first.name
+		var extra: int = spell_effect.active_reactions.size() - 1
+		if extra > 0:
+			text += "  +%d" % extra
+	else:
+		return
+	_recognition_callout_label.text = text
+	_recognition_callout_label.add_theme_color_override(&"font_color", color)
+	_recognition_callout_label.pivot_offset = _recognition_callout_label.size * 0.5
+	_recognition_callout_label.visible = true
+	_recognition_callout_label.scale = Vector2(0.7, 0.7)
+	_recognition_callout_label.modulate.a = 1.0
+	if _recognition_callout_tween:
+		_recognition_callout_tween.kill()
+	_recognition_callout_tween = create_tween()
+	_recognition_callout_tween.tween_property(_recognition_callout_label, "scale", Vector2(1.15, 1.15), 0.12) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_recognition_callout_tween.tween_property(_recognition_callout_label, "scale", Vector2(1.0, 1.0), 0.12)
+	_recognition_callout_tween.tween_interval(0.9)
+	_recognition_callout_tween.tween_property(_recognition_callout_label, "modulate:a", 0.0, 0.25)
 
 
 ## Handles cast_hit_started from SpellCastingEffects.

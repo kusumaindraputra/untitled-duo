@@ -40,6 +40,10 @@ var _shake_end_us: int = 0
 ## Multiplier applied to VFX, hitstop, and shake when the final chain attack lands.
 const COMBO_ENDER_AMPLIFY: float = 1.5
 
+## Shake amplitude multiplier for a fired Cascade — a "power surge" cue at cast
+## resolve that reinforces the HUD callout (ADR-0016 recognition layer).
+const CASCADE_SHAKE_MULT: float = 1.2
+
 ## Hitstop duration multiplier for heavy hits (≥15 damage).
 const HEAVY_HIT_HITSTOP_MULT: float = 2.0
 ## Shake amplitude multiplier for heavy hits.
@@ -110,6 +114,7 @@ func _ready() -> void:
 	SpellCastingEffects.cast_hit_started.connect(_on_cast_hit_started)
 	SpellCastingEffects.chain_index_changed.connect(_on_chain_index_changed)
 	SpellCastingEffects.combo_window_opened.connect(_on_combo_window_opened)
+	CombinationResolution.combo_resolved.connect(_on_combo_resolved)
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	HealthAndDamage.damage_taken.connect(_on_damage_taken)
 	HealthAndDamage.heavy_hit.connect(_on_heavy_hit)
@@ -149,6 +154,8 @@ func _exit_tree() -> void:
 		SpellCastingEffects.chain_index_changed.disconnect(_on_chain_index_changed)
 	if SpellCastingEffects.combo_window_opened.is_connected(_on_combo_window_opened):
 		SpellCastingEffects.combo_window_opened.disconnect(_on_combo_window_opened)
+	if CombinationResolution.combo_resolved.is_connected(_on_combo_resolved):
+		CombinationResolution.combo_resolved.disconnect(_on_combo_resolved)
 	if GameStateManager.preparation_started.is_connected(_on_preparation_started):
 		GameStateManager.preparation_started.disconnect(_on_preparation_started)
 	if _in_hitstop:
@@ -270,6 +277,19 @@ func _on_combo_window_opened(window_duration: float) -> void:
 	ring.global_position = (player as Node2D).global_position
 	get_tree().root.add_child(ring)
 	_combo_ring = ring
+
+
+## Reinforces the recognition layer (ADR-0016) at cast resolve: a fired Cascade
+## gets an audio stinger plus a "power surge" camera shake. The Combat HUD owns the
+## text banner — this adds the audible/kinetic cue for the rare, big moment.
+## Reaction-only and plain casts stay silent here to keep the cue meaningful.
+## No-op during the death cinematic so it never fights the slow-mo beat.
+func _on_combo_resolved(spell_effect: SpellEffect) -> void:
+	if _dying or spell_effect == null:
+		return
+	if spell_effect.active_cascade != null:
+		_audio_play(&"sfx_combo_ender")
+		_start_shake(CASCADE_SHAKE_MULT)
 
 
 ## Frees the active combo window ring if one exists. Idempotent.

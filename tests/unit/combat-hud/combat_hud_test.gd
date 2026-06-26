@@ -786,3 +786,67 @@ func test_health_restored_enemy_target_no_heal_label() -> void:
 
 	_teardown_enemy(enemy)
 	_teardown_hud(hud)
+
+
+# ── ADR-0016: Recognition callout surfaces Cascade / Reaction on combo_resolved ──
+
+## GIVEN combo_resolved emitted with a fired Cascade (lead_type=2, mult=2.4)
+## WHEN the HUD handles it
+## THEN the callout label is visible, shows the cascade word + multiplier, and is
+##      coloured by the lead Prana type.
+func test_recognition_callout_shows_cascade_with_multiplier_and_lead_color() -> void:
+	var hud: Node = _make_hud()
+
+	var cascade := CascadeEffect.new()
+	cascade.lead_type = 2
+	cascade.modifiers = [0, 4]
+	cascade.cascade_mult = 2.4
+	var effect := SpellEffect.new()
+	effect.primary_type = 2
+	effect.active_cascade = cascade
+	CombinationResolution.combo_resolved.emit(effect)
+
+	assert_bool(hud._recognition_callout_label.visible).is_true()
+	assert_str(hud._recognition_callout_label.text).contains("CASCADE")
+	assert_str(hud._recognition_callout_label.text).contains("2.4")
+	assert_bool(hud._recognition_callout_label.get_theme_color(&"font_color") \
+		== PranaCatalog.get_type(2).color).is_true()
+
+	_teardown_hud(hud)
+
+
+## GIVEN combo_resolved emitted with two armed Reactions and no Cascade
+## WHEN the HUD handles it
+## THEN the callout shows the first reaction's name plus a "+1" suffix for the extra.
+func test_recognition_callout_shows_reaction_name_with_extra_suffix() -> void:
+	var hud: Node = _make_hud()
+
+	var r0 := ReactionDef.new()
+	r0.name = "Thermal Shock"
+	var r1 := ReactionDef.new()
+	r1.name = "Static Bloom"
+	var effect := SpellEffect.new()
+	effect.primary_type = 0
+	effect.active_reactions = [r0, r1]
+	CombinationResolution.combo_resolved.emit(effect)
+
+	assert_bool(hud._recognition_callout_label.visible).is_true()
+	assert_str(hud._recognition_callout_label.text).contains("Thermal Shock")
+	assert_str(hud._recognition_callout_label.text).contains("+1")
+
+	_teardown_hud(hud)
+
+
+## GIVEN combo_resolved emitted with neither a Cascade nor any Reactions
+## WHEN the HUD handles it
+## THEN the callout label stays hidden (plain single-type casts are silent).
+func test_recognition_callout_stays_hidden_when_no_cascade_or_reaction() -> void:
+	var hud: Node = _make_hud()
+
+	var effect := SpellEffect.new()
+	effect.primary_type = 1
+	CombinationResolution.combo_resolved.emit(effect)
+
+	assert_bool(hud._recognition_callout_label.visible).is_false()
+
+	_teardown_hud(hud)

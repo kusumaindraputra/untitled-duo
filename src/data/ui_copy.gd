@@ -58,3 +58,7 @@ extends Resource
 
 ## First-combat dash hint (AC-DH-03).
 @export var dash_hint: String = "Shift / LT — Dash"
+
+## Banner word shown when a Cascade fires this wave (ADR-0016 recognition layer).
+## Rendered as "✦ {cascade_label} ×{mult}" by the Combat HUD callout.
+@export var cascade_label: String = "CASCADE"
