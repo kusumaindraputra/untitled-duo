@@ -127,11 +127,12 @@ func _process(delta: float) -> void:
 ## Must be called by WaveManager BEFORE add_child() — see ADR-0007 registration contract.
 ## Reads [param type_id] from EnemyCatalog to initialise current_hp and max_hp from base_hp.
 ## Pushes an error and no-ops if the type_id is not found in EnemyCatalog.
+## [param hp_mult] scales base_hp — WaveManager passes the elite multiplier (ADR-0018).
 ##
 ## Example (WaveManager):
 ##   HealthAndDamage.register_enemy(enemy_node, enemy_type.id)
 ##   arena.add_child(enemy_node)
-func register_enemy(enemy: Node, type_id: int) -> void:
+func register_enemy(enemy: Node, type_id: int, hp_mult: float = 1.0) -> void:
 	var enemy_type: EnemyType = EnemyCatalog.get_type(type_id)
 	if enemy_type == null:
 		push_error(
@@ -142,8 +143,10 @@ func register_enemy(enemy: Node, type_id: int) -> void:
 		return
 
 	var rec: EnemyHPInstance = EnemyHPInstance.new()
-	rec.max_hp = enemy_type.base_hp
-	rec.current_hp = enemy_type.base_hp
+	# hp_mult > 1.0 for elites (ADR-0018); EnemyInstance.make_elite() mirrors it.
+	var hp: int = maxi(roundi(float(enemy_type.base_hp) * hp_mult), 1)
+	rec.max_hp = hp
+	rec.current_hp = hp
 	rec.type_id = type_id
 	rec.prana_affiliation = enemy_type.prana_affiliation
 	_enemy_registry[enemy.get_instance_id()] = rec

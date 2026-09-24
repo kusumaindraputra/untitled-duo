@@ -33,6 +33,12 @@ const _ENTRY_FILES: Array[String] = [
 	"enemy_warped_warden.tres",
 	"enemy_rifter.tres",
 	"enemy_vault_sentinel.tres",
+	# ADR-0018 bullet-hell roster — ids 6..10 follow list order so stubs line up.
+	"enemy_spinner.tres",
+	"enemy_sniper.tres",
+	"enemy_mortar.tres",
+	"enemy_weaver.tres",
+	"enemy_splitter.tres",
 ]
 
 # ── Private state ─────────────────────────────────────────────────────────────
