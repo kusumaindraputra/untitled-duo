@@ -105,6 +105,11 @@ var _active_statuses: Dictionary[int, Array] = {}
 ## injection in tests without Node inheritance (same pattern as PlayerController.audio_system).
 var _health_and_damage: Variant = null
 
+## Returns the multiplier for Fayde's Regen ticks (Permafrost reaction, ADR-0016).
+## Empty in production: resolved lazily to SpellCastingEffects.get_regen_multiplier on the
+## first Regen tick (SC&E loads after this Autoload). Tests inject a Callable returning a float.
+var _regen_multiplier: Callable = Callable()
+
 ## Scratch buffer reused each frame in _process to avoid per-tick allocation (PERF-W1).
 var _process_scratch: Array = []
 
@@ -283,8 +288,17 @@ func _fire_tick(instance: StatusInstance) -> void:
 				instance.target, tick_dmg, GameEnums.DamageClass.NONE, GameEnums.DamageSource.DOT
 			)
 		GameEnums.BaseStatus.REGENERATE:
-			var tick_heal: float = FAYDE_MAX_HP * REGEN_TICK_MAGNITUDE
+			var tick_heal: float = FAYDE_MAX_HP * REGEN_TICK_MAGNITUDE * _get_regen_multiplier()
 			_health_and_damage.apply_heal(instance.target, tick_heal)
+
+
+## Current Regen tick multiplier; 1.0 when no provider is available.
+func _get_regen_multiplier() -> float:
+	if not _regen_multiplier.is_valid() and is_inside_tree():
+		var sce: Node = get_node_or_null(^"/root/SpellCastingEffects")
+		if sce != null and sce.has_method(&"get_regen_multiplier"):
+			_regen_multiplier = sce.get_regen_multiplier
+	return _regen_multiplier.call() if _regen_multiplier.is_valid() else 1.0
 
 
 # ── Private — expiry ──────────────────────────────────────────────────────────
