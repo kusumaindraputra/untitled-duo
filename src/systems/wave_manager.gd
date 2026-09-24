@@ -71,6 +71,10 @@ const FP_RIFTER_COUNT: int = 2
 ## Gives the player time to see the "+N HP" floating label and green screen wash.
 const REST_HEAL_VISUAL_DELAY: float = 0.5
 
+## Elite multipliers, reinforcement warning time and bullet-cancel radii (ADR-0018).
+const BULLET_HELL_TUNING: BulletHellTuning = preload("res://assets/data/bullet_hell_tuning.tres")
+const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
+
 # ── Exports ───────────────────────────────────────────────────────────────────
 
 ## Container node whose Node2D children define spawn positions.
@@ -142,6 +146,12 @@ var _preview_nodes: Array[Node2D] = []
 ## AudioSystem reference; null-safe — set in _ready().
 var _audio: Variant = null
 
+## ADR-0018 — reinforcement groups still waiting to arrive this wave (each an
+## Array[Dictionary] of composition entries). Empty when the wave is fully on field.
+var _pending_groups: Array = []
+## Reinforcement trigger for the active wave (copied from the pool config at spawn).
+var _reinforcement_trigger: int = 0
+
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 func _ready() -> void:
@@ -152,9 +162,15 @@ func _ready() -> void:
 	wave_cleared.connect(GameStateManager.receive_wave_cleared)
 	all_waves_cleared.connect(GameStateManager.receive_all_waves_cleared)
 	boss_defeated.connect(GameStateManager.receive_boss_defeated)
+	SpellCastingEffects.perfect_cast.connect(_on_perfect_cast)
+	SpellCastingEffects.special_fired.connect(_on_special_fired)
 
 
 func _exit_tree() -> void:
+	if SpellCastingEffects.perfect_cast.is_connected(_on_perfect_cast):
+		SpellCastingEffects.perfect_cast.disconnect(_on_perfect_cast)
+	if SpellCastingEffects.special_fired.is_connected(_on_special_fired):
+		SpellCastingEffects.special_fired.disconnect(_on_special_fired)
 	# ADR-0003 Rule 4: scene nodes must disconnect from Autoload signals in _exit_tree().
 	# Godot 4.6 auto-invalidates orphaned Callables but prints an error on next emit;
 	# explicit disconnect suppresses that noise.
@@ -182,6 +198,8 @@ func _on_preparation_started(_wave_index: int, _waves_remaining: int) -> void:
 	_enemies_alive = 0
 	_enemies_total = 0
 	_wave_state = WaveState.IDLE
+	_pending_groups.clear()
+	_clear_enemy_fire()
 	if room_type == DungeonGraph.ROOM_TYPE_REST:
 		_clear_wave_preview()
 		return
@@ -217,8 +235,14 @@ func _on_enemy_killed(_instance_id: int, _type_id: int,
 	if _wave_state != WaveState.WAVE_ACTIVE:
 		return  # WAVE_COMPLETE guard: ignore late/duplicate signals (ADR-0014)
 	_enemies_alive -= 1
-	if _enemies_alive <= 0:
+	# ADR-0018 — reinforcements arrive while the fight is still going.
+	if not _pending_groups.is_empty() and _enemies_alive <= _reinforcement_trigger:
+		_spawn_next_group()
+	if _enemies_alive <= 0 and _pending_groups.is_empty():
 		_wave_state = WaveState.WAVE_COMPLETE
+		# Deferred: the last enemy's own enemy_killed handler (e.g. a Splitter death
+		# ring) may run after this one — clear once every handler has fired.
+		call_deferred(&"_clear_enemy_fire")
 		_apply_final_kill_punch()
 		wave_cleared.emit()
 		if is_final_room:
@@ -343,12 +367,26 @@ func _build_wave_composition(seed: int = -1) -> void:
 		swarmers[i] = swarmers[j]
 		swarmers[j] = tmp
 	non_swarmers.append_array(swarmers)
-	for type_id: int in non_swarmers:
+	# ADR-0018 — contiguous reinforcement groups; elite rolls happen after every
+	# composition pick so seeded compositions are unchanged when elite_chance = 0.
+	var groups: int = clampi(cfg.reinforcement_groups, 1, maxi(non_swarmers.size(), 1))
+	var elite_chance: float = cfg.elite_chance
+	if room_type == DungeonGraph.ROOM_TYPE_ELITE and elite_chance > 0.0:
+		elite_chance += BULLET_HELL_TUNING.elite_room_bonus
+	var n: int = non_swarmers.size()
+	for i: int in n:
+		var type_id: int = non_swarmers[i]
 		var et: EnemyType = EnemyCatalog.get_type(type_id)
 		var scene: PackedScene = et.scene if et != null else null
 		var base_scale: float = et.base_scale if et != null else 1.0
 		var archetype: int = et.archetype if et != null else GameEnums.EnemyArchetype.SEEKER
-		_wave_composition.append({ "type_id": type_id, "scene": scene, "base_scale": base_scale, "archetype": archetype })
+		var elite: bool = false
+		if elite_chance > 0.0 and archetype != GameEnums.EnemyArchetype.BOSS:
+			elite = rng.randf() < elite_chance
+		_wave_composition.append({
+			"type_id": type_id, "scene": scene, "base_scale": base_scale, "archetype": archetype,
+			"group": (i * groups) / maxi(n, 1), "elite": elite,
+		})
 
 
 ## Returns the number of spawn markers in spawn_points_container, or 0 when unset.
@@ -401,12 +439,74 @@ func _get_spawn_markers() -> Array[Node2D]:
 ## AC-WES-04: all enemies added in the same frame (no deferred add).
 ## AC-WES-06: if markers run out, logs push_error, spawns up to marker count only.
 func _spawn_wave() -> void:
+	# ADR-0018 — split the composition into reinforcement groups. Entries without a
+	# "group" key (tests injecting _wave_composition directly) all land in group 0.
+	var grouped: Dictionary = {}
+	for entry: Dictionary in _wave_composition:
+		var g: int = int(entry.get("group", 0))
+		if not grouped.has(g):
+			grouped[g] = []
+		grouped[g].append(entry)
+	var keys: Array = grouped.keys()
+	keys.sort()
+	_pending_groups.clear()
+	for k: Variant in keys.slice(1):
+		_pending_groups.append(grouped[k])
+	_reinforcement_trigger = _get_pool_config().reinforcement_trigger_alive
+	var first: Array = grouped[keys[0]] if not keys.is_empty() else []
+	var total_spawned: int = _spawn_entries(first, false)
+	_enemies_total = total_spawned
+	_enemies_alive = _enemies_total
+	# A group that failed to spawn anything must not strand the wave — pull the
+	# next group in until something is on the field or nothing is left.
+	while _enemies_alive <= 0 and not _pending_groups.is_empty():
+		_spawn_next_group()
+	if _enemies_alive <= 0:
+		push_error("WaveManager: no enemies spawned — wave vacuously complete")
+		_wave_state = WaveState.WAVE_COMPLETE
+		wave_cleared.emit()
+		if is_final_room:
+			all_waves_cleared.emit()
+			boss_defeated.emit()
+		return
+	_wave_state = WaveState.WAVE_ACTIVE
+
+	# Audio: fire-and-forget, null-safe.
+	if _audio != null and _audio.has_method(&"has_event") and _audio.has_event(&"sfx_enemy_spawn"):
+		_audio.play_event(&"sfx_enemy_spawn")
+
+
+## Spawns the next pending reinforcement group (ADR-0018) at the spawn markers
+## farthest from Fayde, after a short warning marker. Adds to the alive count.
+func _spawn_next_group() -> void:
+	if _pending_groups.is_empty():
+		return
+	var entries: Array = _pending_groups.pop_front()
+	var spawned: int = _spawn_entries(entries, true)
+	_enemies_total += spawned
+	_enemies_alive += spawned
+	if spawned > 0 and _audio != null and _audio.has_method(&"has_event") and _audio.has_event(&"sfx_enemy_spawn"):
+		_audio.play_event(&"sfx_enemy_spawn")
+
+
+## Spawns [param entries] into the scene tree and returns how many were spawned.
+## Strict ADR-0014 spawn order: instantiate() → register_enemy() → add_child()
+## → set global_position → init(type_id).
+## register_enemy() MUST precede add_child() so H&D's HP pool is live before
+## EnemyInstance._ready() fires.
+## AC-WES-04: all enemies of a group are added in the same frame (no deferred add).
+## [param reinforcement] picks markers farthest from Fayde and holds the enemies
+## behind a warning marker for BulletHellTuning.reinforcement_warning_sec.
+func _spawn_entries(entries: Array, reinforcement: bool) -> int:
 	var markers: Array[Node2D] = _get_spawn_markers()
+	if reinforcement:
+		markers = _markers_far_from_player(markers)
 	var marker_idx: int = 0
 	var total_spawned: int = 0
 	var swarmer_base_pos: Vector2 = Vector2.ZERO
 	var swarmer_local_count: int = 0
-	for entry: Dictionary in _wave_composition:
+	var hold: float = BULLET_HELL_TUNING.reinforcement_warning_sec if reinforcement else 0.0
+	for entry: Dictionary in entries:
 		if markers.is_empty():
 			push_error("WaveManager: no spawn markers — cannot spawn enemies")
 			break
@@ -432,21 +532,30 @@ func _spawn_wave() -> void:
 			var spread: Vector2 = Vector2(cos(marker_idx * 2.4), sin(marker_idx * 2.4)) * jitter
 			final_pos = base_pos + spread
 			marker_idx += 1
+		var elite: bool = bool(entry.get("elite", false))
 		var enemy: EnemyInstance = enemy_scene.instantiate() as EnemyInstance
-		HealthAndDamage.register_enemy(enemy, entry["type_id"])  # ADR-0014: BEFORE add_child
+		var hp_mult: float = BULLET_HELL_TUNING.elite_hp_mult if elite else 1.0
+		HealthAndDamage.register_enemy(enemy, entry["type_id"], hp_mult)  # ADR-0014: BEFORE add_child
 		add_child(enemy)
 		enemy.global_position = final_pos
 		enemy.init(entry["type_id"])
+		if elite:
+			enemy.make_elite(BULLET_HELL_TUNING)
 		if enemy.is_boss():
 			boss_spawned.emit(enemy)
 		# Spawn VFX: pop-in scale tween (0→final_scale, BACK ease for slight overshoot).
 		# Boss enemies use base_scale > 1.0 from EnemyType so they spawn visually large.
 		var final_scale: float = entry.get("base_scale", 1.0)
+		if elite:
+			final_scale *= BULLET_HELL_TUNING.elite_scale_mult
 		enemy.scale = Vector2.ZERO
 		# Spawn stagger: pop-in tween 0→scale (0.18s) then hold 0.12s before activating
 		# physics so enemies appear before their AI engages (Gamefeel Audit Issue 3.1).
 		enemy.set_physics_process(false)
 		var tw: Tween = enemy.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		if hold > 0.0:
+			_spawn_reinforcement_warning(final_pos, hold)
+			tw.tween_interval(hold)
 		tw.tween_property(enemy, "scale", Vector2(final_scale, final_scale), 0.18)
 		tw.tween_interval(0.12)
 		var captured_enemy := enemy
@@ -454,21 +563,59 @@ func _spawn_wave() -> void:
 			if is_instance_valid(captured_enemy):
 				captured_enemy.set_physics_process(true))
 		total_spawned += 1
-	_enemies_total = total_spawned
-	_enemies_alive = _enemies_total
-	if _enemies_total == 0:
-		push_error("WaveManager: no enemies spawned — wave vacuously complete")
-		_wave_state = WaveState.WAVE_COMPLETE
-		wave_cleared.emit()
-		if is_final_room:
-			all_waves_cleared.emit()
-			boss_defeated.emit()
-		return
-	_wave_state = WaveState.WAVE_ACTIVE
+	return total_spawned
 
-	# Audio: fire-and-forget, null-safe.
-	if _audio != null and _audio.has_method(&"has_event") and _audio.has_event(&"sfx_enemy_spawn"):
-		_audio.play_event(&"sfx_enemy_spawn")
+
+## Returns [param markers] sorted farthest-first from Fayde (unchanged without a player).
+func _markers_far_from_player(markers: Array[Node2D]) -> Array[Node2D]:
+	if not is_inside_tree():
+		return markers
+	var player: Node2D = get_tree().get_first_node_in_group(&"player") as Node2D
+	if player == null:
+		return markers
+	var sorted: Array[Node2D] = markers.duplicate()
+	var origin: Vector2 = player.global_position
+	sorted.sort_custom(func(a: Node2D, b: Node2D) -> bool:
+		return a.global_position.distance_squared_to(origin) > b.global_position.distance_squared_to(origin))
+	return sorted
+
+
+## Shows a pulsing ring where a reinforcement is about to appear.
+func _spawn_reinforcement_warning(pos: Vector2, duration: float) -> void:
+	if not is_inside_tree():
+		return
+	var w := _ReinforcementWarning.new()
+	w.duration = duration
+	add_child(w)
+	w.global_position = pos
+
+
+## ADR-0018 — a Perfect Cast wipes enemy bullets around Fayde.
+func _on_perfect_cast(_world_pos: Vector2, _streak: int) -> void:
+	if not is_inside_tree():
+		return
+	var player: Node2D = get_tree().get_first_node_in_group(&"player") as Node2D
+	if player != null:
+		Projectile.cancel_in_radius(get_tree(), player.global_position,
+			BULLET_HELL_TUNING.perfect_cancel_radius)
+
+
+## ADR-0018 — the Special wipes enemy bullets inside (a little beyond) its burst.
+func _on_special_fired(_prana_type_id: int, world_pos: Vector2, radius: float) -> void:
+	if not is_inside_tree():
+		return
+	var r: float = radius * BULLET_HELL_TUNING.special_cancel_radius_mult if radius > 0.0 \
+		else BULLET_HELL_TUNING.special_cancel_fallback_radius
+	Projectile.cancel_in_radius(get_tree(), world_pos, r)
+
+
+## Clears every enemy bullet and hazard (wave cleared, new preparation phase).
+func _clear_enemy_fire() -> void:
+	if not is_inside_tree():
+		return
+	Projectile.cancel_in_radius(get_tree(), Vector2.ZERO, -1.0)
+	for hazard: Node in get_tree().get_nodes_in_group(&"enemy_hazard"):
+		hazard.queue_free()
 
 
 ## Instantiates the actual enemy scenes at projected spawn positions during preparation.
@@ -521,12 +668,15 @@ func _show_wave_preview() -> void:
 		var preview_scale: float = entry.get("base_scale", 1.0)
 		enemy.scale = Vector2(preview_scale, preview_scale)
 		enemy.modulate.a = 0.5
+		# ADR-0018 — reinforcements preview fainter: they arrive mid-fight, not now.
+		if int(entry.get("group", 0)) > 0:
+			enemy.modulate.a = 0.22
 		enemy.global_position = final_pos
 		# Name label above the enemy so the player knows which type is spawning where.
 		var et: EnemyType = EnemyCatalog.get_type(entry["type_id"])
 		if et != null:
 			var lbl := Label.new()
-			lbl.text = et.name
+			lbl.text = (_COPY.elite_prefix + et.name) if bool(entry.get("elite", false)) else et.name
 			lbl.add_theme_font_size_override("font_size", 14)
 			lbl.position = Vector2(-30.0, -26.0)
 			lbl.size = Vector2(60.0, 18.0)
@@ -546,3 +696,27 @@ func _clear_wave_preview() -> void:
 			remove_child(node)
 			node.free()
 	_preview_nodes.clear()
+
+
+## Inner class: pulsing ring marking where a reinforcement enemy is about to appear.
+class _ReinforcementWarning extends Node2D:
+	var duration: float = 0.6
+	var _elapsed: float = 0.0
+
+	func _ready() -> void:
+		process_mode = PROCESS_MODE_PAUSABLE
+		z_index = 2
+
+	func _process(delta: float) -> void:
+		_elapsed += delta
+		if _elapsed >= duration:
+			queue_free()
+		else:
+			queue_redraw()
+
+	func _draw() -> void:
+		var p: float = clampf(_elapsed / maxf(duration, 0.01), 0.0, 1.0)
+		var pulse: float = 0.5 + 0.5 * sin(p * TAU * 3.0)
+		var c: Color = Color(1.0, 0.3, 0.3, 0.35 + 0.4 * pulse)
+		draw_arc(Vector2.ZERO, lerpf(26.0, 12.0, p), 0.0, TAU, 24, c, 2.0, true)
+		draw_circle(Vector2.ZERO, 10.0, Color(c.r, c.g, c.b, 0.15))
