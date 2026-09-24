@@ -647,6 +647,9 @@ func _on_boss_spawned(boss: Node) -> void:
 	var raw_name: String = boss.get_display_name() if boss.has_method(&"get_display_name") else "BOSS"
 	_boss_name_label.text = _humanize_name(raw_name)
 	_boss_name_label.visible = true
+	# ADR-0018 — boss gains pattern layers per HP phase; call each one out.
+	if boss.has_signal(&"phase_changed") and not boss.is_connected(&"phase_changed", _on_boss_phase_changed):
+		boss.connect(&"phase_changed", _on_boss_phase_changed)
 
 	# Name card fade: in fast, hold, then fade to a dim persistent label over the bar.
 	if _boss_intro_tween:
@@ -660,6 +663,22 @@ func _on_boss_spawned(boss: Node) -> void:
 	# Camera reveal — only touches zoom, safe against look-ahead (PlayerController).
 	if is_instance_valid(player_controller) and player_controller.has_method(&"boss_reveal_zoom"):
 		player_controller.boss_reveal_zoom()
+
+
+## ADR-0018 — flashes "NAME — PHASE n" when the boss switches on a new pattern layer.
+## [param phase] counts HP-gated layers (1 = first phase-up), so it reads as phase n+1.
+func _on_boss_phase_changed(phase: int) -> void:
+	if not is_instance_valid(_boss_ref) or not is_instance_valid(_boss_name_label):
+		return
+	var raw_name: String = _boss_ref.get_display_name() if _boss_ref.has_method(&"get_display_name") else "BOSS"
+	_boss_name_label.text = "%s — %s %d" % [_humanize_name(raw_name), _COPY.boss_phase_label, phase + 1]
+	if _boss_intro_tween:
+		_boss_intro_tween.kill()
+	_boss_name_label.modulate = Color(1.6, 0.6, 0.6, 1.0)
+	_boss_intro_tween = create_tween()
+	_boss_intro_tween.tween_property(_boss_name_label, "modulate", Color(1, 1, 1, 1), 0.5)
+	_boss_intro_tween.tween_interval(1.2)
+	_boss_intro_tween.tween_property(_boss_name_label, "modulate:a", 0.65, 0.5)
 
 
 ## Hides the boss intro UI when the tracked boss is killed. Covers death paths

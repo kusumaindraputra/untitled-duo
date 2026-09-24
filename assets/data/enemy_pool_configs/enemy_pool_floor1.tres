@@ -6,9 +6,12 @@
 script = ExtResource("1_config")
 threat_budget_min = 10
 threat_budget_max = 18
-threat_cost = { 0: 1, 1: 2, 2: 1, 4: 1 }
-enemy_pool = Array[int]([0, 1, 2, 4])
+threat_cost = { 0: 1, 1: 2, 2: 1, 4: 1, 9: 1, 10: 1 }
+enemy_pool = Array[int]([0, 1, 2, 4, 9, 10])
 guaranteed_types = Array[int]([0, 2])
 min_counts = { 2: 2 }
-enemy_count_max = 10
-max_enemies_per_marker = 2
+enemy_count_max = 12
+max_enemies_per_marker = 3
+elite_chance = 0.05
+reinforcement_groups = 2
+reinforcement_trigger_alive = 2

@@ -9,6 +9,13 @@ extends CharacterBody2D
 ## in at a later story when archetype tick functions are formalised.
 enum EnemyState { CHASING = 0, DEAD = 1, STUNNED = 2 }
 
+## Emitted when a boss gains pattern layers as its HP crosses a phase threshold
+## (ADR-0018). [param phase] counts distinct HP thresholds crossed (1 = first phase-up).
+signal phase_changed(phase: int)
+
+## Elite knobs (HP / damage / scale / extra pattern) — ADR-0018.
+const BULLET_HELL_TUNING: BulletHellTuning = preload("res://assets/data/bullet_hell_tuning.tres")
+
 # ── Private state ─────────────────────────────────────────────────────────────
 
 var _state: EnemyState = EnemyState.CHASING
@@ -70,6 +77,21 @@ var _boss_phase: int = -1
 var _boss_phase_timer: float = 0.0
 ## BOSS archetype — locked direction captured at start of CHARGE burst.
 var _boss_charge_dir: Vector2 = Vector2.ZERO
+
+## ADR-0018 — one runner per EnemyType.pattern_layers entry (+ the elite layer).
+var _pattern_runners: Array[BulletPatternRunner] = []
+## Volley released once on death (Splitter). Null = none.
+var _death_pattern: BulletPattern = null
+## SHOOTER keep-away distance — from EnemyType.keep_distance.
+var _keep_distance: float = KEEP_DISTANCE
+## True after make_elite(). Elites are tougher, hit harder and fire an extra layer.
+var _is_elite: bool = false
+## HP phases reached last frame — distinct hp_threshold values (< 1) whose layers
+## are active. A rise means the boss entered a new phase. Several layers sharing one
+## threshold are one phase. -1 = not sampled yet (first frame never counts).
+var _active_layer_count: int = -1
+## Short pre-fire flash; separate from _vfx_tween so looping telegraphs are untouched.
+var _windup_tween: Tween = null
 
 ## Active Tween for attack/telegraph modulate pulse. Null when idle.
 var _vfx_tween: Tween = null
@@ -268,6 +290,9 @@ func _physics_process(delta: float) -> void:
 		_:
 			_tick_seeker(delta)
 
+	# ADR-0018 bullet patterns — layered on top of every archetype's movement.
+	_tick_patterns(delta)
+
 	# ── IsoCharacter sprite sync ──────────────────────────────────────────────
 	if is_instance_valid(_iso_char) and _iso_char._initialized:
 		_iso_char.set_facing(_dir_last_valid)
@@ -315,6 +340,14 @@ func init(enemy_type_id: int, catalog: Variant = null) -> void:
 		_swarmer_angle = rng.randf_range(0.0, TAU)
 	_rusher_phase = 0
 	_rusher_timer = 0.0
+	_keep_distance = et.keep_distance
+	_death_pattern = et.death_pattern
+	_pattern_runners.clear()
+	for pattern: BulletPattern in et.pattern_layers:
+		if pattern != null:
+			_pattern_runners.append(BulletPatternRunner.new(pattern))
+	_active_layer_count = -1
+	_is_elite = false
 	if _archetype == GameEnums.EnemyArchetype.BOSS:
 		_boss_attack = 0
 		_boss_phase = -1
@@ -347,6 +380,34 @@ func get_display_name() -> String:
 ## Returns this enemy's max HP (from EnemyType.base_hp). Used by the boss HP bar.
 func get_max_hp() -> int:
 	return _max_hp
+
+
+## Promotes this enemy to an elite (ADR-0018): more HP and damage, a golden aura and
+## an extra pattern layer from [param tuning]. Call after init(). Bosses never become
+## elites. The H&D pool must be registered with the same HP multiplier
+## (WaveManager passes it to register_enemy()).
+func make_elite(tuning: BulletHellTuning = BULLET_HELL_TUNING) -> void:
+	if _is_elite or _archetype == GameEnums.EnemyArchetype.BOSS:
+		return
+	_is_elite = true
+	_base_damage *= tuning.elite_damage_mult
+	_max_hp = roundi(float(_max_hp) * tuning.elite_hp_mult)
+	_current_hp = _max_hp
+	if tuning.elite_pattern != null:
+		_pattern_runners.append(BulletPatternRunner.new(tuning.elite_pattern))
+	var aura := _EliteAura.new()
+	aura.tint = tuning.elite_tint
+	add_child(aura)
+
+
+## True after make_elite().
+func is_elite() -> bool:
+	return _is_elite
+
+
+## Number of bullet-pattern layers this enemy owns (test / debug hook).
+func get_pattern_layer_count() -> int:
+	return _pattern_runners.size()
 
 
 ## Required by ADR-0011 (StatusEffectsManager API Contract).
@@ -394,7 +455,7 @@ func _compute_separation() -> Vector2:
 func _tick_shooter(delta: float) -> void:
 	var dist: float = global_position.distance_to(_fayde_ref.global_position)
 	var sep: Vector2 = _compute_separation()
-	if dist < KEEP_DISTANCE:
+	if dist < _keep_distance:
 		velocity = (-_dir_last_valid * _move_speed + sep) * _speed_modifier
 	else:
 		velocity = sep * _speed_modifier
@@ -402,7 +463,10 @@ func _tick_shooter(delta: float) -> void:
 	_shoot_timer += delta
 	if _shoot_timer >= SHOOT_INTERVAL:
 		_shoot_timer -= SHOOT_INTERVAL
-		_fire_projectile()
+		# Pattern-driven shooters fire through _tick_patterns(); the single aimed
+		# shot is the fallback for a SHOOTER authored without pattern layers.
+		if _pattern_runners.is_empty():
+			_fire_projectile()
 
 
 ## Pulsing red modulate — fired when melee contact starts.
@@ -568,6 +632,88 @@ func _fire_projectile() -> void:
 	proj.launch(_dir_last_valid, _base_damage)
 
 
+## ADR-0018 — ticks every pattern layer whose HP gate is open and acts on its events.
+## Runs after the archetype tick, only while CHASING (stun and death return earlier).
+func _tick_patterns(delta: float) -> void:
+	if _pattern_runners.is_empty():
+		return
+	var hp_ratio: float = 1.0 if _max_hp <= 0 else float(_current_hp) / float(_max_hp)
+	var aim: float = _dir_last_valid.angle()
+	var thresholds: Dictionary = {}
+	for runner: BulletPatternRunner in _pattern_runners:
+		if not runner.is_active(hp_ratio):
+			continue
+		if runner.pattern.hp_threshold < 1.0:
+			thresholds[runner.pattern.hp_threshold] = true
+		for ev: Dictionary in runner.tick(delta, aim):
+			if ev["type"] == BulletPatternRunner.EVENT_WINDUP:
+				_start_windup_flash(runner.pattern)
+			else:
+				_fire_pattern_volley(runner.pattern, ev["angles"], float(ev["speed"]))
+	var phase: int = thresholds.size()
+	if _active_layer_count >= 0 and phase > _active_layer_count:
+		_on_phase_up(phase)
+	_active_layer_count = phase
+
+
+## Spawns one volley of [param pattern]: bullets from the pool, or a laser / mortar
+## hazard per angle. Guards against a missing parent (headless test context).
+func _fire_pattern_volley(pattern: BulletPattern, angles: PackedFloat32Array, speed: float) -> void:
+	var parent_node: Node = get_parent()
+	if parent_node == null:
+		return
+	var damage: float = _base_damage * pattern.damage_mult
+	match pattern.kind:
+		BulletPattern.Kind.LASER:
+			for a: float in angles:
+				var laser := EnemyLaser.new()
+				laser.pattern = pattern
+				laser.damage = damage
+				laser.angle = a
+				laser.anchor = self
+				parent_node.add_child(laser)
+				laser.global_position = global_position
+		BulletPattern.Kind.MORTAR:
+			var target: Vector2 = _fayde_ref.global_position if is_instance_valid(_fayde_ref) \
+				else global_position
+			var shell := MortarShell.new()
+			shell.pattern = pattern
+			shell.damage = damage
+			parent_node.add_child(shell)
+			shell.global_position = target
+		_:
+			var pool: BulletPool = BulletPool.for_parent(parent_node)
+			if pool == null:
+				return
+			for a: float in angles:
+				var b: Projectile = pool.acquire()
+				b.global_position = global_position
+				b.launch_pattern(Vector2.from_angle(a), damage, pattern, speed)
+
+
+## Brief pre-fire glow in the pattern's colour so every volley is telegraphed.
+## Skipped while a looping telegraph (_vfx_tween) owns modulate.
+func _start_windup_flash(pattern: BulletPattern) -> void:
+	if _vfx_tween != null or pattern.windup_sec <= 0.0:
+		return
+	if _windup_tween:
+		_windup_tween.kill()
+	var c: Color = pattern.color
+	modulate = Color(1.0 + c.r, 1.0 + c.g, 1.0 + c.b, 1.0)
+	_windup_tween = create_tween()
+	_windup_tween.tween_property(self, "modulate", Color.WHITE, pattern.windup_sec)
+
+
+## Boss phase-up (ADR-0018): a new HP-gated layer just switched on.
+func _on_phase_up(phase: int) -> void:
+	phase_changed.emit(phase)
+	request_hit_flash()
+	if is_instance_valid(_fayde_ref) and _fayde_ref.has_method(&"add_camera_trauma"):
+		_fayde_ref.add_camera_trauma(0.35)
+	if _audio != null and _audio.has_method(&"has_event") and _audio.has_event(&"sfx_boss_slam_telegraph"):
+		_audio.play_event(&"sfx_boss_slam_telegraph")
+
+
 ## Required by ADR-0011 (StatusEffectsManager API Contract).
 ## SEM calls this on Stun/Stagger apply. Re-entrant: resets timer on stun refresh.
 func apply_stun(duration: float) -> void:
@@ -595,6 +741,8 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	_rusher_timer = 0.0
 	_boss_phase = -1
 	_boss_phase_timer = 0.0
+	for runner: BulletPatternRunner in _pattern_runners:
+		runner.reset()
 	_stop_attack_vfx()
 	if _state == EnemyState.STUNNED:
 		_state = EnemyState.CHASING
@@ -619,6 +767,11 @@ func _on_enemy_killed(instance_id: int, _type_id: int, prana_affiliation: GameEn
 	# Spawn death burst VFX — color bloom outward per Art Bible principle.
 	# PranaType.color mapped from prana_affiliation; neutral enemies burst white.
 	_spawn_death_burst(prana_affiliation)
+	# ADR-0018 — Splitter-style death volley.
+	if _death_pattern != null:
+		_fire_pattern_volley(_death_pattern,
+			BulletPatternRunner.compute_angles(_death_pattern, _dir_last_valid.angle(), 0),
+			_death_pattern.speed)
 	# Audio: fire-and-forget, null-safe.
 	if _audio != null and _audio.has_method(&"has_event") and _audio.has_event(&"sfx_enemy_death"):
 		_audio.play_event(&"sfx_enemy_death")
@@ -986,6 +1139,27 @@ class _EnemyHPBar extends Node2D:
 		if filled > 0.0:
 			draw_rect(Rect2(0.0, 0.0, filled, HEIGHT), bar_col)
 		draw_rect(Rect2(0.0, 0.0, WIDTH, HEIGHT), Color(0.8, 0.8, 0.8, 0.5), false, 1.0)
+
+
+## Inner class: pulsing golden ring marking an elite enemy (ADR-0018).
+## A child node (not modulate) so attack / status tints never hide it.
+class _EliteAura extends Node2D:
+	var tint: Color = Color(1.6, 1.3, 0.4, 1.0)
+	var _t: float = 0.0
+
+	func _ready() -> void:
+		z_index = -1
+		process_mode = PROCESS_MODE_PAUSABLE
+
+	func _process(delta: float) -> void:
+		_t += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		var pulse: float = 0.5 + 0.5 * sin(_t * 5.0)
+		var c: Color = Color(minf(tint.r, 1.0), minf(tint.g, 1.0), minf(tint.b, 1.0), 0.35 + 0.35 * pulse)
+		draw_arc(Vector2.ZERO, 15.0 + 2.0 * pulse, 0.0, TAU, 24, c, 2.0, true)
+		draw_circle(Vector2.ZERO, 14.0, Color(c.r, c.g, c.b, 0.12))
 
 
 ## Inner class: pulsing ground circle shown during BOSS SLAM telegraph.

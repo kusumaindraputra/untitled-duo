@@ -1,7 +1,9 @@
-[gd_resource type="Resource" script_class="EnemyType" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="EnemyType" load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://src/data/enemy_type.gd" id="1_enemy_type"]
 [ext_resource type="PackedScene" path="res://src/gameplay/EnemyInstance.tscn" id="2_scene"]
+[ext_resource type="Script" path="res://src/data/bullet_pattern.gd" id="3_bp"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/rifter_fan.tres" id="p_rifter_fan"]
 
 [resource]
 script = ExtResource("1_enemy_type")
@@ -19,3 +21,5 @@ sprite_size = Vector2i(14, 14)
 debug_color = Color(0.2, 0.4, 1.0, 1)
 status = 0
 scene = ExtResource("2_scene")
+pattern_layers = Array[ExtResource("3_bp")]([ExtResource("p_rifter_fan")])
+keep_distance = 150.0

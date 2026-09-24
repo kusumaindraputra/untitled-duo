@@ -116,6 +116,10 @@ signal special_meter_changed(value: float, max_value: float)
 ## (0.0 for the Stormgold chain). SpellVFX draws the burst.
 signal special_fired(prana_type_id: int, world_pos: Vector2, radius: float)
 
+## Emitted when an enemy bullet or hazard grazes Fayde (ADR-0018). [param meter_gain]
+## is the Special meter it added. SpellVFX / CombatHUD may flash on it.
+signal grazed(world_pos: Vector2, meter_gain: float)
+
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -187,6 +191,9 @@ const REACTION_TUNING: ReactionTuning = preload("res://assets/data/reaction_tuni
 
 ## Perfect Cast window and Special attack knobs.
 const ATTACK_TUNING: AttackTuning = preload("res://assets/data/attack_tuning.tres")
+
+## Graze gain and bullet-cancel knobs (ADR-0018).
+const BULLET_HELL_TUNING: BulletHellTuning = preload("res://assets/data/bullet_hell_tuning.tres")
 
 ## Attack data per [primary_type][primary_tier][attack_index].
 ## Key "modifier" = tier_attack_modifier used in Formula 3 Step 4.
@@ -1226,6 +1233,18 @@ func get_cast_timing() -> CastTiming:
 	if elapsed <= ATTACK_TUNING.perfect_window_end:
 		return CastTiming.PERFECT
 	return CastTiming.NORMAL
+
+
+## Registers a graze at [param world_pos] (ADR-0018): an enemy bullet or hazard passed
+## inside Fayde's graze ring without hitting her. Adds
+## BulletHellTuning.graze_meter_gain × [param mult] to the Special meter, so dodging
+## close feeds the Special just like landing hits does.
+func register_graze(world_pos: Vector2, mult: float = 1.0) -> void:
+	var gain: float = BULLET_HELL_TUNING.graze_meter_gain * maxf(mult, 0.0)
+	if gain <= 0.0:
+		return
+	_add_special_meter(gain)
+	grazed.emit(world_pos, gain)
 
 
 ## Current Special meter value (0..AttackTuning.special_meter_max).

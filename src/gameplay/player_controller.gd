@@ -12,6 +12,9 @@ extends CharacterBody2D
 ## available); fires true when cooldown expires or preparation_started resets dash (GDD Rule 4).
 signal dash_cooldown_changed(available: bool)
 
+## Emitted whenever a dash charge is spent or recharged (ADR-0018).
+signal dash_charges_changed(charges: int, max_charges: int)
+
 # ── Enums ─────────────────────────────────────────────────────────────────────
 
 enum ControllerState { DISABLED, ENABLED, DASHING }
@@ -24,7 +27,9 @@ const MOVE_FRICTION: float = 0.50
 const VELOCITY_SNAP_THRESHOLD: float = 8.0
 const DASH_SPEED: float = 400.0
 const DASH_DURATION: float = 0.15
-const DASH_COOLDOWN: float = 2.0
+## Dash charges, recharge time, hurtbox dot and graze ring (ADR-0018). The old single
+## 2.0 s DASH_COOLDOWN is now BULLET_HELL_TUNING.dash_charges × dash_recharge_sec.
+const BULLET_HELL_TUNING: BulletHellTuning = preload("res://assets/data/bullet_hell_tuning.tres")
 const FOOTSTEP_INTERVAL_SEC: float = 0.38           # activated: Story PC-004
 const FOOTSTEP_VELOCITY_THRESHOLD: float = 10.0     # activated: Story PC-004
 
@@ -79,7 +84,12 @@ var _controller_state: ControllerState = ControllerState.DISABLED
 var _is_invincible: bool = false
 var _last_facing_dir: Vector2 = Vector2.RIGHT
 var _dash_duration_timer: float = 0.0  # countdown; > 0.0 means currently dashing
-var _dash_cooldown_timer: float = 0.0  # countdown; > 0.0 means on cooldown
+var _dash_cooldown_timer: float = 0.0  # countdown to the next recharged charge; > 0.0 = recharging
+## Dash charges available now (ADR-0018). A dash needs at least one.
+var _dash_charges: int = maxi(BULLET_HELL_TUNING.dash_charges, 1)
+## Hurtbox dot + graze ring drawn on Fayde during combat (ADR-0018). Null in tests
+## that never call _ready().
+var _hurt_dot: _HurtboxDot = null
 
 ## Run sigil multipliers (1.0 = no sigil). Persist across rooms; reset only on a
 ## fresh scene/run. Applied to MOVE_SPEED and DASH_COOLDOWN at their use sites.
@@ -131,11 +141,17 @@ func _ready() -> void:
 	HealthAndDamage.damage_taken.connect(_on_player_damage_taken)
 	SpellCastingEffects.cast_hit_started.connect(_on_cast_hit_started)
 	CombinationResolution.combo_resolved.connect(_on_combo_resolved)
+	SpellCastingEffects.grazed.connect(_on_grazed)
 	audio_system = get_node_or_null("/root/AudioSystem")
 	collision_layer = COLLISION_LAYER_PLAYER
 	collision_mask = COLLISION_MASK_NORMAL
 	_setup_combat_flash()
 	_setup_camera_smoothing()
+	_hurt_dot = _HurtboxDot.new()
+	_hurt_dot.hurt_radius = BULLET_HELL_TUNING.player_hurt_radius
+	_hurt_dot.graze_radius = BULLET_HELL_TUNING.graze_radius
+	_hurt_dot.visible = false
+	add_child(_hurt_dot)
 	if is_instance_valid(_iso_char):
 		_iso_char.configure({
 			"idle": "fayde_idle",
@@ -164,6 +180,8 @@ func _exit_tree() -> void:
 		HealthAndDamage.damage_taken.disconnect(_on_player_damage_taken)
 	if SpellCastingEffects.cast_hit_started.is_connected(_on_cast_hit_started):
 		SpellCastingEffects.cast_hit_started.disconnect(_on_cast_hit_started)
+	if SpellCastingEffects.grazed.is_connected(_on_grazed):
+		SpellCastingEffects.grazed.disconnect(_on_grazed)
 
 
 func _physics_process(delta: float) -> void:
@@ -238,7 +256,7 @@ func _physics_process(delta: float) -> void:
 				velocity = velocity.lerp(Vector2.ZERO, friction_factor)
 				if velocity.length() < VELOCITY_SNAP_THRESHOLD:
 					velocity = Vector2.ZERO
-			if Input.is_action_just_pressed(&"dash") and _dash_cooldown_timer <= 0.0:
+			if Input.is_action_just_pressed(&"dash") and _dash_charges > 0:
 				var dash_dir: Vector2 = _snap_to_8dir(input_dir) if input_dir != Vector2.ZERO \
 					else _last_facing_dir
 				_last_facing_dir = dash_dir
@@ -251,7 +269,10 @@ func _physics_process(delta: float) -> void:
 				_knockback_timer = 0.0   # dash cancels knockback
 				if audio_system != null:
 					audio_system.play_event(&"sfx_fayde_dash")
-				dash_cooldown_changed.emit(false)
+				_dash_charges -= 1
+				dash_charges_changed.emit(_dash_charges, _max_dash_charges())
+				if _dash_charges == 0:
+					dash_cooldown_changed.emit(false)
 				_spawn_dash_dust()
 				_spawn_dash_ghosts(dash_dir)
 		# Cast lock: dampen velocity to CAST_LOCK_SPEED_FACTOR during post-hit recovery.
@@ -266,14 +287,21 @@ func _physics_process(delta: float) -> void:
 			_controller_state = ControllerState.ENABLED
 			_is_invincible = false
 			collision_mask = COLLISION_MASK_NORMAL
-			_dash_cooldown_timer = DASH_COOLDOWN * _dash_cooldown_mult
+			if _dash_charges < _max_dash_charges() and _dash_cooldown_timer <= 0.0:
+				_dash_cooldown_timer = _dash_recharge_duration()
 
-	# ── Dash cooldown countdown (unconditional) ───────────────────────────────
+	# ── Dash recharge countdown (unconditional) — one charge per recharge ─────
 	if _dash_cooldown_timer > 0.0:
 		_dash_cooldown_timer -= delta
 		if _dash_cooldown_timer <= 0.0:
 			_dash_cooldown_timer = 0.0
-			dash_cooldown_changed.emit(true)
+			var was_empty: bool = _dash_charges <= 0
+			_dash_charges = mini(_dash_charges + 1, _max_dash_charges())
+			dash_charges_changed.emit(_dash_charges, _max_dash_charges())
+			if was_empty:
+				dash_cooldown_changed.emit(true)
+			if _dash_charges < _max_dash_charges():
+				_dash_cooldown_timer = _dash_recharge_duration()
 
 	# ── Cast lock countdown (unconditional) ───────────────────────────────────
 	if _cast_lock_timer > 0.0:
@@ -339,10 +367,27 @@ func get_cast_position() -> Vector2:
 	return global_position
 
 
-## Returns the remaining dash cooldown in seconds. Returns 0.0 when ready.
-## TR-PC-002 (ADR-0004 float accumulator).
+## Returns seconds until a dash is available. Returns 0.0 while any charge is left.
+## TR-PC-002 (ADR-0004 float accumulator); charges per ADR-0018.
 func get_dash_cooldown_remaining() -> float:
+	if _dash_charges > 0:
+		return 0.0
 	return max(_dash_cooldown_timer, 0.0)
+
+
+## Dash charges available now (ADR-0018).
+func get_dash_charges() -> int:
+	return _dash_charges
+
+
+## Maximum dash charges (BulletHellTuning.dash_charges, at least 1).
+func _max_dash_charges() -> int:
+	return maxi(BULLET_HELL_TUNING.dash_charges, 1)
+
+
+## Seconds to recharge one dash charge, scaled by dash-cooldown sigils.
+func _dash_recharge_duration() -> float:
+	return BULLET_HELL_TUNING.dash_recharge_sec * _dash_cooldown_mult
 
 
 ## Applies a brief velocity push away from [param from_pos].
@@ -401,6 +446,8 @@ func _compute_steps_per_second() -> float:
 
 func _on_combat_started(_is_boss: bool = false) -> void:
 	_controller_state = ControllerState.ENABLED
+	if is_instance_valid(_hurt_dot):
+		_hurt_dot.visible = BULLET_HELL_TUNING.show_hurtbox_dot
 	# TRANS_BACK punch-in replaces the old snap+flash (Gamefeel Audit Issue 4.1).
 	# The slight overshoot of EASE_OUT+BACK reads as energetic without jarring.
 	if is_instance_valid(_camera):
@@ -421,9 +468,13 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	_trauma = 0.0
 	_dash_duration_timer = 0.0
 	_dash_cooldown_timer = 0.0
+	_dash_charges = _max_dash_charges()
 	_cast_lock_timer = 0.0
 	_knockback_timer = 0.0
+	if is_instance_valid(_hurt_dot):
+		_hurt_dot.visible = false
 	dash_cooldown_changed.emit(true)
+	dash_charges_changed.emit(_dash_charges, _max_dash_charges())
 	_footstep_timer = 0.0
 	_footstep_bag.clear()
 	if is_instance_valid(_camera):
@@ -476,6 +527,12 @@ func _on_cast_hit_started(lock_duration: float = 0.12) -> void:
 
 func _on_combo_resolved(spell_effect: SpellEffect) -> void:
 	_cast_prana_type = spell_effect.primary_type
+
+
+## Graze feedback (ADR-0018): the graze ring flashes when a bullet skims past.
+func _on_grazed(_world_pos: Vector2, _meter_gain: float) -> void:
+	if is_instance_valid(_hurt_dot):
+		_hurt_dot.flash()
 
 
 ## Creates a full-screen ColorRect on a high-layer CanvasLayer for the combat start flash.
@@ -652,3 +709,35 @@ class _DashDust extends Node2D:
 			var dist: float = lerpf(2.0, 22.0, p)
 			var r: float = lerpf(3.5, 0.5, p)
 			draw_circle(Vector2.from_angle(angle) * dist + Vector2(0, -p * 10.0), r, c)
+
+
+## Inner class: Fayde's hurtbox dot and graze ring (ADR-0018).
+## Drawn above bullets (absolute z) so the player always knows exactly what can be
+## hit. The graze ring is faint and flashes on each graze.
+class _HurtboxDot extends Node2D:
+	const FLASH_SEC: float = 0.18
+
+	var hurt_radius: float = 3.0
+	var graze_radius: float = 20.0
+	var _flash: float = 0.0
+
+	func _ready() -> void:
+		z_as_relative = false
+		z_index = 2200
+		process_mode = PROCESS_MODE_PAUSABLE
+
+	func flash() -> void:
+		_flash = FLASH_SEC
+		queue_redraw()
+
+	func _process(delta: float) -> void:
+		if _flash > 0.0:
+			_flash = maxf(_flash - delta, 0.0)
+			queue_redraw()
+
+	func _draw() -> void:
+		var f: float = _flash / FLASH_SEC
+		draw_arc(Vector2.ZERO, graze_radius, 0.0, TAU, 32,
+				Color(1.0, 1.0, 1.0, 0.10 + 0.55 * f), 1.0 + 1.5 * f, true)
+		draw_circle(Vector2.ZERO, hurt_radius + 1.5, Color(0.05, 0.02, 0.1, 0.9))
+		draw_circle(Vector2.ZERO, hurt_radius, Color(1.0, 1.0, 1.0, 1.0))

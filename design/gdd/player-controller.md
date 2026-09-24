@@ -252,6 +252,7 @@ Player Controller has no runtime dependencies on Prana Data, Health & Damage, or
 | `DASH_SPEED` | 400 px/sec | 200–600 px/sec | Velocity override during dash burst | Too low: dash barely outruns walking; too high: wall tunneling risk at 30 fps begins near the default 400 px/sec |
 | `DASH_DURATION` | 0.15s | 0.08–0.25s | Dash burst duration AND i-frame window duration | Too short: insufficient travel distance; too long: i-frames exploitable for sustained invincibility |
 | `DASH_COOLDOWN` | **2.0s** | 0.5–3.0s | Time before dash can be reused | Too short: dash trivializes positioning; too long: players forget the ability exists. Raised from 1.0s to create scarcity. *Target: 3–6 uses per typical wave (wave duration TBD by Wave/Encounter GDD — validate at First Playable).* |
+| `dash_charges` × `dash_recharge_sec` *(ADR-0018, supersedes `DASH_COOLDOWN`)* | **2 × 0.9s** | 1–3 × 0.5–2.0s | Charges held; seconds to recharge one | Bullet-hell pacing: two back-to-back dodges, ~1.1 dash/s sustained. Lives in `assets/data/bullet_hell_tuning.tres`. See `design/gdd/bullet-hell.md` Rule 8. |
 | `FOOTSTEP_INTERVAL_SEC` | 0.38s | 0.25–0.6s | Time between footstep audio events while moving | Too short: footsteps clutter the mix; too long: movement sounds unconvincing. Must be > 0.0 (clamp in setter) |
 | `FOOTSTEP_VELOCITY_THRESHOLD` | 10 px/sec | 5–30 px/sec | Minimum velocity required to fire footstep timer | Too low: footsteps fire during deceleration tail; too high: missed footsteps during slow movement |
 

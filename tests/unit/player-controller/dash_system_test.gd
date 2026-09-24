@@ -3,10 +3,11 @@
 ## Coverage:
 ##   AC-PC-05:  ENABLED + cooldown expired + dash pressed → DASHING, is_invincible, velocity ≈ DASH_SPEED
 ##   AC-PC-06:  DASHING for DASH_DURATION frames → ENABLED, not invincible, cooldown > 0
-##   AC-PC-07:  Dash blocked when cooldown active → state unchanged, velocity unchanged
+##   AC-PC-07:  Dash blocked when no charge is left → state unchanged, velocity unchanged
+##   ADR-0018:  Two dash charges; each recharges after dash_recharge_sec
 ##   AC-PC-08:  No movement input → dash uses _last_facing_dir (default Vector2.RIGHT)
 ##   AC-PC-13:  _compute_dash_distance() returns DASH_SPEED * DASH_DURATION (≈ 60.0 ± 1 px)
-##   AC-PC-18:  get_dash_cooldown_remaining() returns correct value after 0.6s elapsed
+##   AC-PC-18:  get_dash_cooldown_remaining() returns correct value after 0.3s elapsed
 ##
 ## Framework: GdUnit4 v6.1.3 (extends GdUnitTestSuite)
 ##
@@ -152,14 +153,15 @@ func test_pc_dash_starts_cooldown_after_duration() -> void:
 	_pc._controller_state = PlayerController.ControllerState.DASHING
 	_pc._is_invincible = true
 	_pc._dash_duration_timer = PlayerController.DASH_DURATION
+	_pc._dash_charges = 0  # the dash just spent the last charge
 
 	# Act
 	var expire_frames: int = ceili(PlayerController.DASH_DURATION * 60.0) + 1
 	for _i: int in range(expire_frames):
 		_pc._physics_process(1.0 / 60.0)
 
-	# Assert: cooldown timer must be > 0 (exact value will be slightly less than
-	# DASH_COOLDOWN because some frames ran after expiry, but it must be positive).
+	# Assert: recharge timer must be > 0 (slightly less than dash_recharge_sec
+	# because some frames ran after expiry, but it must be positive).
 	assert_float(_pc.get_dash_cooldown_remaining()).is_greater(0.0)
 
 # ── AC-PC-07: Dash blocked during cooldown ────────────────────────────────────
@@ -168,7 +170,8 @@ func test_pc_dash_blocked_when_cooldown_active_state_unchanged() -> void:
 	# Arrange
 	add_child(_pc)
 	_pc._controller_state = PlayerController.ControllerState.ENABLED
-	_pc._dash_cooldown_timer = 1.0  # cooldown still active
+	_pc._dash_cooldown_timer = 1.0  # recharge still running
+	_pc._dash_charges = 0            # ADR-0018: blocked only when every charge is spent
 	_pc.velocity = Vector2(60.0, 0.0)
 	Input.action_press(&"dash")
 
@@ -186,6 +189,7 @@ func test_pc_dash_blocked_when_cooldown_active_velocity_not_overridden() -> void
 	add_child(_pc)
 	_pc._controller_state = PlayerController.ControllerState.ENABLED
 	_pc._dash_cooldown_timer = 1.0
+	_pc._dash_charges = 0
 	# Set velocity directly; after one ENABLED frame with no movement input,
 	# friction will reduce it slightly — so we assert it is less than DASH_SPEED,
 	# not that it is exactly unchanged (move_and_slide may also clip it in scene).
@@ -231,23 +235,69 @@ func test_pc_compute_dash_distance_within_one_pixel_of_60() -> void:
 
 # ── AC-PC-18: Dash cooldown remaining after partial elapsed time ──────────────
 
-func test_pc_dash_cooldown_remaining_after_0_6s_elapsed() -> void:
-	# Arrange — set cooldown timer to full DASH_COOLDOWN (2.0s) directly,
+func test_pc_dash_cooldown_remaining_after_0_3s_elapsed() -> void:
+	# Arrange — set the recharge timer to a full dash_recharge_sec directly,
 	# simulating the moment a dash just expired. add_child() required because
 	# ENABLED state calls move_and_slide() (needs a valid physics RID).
 	# No movement input is pressed, so only friction + cooldown countdown run.
 	# Cooldown countdown is unconditional — runs regardless of controller state.
 	add_child(_pc)
 	_pc._controller_state = PlayerController.ControllerState.ENABLED
-	_pc._dash_cooldown_timer = PlayerController.DASH_COOLDOWN  # 2.0s
+	var recharge: float = PlayerController.BULLET_HELL_TUNING.dash_recharge_sec
+	_pc._dash_charges = 0
+	_pc._dash_cooldown_timer = recharge
 
-	# Act — simulate 36 frames = 0.6s at 60fps (ceil(0.6 * 60) = 36).
-	var elapsed_frames: int = 36
+	# Act — simulate 0.3s (18 frames) so the recharge is still running.
+	var elapsed_frames: int = 18
 	for _i: int in range(elapsed_frames):
 		_pc._physics_process(1.0 / 60.0)
 
-	# Assert: remaining ≈ 1.4s, tolerance ±0.05s.
+	# Assert: remaining ≈ recharge − 0.3s, tolerance ±0.05s.
 	var remaining: float = _pc.get_dash_cooldown_remaining()
-	var expected_remaining: float = 1.4
+	var expected_remaining: float = recharge - 0.3
 	var tolerance: float = 0.05
 	assert_float(absf(remaining - expected_remaining)).is_less_equal(tolerance)
+
+# ── ADR-0018: dash charges ───────────────────────────────────────────────────
+
+func test_pc_dash_starts_with_full_charges() -> void:
+	assert_int(_pc.get_dash_charges()).is_equal(PlayerController.BULLET_HELL_TUNING.dash_charges)
+
+
+func test_pc_dash_spends_one_charge_per_dash() -> void:
+	add_child(_pc)
+	_pc._controller_state = PlayerController.ControllerState.ENABLED
+	var before: int = _pc.get_dash_charges()
+	Input.action_press(&"dash")
+
+	_pc._physics_process(1.0 / 60.0)
+	Input.action_release(&"dash")
+
+	assert_int(_pc.get_dash_charges()).is_equal(before - 1)
+
+
+func test_pc_dash_available_again_while_second_charge_left() -> void:
+	# One charge left + recharge running: dash still fires and reports 0 s remaining.
+	add_child(_pc)
+	_pc._controller_state = PlayerController.ControllerState.ENABLED
+	_pc._dash_charges = 1
+	_pc._dash_cooldown_timer = 0.5
+	assert_float(_pc.get_dash_cooldown_remaining()).is_equal(0.0)
+	Input.action_press(&"dash")
+
+	_pc._physics_process(1.0 / 60.0)
+	Input.action_release(&"dash")
+
+	assert_int(int(_pc.get_controller_state())).is_equal(
+		int(PlayerController.ControllerState.DASHING))
+
+
+func test_pc_dash_recharge_restores_one_charge() -> void:
+	add_child(_pc)
+	_pc._controller_state = PlayerController.ControllerState.ENABLED
+	_pc._dash_charges = 0
+	_pc._dash_cooldown_timer = 1.0 / 60.0
+
+	_pc._physics_process(1.0 / 60.0)
+
+	assert_int(_pc.get_dash_charges()).is_equal(1)

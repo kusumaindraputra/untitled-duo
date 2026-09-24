@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-06-21"  # updated: (1) ELEMENTAL STRONG/WEAKNESS REMOVED — affiliation damage multiplier (2× match / 0.5× mismatch) cut from scope; prana_affiliation now serves death-burst VFX color + Prana drop typing only. (2) Enemy stats synced to .tres after 2026-06-20 difficulty rebalance: Drifter 20/8→50/14, Charger 35/20→90/30, Cluster 12/4→30/10. (3) Added Rifter (id 4, SHOOTER) and Vault Sentinel (id 5, BOSS vs_scope) — previously undocumented. (4) Warped Warden + Vault Sentinel confirmed vs_scope (wave_threat_value null). Prior 2026-06-16: Charger prana_affiliation corrected Ashfire→Deepfrost; 3 constants (burn_contagion_range/duration, shatter_multiplier); 3 constants (nonprimary_freeze_duration, chill_slow_pct, chill_duration)
+last_updated: "2026-09-24"  # updated: (0) 2026-09-24 ADR-0018 bullet-hell roster: added Spinner (6), Sniper (7), Mortar (8), Weaver (9), Splitter (10). Prior 2026-06-21: (1) ELEMENTAL STRONG/WEAKNESS REMOVED — affiliation damage multiplier (2× match / 0.5× mismatch) cut from scope; prana_affiliation now serves death-burst VFX color + Prana drop typing only. (2) Enemy stats synced to .tres after 2026-06-20 difficulty rebalance: Drifter 20/8→50/14, Charger 35/20→90/30, Cluster 12/4→30/10. (3) Added Rifter (id 4, SHOOTER) and Vault Sentinel (id 5, BOSS vs_scope) — previously undocumented. (4) Warped Warden + Vault Sentinel confirmed vs_scope (wave_threat_value null). Prior 2026-06-16: Charger prana_affiliation corrected Ashfire→Deepfrost; 3 constants (burn_contagion_range/duration, shatter_multiplier); 3 constants (nonprimary_freeze_duration, chill_slow_pct, chill_duration)
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -244,6 +244,106 @@ entities:
     catalog_status: vs_scope  # ships inactive at MVP; activates with Boss Encounter GDD
     added: 2026-06-20
     revised: "2026-06-21"
+
+  - name: spinner
+    status: active
+    source: design/gdd/enemy-data.md
+    referenced_by:
+      - design/gdd/enemy-data.md
+      - design/gdd/bullet-hell.md  # spinner_spiral — rotating 3-arm spiral
+    enemy_id: 6
+    archetype: SHOOTER
+    prana_affiliation: Ashfire  # Fire
+    base_hp: 44
+    base_damage: 10.0
+    base_move_speed: 30  # px/s
+    wave_threat_value: 2
+    drop_prana_type: 0
+    drop_rate: 0.40  # provisional
+    sprite_size: "16x16"
+    catalog_status: active
+    added: 2026-09-24
+    revised: ""
+
+  - name: sniper
+    status: active
+    source: design/gdd/enemy-data.md
+    referenced_by:
+      - design/gdd/enemy-data.md
+      - design/gdd/bullet-hell.md  # sniper_laser — telegraphed laser beam
+    enemy_id: 7
+    archetype: SHOOTER
+    prana_affiliation: Deepfrost  # Ice
+    base_hp: 28
+    base_damage: 14.0
+    base_move_speed: 40  # px/s
+    wave_threat_value: 2
+    drop_prana_type: 3
+    drop_rate: 0.40  # provisional
+    sprite_size: "16x16"
+    catalog_status: active
+    added: 2026-09-24
+    revised: ""
+
+  - name: mortar
+    status: active
+    source: design/gdd/enemy-data.md
+    referenced_by:
+      - design/gdd/enemy-data.md
+      - design/gdd/bullet-hell.md  # mortar_shell — ground blasts with splash ring
+    enemy_id: 8
+    archetype: SHOOTER
+    prana_affiliation: Voidblue  # Shadow
+    base_hp: 40
+    base_damage: 14.0
+    base_move_speed: 25  # px/s
+    wave_threat_value: 2
+    drop_prana_type: 1
+    drop_rate: 0.40  # provisional
+    sprite_size: "16x16"
+    catalog_status: active
+    added: 2026-09-24
+    revised: ""
+
+  - name: weaver
+    status: active
+    source: design/gdd/enemy-data.md
+    referenced_by:
+      - design/gdd/enemy-data.md
+      - design/gdd/bullet-hell.md  # weaver_wave — sine-wave fan while orbiting
+    enemy_id: 9
+    archetype: SWARMER
+    prana_affiliation: Stormgold  # Lightning
+    base_hp: 30
+    base_damage: 9.0
+    base_move_speed: 65  # px/s
+    wave_threat_value: 1
+    drop_prana_type: 2
+    drop_rate: 0.40  # provisional
+    sprite_size: "16x16"
+    catalog_status: active
+    added: 2026-09-24
+    revised: ""
+
+  - name: splitter
+    status: active
+    source: design/gdd/enemy-data.md
+    referenced_by:
+      - design/gdd/enemy-data.md
+      - design/gdd/bullet-hell.md  # splitter_death_ring — 10-bullet ring on death
+    enemy_id: 10
+    archetype: SEEKER
+    prana_affiliation: Verdant  # Nature
+    base_hp: 40
+    base_damage: 12.0
+    base_move_speed: 75  # px/s
+    wave_threat_value: 1
+    drop_prana_type: 4
+    drop_rate: 0.40  # provisional
+    sprite_size: "16x16"
+    catalog_status: active
+    added: 2026-09-24
+    revised: ""
 
 # Example (remove when first real entry is added):
 #

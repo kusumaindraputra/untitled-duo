@@ -23,6 +23,12 @@ const ID_CLUSTER: int = 2
 const ID_WARPED_WARDEN: int = 3
 const ID_RIFTER: int = 4
 const ID_VAULT_SENTINEL: int = 5
+const ID_SPINNER: int = 6
+const ID_SNIPER: int = 7
+const ID_MORTAR: int = 8
+const ID_WEAVER: int = 9
+const ID_SPLITTER: int = 10
+const ACTIVE_IDS: Array[int] = [0, 1, 2, 4, 6, 7, 8, 9, 10]
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -45,22 +51,22 @@ func _ids_of(types: Array) -> Array[int]:
 
 # ── Catalog composition ───────────────────────────────────────────────────────
 
-## AC-ED-01 / AC-ED-02: 4 active + 2 vs_scope = 6 total entries.
-func test_real_catalog_has_six_entries() -> void:
+## AC-ED-01 / AC-ED-02: 9 active + 2 vs_scope = 11 total entries (ADR-0018 roster).
+func test_real_catalog_has_eleven_entries() -> void:
 	var catalog: Node = _load_real_catalog()
 
-	assert_int(catalog.count()).is_equal(6)
+	assert_int(catalog.count()).is_equal(11)
 
 	catalog.free()
 
 
-## AC-ED-01: active entries are exactly Drifter, Charger, Cluster, Rifter.
-func test_real_catalog_active_ids_are_0_1_2_4() -> void:
+## AC-ED-01: active entries are the four FP enemies plus the ADR-0018 roster.
+func test_real_catalog_active_ids_exclude_bosses() -> void:
 	var catalog: Node = _load_real_catalog()
 
 	var active_ids: Array[int] = _ids_of(catalog.get_active_types())
 
-	assert_array(active_ids).contains_exactly([ID_DRIFTER, ID_CHARGER, ID_CLUSTER, ID_RIFTER])
+	assert_array(active_ids).contains_exactly(ACTIVE_IDS)
 
 	catalog.free()
 
@@ -81,7 +87,7 @@ func test_real_catalog_spawnable_excludes_bosses() -> void:
 
 	var spawnable_ids: Array[int] = _ids_of(catalog.get_spawnable_types())
 
-	assert_array(spawnable_ids).contains_exactly([ID_DRIFTER, ID_CHARGER, ID_CLUSTER, ID_RIFTER])
+	assert_array(spawnable_ids).contains_exactly(ACTIVE_IDS)
 
 	catalog.free()
 
@@ -114,6 +120,11 @@ func test_real_catalog_base_stats_match_gdd() -> void:
 		ID_RIFTER: [32, 12.0],
 		ID_WARPED_WARDEN: [500, 25.0],
 		ID_VAULT_SENTINEL: [250, 25.0],
+		ID_SPINNER: [44, 10.0],
+		ID_SNIPER: [28, 14.0],
+		ID_MORTAR: [40, 14.0],
+		ID_WEAVER: [30, 9.0],
+		ID_SPLITTER: [40, 12.0],
 	}
 
 	for id: int in expected:

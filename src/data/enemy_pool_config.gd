@@ -38,3 +38,16 @@ extends Resource
 ## enemy_count_max, the smaller of the two caps wins. Guaranteed/min_count types are
 ## never trimmed below their required counts.
 @export var max_enemies_per_marker: int = 0
+
+## ADR-0018 — chance (0..1) that each spawned non-boss enemy is promoted to an elite.
+## ELITE rooms add BulletHellTuning.elite_room_bonus on top.
+@export_range(0.0, 1.0) var elite_chance: float = 0.0
+
+## ADR-0018 — the wave is split into this many groups. Group 0 spawns at combat start;
+## each later group arrives as reinforcements while the fight is still going.
+## 1 = the whole wave spawns at once (pre-ADR-0018 behaviour).
+@export_range(1, 5) var reinforcement_groups: int = 1
+
+## ADR-0018 — the next reinforcement group arrives once this many enemies (or fewer)
+## are still alive on the field.
+@export var reinforcement_trigger_alive: int = 2

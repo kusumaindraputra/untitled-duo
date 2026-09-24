@@ -72,3 +72,11 @@ extends Resource
 
 ## Label beside the Special meter when it is full (names the keyboard + pad bindings).
 @export var special_ready_label: String = "SPECIAL READY — F / RMB / Y"
+
+@export_group("Bullet Hell (ADR-0018)")
+
+## Prefix on an elite enemy's preview name label (e.g. "★ Rifter").
+@export var elite_prefix: String = "★ "
+
+## Callout floated when a boss enters a new pattern phase. Renders "{label} {n}".
+@export var boss_phase_label: String = "PHASE"

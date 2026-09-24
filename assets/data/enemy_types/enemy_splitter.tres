@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="EnemyType" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_type.gd" id="1_enemy_type"]
+[ext_resource type="PackedScene" path="res://src/gameplay/EnemyInstance.tscn" id="2_scene"]
+[ext_resource type="Script" path="res://src/data/bullet_pattern.gd" id="3_bp"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/splitter_death_ring.tres" id="p_death"]
+
+[resource]
+script = ExtResource("1_enemy_type")
+id = 10
+name = "Splitter"
+archetype = 0
+prana_affiliation = 4
+base_hp = 40
+base_damage = 12.0
+base_move_speed = 75.0
+drop_prana_type = 4
+drop_rate = 0.4
+wave_threat_value = 1
+sprite_size = Vector2i(16, 16)
+debug_color = Color(1, 0.85, 0.3, 1)
+status = 0
+scene = ExtResource("2_scene")
+death_pattern = ExtResource("p_death")

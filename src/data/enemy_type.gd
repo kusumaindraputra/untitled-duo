@@ -26,3 +26,12 @@ extends Resource
 ## Visual scale multiplier for wave spawn tween target. 1.0 = normal enemy, 2.5 = boss.
 ## Read by WaveManager._spawn_wave() to set the pop-in tween final scale. (LD-03)
 @export var base_scale: float = 1.0
+
+@export_group("Bullet Patterns (ADR-0018)")
+## Attack layers fired on their own interval while the enemy is active. Each layer's
+## hp_threshold gates it by HP ratio, which is how bosses gain layers per phase.
+@export var pattern_layers: Array[BulletPattern] = []
+## Volley released once when this enemy dies (Splitter). Null = none.
+@export var death_pattern: BulletPattern = null
+## SHOOTER archetype — distance (px) it backs away to keep from Fayde.
+@export var keep_distance: float = 150.0

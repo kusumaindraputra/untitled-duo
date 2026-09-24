@@ -72,7 +72,7 @@ Players do not engage with Enemy Data as a system. They engage with enemy types 
 
 ---
 
-**The MVP Enemy Catalog (4 active + 2 boss stubs):**
+**The MVP Enemy Catalog (9 active + 2 boss stubs):**
 
 | ID | Name | Archetype | Prana Affiliation | `base_hp` | `base_damage` | `base_move_speed` | `drop_prana_type` | `drop_rate` | `wave_threat_value` | Sprite Size | Status |
 |----|------|-----------|-------------------|-----------|---------------|-------------------|-------------------|-------------|---------------------|-------------|--------|
@@ -82,8 +82,15 @@ Players do not engage with Enemy Data as a system. They engage with enemy types 
 | 4 | **Rifter** | Shooter | Nature (Verdant) | 32 | 12.0 | 35 px/s | Verdant (ID 4) | *0.40* | 2 | 14×14 px | active |
 | 3 | **Warped Warden** | Boss | null | 500 | 25.0 | 40 px/s | null | null | null | 48×48 px | vs_scope |
 | 5 | **Vault Sentinel** | Boss | null | 250 | 25.0 | 65 px/s | null | null | null | 48×48 px | vs_scope |
+| 6 | **Spinner** | Shooter | Fire (Ashfire) | 44 | 10.0 | 30 px/s | Ashfire (ID 0) | *0.40* | 2 | 16×16 px | active |
+| 7 | **Sniper** | Shooter | Ice (Deepfrost) | 28 | 14.0 | 40 px/s | Deepfrost (ID 3) | *0.40* | 2 | 16×16 px | active |
+| 8 | **Mortar** | Shooter | Shadow (Voidblue) | 40 | 14.0 | 25 px/s | Voidblue (ID 1) | *0.40* | 2 | 16×16 px | active |
+| 9 | **Weaver** | Swarmer | Lightning (Stormgold) | 30 | 9.0 | 65 px/s | Stormgold (ID 2) | *0.40* | 1 | 16×16 px | active |
+| 10 | **Splitter** | Seeker | Nature (Verdant) | 40 | 12.0 | 75 px/s | Verdant (ID 4) | *0.40* | 1 | 16×16 px | active |
 
 *Affiliation column is cosmetic/drop-typing only since 2026-06-21. Drop values (`drop_rate`, `drop_prana_type`) remain provisional — subject to revision after Prana Drop / Loot GDD is authored. Rifter fills the prior "no Verdant-affiliated enemy" gap noted in the Open Questions.*
+
+*IDs 6–10 (2026-09-24, ADR-0018) are the bullet-hell roster. Their attacks are data, not code: each EnemyType carries `pattern_layers` (and Splitter a `death_pattern`) pointing at BulletPattern resources in `assets/data/bullet_patterns/`. Behaviour per pattern is specified in `design/gdd/bullet-hell.md`.*
 
 ---
 

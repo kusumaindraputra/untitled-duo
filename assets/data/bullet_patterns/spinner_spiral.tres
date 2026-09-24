@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BulletPattern" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/bullet_pattern.gd" id="1_bp"]
+
+[resource]
+script = ExtResource("1_bp")
+interval = 0.16
+initial_delay = 0.6
+windup_sec = 0.0
+shape = 3
+count = 3
+spin_deg = 13.0
+aim_at_player = false
+speed = 120.0
+damage_mult = 0.6
+bullet_radius = 3.5
+max_range = 380.0
+color = Color(1, 0.45, 0.85, 1)
