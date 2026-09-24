@@ -117,6 +117,12 @@ var chain_dots_container: HBoxContainer = null
 ## Null in headless tests.
 var _dash_hint_label: Label = null
 
+## Special meter bar (beside the dash icon); fills from SpellCastingEffects.special_meter_changed.
+var _special_bar: ProgressBar = null
+
+## Text over the Special meter: "SPECIAL" while charging, the ready prompt when full.
+var _special_label: Label = null
+
 ## ColorRect icon dimmed when dash is on cooldown (AC-DH-04, AC-DH-05).
 ## Null in headless tests.
 var _dash_cooldown_icon: ColorRect = null
@@ -242,6 +248,7 @@ func _ready() -> void:
 	SpellCastingEffects.chain_index_changed.connect(_on_chain_index_changed)
 	SpellCastingEffects.spell_hit_element.connect(_on_spell_hit_element)
 	SpellCastingEffects.cast_hit_started.connect(_on_cast_hit_started)
+	SpellCastingEffects.special_meter_changed.connect(_on_special_meter_changed)
 	CombinationResolution.combo_resolved.connect(_on_combo_resolved)
 	if player_controller != null:
 		player_controller.dash_cooldown_changed.connect(_on_dash_cooldown_changed)
@@ -304,6 +311,8 @@ func _exit_tree() -> void:
 		SpellCastingEffects.spell_hit_element.disconnect(_on_spell_hit_element)
 	if SpellCastingEffects.cast_hit_started.is_connected(_on_cast_hit_started):
 		SpellCastingEffects.cast_hit_started.disconnect(_on_cast_hit_started)
+	if SpellCastingEffects.special_meter_changed.is_connected(_on_special_meter_changed):
+		SpellCastingEffects.special_meter_changed.disconnect(_on_special_meter_changed)
 	if CombinationResolution.combo_resolved.is_connected(_on_combo_resolved):
 		CombinationResolution.combo_resolved.disconnect(_on_combo_resolved)
 	if is_instance_valid(player_controller) and \
@@ -353,6 +362,31 @@ func _create_ui_nodes() -> void:
 	_dash_cooldown_icon.color.a = 1.0
 	_dash_cooldown_icon.visible = false
 	add_child(_dash_cooldown_icon)
+
+	_special_bar = ProgressBar.new()
+	_special_bar.max_value = 100.0
+	_special_bar.value = 0.0
+	_special_bar.show_percentage = false
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0.08, 0.08, 0.10, 0.85)
+	_special_bar.add_theme_stylebox_override(&"background", bg)
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = Color.WHITE  # tinted via modulate: grey while charging, core colour when full
+	_special_bar.add_theme_stylebox_override(&"fill", fill)
+	_special_bar.position = Vector2(32, 104)
+	_special_bar.size = Vector2(176, 16)
+	_special_bar.modulate = Color(0.75, 0.75, 0.75)
+	_special_bar.visible = false
+	add_child(_special_bar)
+
+	_special_label = Label.new()
+	_special_label.text = _COPY.special_label
+	_special_label.add_theme_font_size_override(&"font_size", 11)
+	_special_label.add_theme_color_override(&"font_outline_color", Color.BLACK)
+	_special_label.add_theme_constant_override(&"outline_size", 4)
+	_special_label.position = Vector2(36, 104)
+	_special_label.visible = false
+	add_child(_special_label)
 
 	_combo_counter_label = Label.new()
 	_combo_counter_label.visible = false
@@ -754,6 +788,9 @@ func _on_run_started() -> void:
 	if _dash_cooldown_icon != null:
 		_dash_cooldown_icon.color.a = 1.0
 		_dash_cooldown_icon.visible = false
+	if _special_bar != null:
+		_special_bar.visible = false
+		_special_label.visible = false
 	if _floor_label != null:
 		_floor_label.text = "Floor 1"
 	_free_all_damage_labels()
@@ -848,6 +885,9 @@ func _on_preparation_started(_idx: int, _rem: int) -> void:
 	if _dash_cooldown_icon != null:
 		_dash_cooldown_icon.color.a = 1.0
 		_dash_cooldown_icon.visible = false
+	if _special_bar != null:
+		_special_bar.visible = false
+		_special_label.visible = false
 	if _floor_label != null:
 		var floor_num: int = RunManager.get_run_data().get("current_floor", 1)
 		_floor_label.text = "Floor %d" % floor_num
@@ -859,11 +899,33 @@ func _on_combat_started(_is_boss: bool = false) -> void:
 		_dash_hint_label.visible = true
 	if _dash_cooldown_icon != null:
 		_dash_cooldown_icon.visible = true
+	if _special_bar != null:
+		_special_bar.visible = true
+		_special_label.visible = true
 	# Show the chain dots immediately so the cast-flash is visible on the first cast.
 	# _rebuild_dots with 1 gray dot = "ready to cast" baseline indicator.
 	if chain_dots_container.get_child_count() == 0:
 		_rebuild_dots(0, 1)
 	chain_dots_container.visible = true
+
+
+## Handles special_meter_changed from SpellCastingEffects: fills the bar, and when full
+## tints it in the core Prana colour and swaps the label to the ready prompt.
+func _on_special_meter_changed(value: float, max_value: float) -> void:
+	if _special_bar == null:
+		return
+	_special_bar.max_value = max_value
+	_special_bar.value = value
+	var is_full: bool = max_value > 0.0 and value >= max_value
+	_special_label.text = _COPY.special_ready_label if is_full else _COPY.special_label
+	var tint: Color = Color(0.75, 0.75, 0.75)
+	if is_full:
+		tint = Color.WHITE
+		if _current_primary_type >= 0:
+			var prana_type := PranaCatalog.get_type(_current_primary_type)
+			if prana_type != null:
+				tint = prana_type.color
+	_special_bar.modulate = tint
 
 
 ## Handles chain_index_changed from SpellCastingEffects.

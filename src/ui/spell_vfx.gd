@@ -44,6 +44,15 @@ const COMBO_ENDER_AMPLIFY: float = 1.5
 ## resolve that reinforces the HUD callout (ADR-0016 recognition layer).
 const CASCADE_SHAKE_MULT: float = 1.2
 
+## Screen-shake amplifier for the Special burst — the biggest planned kick in combat.
+const SPECIAL_SHAKE_MULT: float = 2.0
+
+## Shared copy (Perfect callout text).
+const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
+
+## Perfect window timings for the combo ring's sweet-spot marker.
+const _ATTACK_TUNING: AttackTuning = preload("res://assets/data/attack_tuning.tres")
+
 ## Minimum real-time gap (usec) between two floating callouts of the same reaction name.
 const REACTION_LABEL_COOLDOWN_US: int = 600_000
 
@@ -123,6 +132,8 @@ func _ready() -> void:
 	SpellCastingEffects.combo_window_opened.connect(_on_combo_window_opened)
 	SpellCastingEffects.reaction_triggered.connect(_on_reaction_triggered)
 	SpellCastingEffects.cascade_burst.connect(_on_cascade_burst)
+	SpellCastingEffects.perfect_cast.connect(_on_perfect_cast)
+	SpellCastingEffects.special_fired.connect(_on_special_fired)
 	CombinationResolution.combo_resolved.connect(_on_combo_resolved)
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	HealthAndDamage.damage_taken.connect(_on_damage_taken)
@@ -169,6 +180,10 @@ func _exit_tree() -> void:
 		SpellCastingEffects.reaction_triggered.disconnect(_on_reaction_triggered)
 	if SpellCastingEffects.cascade_burst.is_connected(_on_cascade_burst):
 		SpellCastingEffects.cascade_burst.disconnect(_on_cascade_burst)
+	if SpellCastingEffects.perfect_cast.is_connected(_on_perfect_cast):
+		SpellCastingEffects.perfect_cast.disconnect(_on_perfect_cast)
+	if SpellCastingEffects.special_fired.is_connected(_on_special_fired):
+		SpellCastingEffects.special_fired.disconnect(_on_special_fired)
 	if GameStateManager.preparation_started.is_connected(_on_preparation_started):
 		GameStateManager.preparation_started.disconnect(_on_preparation_started)
 	if _in_hitstop:
@@ -286,6 +301,8 @@ func _on_combo_window_opened(window_duration: float) -> void:
 	var ring := _ComboRing.new()
 	ring.duration = window_duration
 	ring.ring_color = color
+	ring.perfect_start = _ATTACK_TUNING.perfect_window_start
+	ring.perfect_end = _ATTACK_TUNING.perfect_window_end
 	ring.top_level = true
 	ring.global_position = (player as Node2D).global_position
 	get_tree().root.add_child(ring)
@@ -337,6 +354,36 @@ func _on_cascade_burst(lead_type: int, world_pos: Vector2, radius: float) -> voi
 	ring.global_position = world_pos
 	_audio_play(&"sfx_combo_ender")
 	_start_shake(CASCADE_SHAKE_MULT)
+
+
+## Floats "PERFECT" (or "PERFECT ×N" on a streak) where the Perfect hit landed.
+## Not throttled: each Perfect is a deliberate, timed press worth acknowledging.
+func _on_perfect_cast(world_pos: Vector2, streak: int) -> void:
+	if _dying or get_tree() == null or get_tree().root == null:
+		return
+	var label := _ReactionLabel.new()
+	label.text = _COPY.perfect_label if streak <= 1 else "%s ×%d" % [_COPY.perfect_label, streak]
+	label.label_color = Color(1.0, 0.95, 0.6)
+	label.top_level = true
+	get_tree().root.add_child(label)
+	label.global_position = world_pos + Vector2(0.0, -14.0)
+	_audio_play(&"sfx_combo_advance")
+
+
+## Draws the Special: a large burst ring (or a compact one for the Stormgold chain)
+## in the core's colour, plus the heaviest shake and hit-stop in combat.
+func _on_special_fired(prana_type_id: int, world_pos: Vector2, radius: float) -> void:
+	if _dying or get_tree() == null or get_tree().root == null:
+		return
+	var type_data: PranaType = PranaCatalog.get_type(prana_type_id)
+	var ring := _BurstRing.new()
+	ring.ring_color = type_data.color if type_data != null else Color.WHITE
+	ring.max_radius = radius if radius > 0.0 else 60.0
+	ring.top_level = true
+	get_tree().root.add_child(ring)
+	ring.global_position = world_pos
+	_audio_play(&"sfx_heavy_hit")
+	_start_shake(SPECIAL_SHAKE_MULT)
 
 
 ## Frees the active combo window ring if one exists. Idempotent.
@@ -757,6 +804,9 @@ class _ComboRing extends Node2D:
 	var duration: float = 2.0
 	## Prana type color for the ring.
 	var ring_color: Color = Color.WHITE
+	## Perfect window (s after the ring opens). end <= start disables the marker.
+	var perfect_start: float = 0.0
+	var perfect_end: float = 0.0
 	## Microsecond timestamp of ring creation.
 	var _start_us: int = 0
 
@@ -780,6 +830,15 @@ class _ComboRing extends Node2D:
 		var end_angle: float = -PI / 2.0 + remaining * TAU
 		draw_arc(Vector2.ZERO, 50.0, -PI / 2.0, end_angle, 32,
 				Color(ring_color, alpha), 3.5, true)
+		if perfect_end <= perfect_start or elapsed > perfect_end:
+			return
+		# Sweet-spot marker: the slice of the ring the sweep crosses during the
+		# Perfect window. While inside it, the whole ring flashes bright.
+		var a_from: float = -PI / 2.0 + clampf(1.0 - perfect_end / duration, 0.0, 1.0) * TAU
+		var a_to: float = -PI / 2.0 + clampf(1.0 - perfect_start / duration, 0.0, 1.0) * TAU
+		draw_arc(Vector2.ZERO, 57.0, a_from, a_to, 8, Color(1.0, 0.95, 0.6, 0.9), 3.0, true)
+		if elapsed >= perfect_start:
+			draw_arc(Vector2.ZERO, 50.0, 0.0, TAU, 40, Color(1.0, 0.95, 0.6, 0.85), 5.0, true)
 
 
 # ── Inner class: hit impact VFX ──────────────────────────────────────────────

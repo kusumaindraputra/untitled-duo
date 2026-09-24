@@ -62,3 +62,13 @@ extends Resource
 ## Banner word shown when a Cascade fires this wave (ADR-0016 recognition layer).
 ## Rendered as "✦ {cascade_label} ×{mult}" by the Combat HUD callout.
 @export var cascade_label: String = "CASCADE"
+
+## Callout floated when a basic attack lands in the Perfect rhythm window.
+## A streak renders as "{perfect_label} ×N".
+@export var perfect_label: String = "PERFECT"
+
+## Label beside the Special meter while it charges.
+@export var special_label: String = "SPECIAL"
+
+## Label beside the Special meter when it is full (names the keyboard + pad bindings).
+@export var special_ready_label: String = "SPECIAL READY — F / RMB / Y"

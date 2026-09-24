@@ -59,6 +59,14 @@ extends Node
 
 # ── State enum ────────────────────────────────────────────────────────────────
 
+## Timing judgement for a basic press (design/gdd/special-attack.md Rule 2).
+enum CastTiming {
+	NORMAL  = 0,  ## Chain start from READY, or a late press after the Perfect window.
+	PERFECT = 1,  ## Inside the Perfect window after the cast lock ended.
+	RUSHED  = 2,  ## Chaining, but before the Perfect window (mashing / buffered).
+}
+
+
 ## Operative state machine for the spell casting lifecycle.
 enum SCEState {
 	IDLE        = 0,  ## No active SpellEffect. Initial state; reset on preparation_started.
@@ -96,6 +104,17 @@ signal reaction_triggered(reaction_name: String, world_pos: Vector2, prana_type_
 ## Emitted when the wave's Cascade burst fires at the end of a chain (GDD Formula 10).
 ## [param radius] is the burst's reach in px (0.0 for chain-shaped bursts).
 signal cascade_burst(lead_type: int, world_pos: Vector2, radius: float)
+
+## Emitted when a basic attack lands inside the Perfect rhythm window.
+## [param streak] counts consecutive Perfects (1 = first). SpellVFX floats the callout.
+signal perfect_cast(world_pos: Vector2, streak: int)
+
+## Emitted whenever the Special meter changes. CombatHUD draws the meter bar.
+signal special_meter_changed(value: float, max_value: float)
+
+## Emitted when the Special fires. [param radius] is the burst's reach in px
+## (0.0 for the Stormgold chain). SpellVFX draws the burst.
+signal special_fired(prana_type_id: int, world_pos: Vector2, radius: float)
 
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -165,6 +184,9 @@ const GLACIAL_FIELD_RADIUS: float = 200.0
 ## Secondary reaction and Cascade knobs (Detonate radius, Surge heal, Cascade facets).
 ## Each reaction's primary value lives on its ReactionDef.magnitude.
 const REACTION_TUNING: ReactionTuning = preload("res://assets/data/reaction_tuning.tres")
+
+## Perfect Cast window and Special attack knobs.
+const ATTACK_TUNING: AttackTuning = preload("res://assets/data/attack_tuning.tres")
 
 ## Attack data per [primary_type][primary_tier][attack_index].
 ## Key "modifier" = tier_attack_modifier used in Formula 3 Step 4.
@@ -280,6 +302,16 @@ var _last_primary_target: Node = null
 ## Number of enemies the most recent attack hit. Surge only heals on a landed hit.
 var _last_attack_hit_count: int = 0
 
+## Damage multiplier for the attack currently firing — perfect_damage_mult on a
+## Perfect, rushed_damage_mult on a Rushed press, else 1.0. Applied in _apply_hit Step 8c.
+var _perfect_mult: float = 1.0
+
+## Consecutive Perfect basic attacks. Resets on a non-Perfect press or chain expiry.
+var _perfect_streak: int = 0
+
+## Special meter, 0..ATTACK_TUNING.special_meter_max. Resets each preparation phase.
+var _special_meter: float = 0.0
+
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
@@ -290,6 +322,14 @@ func _ready() -> void:
 		var ev := InputEventKey.new()
 		ev.keycode = KEY_SPACE
 		InputMap.action_add_event(&"cast", ev)
+	if not InputMap.has_action(&"special"):
+		InputMap.add_action(&"special")
+		var key := InputEventKey.new()
+		key.keycode = KEY_F
+		InputMap.action_add_event(&"special", key)
+		var mouse := InputEventMouseButton.new()
+		mouse.button_index = MOUSE_BUTTON_RIGHT
+		InputMap.action_add_event(&"special", mouse)
 	# Injectable seam initialisation — only set if not already injected by a test.
 	# _rng is typed as RandomNumberGenerator; tests may assign a seeded real RNG for
 	# deterministic rolls. Duck-typed Variant injection (like _health_and_damage) is
@@ -352,10 +392,17 @@ func _process(delta: float) -> void:
 		if _combo_window_timer <= 0.0:
 			# Combo window expired — reset chain to READY
 			_combo_index = 0
+			_perfect_streak = 0
 			_buffer_pressed = false
 			_buffer_timer = 0.0
 			_state = SCEState.READY
 			chain_index_changed.emit(0, _current_spell_effect.combo_attack_count if _current_spell_effect else 0)
+
+	# ── Special input ─────────────────────────────────────────────────────────
+	# The Special overrides cast lock, so it never feels swallowed mid-chain.
+	if InputMap.has_action(&"special") and Input.is_action_just_pressed(&"special"):
+		_trigger_special()
+		return
 
 	# ── Cast input polling ────────────────────────────────────────────────────
 	# Buffer early presses during cast lock; process normally when ready.
@@ -395,10 +442,26 @@ func _trigger_cast() -> void:
 	# Story 003: fire the attack for the just-advanced index.
 	# current_index is _combo_index - 1 because _combo_index was already incremented above.
 	var current_index: int = _combo_index - 1
+	var timing: CastTiming = get_cast_timing()
+	var perfect: bool = timing == CastTiming.PERFECT
+	var rushed: bool = timing == CastTiming.RUSHED
+	_perfect_mult = ATTACK_TUNING.perfect_damage_mult if perfect \
+		else (ATTACK_TUNING.rushed_damage_mult if rushed else 1.0)
 	_fire_attack(current_index)
+	_perfect_mult = 1.0
 	_apply_surge_heal()
-	if _combo_index == combo_count:
-		_fire_cascade(_last_primary_target)
+	var is_secondary: bool = ATTACK_DATA[_current_spell_effect.primary_type][_current_spell_effect.primary_tier][current_index]["modifier"] == 0.0
+	var landed: bool = _last_attack_hit_count > 0 or is_secondary
+	if perfect and landed:
+		_perfect_streak += 1
+		var at: Node = _last_primary_target if _is_live(_last_primary_target) else _fayde_ref
+		perfect_cast.emit(_pos_of(at), _perfect_streak)
+	else:
+		_perfect_streak = 0
+	if landed and not rushed:
+		_add_special_meter(ATTACK_TUNING.special_gain_perfect if perfect else ATTACK_TUNING.special_gain_hit)
+	if _combo_index == combo_count and not rushed:
+		_fire_cascade(_last_primary_target, ATTACK_TUNING.perfect_cascade_mult if perfect else 1.0)
 
 	var lock_dur: float = ASHFIRE_CAST_LOCK_DURATION if _current_spell_effect.primary_type == GameEnums.DamageClass.FIRE \
 		else CAST_LOCK_DURATION
@@ -519,6 +582,9 @@ func _apply_hit(target: Node, pt: int, tier_mod: float, se: SpellEffect,
 
 	# Step 8b — apply run-wide sigil damage multiplier (1.0 = no sigil).
 	raw *= _run_damage_mult
+
+	# Step 8c — Perfect Cast bonus (1.0 unless this attack landed in the rhythm window).
+	raw *= _perfect_mult
 
 	# Step 9 — deliver damage (element-neutral; affiliation cut 2026-06-21).
 	_health_and_damage.apply_damage(target, raw, GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
@@ -920,11 +986,158 @@ func _apply_surge_heal() -> void:
 	_health_and_damage.apply_heal(_fayde_ref, REACTION_TUNING.surge_heal)
 
 
+## Adds [param amount] to the Special meter (capped) and notifies listeners.
+func _add_special_meter(amount: float) -> void:
+	var cap: float = ATTACK_TUNING.special_meter_max
+	var before: float = _special_meter
+	_special_meter = minf(_special_meter + amount, cap)
+	if _special_meter != before:
+		special_meter_changed.emit(_special_meter, cap)
+
+
+## Fires the Special (design/gdd/special-attack.md). The core type sets the shape and
+## signature; each non-primary Prana in the grid infuses its facet; armed reactions ride
+## on the same primitives (Burn, Blind, Stun, Freeze) so they trigger too.
+## No-op unless a SpellEffect is cached and the meter is full.
+func _trigger_special() -> void:
+	var se: SpellEffect = _current_spell_effect
+	if se == null or _state == SCEState.IDLE or not is_special_ready():
+		return
+	var t: AttackTuning = ATTACK_TUNING
+	_special_meter = 0.0
+	special_meter_changed.emit(_special_meter, t.special_meter_max)
+	# The Special is its own "cast" for once-per-chain reactions (Detonate, Short Circuit,
+	# Thermal Shock), then ends the basic chain.
+	_reset_chain_reaction_state()
+	_combo_index = 0
+	_perfect_streak = 0
+	_buffer_pressed = false
+	_buffer_timer = 0.0
+	chain_index_changed.emit(0, se.combo_attack_count)
+
+	var pt: int = se.primary_type
+	var damage: float = get_special_damage()
+	var origin: Vector2 = _pos_of(_fayde_ref)
+	var radius: float = t.special_radius
+	var hit: Array[Node2D] = []
+	match pt:
+		GameEnums.DamageClass.SHADOW, GameEnums.DamageClass.LIGHTNING:
+			radius = t.special_wide_radius
+	if pt == GameEnums.DamageClass.LIGHTNING:
+		hit = _nearest_enemies(origin, [], t.special_chain_targets, radius)
+	else:
+		hit = _enemies_within(origin, radius)
+
+	var dealt_total: float = 0.0
+	for enemy: Node2D in hit:
+		var amount: float = damage
+		if pt == GameEnums.DamageClass.FIRE and _status_effects.has_status(enemy, GameEnums.BaseStatus.BURN):
+			amount *= t.eruption_burning_mult  # Eruption consumes existing fire
+		dealt_total += _special_hit(enemy, amount, pt)
+		match pt:
+			GameEnums.DamageClass.FIRE:
+				_apply_burn(enemy, t.special_burn_duration, BASE_SPELL_DAMAGE * se.base_damage_modifier)
+			GameEnums.DamageClass.SHADOW:
+				_status_effects.apply_status(enemy, GameEnums.BaseStatus.BLIND, t.special_blind_duration)
+				_pull_toward(enemy, origin, t.eclipse_pull_distance)
+			GameEnums.DamageClass.LIGHTNING:
+				_apply_stun(enemy, t.special_stun_duration)
+			GameEnums.DamageClass.ICE:
+				_status_effects.apply_status(enemy, GameEnums.BaseStatus.FREEZE, t.special_freeze_duration)
+	if pt == GameEnums.DamageClass.LIGHTNING and not hit.is_empty():
+		_try_superconduct(hit[0], hit, damage)
+
+	if pt == GameEnums.DamageClass.NATURE and _fayde_ref != null:
+		if not hit.is_empty():
+			_health_and_damage.apply_heal(_fayde_ref, damage * t.special_heal_ratio)
+		_status_effects.apply_status(_fayde_ref, GameEnums.BaseStatus.REGENERATE, t.sanctuary_regen_duration)
+
+	_apply_special_infusions(se, origin, hit)
+
+	special_fired.emit(pt, origin, 0.0 if pt == GameEnums.DamageClass.LIGHTNING else radius)
+	cast_hit_started.emit(t.special_lock_duration)
+	_cast_lock_timer = t.special_lock_duration
+	_state = SCEState.CAST_LOCKED
+	_combo_window_timer = _combo_window_duration()
+
+
+## One Special hit: Shatter, Thermal Shock, sigil mult, then Siphon and Detonate —
+## the reaction hooks of _apply_hit without the basic attack's knockback or crit.
+## Returns the damage dealt.
+func _special_hit(target: Node, amount: float, pt: int) -> float:
+	if not _is_live(target):
+		return 0.0
+	var raw: float = _status_effects.check_and_apply_shatter(target, amount)
+	var target_id: int = target.get_instance_id()
+	var thermal: ReactionDef = _armed(GameEnums.ReactionKind.THERMAL_SHOCK)
+	if thermal != null and not _chain_hit_ids.has(target_id):
+		var thermal_raw: float = amount * (1.0 + thermal.magnitude)
+		if thermal_raw > raw:
+			raw = thermal_raw
+			_emit_reaction(thermal, target, GameEnums.DamageClass.FIRE)
+	_chain_hit_ids[target_id] = true
+	var target_blinded: bool = _status_effects.has_status(target, GameEnums.BaseStatus.BLIND)
+	raw *= _run_damage_mult
+	_health_and_damage.apply_damage(target, raw, GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
+	spell_hit_element.emit(target, pt)
+	var siphon: ReactionDef = _armed(GameEnums.ReactionKind.SIPHON)
+	if siphon != null and target_blinded and _fayde_ref != null:
+		_health_and_damage.apply_heal(_fayde_ref, raw * siphon.magnitude)
+		_emit_reaction(siphon, target, GameEnums.DamageClass.NATURE)
+	_try_detonate(target)
+	return raw
+
+
+## Applies each non-primary Prana's facet to the Special. Tier 2 non-primaries
+## scale the facet by infusion_tier2_mult. Unknown or primary-typed entries are skipped.
+func _apply_special_infusions(se: SpellEffect, origin: Vector2, hit: Array[Node2D]) -> void:
+	var t: AttackTuning = ATTACK_TUNING
+	for entry: Variant in se.non_primary_modifiers:
+		var npm: NonPrimaryModifier = entry as NonPrimaryModifier
+		if npm == null or npm.type_id == se.primary_type:
+			continue
+		var scale: float = t.infusion_tier2_mult if npm.tier >= 2 else 1.0
+		match npm.type_id:
+			GameEnums.DamageClass.FIRE:
+				for enemy: Node2D in hit:
+					if _is_live(enemy):
+						_apply_burn(enemy, t.infusion_burn_duration * scale, BASE_SPELL_DAMAGE)
+			GameEnums.DamageClass.SHADOW:
+				for enemy: Node2D in hit:
+					if _is_live(enemy):
+						_status_effects.apply_status(enemy, GameEnums.BaseStatus.BLIND, t.infusion_blind_duration * scale)
+			GameEnums.DamageClass.LIGHTNING:
+				var arcs: Array[Node2D] = _nearest_enemies(origin, hit,
+					roundi(t.infusion_arc_targets * scale), t.special_wide_radius)
+				for enemy: Node2D in arcs:
+					_special_hit(enemy, get_special_damage() * 0.5, GameEnums.DamageClass.LIGHTNING)
+					if _is_live(enemy):
+						_apply_stun(enemy, t.infusion_arc_stun_duration)
+			GameEnums.DamageClass.ICE:
+				for enemy: Node2D in hit:
+					if _is_live(enemy):
+						_status_effects.apply_status(enemy, GameEnums.BaseStatus.FREEZE, t.infusion_freeze_duration * scale)
+			GameEnums.DamageClass.NATURE:
+				if _fayde_ref != null:
+					_health_and_damage.apply_heal(_fayde_ref, t.infusion_heal * scale)
+
+
+## Pulls [param enemy] up to [param distance] px toward [param origin], never past it.
+## Duck-typed on apply_knockback (negative direction = pull).
+func _pull_toward(enemy: Node2D, origin: Vector2, distance: float) -> void:
+	if not _is_live(enemy) or not enemy.has_method(&"apply_knockback"):
+		return
+	var to_origin: Vector2 = origin - enemy.global_position
+	var dist: float = minf(distance, maxf(to_origin.length() - 24.0, 0.0))
+	if dist > 0.0:
+		enemy.apply_knockback(to_origin, dist)
+
+
 ## Fires the wave's Cascade burst after the chain's final attack (GDD Formula 10).
 ## The lead (core type) sets the shape; each modifier adds its facet to every enemy hit.
 ## [param origin_target] is the chain's last primary target; without one only a Verdant
 ## lead (a Fayde-centred bloom) still fires.
-func _fire_cascade(origin_target: Node) -> void:
+func _fire_cascade(origin_target: Node, perfect_mult: float = 1.0) -> void:
 	var se: SpellEffect = _current_spell_effect
 	if se == null or se.active_cascade == null:
 		return
@@ -935,7 +1148,7 @@ func _fire_cascade(origin_target: Node) -> void:
 		return
 	var tuning: ReactionTuning = REACTION_TUNING
 	var origin: Vector2 = _pos_of(origin_target) if has_origin else _pos_of(_fayde_ref)
-	var burst_damage: float = roundf(BASE_SPELL_DAMAGE * se.base_damage_modifier * cascade.cascade_mult)
+	var burst_damage: float = roundf(BASE_SPELL_DAMAGE * se.base_damage_modifier * cascade.cascade_mult * perfect_mult)
 
 	# Lead shape — who the burst reaches.
 	var hit: Array[Node2D] = []
@@ -995,6 +1208,48 @@ func get_regen_multiplier() -> float:
 	return 1.0
 
 
+## True when the time since the cast lock ended falls inside the Perfect window
+## (AttackTuning.perfect_window_start..end). Only true while CHAINING, so buffered
+## presses — which fire the instant the lock ends — never count.
+func is_in_perfect_window() -> bool:
+	return get_cast_timing() == CastTiming.PERFECT
+
+
+## Judges a basic press made right now. Only presses while CHAINING are judged:
+## a chain start from READY is always NORMAL.
+func get_cast_timing() -> CastTiming:
+	if _state != SCEState.CHAINING:
+		return CastTiming.NORMAL
+	var elapsed: float = _combo_window_duration() - _combo_window_timer
+	if elapsed < ATTACK_TUNING.perfect_window_start:
+		return CastTiming.RUSHED
+	if elapsed <= ATTACK_TUNING.perfect_window_end:
+		return CastTiming.PERFECT
+	return CastTiming.NORMAL
+
+
+## Current Special meter value (0..AttackTuning.special_meter_max).
+func get_special_meter() -> float:
+	return _special_meter
+
+
+## True when the Special meter is full.
+func is_special_ready() -> bool:
+	return _special_meter >= ATTACK_TUNING.special_meter_max
+
+
+## Per-enemy Special damage before Shatter, reactions, and sigils:
+## BASE × base_damage_modifier × special_damage_mult × (1 + tier_bonus × (tier − 1)).
+## Returns 0.0 when no SpellEffect is cached.
+func get_special_damage() -> float:
+	var se: SpellEffect = _current_spell_effect
+	if se == null:
+		return 0.0
+	var t: AttackTuning = ATTACK_TUNING
+	return BASE_SPELL_DAMAGE * clampf(se.base_damage_modifier, 0.0, 1.40) * t.special_damage_mult \
+		* (1.0 + t.special_tier_bonus * float(se.primary_tier - 1))
+
+
 ## Sigil: multiplies the run-wide spell damage multiplier by [param factor]
 ## (e.g. 1.20 = +20% damage). Stacks multiplicatively; persists for the run.
 func apply_damage_mult(factor: float) -> void:
@@ -1034,6 +1289,9 @@ func _on_preparation_started(_idx: int, _rem: int) -> void:
 	_combo_window_timer = 0.0
 	_armed_reactions.clear()
 	_reset_chain_reaction_state()
+	_perfect_streak = 0
+	_special_meter = 0.0
+	special_meter_changed.emit(_special_meter, ATTACK_TUNING.special_meter_max)
 
 
 ## Marks SC&E as in-combat so the next combo_resolved can transition to READY.
