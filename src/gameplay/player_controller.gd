@@ -15,6 +15,10 @@ signal dash_cooldown_changed(available: bool)
 ## Emitted whenever a dash charge is spent or recharged (ADR-0018).
 signal dash_charges_changed(charges: int, max_charges: int)
 
+## Emitted when a dash passes through an enemy bullet or hazard that would have hit
+## (ADR-0019 Perfect Dodge). At most once per dash, gated by a cooldown.
+signal perfect_dodged(world_pos: Vector2)
+
 # ── Enums ─────────────────────────────────────────────────────────────────────
 
 enum ControllerState { DISABLED, ENABLED, DASHING }
@@ -30,6 +34,7 @@ const DASH_DURATION: float = 0.15
 ## Dash charges, recharge time, hurtbox dot and graze ring (ADR-0018). The old single
 ## 2.0 s DASH_COOLDOWN is now BULLET_HELL_TUNING.dash_charges × dash_recharge_sec.
 const BULLET_HELL_TUNING: BulletHellTuning = preload("res://assets/data/bullet_hell_tuning.tres")
+const PACE_TUNING: PaceTuning = preload("res://assets/data/pace_tuning.tres")
 const FOOTSTEP_INTERVAL_SEC: float = 0.38           # activated: Story PC-004
 const FOOTSTEP_VELOCITY_THRESHOLD: float = 10.0     # activated: Story PC-004
 
@@ -95,6 +100,15 @@ var _hurt_dot: _HurtboxDot = null
 ## fresh scene/run. Applied to MOVE_SPEED and DASH_COOLDOWN at their use sites.
 var _move_speed_mult: float = 1.0
 var _dash_cooldown_mult: float = 1.0
+## ADR-0019 bullet-hell sigils: extra dash charges, graze ring multiplier and the
+## dash-cut radius (0 = dash does not cut bullets).
+var _bonus_dash_charges: int = 0
+var _graze_radius_mult: float = 1.0
+var _dash_cut_radius: float = 0.0
+## ADR-0019 Perfect Dodge: true once the current dash has already counted, plus the
+## real-time cooldown before another dash can count.
+var _perfect_dodged_this_dash: bool = false
+var _perfect_dodge_cd: float = 0.0
 var _cast_beam_timer: float = 0.0     # countdown; > 0.0 means cast beam visible (debug)
 var _cast_prana_type: int = -1        # primary type of last resolved spell; -1 = none
 var _blink_timer: float = 0.0         # counts up; toggles modulate.a every BLINK_INTERVAL
@@ -149,7 +163,7 @@ func _ready() -> void:
 	_setup_camera_smoothing()
 	_hurt_dot = _HurtboxDot.new()
 	_hurt_dot.hurt_radius = BULLET_HELL_TUNING.player_hurt_radius
-	_hurt_dot.graze_radius = BULLET_HELL_TUNING.graze_radius
+	_hurt_dot.graze_radius = get_graze_radius()
 	_hurt_dot.visible = false
 	add_child(_hurt_dot)
 	if is_instance_valid(_iso_char):
@@ -263,6 +277,7 @@ func _physics_process(delta: float) -> void:
 				velocity = dash_dir * DASH_SPEED
 				_controller_state = ControllerState.DASHING
 				_dash_duration_timer = DASH_DURATION
+				_perfect_dodged_this_dash = false
 				_is_invincible = true
 				collision_mask = COLLISION_MASK_DASHING
 				_cast_lock_timer = 0.0  # dash cancels cast lock (GDD Rule 6)
@@ -281,7 +296,11 @@ func _physics_process(delta: float) -> void:
 			velocity *= CAST_LOCK_SPEED_FACTOR
 
 	# ── DASHING: duration countdown ───────────────────────────────────────────
+	if _perfect_dodge_cd > 0.0:
+		_perfect_dodge_cd = maxf(_perfect_dodge_cd - delta, 0.0)
 	if _controller_state == ControllerState.DASHING:
+		if _dash_cut_radius > 0.0 and is_inside_tree():
+			_cut_bullets()
 		_dash_duration_timer -= delta
 		if _dash_duration_timer <= 0.0:
 			_controller_state = ControllerState.ENABLED
@@ -380,9 +399,70 @@ func get_dash_charges() -> int:
 	return _dash_charges
 
 
-## Maximum dash charges (BulletHellTuning.dash_charges, at least 1).
+## Maximum dash charges (BulletHellTuning.dash_charges, at least 1, plus sigils).
 func _max_dash_charges() -> int:
-	return maxi(BULLET_HELL_TUNING.dash_charges, 1)
+	return maxi(BULLET_HELL_TUNING.dash_charges, 1) + _bonus_dash_charges
+
+
+## Maximum dash charges including sigil bonuses (ADR-0019).
+func get_max_dash_charges() -> int:
+	return _max_dash_charges()
+
+
+## True while a dash is in progress (dash i-frames, not post-hit grace).
+func is_dashing() -> bool:
+	return _controller_state == ControllerState.DASHING and _dash_duration_timer > 0.0
+
+
+## ADR-0019 Perfect Dodge. Enemy bullets and hazards call this when they overlap
+## Fayde's hurtbox. Counts only during a dash, once per dash, and not again until
+## PaceTuning.perfect_dodge_cooldown_sec has passed. Returns true when it counted.
+func register_perfect_dodge(world_pos: Vector2) -> bool:
+	if not is_dashing() or _perfect_dodged_this_dash or _perfect_dodge_cd > 0.0:
+		return false
+	_perfect_dodged_this_dash = true
+	_perfect_dodge_cd = PACE_TUNING.perfect_dodge_cooldown_sec
+	perfect_dodged.emit(world_pos)
+	return true
+
+
+## Current graze ring radius: BulletHellTuning.graze_radius × graze sigils.
+func get_graze_radius() -> float:
+	return BULLET_HELL_TUNING.graze_radius * _graze_radius_mult
+
+
+## Radius (px) of bullets a dash cuts through, 0 without the dash-cut sigil.
+func get_dash_cut_radius() -> float:
+	return _dash_cut_radius
+
+
+## Sigil: adds [param count] dash charges (granted immediately).
+func add_dash_charges(count: int) -> void:
+	if count <= 0:
+		return
+	_bonus_dash_charges += count
+	_dash_charges = mini(_dash_charges + count, _max_dash_charges())
+	dash_charges_changed.emit(_dash_charges, _max_dash_charges())
+
+
+## Sigil: multiplies the graze ring radius by [param factor]. Stacks multiplicatively.
+func apply_graze_radius_mult(factor: float) -> void:
+	_graze_radius_mult *= factor
+	if is_instance_valid(_hurt_dot):
+		_hurt_dot.graze_radius = get_graze_radius()
+		_hurt_dot.queue_redraw()
+
+
+## Sigil: dashes cut enemy bullets within [param radius] px. Keeps the largest radius.
+func set_dash_cut_radius(radius: float) -> void:
+	_dash_cut_radius = maxf(_dash_cut_radius, radius)
+
+
+## Dash-cut sigil: wipes bullets around Fayde while dashing; each feeds the meter.
+func _cut_bullets() -> void:
+	var n: int = Projectile.cancel_in_radius(get_tree(), global_position, _dash_cut_radius)
+	if n > 0:
+		SpellCastingEffects.add_special_meter(float(n) * PACE_TUNING.cancel_meter_gain)
 
 
 ## Seconds to recharge one dash charge, scaled by dash-cooldown sigils.
@@ -469,6 +549,8 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	_dash_duration_timer = 0.0
 	_dash_cooldown_timer = 0.0
 	_dash_charges = _max_dash_charges()
+	_perfect_dodged_this_dash = false
+	_perfect_dodge_cd = 0.0
 	_cast_lock_timer = 0.0
 	_knockback_timer = 0.0
 	if is_instance_valid(_hurt_dot):

@@ -15,3 +15,6 @@ max_enemies_per_marker = 3
 elite_chance = 0.12
 reinforcement_groups = 2
 reinforcement_trigger_alive = 3
+bullet_speed_mult = 1.1
+fire_rate_mult = 1.1
+telegraph_mult = 0.9

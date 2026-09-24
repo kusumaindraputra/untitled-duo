@@ -316,6 +316,10 @@ var _perfect_mult: float = 1.0
 ## Consecutive Perfect basic attacks. Resets on a non-Perfect press or chain expiry.
 var _perfect_streak: int = 0
 
+## ADR-0019 — seconds left in which the next basic cast counts as Perfect whatever its
+## timing (granted by a Perfect Dodge). 0 = no free Perfect pending.
+var _free_perfect_timer: float = 0.0
+
 ## Special meter, 0..ATTACK_TUNING.special_meter_max. Resets each preparation phase.
 var _special_meter: float = 0.0
 
@@ -372,6 +376,8 @@ func _exit_tree() -> void:
 ## Drives all SC&E float accumulator timers per ADR-0004.
 ## Handles CAST_LOCKED expiry, combo window expiry, input buffer, and cast input polling. (TR-SC-002)
 func _process(delta: float) -> void:
+	if _free_perfect_timer > 0.0:
+		_free_perfect_timer = maxf(_free_perfect_timer - delta, 0.0)
 	# ── Input buffer countdown ─────────────────────────────────────────────────
 	if _buffer_timer > 0.0:
 		_buffer_timer -= delta
@@ -450,6 +456,9 @@ func _trigger_cast() -> void:
 	# current_index is _combo_index - 1 because _combo_index was already incremented above.
 	var current_index: int = _combo_index - 1
 	var timing: CastTiming = get_cast_timing()
+	if _free_perfect_timer > 0.0:
+		timing = CastTiming.PERFECT  # ADR-0019 — Perfect Dodge grants a free Perfect
+		_free_perfect_timer = 0.0
 	var perfect: bool = timing == CastTiming.PERFECT
 	var rushed: bool = timing == CastTiming.RUSHED
 	_perfect_mult = ATTACK_TUNING.perfect_damage_mult if perfect \
@@ -1247,6 +1256,24 @@ func register_graze(world_pos: Vector2, mult: float = 1.0) -> void:
 	grazed.emit(world_pos, gain)
 
 
+## Adds [param amount] to the Special meter from outside the attack loop (ADR-0019):
+## kill orbs, Perfect Dodge, bullet cancels. Non-positive amounts are ignored.
+func add_special_meter(amount: float) -> void:
+	if amount > 0.0:
+		_add_special_meter(amount)
+
+
+## ADR-0019 — the next basic cast within [param window_sec] counts as Perfect whatever
+## its timing (Perfect Dodge reward). A new grant refreshes the window.
+func grant_perfect_cast(window_sec: float) -> void:
+	_free_perfect_timer = maxf(window_sec, 0.0)
+
+
+## True while a free Perfect from grant_perfect_cast() is pending.
+func has_free_perfect() -> bool:
+	return _free_perfect_timer > 0.0
+
+
 ## Current Special meter value (0..AttackTuning.special_meter_max).
 func get_special_meter() -> float:
 	return _special_meter
@@ -1309,6 +1336,7 @@ func _on_preparation_started(_idx: int, _rem: int) -> void:
 	_armed_reactions.clear()
 	_reset_chain_reaction_state()
 	_perfect_streak = 0
+	_free_perfect_timer = 0.0
 	_special_meter = 0.0
 	special_meter_changed.emit(_special_meter, ATTACK_TUNING.special_meter_max)
 

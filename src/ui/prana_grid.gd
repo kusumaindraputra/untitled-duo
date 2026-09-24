@@ -24,6 +24,8 @@ const GRID_SIZE := 9
 ## Centralized player-facing copy for the preparation panel (staged for localization
 ## — see /localize). Preloaded so it resolves without _ready() in headless tests.
 const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
+## Quick-continue toggle (ADR-0019).
+const _PACE: PaceTuning = preload("res://assets/data/pace_tuning.tres")
 
 ## Duration in seconds for the centre-slot error flash indicator (AC-PG-05).
 const ERROR_FLASH_DURATION := 0.4
@@ -74,6 +76,8 @@ var _build_readout_label: RichTextLabel = null
 ## Warning shown when the grid is full and the bag still holds Prana — prompts the
 ## player to right-click a slot to discard and make room (Stage 4, rule #5). Null headless.
 var _full_grid_hint: Label = null
+## Quick-continue hint (ADR-0019); visible when is_quick_continue_available().
+var _quick_hint: Label = null
 
 ## Full-size grid panel reference. Null in headless tests. Hidden during LOCKED state.
 var _grid_panel: Control = null
@@ -163,6 +167,11 @@ func _input(event: InputEvent) -> void:
 		return
 	# Keyboard confirm bypass — works regardless of _cursor_visible (Enter key via debug_game_loop).
 	if _state == State.ARRANGEMENT and Input.is_action_just_pressed(&"prana_confirm"):
+		_on_confirm_pressed()
+		return
+	# ADR-0019 quick continue: the cast key (Space) starts the room when nothing changed.
+	# Keys only — the cast action also carries the mouse / pad buttons the grid uses.
+	if event is InputEventKey and event.is_action_pressed(&"cast") and is_quick_continue_available():
 		_on_confirm_pressed()
 		return
 	if not (_cursor_visible and _state == State.ARRANGEMENT):
@@ -447,6 +456,17 @@ func is_loadout_valid() -> bool:
 	return _slots[4] != null
 
 
+## ADR-0019 — true when the next room can start with one press: in ARRANGEMENT, the
+## centre slot is filled and the bag holds nothing to place (build unchanged).
+func is_quick_continue_available() -> bool:
+	if not _PACE.quick_continue or _state != State.ARRANGEMENT:
+		return false
+	if _slots.size() <= 4 or _slots[4] == null:
+		return false
+	var bag: Node = _get_bag()
+	return bag == null or not bag.has_method(&"is_empty") or bag.is_empty()
+
+
 ## Returns the confirmed arrangement as an [Array][PranaFragment] of length 9 (TR-PG-002).
 ## Empty slots are null. Read-only by convention — do not write to the returned array.
 ## Consumed by CombinationResolution and SpellCastingEffects after [signal arrangement_confirmed].
@@ -579,6 +599,15 @@ func _create_ui_nodes() -> void:
 	clear_btn.visible = false
 	buttons.add_child(clear_btn)
 
+	_quick_hint = Label.new()
+	_quick_hint.text = _COPY.quick_continue_hint
+	_quick_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_quick_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_quick_hint.add_theme_font_size_override(&"font_size", 14)
+	_quick_hint.add_theme_color_override(&"font_color", Color(0.55, 1.0, 0.7))
+	_quick_hint.visible = false
+	layout.add_child(_quick_hint)
+
 	_confirm_button = Button.new()
 	_confirm_button.text = _COPY.confirm_button
 	_confirm_button.modulate.a = 0.4
@@ -654,6 +683,10 @@ func _update_confirm_button() -> void:
 	var valid: bool = _slots.size() > 4 and _slots[4] != null
 	_confirm_button.disabled = not valid
 	_confirm_button.modulate.a = 1.0 if valid else 0.4
+	var quick: bool = is_quick_continue_available()
+	_confirm_button.text = _COPY.quick_continue_button if quick else _COPY.confirm_button
+	if _quick_hint != null:
+		_quick_hint.visible = quick
 	_update_build_readout()
 	_update_full_grid_hint()
 

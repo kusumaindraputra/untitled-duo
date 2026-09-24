@@ -37,11 +37,12 @@ const _FLOOR_POOL_PATHS: Array[String] = [
 	"res://assets/data/enemy_pool_configs/enemy_pool_floor2.tres",
 	"res://assets/data/enemy_pool_configs/enemy_pool_floor3.tres",
 ]
-## Per-floor boss pool paths. F1=Sentinel, F2=WarpedWarden mid-boss, F3=Sentinel.
+## Per-floor boss pool paths. F1=Sentinel, F2=WarpedWarden mid-boss, F3=Sentinel
+## (its own config so the ADR-0019 difficulty curve can push it harder than F1).
 const _BOSS_POOL_PATHS: Array[String] = [
 	"res://assets/data/enemy_pool_configs/enemy_pool_boss.tres",
 	"res://assets/data/enemy_pool_configs/enemy_pool_boss_f2.tres",
-	"res://assets/data/enemy_pool_configs/enemy_pool_boss.tres",
+	"res://assets/data/enemy_pool_configs/enemy_pool_boss_f3.tres",
 ]
 
 var _dungeon_graph: DungeonGraph = null
@@ -62,6 +63,9 @@ var _tutorial_layer: CanvasLayer = null
 ## Between-room reward system. Created in _ready(); offers a sigil after each
 ## combat/elite room clear.
 var _sigil_manager: SigilManager = null
+
+## Fast-pace layer (ADR-0019). Created in _ready(), wired to the player and HUD there.
+var _pace_director: PaceDirector = null
 
 ## Run-scoped transient bag of Prana acquired from post-room rewards, awaiting
 ## placement into the grid during the next prep phase. Created in _ready().
@@ -124,6 +128,15 @@ func _ready() -> void:
 	_sigil_manager = SigilManager.new()
 	_sigil_manager.name = "SigilManager"
 	add_child(_sigil_manager)
+	# ADR-0019 fast-pace layer: Perfect Dodge, kill orbs, style rank, kill hitstop.
+	# Wired here (parent _ready) because it needs both the player and the HUD.
+	_pace_director = PaceDirector.new()
+	_pace_director.name = "PaceDirector"
+	add_child(_pace_director)
+	_pace_director.set_player($PlayerController)
+	_pace_director.style_changed.connect(hud.set_style)
+	_pace_director.room_ranked.connect(hud.show_room_rank)
+	_pace_director.perfect_dodge_triggered.connect(hud.show_perfect_dodge)
 	# Transient reward bag: Prana picked from post-room rewards land here, then the
 	# prep grid places them. Found by SigilManager (writer) + PranaGrid (reader) via group.
 	_prana_bag = PranaBag.new()

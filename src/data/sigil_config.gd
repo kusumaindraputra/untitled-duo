@@ -33,6 +33,15 @@ extends Resource
 ## Flat HP restored by the "heal" sigil.
 @export var heal_amount: float = 40.0
 
+## ADR-0019 — extra dash charges granted by the "dash_charge" sigil.
+@export var dash_charge_bonus: int = 1
+
+## ADR-0019 — graze ring multiplier applied by the "graze_ring" sigil (+40%).
+@export var graze_radius_mult: float = 1.4
+
+## ADR-0019 — radius (px) of enemy bullets a dash cuts with the "dash_cut" sigil.
+@export var dash_cut_radius: float = 26.0
+
 @export_group("Copy")
 
 ## Heading shown at the top of the reward-choice overlay.
@@ -53,4 +62,7 @@ extends Resource
 	{"id": &"move_speed", "title": "Swift Step",        "desc": "+15% move speed"},
 	{"id": &"dash_cd",    "title": "Quick Recovery",    "desc": "-25% dash cooldown"},
 	{"id": &"heal",       "title": "Second Wind",       "desc": "Restore 40 HP"},
+	{"id": &"dash_charge", "title": "Third Step",       "desc": "+1 dash charge"},
+	{"id": &"dash_cut",   "title": "Severing Dash",     "desc": "Dashing cuts through enemy bullets"},
+	{"id": &"graze_ring", "title": "Wide Halo",         "desc": "+40% graze ring"},
 ]

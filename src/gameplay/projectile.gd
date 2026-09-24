@@ -198,14 +198,25 @@ func _check_player() -> void:
 	var dashing: bool = _player.has_method(&"is_invincible") and _player.is_invincible()
 	if dist <= _radius + TUNING.player_hurt_radius:
 		if dashing:
+			# ADR-0019 — a dash through a bullet that would have hit is a Perfect Dodge.
+			if _player.has_method(&"register_perfect_dodge"):
+				_player.register_perfect_dodge(global_position)
 			_graze(TUNING.dash_graze_mult)
 			return
 		HealthAndDamage.apply_damage(
 			_player, _base_damage, GameEnums.DamageClass.NONE, GameEnums.DamageSource.CONTACT)
 		_despawn()
 		return
-	if dist <= _radius + TUNING.graze_radius:
+	if dist <= _radius + graze_radius_of(_player):
 		_graze(TUNING.dash_graze_mult if dashing else 1.0)
+
+
+## Graze ring radius for [param player]: its sigil-scaled get_graze_radius() when it
+## has one, else BulletHellTuning.graze_radius. Shared by bullets, lasers and mortars.
+static func graze_radius_of(player: Node) -> float:
+	if is_instance_valid(player) and player.has_method(&"get_graze_radius"):
+		return float(player.get_graze_radius())
+	return TUNING.graze_radius
 
 
 func _graze(mult: float) -> void:

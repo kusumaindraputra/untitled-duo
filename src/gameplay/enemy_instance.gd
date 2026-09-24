@@ -80,6 +80,10 @@ var _boss_charge_dir: Vector2 = Vector2.ZERO
 
 ## ADR-0018 — one runner per EnemyType.pattern_layers entry (+ the elite layer).
 var _pattern_runners: Array[BulletPatternRunner] = []
+## ADR-0019 difficulty curve (set by WaveManager from the floor's EnemyPoolConfig).
+var _bullet_speed_mult: float = 1.0
+var _fire_rate_mult: float = 1.0
+var _telegraph_mult: float = 1.0
 ## Volley released once on death (Splitter). Null = none.
 var _death_pattern: BulletPattern = null
 ## SHOOTER keep-away distance — from EnemyType.keep_distance.
@@ -394,10 +398,28 @@ func make_elite(tuning: BulletHellTuning = BULLET_HELL_TUNING) -> void:
 	_max_hp = roundi(float(_max_hp) * tuning.elite_hp_mult)
 	_current_hp = _max_hp
 	if tuning.elite_pattern != null:
-		_pattern_runners.append(BulletPatternRunner.new(tuning.elite_pattern))
+		var runner := BulletPatternRunner.new(tuning.elite_pattern)
+		runner.rate_mult = _fire_rate_mult
+		_pattern_runners.append(runner)
 	var aura := _EliteAura.new()
 	aura.tint = tuning.elite_tint
 	add_child(aura)
+
+
+## ADR-0019 — applies the floor difficulty curve: bullet speed, pattern fire rate and
+## laser / mortar telegraph length. Call after init() (and make_elite(), so the elite
+## layer is scaled too). Values are clamped to sane ranges.
+func apply_difficulty(bullet_speed_mult: float, fire_rate_mult: float, telegraph_mult: float) -> void:
+	_bullet_speed_mult = clampf(bullet_speed_mult, 0.25, 3.0)
+	_fire_rate_mult = clampf(fire_rate_mult, 0.25, 3.0)
+	_telegraph_mult = clampf(telegraph_mult, 0.1, 2.0)
+	for runner: BulletPatternRunner in _pattern_runners:
+		runner.rate_mult = _fire_rate_mult
+
+
+## Difficulty multipliers as [bullet_speed, fire_rate, telegraph] (test / debug hook).
+func get_difficulty() -> Vector3:
+	return Vector3(_bullet_speed_mult, _fire_rate_mult, _telegraph_mult)
 
 
 ## True after make_elite().
@@ -669,6 +691,7 @@ func _fire_pattern_volley(pattern: BulletPattern, angles: PackedFloat32Array, sp
 				var laser := EnemyLaser.new()
 				laser.pattern = pattern
 				laser.damage = damage
+				laser.telegraph_mult = _telegraph_mult
 				laser.angle = a
 				laser.anchor = self
 				parent_node.add_child(laser)
@@ -679,6 +702,7 @@ func _fire_pattern_volley(pattern: BulletPattern, angles: PackedFloat32Array, sp
 			var shell := MortarShell.new()
 			shell.pattern = pattern
 			shell.damage = damage
+			shell.telegraph_mult = _telegraph_mult
 			parent_node.add_child(shell)
 			shell.global_position = target
 		_:
@@ -688,7 +712,7 @@ func _fire_pattern_volley(pattern: BulletPattern, angles: PackedFloat32Array, sp
 			for a: float in angles:
 				var b: Projectile = pool.acquire()
 				b.global_position = global_position
-				b.launch_pattern(Vector2.from_angle(a), damage, pattern, speed)
+				b.launch_pattern(Vector2.from_angle(a), damage, pattern, speed * _bullet_speed_mult)
 
 
 ## Brief pre-fire glow in the pattern's colour so every volley is telegraphed.

@@ -232,11 +232,32 @@ var _boss_bar: ProgressBar = null
 var _boss_ref: Node = null
 var _boss_intro_tween: Tween = null
 
+## ADR-0019 style widget: live rank letter + meter, and the room-clear rank banner.
+var _style_label: Label = null
+var _style_bar: ProgressBar = null
+var _rank_banner: Label = null
+var _rank_reward_label: Label = null
+var _rank_tween: Tween = null
+## Last live rank letter shown (pops the label when it changes).
+var _style_letter: String = ""
+## Top-left column width: the boss UI is kept clear of it (ADR-0019 HUD fix).
+const LEFT_COLUMN_WIDTH: float = 216.0
+const STYLE_RANK_COLORS: Dictionary = {
+	"S": Color(1.0, 0.82, 0.25), "A": Color(1.0, 0.55, 0.3), "B": Color(0.55, 0.85, 1.0),
+	"C": Color(0.75, 0.75, 0.8), "D": Color(0.5, 0.5, 0.55),
+}
+
 # ── Built-in virtual methods ──────────────────────────────────────────────────
 
 func _ready() -> void:
 	process_mode = PROCESS_MODE_ALWAYS
+	# ADR-0019 HUD fix: the root used to be 0×0 (anchors_preset 0 in the scene), so every
+	# anchored child (boss bar, name card, callout, vignette) collapsed onto the top-left
+	# corner over Fayde's HP bar. Fill the viewport, but never eat mouse input.
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_create_ui_nodes()
+	get_viewport().size_changed.connect(_layout_boss_ui)
 	HealthAndDamage.damage_taken.connect(_on_damage_taken)
 	HealthAndDamage.enemy_killed.connect(_on_enemy_killed)
 	HealthAndDamage.health_restored.connect(_on_health_restored)
@@ -315,6 +336,8 @@ func _exit_tree() -> void:
 		SpellCastingEffects.special_meter_changed.disconnect(_on_special_meter_changed)
 	if CombinationResolution.combo_resolved.is_connected(_on_combo_resolved):
 		CombinationResolution.combo_resolved.disconnect(_on_combo_resolved)
+	if get_viewport() != null and get_viewport().size_changed.is_connected(_layout_boss_ui):
+		get_viewport().size_changed.disconnect(_layout_boss_ui)
 	if is_instance_valid(player_controller) and \
 			player_controller.dash_cooldown_changed.is_connected(_on_dash_cooldown_changed):
 		player_controller.dash_cooldown_changed.disconnect(_on_dash_cooldown_changed)
@@ -469,6 +492,144 @@ func _create_ui_nodes() -> void:
 	_boss_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_boss_name_label.visible = false
 	add_child(_boss_name_label)
+	_layout_boss_ui()
+
+	# ADR-0019 style meter — under the room breadcrumb in the left column.
+	_style_label = Label.new()
+	_style_label.add_theme_font_size_override(&"font_size", 15)
+	_style_label.add_theme_color_override(&"font_outline_color", Color.BLACK)
+	_style_label.add_theme_constant_override(&"outline_size", 4)
+	_style_label.position = Vector2(8, 192)
+	_style_label.size = Vector2(200, 20)
+	_style_label.pivot_offset = Vector2(0, 10)
+	_style_label.visible = false
+	add_child(_style_label)
+
+	_style_bar = ProgressBar.new()
+	_style_bar.show_percentage = false
+	_style_bar.max_value = 100.0
+	var sbg := StyleBoxFlat.new()
+	sbg.bg_color = Color(0.08, 0.08, 0.10, 0.85)
+	var sfill := StyleBoxFlat.new()
+	sfill.bg_color = Color.WHITE
+	_style_bar.add_theme_stylebox_override(&"background", sbg)
+	_style_bar.add_theme_stylebox_override(&"fill", sfill)
+	_style_bar.position = Vector2(8, 214)
+	_style_bar.size = Vector2(120, 6)
+	_style_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_style_bar.visible = false
+	add_child(_style_bar)
+
+	# Room-clear rank banner — centred, above the middle of the screen.
+	_rank_banner = Label.new()
+	_rank_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_rank_banner.add_theme_font_size_override(&"font_size", 34)
+	_rank_banner.add_theme_color_override(&"font_outline_color", Color.BLACK)
+	_rank_banner.add_theme_constant_override(&"outline_size", 6)
+	_rank_banner.anchor_left = 0.0
+	_rank_banner.anchor_right = 1.0
+	_rank_banner.anchor_top = 0.28
+	_rank_banner.anchor_bottom = 0.28
+	_rank_banner.offset_bottom = 84.0
+	_rank_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_rank_banner.visible = false
+	add_child(_rank_banner)
+	# Reward line under the letter, smaller so the rank reads first.
+	_rank_reward_label = Label.new()
+	_rank_reward_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_rank_reward_label.add_theme_font_size_override(&"font_size", 18)
+	_rank_reward_label.add_theme_color_override(&"font_outline_color", Color.BLACK)
+	_rank_reward_label.add_theme_constant_override(&"outline_size", 4)
+	_rank_reward_label.position = Vector2(0.0, 44.0)
+	_rank_reward_label.anchor_right = 1.0
+	_rank_reward_label.offset_right = 0.0
+	_rank_reward_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_rank_banner.add_child(_rank_reward_label)
+
+
+## ADR-0019 — places the boss bar and name card top-centre in absolute pixels, never
+## over the top-left column (HP, dash, Special, floor). Re-run on viewport resize.
+func _layout_boss_ui() -> void:
+	if _boss_bar == null or not is_inside_tree():
+		return
+	var vp: Vector2 = get_viewport_rect().size
+	var width: float = minf(BOSS_BAR_WIDTH, vp.x - LEFT_COLUMN_WIDTH * 2.0)
+	width = maxf(width, 160.0)
+	var left: float = maxf((vp.x - width) * 0.5, LEFT_COLUMN_WIDTH)
+	_boss_bar.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_boss_bar.position = Vector2(left, 16.0)
+	_boss_bar.size = Vector2(width, BOSS_BAR_HEIGHT)
+	_boss_name_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_boss_name_label.position = Vector2(left, 16.0 + BOSS_BAR_HEIGHT + 4.0)
+	_boss_name_label.size = Vector2(width, 40.0)
+
+
+## Boss bar rect in HUD pixels (test / QA hook).
+func get_boss_bar_rect() -> Rect2:
+	return Rect2(_boss_bar.position, _boss_bar.size) if _boss_bar != null else Rect2()
+
+
+## ADR-0019 — live style meter from PaceDirector.style_changed.
+func set_style(value: float, max_value: float, rank_letter: String) -> void:
+	if _style_label == null:
+		return
+	_style_bar.max_value = maxf(max_value, 1.0)
+	_style_bar.value = value
+	var c: Color = STYLE_RANK_COLORS.get(rank_letter, Color.WHITE)
+	_style_bar.modulate = c
+	_style_label.text = "%s  %s" % [_COPY.style_label, rank_letter]
+	_style_label.add_theme_color_override(&"font_color", c)
+	if rank_letter != _style_letter:
+		_style_letter = rank_letter
+		if _style_label.is_inside_tree():
+			_style_label.scale = Vector2(1.3, 1.3)
+			create_tween().tween_property(_style_label, "scale", Vector2.ONE, 0.18)
+
+
+## ADR-0019 — room-clear rank banner from PaceDirector.room_ranked.
+func show_room_rank(rank_letter: String, heal: float, meter_bonus: float) -> void:
+	if _rank_banner == null:
+		return
+	_rank_banner.text = _COPY.room_rank_format % rank_letter
+	_rank_reward_label.text = _COPY.room_rank_reward_format % [roundi(heal), roundi(meter_bonus)] \
+		if heal > 0.0 or meter_bonus > 0.0 else ""
+	# The room is over: the live meter gives way to the room's rank.
+	if _style_label != null:
+		_style_label.visible = false
+		_style_bar.visible = false
+	_rank_banner.add_theme_color_override(&"font_color", STYLE_RANK_COLORS.get(rank_letter, Color.WHITE))
+	_rank_banner.visible = true
+	if not _rank_banner.is_inside_tree():
+		return
+	if _rank_tween:
+		_rank_tween.kill()
+	_rank_banner.modulate = Color(1, 1, 1, 0)
+	_rank_tween = create_tween()
+	_rank_tween.tween_property(_rank_banner, "modulate:a", 1.0, 0.15)
+	_rank_tween.tween_interval(1.4)
+	_rank_tween.tween_property(_rank_banner, "modulate:a", 0.0, 0.4)
+	_rank_tween.tween_callback(func() -> void: _rank_banner.visible = false)
+
+
+## ADR-0019 — "PERFECT DODGE" pops above Fayde and floats up.
+func show_perfect_dodge(world_pos: Vector2) -> void:
+	if not is_inside_tree():
+		return
+	var label := Label.new()
+	label.text = _COPY.perfect_dodge_label
+	label.add_theme_font_size_override(&"font_size", 18)
+	label.add_theme_color_override(&"font_color", Color(0.7, 0.95, 1.0))
+	label.add_theme_color_override(&"font_outline_color", Color.BLACK)
+	label.add_theme_constant_override(&"outline_size", 5)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(label)
+	var screen_pos: Vector2 = get_viewport().get_canvas_transform() * world_pos
+	label.position = screen_pos + Vector2(-label.get_minimum_size().x * 0.5, -72.0)
+	var tw: Tween = label.create_tween()
+	tw.set_ignore_time_scale(true)  # reads at full speed through the slow-mo
+	tw.tween_property(label, "position:y", label.position.y - 26.0, 0.6)
+	tw.parallel().tween_property(label, "modulate:a", 0.0, 0.6).set_delay(0.25)
+	tw.tween_callback(label.queue_free)
 
 ## Starts a float-accumulator HP bar animation toward [param target] hp value.
 ## Captures the current visual position (hp_bar.value) as the start — this ensures
@@ -907,6 +1068,9 @@ func _on_preparation_started(_idx: int, _rem: int) -> void:
 	if _special_bar != null:
 		_special_bar.visible = false
 		_special_label.visible = false
+	if _style_label != null:
+		_style_label.visible = false
+		_style_bar.visible = false
 	if _floor_label != null:
 		var floor_num: int = RunManager.get_run_data().get("current_floor", 1)
 		_floor_label.text = "Floor %d" % floor_num
@@ -921,6 +1085,9 @@ func _on_combat_started(_is_boss: bool = false) -> void:
 	if _special_bar != null:
 		_special_bar.visible = true
 		_special_label.visible = true
+	if _style_label != null:
+		_style_label.visible = true
+		_style_bar.visible = true
 	# Show the chain dots immediately so the cast-flash is visible on the first cast.
 	# _rebuild_dots with 1 gray dot = "ready to cast" baseline indicator.
 	if chain_dots_container.get_child_count() == 0:
