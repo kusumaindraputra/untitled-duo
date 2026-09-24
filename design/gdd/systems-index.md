@@ -33,6 +33,7 @@ interactions, never a large shallow one.
 | 2 | Combination Resolution | Gameplay | First Playable | Approved *(4-layer: +Prana Reactions & Cascade, 2026-06-24 — ADR-0016)* | design/gdd/combination-resolution.md | Prana Grid, Prana Data |
 | 3 | Spell Casting & Effects *(simplified)* | Gameplay | First Playable | Approved *(+Perfect Cast & Special attack, 2026-09-24 — ADR-0017, design/gdd/special-attack.md)* | design/gdd/spell-casting-effects.md | Combination Resolution, Player Controller, Health & Damage |
 | 3b | Bullet Hell Layer | Gameplay | First Playable | Approved *(2026-09-24 — ADR-0018)* | design/gdd/bullet-hell.md | Enemy Data, Enemy AI, Wave Encounter System, Player Controller, Spell Casting & Effects |
+| 3c | Fast-Pace Layer | Gameplay | First Playable | Approved *(2026-09-24 — ADR-0019)* | design/gdd/fast-pace.md | Bullet Hell Layer, Spell Casting & Effects, Health & Damage, Wave Encounter System, Sigil System, Combat HUD |
 | 4 | Prana Data | Data | First Playable | Approved | design/gdd/prana-data.md | — |
 | 5 | Player Controller | Core | First Playable | Approved | design/gdd/player-controller.md | Game State & Scene Flow |
 | 6 | Health & Damage | Gameplay | First Playable | Approved | design/gdd/health-damage.md | Game State & Scene Flow |
