@@ -7,7 +7,7 @@
 ##   - No overlap between distinct enum types (sanity checks)
 ##
 ## Framework: GDUnit4
-## Run: godot --headless --script tests/gdunit4_runner.gd
+## Run: godot --headless --path . -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a res://tests/unit/prana-data --ignoreHeadlessMode
 extends GdUnitTestSuite
 
 
@@ -167,10 +167,40 @@ func test_game_enums_class_loads_without_error() -> void:
 	assert_object(GameEnums.new()).is_not_null()
 
 
-# ── AC-5: .tres serialization verification gate (MANUAL — blocks Story 004) ───
+# ── AC-5: .tres serialization verification gate (ADR-0006) ───────────────────
+# Automates the former manual gate: a GameEnums.DamageClass export must serialize
+# to .tres as its integer value, never as the enum member name.
 
-func test_game_enums_tres_serialization_gate_pending(
-		do_skip := true,
-		skip_reason := "MANUAL GATE — AC-5: Before Story 004, create a throwaway TestResource with @export var dc: GameEnums.DamageClass, save as .tres, open in a text editor, confirm the value serializes as an integer (e.g. 0) not a string (e.g. 'FIRE'). See story-001 Acceptance Criteria and ADR-0006 verification gate procedure."
-) -> void:
-	pass
+const _ENUM_ROUNDTRIP_PATH: String = "user://test_game_enums_roundtrip.tres"
+
+
+func after_test() -> void:
+	if FileAccess.file_exists(_ENUM_ROUNDTRIP_PATH):
+		DirAccess.remove_absolute(_ENUM_ROUNDTRIP_PATH)
+
+
+func test_game_enums_tres_serialization_writes_damage_class_as_integer() -> void:
+	# Arrange — PranaType exports `damage_class: GameEnums.DamageClass`
+	var prana := PranaType.new()
+	prana.damage_class = GameEnums.DamageClass.ICE
+
+	# Act
+	var save_error: Error = ResourceSaver.save(prana, _ENUM_ROUNDTRIP_PATH)
+	var text: String = FileAccess.get_file_as_string(_ENUM_ROUNDTRIP_PATH)
+
+	# Assert — stored as the integer 3, not the string "ICE"
+	assert_int(save_error).is_equal(OK)
+	assert_str(text).contains("damage_class = 3")
+	assert_str(text).not_contains("ICE")
+
+
+func test_game_enums_tres_serialization_roundtrip_preserves_damage_class() -> void:
+	var prana := PranaType.new()
+	prana.damage_class = GameEnums.DamageClass.NATURE
+	assert_int(ResourceSaver.save(prana, _ENUM_ROUNDTRIP_PATH)).is_equal(OK)
+
+	var loaded: PranaType = ResourceLoader.load(
+			_ENUM_ROUNDTRIP_PATH, "", ResourceLoader.CACHE_MODE_IGNORE) as PranaType
+
+	assert_object(loaded).is_not_null()
+	assert_int(loaded.damage_class).is_equal(GameEnums.DamageClass.NATURE)
