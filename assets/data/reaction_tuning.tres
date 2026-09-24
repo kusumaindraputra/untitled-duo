@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ReactionTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/reaction_tuning.gd" id="1_rtune"]
+
+[resource]
+script = ExtResource("1_rtune")
+detonate_radius = 70.0
+surge_heal = 2.0
+wildfire_burn_duration = 2.0
+aoe_radius = 90.0
+collapse_radius = 160.0
+lead_chain_targets = 2
+blind_duration = 1.0
+freeze_duration = 1.0
+burn_duration = 2.0
+arc_targets = 1
+lifesteal = 0.15

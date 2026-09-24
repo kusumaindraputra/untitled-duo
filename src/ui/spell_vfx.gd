@@ -44,6 +44,9 @@ const COMBO_ENDER_AMPLIFY: float = 1.5
 ## resolve that reinforces the HUD callout (ADR-0016 recognition layer).
 const CASCADE_SHAKE_MULT: float = 1.2
 
+## Minimum real-time gap (usec) between two floating callouts of the same reaction name.
+const REACTION_LABEL_COOLDOWN_US: int = 600_000
+
 ## Hitstop duration multiplier for heavy hits (≥15 damage).
 const HEAVY_HIT_HITSTOP_MULT: float = 2.0
 ## Shake amplitude multiplier for heavy hits.
@@ -96,6 +99,10 @@ var _heal_flash_layer: CanvasLayer = null
 var _heal_flash_rect: ColorRect = null
 var _heal_flash_tween: Tween = null
 
+## Last real-time (usec) each reaction name floated a callout. Throttles repeats so a
+## reaction firing on every hit reads as one label, not a stack of them.
+var _reaction_label_last_us: Dictionary = {}
+
 ## Active combo-window depleting ring; null when no combo window is open.
 ## Freed on combo expiry, new window open, preparation_started, or player_died.
 var _combo_ring: _ComboRing = null
@@ -114,6 +121,8 @@ func _ready() -> void:
 	SpellCastingEffects.cast_hit_started.connect(_on_cast_hit_started)
 	SpellCastingEffects.chain_index_changed.connect(_on_chain_index_changed)
 	SpellCastingEffects.combo_window_opened.connect(_on_combo_window_opened)
+	SpellCastingEffects.reaction_triggered.connect(_on_reaction_triggered)
+	SpellCastingEffects.cascade_burst.connect(_on_cascade_burst)
 	CombinationResolution.combo_resolved.connect(_on_combo_resolved)
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	HealthAndDamage.damage_taken.connect(_on_damage_taken)
@@ -156,6 +165,10 @@ func _exit_tree() -> void:
 		SpellCastingEffects.combo_window_opened.disconnect(_on_combo_window_opened)
 	if CombinationResolution.combo_resolved.is_connected(_on_combo_resolved):
 		CombinationResolution.combo_resolved.disconnect(_on_combo_resolved)
+	if SpellCastingEffects.reaction_triggered.is_connected(_on_reaction_triggered):
+		SpellCastingEffects.reaction_triggered.disconnect(_on_reaction_triggered)
+	if SpellCastingEffects.cascade_burst.is_connected(_on_cascade_burst):
+		SpellCastingEffects.cascade_burst.disconnect(_on_cascade_burst)
 	if GameStateManager.preparation_started.is_connected(_on_preparation_started):
 		GameStateManager.preparation_started.disconnect(_on_preparation_started)
 	if _in_hitstop:
@@ -290,6 +303,40 @@ func _on_combo_resolved(spell_effect: SpellEffect) -> void:
 	if spell_effect.active_cascade != null:
 		_audio_play(&"sfx_combo_ender")
 		_start_shake(CASCADE_SHAKE_MULT)
+
+
+## Floats the reaction's name at the spot it fired, in its element colour, so the
+## player sees which grid adjacency paid off. Throttled per name (REACTION_LABEL_COOLDOWN_US).
+func _on_reaction_triggered(reaction_name: String, world_pos: Vector2, prana_type_id: int) -> void:
+	if _dying or get_tree() == null or get_tree().root == null:
+		return
+	var now: int = Time.get_ticks_usec()
+	if now - int(_reaction_label_last_us.get(reaction_name, -REACTION_LABEL_COOLDOWN_US)) < REACTION_LABEL_COOLDOWN_US:
+		return
+	_reaction_label_last_us[reaction_name] = now
+	var type_data: PranaType = PranaCatalog.get_type(prana_type_id)
+	var label := _ReactionLabel.new()
+	label.text = reaction_name
+	label.label_color = type_data.color if type_data != null else Color.WHITE
+	label.top_level = true
+	get_tree().root.add_child(label)
+	label.global_position = world_pos
+
+
+## Draws the Cascade burst: an expanding ring at the burst's reach in the lead's colour,
+## plus an audio/shake kick. Chain-shaped bursts (radius 0) get a compact ring.
+func _on_cascade_burst(lead_type: int, world_pos: Vector2, radius: float) -> void:
+	if _dying or get_tree() == null or get_tree().root == null:
+		return
+	var type_data: PranaType = PranaCatalog.get_type(lead_type)
+	var ring := _BurstRing.new()
+	ring.ring_color = type_data.color if type_data != null else Color.WHITE
+	ring.max_radius = radius if radius > 0.0 else 40.0
+	ring.top_level = true
+	get_tree().root.add_child(ring)
+	ring.global_position = world_pos
+	_audio_play(&"sfx_combo_ender")
+	_start_shake(CASCADE_SHAKE_MULT)
 
 
 ## Frees the active combo window ring if one exists. Idempotent.
@@ -957,3 +1004,64 @@ class _SwingVFX extends Node2D:
 				var r1: Vector2 = q1.lerp(q2, t)
 				pts2.append(r0.lerp(r1, t))
 			draw_polyline(pts2, Color(swing_color, alpha * 0.5), 1.5, true)
+
+
+# ── Inner class: Cascade burst ring ───────────────────────────────────────────
+
+## Ring that expands to the Cascade burst's reach and fades. Colour = lead Prana type.
+## Self-frees after DURATION_US. World-space, PROCESS_MODE_ALWAYS.
+class _BurstRing extends Node2D:
+	var ring_color: Color = Color.WHITE
+	var max_radius: float = 90.0
+	const DURATION_US: int = 350_000  # 0.35 s
+	var _start_us: int = 0
+
+	func _ready() -> void:
+		process_mode = PROCESS_MODE_ALWAYS
+		z_index = 140
+		_start_us = Time.get_ticks_usec()
+
+	func _process(_delta: float) -> void:
+		if Time.get_ticks_usec() - _start_us >= DURATION_US:
+			queue_free()
+		else:
+			queue_redraw()
+
+	func _draw() -> void:
+		var p: float = clampf(float(Time.get_ticks_usec() - _start_us) / float(DURATION_US), 0.0, 1.0)
+		var r: float = lerpf(max_radius * 0.2, max_radius, p)
+		draw_circle(Vector2.ZERO, r, Color(ring_color, 0.18 * (1.0 - p)))
+		draw_arc(Vector2.ZERO, r, 0.0, TAU, 40, Color(ring_color * 1.4, 1.0 - p), 4.0, true)
+
+
+# ── Inner class: floating reaction name ───────────────────────────────────────
+
+## Reaction name that rises and fades above where the reaction fired.
+## Self-frees after DURATION_US. World-space, PROCESS_MODE_ALWAYS.
+class _ReactionLabel extends Node2D:
+	var text: String = ""
+	var label_color: Color = Color.WHITE
+	const DURATION_US: int = 900_000  # 0.9 s
+	const RISE_PX: float = 28.0
+	var _start_us: int = 0
+
+	func _ready() -> void:
+		process_mode = PROCESS_MODE_ALWAYS
+		z_index = 200
+		_start_us = Time.get_ticks_usec()
+
+	func _process(_delta: float) -> void:
+		if Time.get_ticks_usec() - _start_us >= DURATION_US:
+			queue_free()
+		else:
+			queue_redraw()
+
+	func _draw() -> void:
+		var p: float = clampf(float(Time.get_ticks_usec() - _start_us) / float(DURATION_US), 0.0, 1.0)
+		var font: Font = ThemeDB.fallback_font
+		var size: int = 14
+		var width: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+		var pos := Vector2(-width * 0.5, -24.0 - RISE_PX * p)
+		var alpha: float = 1.0 - p * p
+		draw_string_outline(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 4, Color(0, 0, 0, alpha))
+		draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(label_color * 1.3, alpha))

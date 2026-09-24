@@ -219,6 +219,18 @@ Additive — no existing behaviour changes.
 - [ ] `REACTION_MATRIX` load-time validation warns on any missing defined-type pair.
 - [ ] First reaction playtest confirms combat remains readable at typical (2–3 reaction) builds.
 
+## Implementation Notes — Combat Application (2026-09-24)
+
+Until this date the recognition layer was preview/HUD-only: `SpellCastingEffects` never read `active_reactions` or `active_cascade`, so arranging the grid changed nothing in combat. SC&E now applies them:
+
+- **Chain scope.** "This cast" in Formula 9 is read as *this chain* (first press → final press). Thermal Shock boosts the first hit on each target per chain; Short Circuit and Detonate fire once per chain.
+- **Cascade timing.** The burst fires on the chain's final attack, centred on that attack's primary target (the previous hit's target when the final attack is a secondary such as the Deepfrost T3 glacial field). A Verdant lead still blooms with no target.
+- **No recursion.** Reaction and Cascade damage goes through `_deal_bonus_damage()` (sigil multiplier applies; Shatter, crit and further reactions do not). Wildfire's spread and Cascade Burn facets are plain Burns.
+- **Permafrost** is applied by StatusEffectsManager, which queries `SpellCastingEffects.get_regen_multiplier()` on each Regen tick (injectable `_regen_multiplier` for tests).
+- **Whiteout is armed but inert**: Blind has no miss-chance mechanic yet, so there is nothing to raise. It becomes live when Blind miss chance lands.
+- Secondary knobs (Detonate radius, Surge heal, all Cascade facet values) live in `assets/data/reaction_tuning.tres` (`ReactionTuning`); each reaction's primary value stays on its `ReactionDef.magnitude`.
+- Feedback: SC&E emits `reaction_triggered` and `cascade_burst`; SpellVFX floats the reaction name (throttled per name) and draws the burst ring.
+
 ## GDD Requirements Addressed
 
 | GDD Document | System | Requirement | How This ADR Satisfies It |

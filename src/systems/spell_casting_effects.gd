@@ -88,6 +88,15 @@ signal cast_started(spell_effect: SpellEffect)
 ## spawn a depleting ring arc around Fayde — Gamefeel Pass 4 #6.
 signal combo_window_opened(window_duration: float)
 
+## Emitted when an armed Prana Reaction actually fires in combat (ADR-0016 application).
+## [param world_pos] is where it happened; [param prana_type_id] colours the callout.
+## SpellVFX floats the reaction name there so players see the grid pay off.
+signal reaction_triggered(reaction_name: String, world_pos: Vector2, prana_type_id: int)
+
+## Emitted when the wave's Cascade burst fires at the end of a chain (GDD Formula 10).
+## [param radius] is the burst's reach in px (0.0 for chain-shaped bursts).
+signal cascade_burst(lead_type: int, world_pos: Vector2, radius: float)
+
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -152,6 +161,10 @@ const SHIELD_PULSE_HEAL: float = 15.0
 ## AoE radius in pixels for Deepfrost T3 glacial field (modifier==0.0 slot).
 ## At 200px the field covers roughly the central 60% of the default diamond arena.
 const GLACIAL_FIELD_RADIUS: float = 200.0
+
+## Secondary reaction and Cascade knobs (Detonate radius, Surge heal, Cascade facets).
+## Each reaction's primary value lives on its ReactionDef.magnitude.
+const REACTION_TUNING: ReactionTuning = preload("res://assets/data/reaction_tuning.tres")
 
 ## Attack data per [primary_type][primary_tier][attack_index].
 ## Key "modifier" = tier_attack_modifier used in Formula 3 Step 4.
@@ -246,6 +259,27 @@ var _audio: Variant = null
 ## Tests: inject a Callable returning a controlled list before calling _fire_attack().
 var _get_enemies: Callable = Callable()
 
+## Armed reactions for the current wave, keyed by GameEnums.ReactionKind (int) → ReactionDef.
+## Built from SpellEffect.active_reactions in _on_combo_resolved; empty between waves.
+var _armed_reactions: Dictionary = {}
+
+## Enemy instance ids already hit during the current chain — Thermal Shock only
+## boosts the first hit on each target per chain. Reset when a new chain starts.
+var _chain_hit_ids: Dictionary = {}
+
+## True once Short Circuit's second stun has fired this chain.
+var _short_circuit_used: bool = false
+
+## True once Detonate's kill-burst has fired this chain.
+var _detonate_used: bool = false
+
+## Primary target of the most recent attack (nearest enemy hit); null on a miss.
+## The Cascade burst centres on it when the chain's final attack lands.
+var _last_primary_target: Node = null
+
+## Number of enemies the most recent attack hit. Surge only heals on a landed hit.
+var _last_attack_hit_count: int = 0
+
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
@@ -305,7 +339,7 @@ func _process(delta: float) -> void:
 			if _state == SCEState.CAST_LOCKED:
 				_state = SCEState.CHAINING if _combo_index > 0 else SCEState.READY
 				if _state == SCEState.CHAINING:
-					combo_window_opened.emit(COMBO_CONTINUATION_WINDOW)
+					combo_window_opened.emit(_combo_window_duration())
 			# Auto-fire if input was buffered during lock
 			if _buffer_pressed and _state != SCEState.IDLE:
 				_buffer_pressed = false
@@ -350,6 +384,8 @@ func _trigger_cast() -> void:
 		_buffer_timer = 0.0
 
 	_combo_index += 1
+	if _combo_index == 1:
+		_reset_chain_reaction_state()
 	chain_index_changed.emit(_combo_index, combo_count)
 
 	# Audio: combo step sound (null-safe).
@@ -360,13 +396,16 @@ func _trigger_cast() -> void:
 	# current_index is _combo_index - 1 because _combo_index was already incremented above.
 	var current_index: int = _combo_index - 1
 	_fire_attack(current_index)
+	_apply_surge_heal()
+	if _combo_index == combo_count:
+		_fire_cascade(_last_primary_target)
 
 	var lock_dur: float = ASHFIRE_CAST_LOCK_DURATION if _current_spell_effect.primary_type == GameEnums.DamageClass.FIRE \
 		else CAST_LOCK_DURATION
 	cast_hit_started.emit(lock_dur)
 	_cast_lock_timer = lock_dur
 	_state = SCEState.CAST_LOCKED
-	_combo_window_timer = COMBO_CONTINUATION_WINDOW
+	_combo_window_timer = _combo_window_duration()
 
 
 # ── Damage formula (Story 003) ────────────────────────────────────────────────
@@ -392,8 +431,14 @@ func _fire_attack(attack_index: int) -> void:
 	# tier_attack_modifier == 0.0 guard: skip damage chain entirely; fire secondary only.
 	# Covers Verdant T2/T3 SELF shield pulse and Deepfrost T3 glacial field (GDD Edge Cases).
 	if tier_mod == 0.0:
+		# Keeps _last_primary_target from the chain's previous hit so a secondary
+		# final attack (Deepfrost T3 glacial field) still anchors the Cascade burst.
+		_last_attack_hit_count = 0
 		_fire_secondary_effect(pt, tier, attack_index)
 		return
+
+	_last_primary_target = null
+	_last_attack_hit_count = 0
 
 	# Steps 1–4: per-cast base damage. Captured as step4_raw before per-target adjustments
 	# so the original Step-4 value is available for Burn DoT tick calculations (GDD Rule 8).
@@ -419,7 +464,10 @@ func _fire_attack(attack_index: int) -> void:
 		var target: Node = _override_target if _override_target != null else _select_primary_target()
 		if target == null:
 			return
+		_last_primary_target = target
+		_last_attack_hit_count = 1
 		_apply_hit(target, pt, tier_mod, se, step4_raw, crit_mult)
+		_try_superconduct(target, [target], step4_raw)
 	else:
 		# All other types — every enemy inside the facing cone takes damage.
 		# _override_target != null is the test-mode path (single injected target as array).
@@ -428,8 +476,14 @@ func _fire_attack(attack_index: int) -> void:
 			targets = [_override_target]
 		else:
 			targets = _select_all_targets_in_cone()
+		if targets.is_empty():
+			return
+		var primary: Node = _nearest_to_fayde(targets)
+		_last_primary_target = primary
+		_last_attack_hit_count = targets.size()
 		for target: Node in targets:
 			_apply_hit(target, pt, tier_mod, se, step4_raw, crit_mult)
+		_try_superconduct(primary, targets, step4_raw)
 
 
 ## Applies Steps 5–9 of Formula 3 to [param target] and emits spell_hit_element.
@@ -442,10 +496,22 @@ func _apply_hit(target: Node, pt: int, tier_mod: float, se: SpellEffect,
 	# Step 5 — Shatter (per-target).
 	raw = _status_effects.check_and_apply_shatter(target, raw)
 
+	# Step 5b — Thermal Shock: first hit on each target per chain. Never stacks with
+	# Shatter on the same hit — the larger single bonus wins (GDD Edge Cases).
+	var target_id: int = target.get_instance_id()
+	var thermal: ReactionDef = _armed(GameEnums.ReactionKind.THERMAL_SHOCK)
+	if thermal != null and not _chain_hit_ids.has(target_id):
+		var thermal_raw: float = step4_raw * (1.0 + thermal.magnitude)
+		if thermal_raw > raw:
+			raw = thermal_raw
+			_emit_reaction(thermal, target, GameEnums.DamageClass.FIRE)
+	_chain_hit_ids[target_id] = true
+
 	# Step 6 — Follow-Through: always 0.0 at FP.
 
 	# Step 7 — Blind bonus (per-target).
-	if _status_effects.has_status(target, GameEnums.BaseStatus.BLIND):
+	var target_blinded: bool = _status_effects.has_status(target, GameEnums.BaseStatus.BLIND)
+	if target_blinded:
 		raw *= (1.0 + se.aggregate_stat_bonus.get(&"VOID_DMG_VS_BLIND", 0.0))
 
 	# Step 8 — apply crit multiplier (rolled once per cast, applied after per-target steps).
@@ -458,6 +524,15 @@ func _apply_hit(target: Node, pt: int, tier_mod: float, se: SpellEffect,
 	_health_and_damage.apply_damage(target, raw, GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
 
 	spell_hit_element.emit(target, pt)
+
+	# Siphon — damage dealt to a Blinded enemy heals Fayde.
+	var siphon: ReactionDef = _armed(GameEnums.ReactionKind.SIPHON)
+	if siphon != null and target_blinded and _fayde_ref != null:
+		_health_and_damage.apply_heal(_fayde_ref, raw * siphon.magnitude)
+		_emit_reaction(siphon, target, GameEnums.DamageClass.NATURE)
+
+	# Detonate — the first kill of the chain bursts at the kill position.
+	_try_detonate(target)
 
 	_apply_status_effects(target, pt, se, step4_raw)
 
@@ -489,13 +564,13 @@ func _apply_knockback(target: Node, tier_mod: float) -> void:
 func _apply_status_effects(target: Node, pt: int, se: SpellEffect, step4_raw: float) -> void:
 	match pt:
 		0:  # Ashfire — Burn DoT; step4_raw drives tick magnitude.
-			_status_effects.apply_status(target, GameEnums.BaseStatus.BURN, 2.0, step4_raw)
+			_apply_burn(target, 2.0, step4_raw)
 		1:  # Voidblue — Blind.
 			var dur: float = 2.0 + se.aggregate_stat_bonus.get(&"VOID_BLIND_DUR", 0.0)
 			_status_effects.apply_status(target, GameEnums.BaseStatus.BLIND, dur)
 		2:  # Stormgold — Stun. SEM calls target.apply_stun(dur) → STUNNED state.
 			var dur: float = 0.8 + se.aggregate_stat_bonus.get(&"STORM_STUN_DUR", 0.0)
-			_status_effects.apply_status(target, GameEnums.BaseStatus.STUN, dur)
+			_apply_stun(target, dur)
 		3:  # Deepfrost — Freeze. SEM calls target.apply_speed_modifier(0.50).
 			var dur: float = 2.0 + se.aggregate_stat_bonus.get(&"FROST_FREEZE_DUR", 0.0)
 			_status_effects.apply_status(target, GameEnums.BaseStatus.FREEZE, dur)
@@ -666,7 +741,259 @@ func _select_all_targets_in_cone() -> Array[Node]:
 	return targets
 
 
+# ── Reaction & Cascade application (ADR-0016, GDD Formulas 9–10) ─────────────
+#
+# CombinationResolution arms reactions and the Cascade from the grid; SC&E is the
+# sole applier. "Chain" scopes (Thermal Shock, Short Circuit, Detonate) reset when
+# a new chain starts, so each chain gets one of each. Bonus damage from reactions
+# goes through _deal_bonus_damage(), which never re-triggers reactions.
+# Whiteout is armed but inert: Blind has no miss-chance mechanic yet to raise.
+
+## Returns the armed ReactionDef for [param kind] this wave, or null.
+func _armed(kind: GameEnums.ReactionKind) -> ReactionDef:
+	return _armed_reactions.get(int(kind), null)
+
+
+## Indexes [param spell_effect]'s active reactions by kind and resets chain state.
+## Tests call this directly to arm reactions without going through combo_resolved.
+func _arm_reactions(spell_effect: SpellEffect) -> void:
+	_armed_reactions.clear()
+	for rdef: ReactionDef in spell_effect.active_reactions:
+		if rdef != null:
+			_armed_reactions[int(rdef.effect_kind)] = rdef
+	_reset_chain_reaction_state()
+
+
+## Clears the per-chain reaction bookkeeping. Called when a chain's first attack fires.
+func _reset_chain_reaction_state() -> void:
+	_chain_hit_ids.clear()
+	_short_circuit_used = false
+	_detonate_used = false
+	_last_primary_target = null
+
+
+## Returns the combo continuation window, extended by Surge when armed.
+func _combo_window_duration() -> float:
+	var surge: ReactionDef = _armed(GameEnums.ReactionKind.SURGE)
+	return COMBO_CONTINUATION_WINDOW + (surge.magnitude if surge != null else 0.0)
+
+
+## Emits [signal reaction_triggered] for [param rdef] at [param at]'s position.
+func _emit_reaction(rdef: ReactionDef, at: Node, prana_type_id: int) -> void:
+	reaction_triggered.emit(rdef.name, _pos_of(at), prana_type_id)
+
+
+## World position of [param node], falling back to Vector2.ZERO for non-2D nodes.
+func _pos_of(node: Node) -> Vector2:
+	return (node as Node2D).global_position if node is Node2D else Vector2.ZERO
+
+
+## Returns true when [param node] is a live enemy (valid, and alive when it can say so).
+func _is_live(node: Node) -> bool:
+	if not is_instance_valid(node):
+		return false
+	return not node.has_method(&"is_alive") or node.is_alive()
+
+
+## Living enemies as Node2D, from the injectable _get_enemies seam.
+func _living_enemies() -> Array[Node2D]:
+	var out: Array[Node2D] = []
+	if not _get_enemies.is_valid():
+		return out
+	for enemy: Node in _get_enemies.call():
+		if enemy is Node2D and _is_live(enemy):
+			out.append(enemy as Node2D)
+	return out
+
+
+## Up to [param count] living enemies nearest [param origin] within [param max_range],
+## skipping any in [param exclude]. Sorted nearest first.
+func _nearest_enemies(origin: Vector2, exclude: Array, count: int,
+		max_range: float = INF) -> Array[Node2D]:
+	var candidates: Array[Node2D] = []
+	for enemy: Node2D in _living_enemies():
+		if exclude.has(enemy):
+			continue
+		if origin.distance_to(enemy.global_position) <= max_range:
+			candidates.append(enemy)
+	candidates.sort_custom(func(a: Node2D, b: Node2D) -> bool:
+		return origin.distance_squared_to(a.global_position) < origin.distance_squared_to(b.global_position))
+	return candidates.slice(0, count)
+
+
+## Living enemies within [param radius] of [param origin].
+func _enemies_within(origin: Vector2, radius: float) -> Array[Node2D]:
+	return _nearest_enemies(origin, [], 1 << 20, radius)
+
+
+## The target in [param targets] nearest Fayde; the first entry when Fayde is unknown.
+func _nearest_to_fayde(targets: Array[Node]) -> Node:
+	if not (_fayde_ref is Node2D):
+		return targets[0]
+	var origin: Vector2 = (_fayde_ref as Node2D).global_position
+	var best: Node = targets[0]
+	var best_dist: float = INF
+	for target: Node in targets:
+		var d: float = origin.distance_squared_to(_pos_of(target))
+		if d < best_dist:
+			best_dist = d
+			best = target
+	return best
+
+
+## Deals reaction/Cascade damage: sigil multiplier applied, hit feedback emitted,
+## but no Shatter, crit, or further reactions (bonus hits never chain into more bonuses).
+func _deal_bonus_damage(target: Node, amount: float, prana_type_id: int) -> void:
+	if amount <= 0.0 or not _is_live(target):
+		return
+	_health_and_damage.apply_damage(target, amount * _run_damage_mult,
+		GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
+	spell_hit_element.emit(target, prana_type_id)
+
+
+## Applies Burn, then Witchfire (Burn also Blinds) and Wildfire (Burn spreads once to
+## the nearest other enemy in range). The spread itself is a plain Burn — no recursion.
+func _apply_burn(target: Node, duration: float, spell_base: float) -> void:
+	_status_effects.apply_status(target, GameEnums.BaseStatus.BURN, duration, spell_base)
+	var witchfire: ReactionDef = _armed(GameEnums.ReactionKind.WITCHFIRE)
+	if witchfire != null:
+		_status_effects.apply_status(target, GameEnums.BaseStatus.BLIND, witchfire.magnitude)
+		_emit_reaction(witchfire, target, GameEnums.DamageClass.SHADOW)
+	var wildfire: ReactionDef = _armed(GameEnums.ReactionKind.WILDFIRE)
+	if wildfire != null:
+		var spread: Array[Node2D] = _nearest_enemies(_pos_of(target), [target], 1, wildfire.magnitude)
+		if not spread.is_empty():
+			_status_effects.apply_status(spread[0], GameEnums.BaseStatus.BURN,
+				REACTION_TUNING.wildfire_burn_duration, spell_base)
+			_emit_reaction(wildfire, spread[0], GameEnums.DamageClass.FIRE)
+
+
+## Applies Stun, then Short Circuit: the chain's first Stun also stuns the nearest other enemy.
+func _apply_stun(target: Node, duration: float) -> void:
+	_status_effects.apply_status(target, GameEnums.BaseStatus.STUN, duration)
+	var short_circuit: ReactionDef = _armed(GameEnums.ReactionKind.SHORT_CIRCUIT)
+	if short_circuit == null or _short_circuit_used:
+		return
+	_short_circuit_used = true
+	var second: Array[Node2D] = _nearest_enemies(_pos_of(target), [target], 1)
+	if not second.is_empty():
+		_status_effects.apply_status(second[0], GameEnums.BaseStatus.STUN, short_circuit.magnitude)
+		_emit_reaction(short_circuit, second[0], GameEnums.DamageClass.LIGHTNING)
+
+
+## Superconduct: when the attack's primary target is Frozen or Chilled, the hit arcs to
+## the nearest enemy not already hit, for magnitude × the attack's base damage.
+func _try_superconduct(primary: Node, already_hit: Array, step4_raw: float) -> void:
+	var superconduct: ReactionDef = _armed(GameEnums.ReactionKind.SUPERCONDUCT)
+	if superconduct == null or not is_instance_valid(primary):
+		return
+	if not (_status_effects.has_status(primary, GameEnums.BaseStatus.FREEZE)
+			or _status_effects.has_status(primary, GameEnums.BaseStatus.CHILL)):
+		return
+	var arc: Array[Node2D] = _nearest_enemies(_pos_of(primary), already_hit, 1)
+	if arc.is_empty():
+		return
+	_deal_bonus_damage(arc[0], step4_raw * superconduct.magnitude, GameEnums.DamageClass.LIGHTNING)
+	_emit_reaction(superconduct, arc[0], GameEnums.DamageClass.LIGHTNING)
+
+
+## Detonate: the chain's first kill bursts for magnitude × BASE_SPELL_DAMAGE to every
+## other enemy within detonate_radius of the kill.
+func _try_detonate(target: Node) -> void:
+	var detonate: ReactionDef = _armed(GameEnums.ReactionKind.DETONATE)
+	if detonate == null or _detonate_used or not is_instance_valid(target):
+		return
+	if not target.has_method(&"is_alive") or target.is_alive():
+		return
+	_detonate_used = true
+	var origin: Vector2 = _pos_of(target)
+	for enemy: Node2D in _enemies_within(origin, REACTION_TUNING.detonate_radius):
+		_deal_bonus_damage(enemy, BASE_SPELL_DAMAGE * detonate.magnitude, GameEnums.DamageClass.FIRE)
+	_emit_reaction(detonate, target, GameEnums.DamageClass.FIRE)
+
+
+## Surge: each chain attack that lands heals Fayde a flat amount.
+func _apply_surge_heal() -> void:
+	var surge: ReactionDef = _armed(GameEnums.ReactionKind.SURGE)
+	if surge == null or _last_attack_hit_count <= 0 or _fayde_ref == null:
+		return
+	_health_and_damage.apply_heal(_fayde_ref, REACTION_TUNING.surge_heal)
+
+
+## Fires the wave's Cascade burst after the chain's final attack (GDD Formula 10).
+## The lead (core type) sets the shape; each modifier adds its facet to every enemy hit.
+## [param origin_target] is the chain's last primary target; without one only a Verdant
+## lead (a Fayde-centred bloom) still fires.
+func _fire_cascade(origin_target: Node) -> void:
+	var se: SpellEffect = _current_spell_effect
+	if se == null or se.active_cascade == null:
+		return
+	var cascade: CascadeEffect = se.active_cascade
+	var lead: int = cascade.lead_type
+	var has_origin: bool = _is_live(origin_target) and origin_target is Node2D
+	if not has_origin and lead != GameEnums.DamageClass.NATURE:
+		return
+	var tuning: ReactionTuning = REACTION_TUNING
+	var origin: Vector2 = _pos_of(origin_target) if has_origin else _pos_of(_fayde_ref)
+	var burst_damage: float = roundf(BASE_SPELL_DAMAGE * se.base_damage_modifier * cascade.cascade_mult)
+
+	# Lead shape — who the burst reaches.
+	var hit: Array[Node2D] = []
+	var radius: float = tuning.aoe_radius
+	match lead:
+		GameEnums.DamageClass.FIRE, GameEnums.DamageClass.ICE:  # nova / field
+			hit = _enemies_within(origin, tuning.aoe_radius)
+		GameEnums.DamageClass.SHADOW:  # collapse — wide cluster
+			radius = tuning.collapse_radius
+			hit = _enemies_within(origin, radius)
+		GameEnums.DamageClass.LIGHTNING:  # chain — primary, then nearest jumps
+			radius = 0.0
+			hit.append(origin_target as Node2D)
+			hit.append_array(_nearest_enemies(origin, hit, tuning.lead_chain_targets))
+		GameEnums.DamageClass.NATURE:  # bloom — no damage; facets reach nearby enemies
+			if has_origin:
+				hit = _enemies_within(origin, tuning.aoe_radius)
+	if cascade.modifiers.has(GameEnums.DamageClass.LIGHTNING):
+		hit.append_array(_nearest_enemies(origin, hit, tuning.arc_targets))
+
+	var dealt: float = 0.0
+	for enemy: Node2D in hit:
+		if lead != GameEnums.DamageClass.NATURE:
+			_deal_bonus_damage(enemy, burst_damage, lead)
+			dealt += burst_damage * _run_damage_mult
+		if lead == GameEnums.DamageClass.ICE or cascade.modifiers.has(GameEnums.DamageClass.ICE):
+			_status_effects.apply_status(enemy, GameEnums.BaseStatus.FREEZE, tuning.freeze_duration)
+		if cascade.modifiers.has(GameEnums.DamageClass.FIRE):
+			_status_effects.apply_status(enemy, GameEnums.BaseStatus.BURN, tuning.burn_duration, burst_damage)
+		if cascade.modifiers.has(GameEnums.DamageClass.SHADOW):
+			_status_effects.apply_status(enemy, GameEnums.BaseStatus.BLIND, tuning.blind_duration)
+
+	# Nourish — a Verdant lead heals from the burst's strength; a Verdant facet from damage dealt.
+	if _fayde_ref != null:
+		var heal: float = 0.0
+		if lead == GameEnums.DamageClass.NATURE:
+			heal = burst_damage * tuning.lifesteal
+		elif cascade.modifiers.has(GameEnums.DamageClass.NATURE):
+			heal = dealt * tuning.lifesteal
+		if heal > 0.0:
+			_health_and_damage.apply_heal(_fayde_ref, heal)
+
+	cascade_burst.emit(lead, origin, radius)
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
+
+## Permafrost: multiplier for Fayde's Regen ticks — the reaction's magnitude while at
+## least one enemy is Frozen, else 1.0. Queried by StatusEffectsManager on each Regen tick.
+func get_regen_multiplier() -> float:
+	var permafrost: ReactionDef = _armed(GameEnums.ReactionKind.PERMAFROST)
+	if permafrost == null:
+		return 1.0
+	for enemy: Node2D in _living_enemies():
+		if _status_effects.has_status(enemy, GameEnums.BaseStatus.FREEZE):
+			return permafrost.magnitude
+	return 1.0
+
 
 ## Sigil: multiplies the run-wide spell damage multiplier by [param factor]
 ## (e.g. 1.20 = +20% damage). Stacks multiplicatively; persists for the run.
@@ -705,6 +1032,8 @@ func _on_preparation_started(_idx: int, _rem: int) -> void:
 	_current_spell_effect = null
 	_cast_lock_timer = 0.0
 	_combo_window_timer = 0.0
+	_armed_reactions.clear()
+	_reset_chain_reaction_state()
 
 
 ## Marks SC&E as in-combat so the next combo_resolved can transition to READY.
@@ -728,6 +1057,7 @@ func _on_combo_resolved(spell_effect: SpellEffect) -> void:
 	if not (_in_combat or GameStateManager.get_active_state() == GameEnums.GameState.COMBAT_PHASE):
 		return
 	_current_spell_effect = spell_effect
+	_arm_reactions(spell_effect)
 	_state = SCEState.READY
 	_combo_index = 0
 	cast_started.emit(spell_effect)
