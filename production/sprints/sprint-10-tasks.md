@@ -25,7 +25,7 @@ Most of this list is already shipped. Verified live in `src/`:
 
 **Remaining for a shippable demo (not in the original list):**
 - ✅ Title / start screen — added `_show_title_screen()` in `debug_game_loop.gd` (2026-06-21).
-- 🟡 Export presets — `export_presets.cfg` authored (Win/Linux/Web) + `docs/build/demo-export.md`. Actual packaged build still requires the Godot editor; do locally.
+- ✅ Export presets — `export_presets.cfg` (Win/Linux/Web) + `docs/build/demo-export.md`. All three presets exported headless with Godot 4.6.2 and smoke-booted to the main menu (2026-09-24); test code excluded from the `.pck`.
 - ✅ ESC pause menu — `debug_game_loop` binds ESC → `GameStateManager.pause_game/resume_game` with a Resume/Restart overlay.
 - ✅ Run-progress breadcrumb — CombatHUD shows "Room X / Y", driven by room transitions.
 - ✅ Spawn spread — 6 spawn markers (was 3), even-angle distribution; enemy caps retuned (per-marker 3→2, floor1/2 absolute caps added) so spread improves without inflating counts.

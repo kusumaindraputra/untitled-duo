@@ -16,13 +16,8 @@ extends GdUnitTestSuite
 ## WHEN _process fires (before duration)
 ## THEN _draw() runs without crash
 func test_combo_ring_draw_does_not_crash() -> void:
-	# SpellVFX must be loaded so its inner classes are registered.
-	var ring: Node = ClassDB.instantiate("Node2D")
-	# We can't directly instantiate inner classes from tests, so test via the SpellVFX
-	# autoload's _ComboRing proxy. Create a bare Node2D and call draw_arc through
-	# the ring's own _draw — tested indirectly via the autoload handler below.
-	#
-	# Direct test: create the ring by calling _on_combo_window_opened on SpellVFX.
+	# Inner classes can't be instantiated from tests, so create the ring through
+	# the SpellVFX autoload handler.
 	var vfx: Node = get_node_or_null("/root/SpellVFX")
 	assert_object(vfx).is_not_null()
 
