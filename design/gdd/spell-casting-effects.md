@@ -506,6 +506,10 @@ SC&E computes these before each `apply_status()` call:
 
 ## Dependencies
 
+> **Extension (2026-09-24):** Perfect Cast timing and the Special attack are specified in
+> `design/gdd/special-attack.md` (ADR-0017). They read `non_primary_modifiers` in
+> addition to the payload below.
+
 ### Systems This System Depends On
 
 | # | System | What SC&E needs | Dependency type |
