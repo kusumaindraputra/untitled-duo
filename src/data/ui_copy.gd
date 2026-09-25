@@ -239,3 +239,46 @@ extends Resource
 
 ## Pause-menu button that turns the coach back on.
 @export var coach_replay_button: String = "Replay Tutorial"
+
+@export_group("Memory Fragments")
+
+## Small header above a newly recovered fragment.
+@export var memory_header: String = "MEMORY RECOVERED"
+
+## Position of a fragment in the story (%d = number, %d = total).
+@export var memory_count_format: String = "Memory %d of %d"
+
+## Dismiss hint under a fragment or ending.
+@export var memory_continue_hint: String = "Press any key to continue"
+
+## Title and text for an anchor whose memory is not part of the story yet.
+@export var memory_unknown_title: String = "A Memory Stirs"
+@export var memory_unknown_body: String = "Something here feels familiar, but the memory slips away before it takes shape."
+
+## Header above the ending that plays with fragments still missing.
+@export var ending_header: String = "ENDING"
+
+## Header above the ending that plays once every fragment is recovered.
+@export var ending_true_header: String = "TRUE ENDING"
+
+## Line under the partial ending (%d = found, %d = total).
+@export var ending_partial_hint_format: String = "%d of %d memories recovered. Find the rest to learn the whole truth."
+
+## Main-menu button that opens the archive (%d = found, %d = total).
+@export var memories_button_format: String = "MEMORIES  %d/%d"
+
+## Archive heading.
+@export var memories_title: String = "MEMORIES"
+
+## Archive entry for a fragment not recovered yet.
+@export var memories_locked: String = "? ? ?"
+
+## Archive text for a fragment not recovered yet.
+@export var memories_locked_body: String = "Not recovered yet. Clear floors, and keep going even when you fall."
+
+## Archive entries for the two endings once seen.
+@export var memories_ending_label: String = "Ending"
+@export var memories_true_ending_label: String = "True Ending"
+
+## Archive close button.
+@export var memories_back: String = "Back  (Esc)"

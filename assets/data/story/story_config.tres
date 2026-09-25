@@ -1,0 +1,153 @@
+[gd_resource type="Resource" script_class="StoryConfig" load_steps=15 format=3]
+
+[ext_resource type="Script" path="res://src/data/story_config.gd" id="1_story"]
+[ext_resource type="Script" path="res://src/data/memory_fragment.gd" id="2_frag"]
+
+[sub_resource type="Resource" id="Fragment_0"]
+script = ExtResource("2_frag")
+id = &"mem_the_push"
+title = "The Push"
+voice = "Fayde"
+body = "Glasses. Rain on the glasses. Hands under my arms, lifting me like I weigh nothing.
+
+\"I'm sorry,\" the old man says. \"I'm sorry, I'm sorry.\"
+
+Then the dark, the long fall, and the smell of rust. That is the first thing I remember. For a long time it was the only thing."
+
+[sub_resource type="Resource" id="Fragment_1"]
+script = ExtResource("2_frag")
+id = &"mem_the_panel"
+title = "Don't Be Lonely"
+voice = "Memo"
+body = "The little robot at the bottom of the hatch has a panel on his chest. Someone wrote on it by hand, a long time ago: JANGAN KESEPIAN.
+
+Memo says it means \"don't be lonely.\" He says it the way you say a name you have said every day for years.
+
+When I asked who wrote it, he looked at me for a long time. \"A man who talked too much,\" he said. \"I miss it.\""
+
+[sub_resource type="Resource" id="Fragment_2"]
+script = ExtResource("2_frag")
+id = &"mem_two_hands"
+title = "Two Pairs of Hands"
+voice = "???"
+body = "Two boys on a concrete floor, palms pressed together. The air around them is on fire. One of them is laughing. The other one is not scared at all.
+
+\"Too much, Ayden.\"
+\"Then steer it, Faith.\"
+
+The fire folds itself into a small bright bird and flies once around the room. I know exactly how that felt. I don't know how I know."
+
+[sub_resource type="Resource" id="Fragment_3"]
+script = ExtResource("2_frag")
+id = &"mem_first_lesson"
+title = "Each Symbol Is a Breath"
+voice = "Father"
+body = "A chalk grid on a steel wall, three squares by three. An old man taps the middle one.
+
+\"Prana doesn't care what you want. It cares where you put it. The center is the heart. Everything beside it listens.\"
+
+The two boys roll their eyes at each other. I catch myself nodding."
+
+[sub_resource type="Resource" id="Fragment_4"]
+script = ExtResource("2_frag")
+id = &"mem_the_stranger"
+title = "The Kind Stranger"
+voice = "Faith"
+body = "\"There's a person out there. A real one. She waved at us.\"
+
+Ayden wanted to wait for Father. Faith wanted to go now. They went now.
+
+She had a warm voice and cold hands. When she smiled, something behind her eyes clicked into place, like a lock."
+
+[sub_resource type="Resource" id="Fragment_5"]
+script = ExtResource("2_frag")
+id = &"mem_separation"
+title = "Separation"
+voice = "Ayden"
+body = "They put us in different rooms first. That was all it took.
+
+Alone, my Prana spills everywhere and hits nothing. Alone, his steers nothing, because there is nothing to steer. They knew. They always knew.
+
+The machine is cold. Through the glass I can see his hand."
+
+[sub_resource type="Resource" id="Fragment_6"]
+script = ExtResource("2_frag")
+id = &"mem_last_touch"
+title = "Signatures Extinguished"
+voice = "Kingdom Record"
+body = "The glass cracked. Their fingertips touched.
+
+For one moment there was more Prana in that room than the world had seen in decades, and it burned nothing. It went somewhere. Home.
+
+The Kingdom wrote it down in its neat, empty way: CIPHER SIGNATURES: EXTINGUISHED. Then it forgot them."
+
+[sub_resource type="Resource" id="Fragment_7"]
+script = ExtResource("2_frag")
+id = &"mem_workbench"
+title = "Faith and Ayden"
+voice = "Father"
+body = "The old man works for months and barely sleeps. He talks the whole time: to Memo, to the walls, to two voices only he can hear.
+
+\"Not a copy. Not a replacement. Something new. They would hate being replaced.\"
+
+He writes FAITH + AYDEN on the workbench and underlines it twice. Then he crosses out letters until only a few are left."
+
+[sub_resource type="Resource" id="Fragment_8"]
+script = ExtResource("2_frag")
+id = &"mem_first_word"
+title = "Father"
+voice = "Fayde"
+body = "I opened my eyes on a workbench. An old man with glasses was holding his breath.
+
+I said, \"Father.\"
+
+He held me and cried. I cried too, and I didn't know why. I think it was the most human thing I have ever done."
+
+[sub_resource type="Resource" id="Fragment_9"]
+script = ExtResource("2_frag")
+id = &"mem_the_hatch"
+title = "The Hatch"
+voice = "Father"
+body = "Alarms. Boots on the stairs. The bunker door bending inward.
+
+\"Listen to me. There is someone at the bottom who will help you. His name is Memo. Tell him you are a Cipher.\"
+
+\"Are you coming?\"
+
+He lifted me up. There was rain on his glasses, except it wasn't rain.
+
+\"I'm sorry,\" he said. \"I'm sorry, I'm sorry.\""
+
+[sub_resource type="Resource" id="Ending_partial"]
+script = ExtResource("2_frag")
+id = &"ending_partial"
+title = "The Surface"
+voice = "Fayde"
+body = "The Keeper falls, and the last door opens onto a sky I have never seen.
+
+Memo rolls up beside me and says nothing, which is how I know he is thinking hard.
+
+There is a face I still can't see and a name I still can't find. Somewhere up here is the old man with glasses. I will keep climbing until I remember why he let me go."
+
+[sub_resource type="Resource" id="Ending_true"]
+script = ExtResource("2_frag")
+id = &"ending_true"
+title = "Fayde"
+voice = "Fayde"
+body = "The Keeper falls, and the last door opens onto a sky I have never seen.
+
+I know now. I am not the old man's son, and I am not a boy who got lost. I am Ayden's fire and Faith's hands, and somewhere inside me they are still touching. That is why the Prana listens.
+
+The panel on Memo's chest is glowing. He looks at me the way you look at someone you have waited for your whole life.
+
+\"You're both of them,\" he says, and his voice cracks like a real one. \"You're both of them. And you're you.\"
+
+Faith and Ayden. Fayde. It means help.
+
+Far above, in a palace full of beautiful empty machines, the First King feels something he hates. He feels us coming."
+
+[resource]
+script = ExtResource("1_story")
+fragments = Array[ExtResource("2_frag")]([SubResource("Fragment_0"), SubResource("Fragment_1"), SubResource("Fragment_2"), SubResource("Fragment_3"), SubResource("Fragment_4"), SubResource("Fragment_5"), SubResource("Fragment_6"), SubResource("Fragment_7"), SubResource("Fragment_8"), SubResource("Fragment_9")])
+ending_partial = SubResource("Ending_partial")
+ending_true = SubResource("Ending_true")
