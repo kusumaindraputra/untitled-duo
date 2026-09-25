@@ -2,7 +2,7 @@
 ##
 ## Coverage:
 ##   - Linear generation (5 rooms): no branch, Rest→Boss at end
-##   - Branch generation (6–8 rooms): branch at index 1, two paths, rejoin at Rest
+##   - Branch generation (6–16 rooms): branch at index 1, two paths, rejoin at Rest
 ##   - Elite placement: present when remaining >= 5, on longer path
 ##   - AC-CM-06: max exits ≤ 3
 ##   - AC-CM-07: path length diff ≤ 1
@@ -109,7 +109,7 @@ func test_generate_8_rooms_has_elite() -> void:
 # ── AC-CM-06: Max exits never exceeds 3 ────────────────────────────────────────
 
 func test_max_exits_at_most_3() -> void:
-	for n: int in range(5, 9):
+	for n: int in range(5, 17):
 		var g: DungeonGraph = PathBuilder.new().generate(n)
 		assert_int(PathBuilder.max_exits(g)).is_less_equal(3) \
 			.override_failure_message("room_count=%d: max_exits=%d" % [n, PathBuilder.max_exits(g)])
@@ -118,7 +118,7 @@ func test_max_exits_at_most_3() -> void:
 # ── AC-CM-07: Path length diff ≤ 1 ────────────────────────────────────────────
 
 func test_path_length_diff_at_most_1() -> void:
-	for n: int in range(5, 9):
+	for n: int in range(5, 17):
 		var g: DungeonGraph = PathBuilder.new().generate(n)
 		var diff: int = PathBuilder.path_length_diff(g)
 		assert_int(diff).is_less_equal(1) \
@@ -128,7 +128,7 @@ func test_path_length_diff_at_most_1() -> void:
 # ── Acyclicity ─────────────────────────────────────────────────────────────────
 
 func test_generated_graph_is_acyclic() -> void:
-	for n: int in range(5, 9):
+	for n: int in range(5, 17):
 		var g: DungeonGraph = PathBuilder.new().generate(n)
 		assert_bool(g.is_acyclic()).is_true() \
 			.override_failure_message("room_count=%d: graph has cycle" % n)
@@ -137,7 +137,7 @@ func test_generated_graph_is_acyclic() -> void:
 # ── Entry room ─────────────────────────────────────────────────────────────────
 
 func test_entry_room_is_always_combat() -> void:
-	for n: int in range(5, 9):
+	for n: int in range(5, 17):
 		var g: DungeonGraph = PathBuilder.new().generate(n)
 		assert_int(_type(g, g.get_entry_room())) \
 			.is_equal(DungeonGraph.ROOM_TYPE_COMBAT) \
@@ -147,7 +147,7 @@ func test_entry_room_is_always_combat() -> void:
 # ── Boss reachability ──────────────────────────────────────────────────────────
 
 func test_all_rooms_reach_boss() -> void:
-	for n: int in range(5, 9):
+	for n: int in range(5, 17):
 		var g: DungeonGraph = PathBuilder.new().generate(n)
 		var boss_idx: int = n - 1
 		for i: int in range(n):
@@ -158,7 +158,7 @@ func test_all_rooms_reach_boss() -> void:
 # ── Rest → Boss edge ───────────────────────────────────────────────────────────
 
 func test_rest_connected_to_boss() -> void:
-	for n: int in range(5, 9):
+	for n: int in range(5, 17):
 		var g: DungeonGraph = PathBuilder.new().generate(n)
 		var rests: Array[int] = g.get_rooms_by_type(DungeonGraph.ROOM_TYPE_REST)
 		var boss: int = n - 1
@@ -171,3 +171,29 @@ func test_rest_connected_to_boss() -> void:
 
 func _type(graph: DungeonGraph, idx: int) -> int:
 	return int(graph.get_room(idx)["type"])
+
+
+# ── Rooms per run (HUD room total) ─────────────────────────────────────────────
+
+func test_rooms_per_run_linear_counts_every_room() -> void:
+	var g: DungeonGraph = PathBuilder.new().generate(5)
+	assert_int(PathBuilder.rooms_per_run(g)).is_equal(5)
+
+
+func test_rooms_per_run_7_rooms_walks_longer_branch() -> void:
+	# Start, branch, 2-room left path, Rest, Boss = 6 (right path has 1 room).
+	var g: DungeonGraph = PathBuilder.new().generate(7)
+	assert_int(PathBuilder.rooms_per_run(g)).is_equal(6)
+
+
+func test_rooms_per_run_12_rooms_walks_8() -> void:
+	# Start, branch, 4-room path (either side), Rest, Boss = 8.
+	var g: DungeonGraph = PathBuilder.new().generate(12)
+	assert_int(g.room_count()).is_equal(12)
+	assert_int(PathBuilder.path_length_diff(g)).is_equal(0)
+	assert_int(PathBuilder.rooms_per_run(g)).is_equal(8)
+
+
+func test_rooms_per_run_null_or_empty_is_zero() -> void:
+	assert_int(PathBuilder.rooms_per_run(null)).is_equal(0)
+	assert_int(PathBuilder.rooms_per_run(DungeonGraph.new())).is_equal(0)

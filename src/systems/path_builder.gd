@@ -29,7 +29,7 @@ const MIN_ROOM_COUNT: int = 5
 # ── Public API ─────────────────────────────────────────────────────────────────
 
 ## Generates a filled [DungeonGraph] following branching rules for [param room_count]
-## rooms (5–8) on [param layer] (1 or 2). Returns null and push_warning on invalid input.
+## rooms (at least [constant MIN_ROOM_COUNT]) on [param layer] (1 or 2). Returns null and push_warning on invalid input.
 ## Rooms are typed (Combat/Elite/Rest/Boss) but templates are null — RoomSelector (LD-18)
 ## assigns them later.
 func generate(room_count: int, layer: int = 1) -> DungeonGraph:
@@ -104,6 +104,19 @@ static func max_exits(graph: DungeonGraph) -> int:
 		if out > m:
 			m = out
 	return m
+
+
+## Returns how many rooms a player crosses from the start room to the Boss, counting
+## both, along the longest path. The HUD shows it as the floor's room total, since
+## the player walks one branch, not every room in [param graph]. 0 for an empty graph.
+static func rooms_per_run(graph: DungeonGraph) -> int:
+	if graph == null or graph.room_count() == 0:
+		return 0
+	var bosses: Array[int] = graph.get_rooms_by_type(DungeonGraph.ROOM_TYPE_BOSS)
+	if bosses.is_empty():
+		return graph.room_count()
+	var hops: int = _longest_hops(graph, 0, bosses[0], {})
+	return hops + 1 if hops >= 0 else graph.room_count()
 
 
 ## Returns the hop-count difference between the longest and shortest path from the
@@ -184,6 +197,22 @@ func _assert_room_count(g: DungeonGraph, expected: int) -> void:
 	var actual: int = g.room_count()
 	if actual != expected:
 		push_warning("PathBuilder: expected %d rooms, got %d." % [expected, actual])
+
+
+## Longest edge count from [param node] to [param target] in an acyclic graph, or -1
+## when [param target] is unreachable. [param memo] caches results per node.
+static func _longest_hops(graph: DungeonGraph, node: int, target: int, memo: Dictionary) -> int:
+	if node == target:
+		return 0
+	if memo.has(node):
+		return int(memo[node])
+	var best: int = -1
+	for nb: int in graph.get_outgoing(node):
+		var sub: int = _longest_hops(graph, nb, target, memo)
+		if sub >= 0 and sub + 1 > best:
+			best = sub + 1
+	memo[node] = best
+	return best
 
 
 ## BFS from [param start] to [param target]: collects all distinct path lengths

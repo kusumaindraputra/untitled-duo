@@ -23,7 +23,7 @@
 | **Platform** | PC (Steam / itch.io) |
 | **Target Audience** | All-ages (7+) — accessible to children, deep enough for adults |
 | **Player Count** | Single-player |
-| **Session Length** | 30–60 minutes per run |
+| **Session Length** | 15–25 minutes per run (revised 2026-09-25: a 3-floor run with 7-room floors took an experienced player ~10 minutes) |
 | **Monetization** | Premium (indie release) |
 | **Scope** | **Ship target: MVP** — 1 layer, 5 Prana types, 3 enemy types, 1 boss (~3–5 weeks, solo, first game). Full vision (multiple layers, full memory arc, complete cast) is aspirational. |
 | **Comparable Titles** | Hades (narrative roguelike), Slay the Spire (build complexity), Astro Boy (android with human soul) |
@@ -276,7 +276,7 @@ Room-to-room progression upward through the layers. Each layer introduces more
 sophisticated robots and environmental complexity. Memory fragments appear after
 key victories. Memo offers observations — never direct answers.
 
-### Session-Level (30–60 minutes)
+### Session-Level (15–25 minutes)
 
 A full run spans multiple layers from the deep scrap yard to the threshold of the
 AI Kingdom. The final confrontation triggers the plot twist. The player completes
