@@ -711,6 +711,10 @@ func _spawn_dash_dust() -> void:
 ## Each ghost captures the current IsoCharacter sprite frame, offset backward
 ## along the dash direction, and fades out over 0.25 s.
 func _spawn_dash_ghosts(dash_dir: Vector2) -> void:
+	var pixel: PixelCharacter = get_node_or_null(^"PixelCharacter") as PixelCharacter
+	if pixel != null and pixel.sheet != null:
+		_spawn_pixel_ghosts(pixel, dash_dir)
+		return
 	if _iso_char == null or not _iso_char._initialized:
 		return
 	var sprite: AnimatedSprite2D = _iso_char.get_sprite()
@@ -735,6 +739,21 @@ func _spawn_dash_ghosts(dash_dir: Vector2) -> void:
 		ghost.top_level = true
 		get_tree().root.add_child(ghost)
 		var tw: Tween = create_tween()
+		tw.tween_property(ghost, "modulate:a", 0.0, 0.25)
+		tw.tween_callback(ghost.queue_free)
+
+
+## Dash afterimages from the pixel-art sprite (ADR-0022): two copies of the current
+## frame left behind along the dash, fading out over 0.25 s.
+func _spawn_pixel_ghosts(pixel: PixelCharacter, dash_dir: Vector2) -> void:
+	for i: int in range(2):
+		var ghost: Sprite2D = pixel.make_ghost()
+		ghost.global_position = global_position - dash_dir * (20.0 + float(i) * 18.0)
+		ghost.z_index = z_index - 1
+		ghost.modulate = Color(0.6, 0.9, 1.0, 0.4 - float(i) * 0.15)
+		ghost.top_level = true
+		get_tree().root.add_child(ghost)
+		var tw: Tween = ghost.create_tween()
 		tw.tween_property(ghost, "modulate:a", 0.0, 0.25)
 		tw.tween_callback(ghost.queue_free)
 

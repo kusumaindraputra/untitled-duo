@@ -20,7 +20,9 @@ extends Resource
 @export var boss_templates: Array[RoomTemplate] = []
 
 @export_group("Look")
-## Modulate applied to the floor tiles.
+## Procedural floor, platform edge and backdrop palette (ADR-0021). null = art bible defaults.
+@export var look: RoomLook = null
+## Modulate applied to the floor tiles, on top of the look.
 @export var floor_tint: Color = Color.WHITE
 ## Colour of full-cover pillars on this floor.
 @export var pillar_color: Color = Color(0.46, 0.44, 0.52, 1.0)

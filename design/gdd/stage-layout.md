@@ -61,12 +61,17 @@ post-hit grace apply.
 
 | Floor | Name | Look | Combat pool (weight) | Elite | Boss room |
 |-------|------|------|----------------------|-------|-----------|
-| 1 | Deep Scrap Yard | Sand floor, grey pillars | Diamond 3, Split 2, Corridor 2, Arena 2 | Split, Corridor, Gauntlet | The Gate (pillars) |
-| 2 | Functional Corridors | Blue-grey tint, blue pillars | Crossfire 3 (Cross + sweep), Watchtower 2 (Ring + 2 turrets), Vent Line 2 (Corridor + 3 vents), Divide 2 (Split + turret), Diamond 1 | Kill Box (Cross + 2 turrets), Crossfire, Gauntlet | The Warden's Ring (Ring + pillars) |
-| 3 | Cipher Core | Mauve tint, violet pillars | Core 3 (Ring + 3-arm core sweep + vent), Crucible 2 (closing ring + ring turret), Junction 2 (Cross + reverse sweep + turret), Furnace 2 (3 vents + turret) | Sanctum (Ring + 4-arm sweep + ring), Junction | The Last Cipher (slow closing ring) |
+| 1 | Deep Scrap Yard | Warm earth floor (art bible E4/E5), grey pillars | Diamond 3, Split 2, Corridor 2, Arena 2 | Split, Corridor, Gauntlet | The Gate (pillars) |
+| 2 | Functional Corridors | Cool slate floor and blue haze, blue pillars | Crossfire 3 (Cross + sweep), Watchtower 2 (Ring + 2 turrets), Vent Line 2 (Corridor + 3 vents), Divide 2 (Split + turret), Diamond 1 | Kill Box (Cross + 2 turrets), Crossfire, Gauntlet | The Warden's Ring (Ring + pillars) |
+| 3 | Cipher Core | Mauve floor and violet haze, violet pillars | Core 3 (Ring + 3-arm core sweep + vent), Crucible 2 (closing ring + ring turret), Junction 2 (Cross + reverse sweep + turret), Furnace 2 (3 vents + turret) | Sanctum (Ring + 4-arm sweep + ring), Junction | The Last Cipher (slow closing ring) |
 
 A floor-intro banner ("FLOOR 2 / Functional Corridors") shows when each floor starts,
 and the HUD floor label shows the floor name.
+
+Each floor's look comes from its `RoomLook` (ADR-0021): procedural floor tiles in four
+variants (plain, worn, cracked, a rare etched glyph), a slab face under the room's
+lower edge so the room reads as a solid platform, and a screen-space backdrop (void
+gradient, pooled glow, fog, drifting dust) with a vignette.
 
 ## 4. Formulas
 
@@ -125,7 +130,8 @@ iso circle hit     = length(dx, 2·dy) ≤ radius
 | | sweep `arm_count`, `rotation_deg_per_sec`, `arm_length`, `warmup_sec` | per room |
 | | vent `off_sec / telegraph_sec / on_sec`, `zone_radius` | 2.2 / 0.9 / 1.3 s, 56 px |
 | | ring `ring_delay_sec / ring_close_sec / ring_min_scale` | per room |
-| `FloorTheme` (`assets/data/floor_themes/*.tres`) | pools and weights, `floor_tint`, `pillar_color`, `debris_tint` | per floor |
+| `FloorTheme` (`assets/data/floor_themes/*.tres`) | pools and weights, `look`, `floor_tint`, `pillar_color`, `debris_tint` | per floor |
+| `RoomLook` (`assets/data/room_looks/*.tres`) | floor colours, `worn/crack/glyph_chance`, `edge_depth`, backdrop colours, `vignette` | art bible E1–E7; floors 2–3 cool and mauve |
 | `UICopy` | `floor_names`, `floor_label_format`, `floor_intro_format` | |
 
 ## 8. Acceptance Criteria

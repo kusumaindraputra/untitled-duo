@@ -26,6 +26,12 @@ extends Resource
 ## Visual scale multiplier for wave spawn tween target. 1.0 = normal enemy, 2.5 = boss.
 ## Read by WaveManager._spawn_wave() to set the pop-in tween final scale. (LD-03)
 @export var base_scale: float = 1.0
+## Pixel-art sheet (ADR-0022): 4 columns × 2 rows (idle, moving) from
+## tools/art-gen/generate_character_sprites.gd. Null = DebugCircle placeholder.
+@export var sprite_sheet: Texture2D = null
+## On-screen pixel size of one sheet pixel, after base_scale (keep it a whole number
+## so pixels stay square: bosses use 2.0 whatever their base_scale).
+@export var sprite_pixel_scale: float = 1.0
 
 @export_group("Bullet Patterns (ADR-0018)")
 ## Attack layers fired on their own interval while the enemy is active. Each layer's

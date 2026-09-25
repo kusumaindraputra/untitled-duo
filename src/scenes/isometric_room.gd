@@ -16,9 +16,7 @@
 class_name IsometricRoom
 extends Node2D
 
-const _FLOOR_TILE_PATH: String = "res://assets/art/tiles/iso_floor_stone2.png"
 const _FLOOR_SOURCE_ID: int = 0
-const _FLOOR_ATLAS_COORD: Vector2i = Vector2i(0, 0)
 ## Scan radius. Must be >= max(x_radius, y_radius) = max(20, 24).
 const _FLOOR_RADIUS: int = 26
 ## Arena diamond half-extents in screen pixels.
@@ -51,6 +49,8 @@ const CROSS_ARM_HALF_X: int = 128
 const CROSS_ARM_HALF_Y: int = 80
 ## Pillars and random hazards keep this far from spawn markers, Fayde's start and doors.
 const _PILLAR_KEEP_CLEAR_DIST: float = 120.0
+## Clearance used for a random hazard when no tile is _PILLAR_KEEP_CLEAR_DIST from everything.
+const _HAZARD_FALLBACK_CLEAR_DIST: float = 75.0
 
 ## Obstacle placement parameters. Set in the scene inspector to override per-template
 ## defaults. Falls back to a default ObstacleConfig (5–9 obstacles, inner 82 % diamond,
@@ -77,6 +77,8 @@ const _PILLAR_KEEP_CLEAR_DIST: float = 120.0
 @onready var _tile_map: TileMapLayer = $TileMapLayer
 @onready var _arena_bounds: StaticBody2D = $ArenaBounds
 
+var _look: RoomLook = null
+
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 func _ready() -> void:
@@ -90,6 +92,8 @@ func _ready() -> void:
 	else:
 		_place_spawn_markers()
 	_build_walls()
+	_build_platform_edge()
+	_add_backdrop()
 	if not custom_cells.is_empty():
 		_build_navigation_from_template_boundary()
 	else:
@@ -391,47 +395,39 @@ func _flood_fill_cells(all_cells: Dictionary, start: Vector2i) -> Array[Vector2i
 ## Shared by _build_floor_from_template() and the procedural shape generators.
 func _build_floor_from_cells(cells: Array[Vector2i]) -> void:
 	_tile_map.clear()
+	_install_floor_atlas()
+	for cell: Vector2i in cells:
+		_set_floor_cell(cell)
+
+
+## Registers the procedural floor atlas (ADR-0021) as the tile map's floor source.
+## Replaces any source baked into the .tscn so the runtime path always wins.
+func _install_floor_atlas() -> void:
 	if _tile_map.tile_set.has_source(_FLOOR_SOURCE_ID):
 		_tile_map.tile_set.remove_source(_FLOOR_SOURCE_ID)
 	var atlas := TileSetAtlasSource.new()
-	atlas.texture = _get_floor_texture()
-	atlas.texture_region_size = Vector2i(64, 32)
-	atlas.create_tile(_FLOOR_ATLAS_COORD)
+	atlas.texture = FloorTileAtlas.build_texture(get_look())
+	atlas.texture_region_size = Vector2i(FloorTileAtlas.TILE_W, FloorTileAtlas.TILE_H)
+	for v: int in FloorTileAtlas.VARIANT_COUNT:
+		atlas.create_tile(Vector2i(v, 0))
 	_tile_map.tile_set.add_source(atlas, _FLOOR_SOURCE_ID)
-	for cell: Vector2i in cells:
-		_tile_map.set_cell(cell, _FLOOR_SOURCE_ID, _FLOOR_ATLAS_COORD)
 
 
-## Returns the floor tile texture for the TileSetAtlasSource.
-## Falls back to a runtime procedural placeholder diamond when no art tile exists
-## at _FLOOR_TILE_PATH (art-pipeline migration: clean slate before the new CC0
-## floor tile is dropped in). Once a real tile exists at that path, it wins.
-func _get_floor_texture() -> Texture2D:
-	var tex: Texture2D = load(_FLOOR_TILE_PATH) as Texture2D
-	if tex != null:
-		return tex
-	return _make_placeholder_floor_texture()
+## Places a floor tile at [param cell], picking its variant from the cell hash.
+func _set_floor_cell(cell: Vector2i) -> void:
+	var v: int = FloorTileAtlas.variant_for_cell(cell, get_look())
+	_tile_map.set_cell(cell, _FLOOR_SOURCE_ID, Vector2i(v, 0))
 
 
-## Builds a 64×32 isometric diamond placeholder tile (muted slate) at runtime.
-## Used only while _FLOOR_TILE_PATH is absent — keeps the arena floor visible
-## instead of erroring out to a black void.
-func _make_placeholder_floor_texture() -> Texture2D:
-	const W: int = 64
-	const H: int = 32
-	var img := Image.create(W, H, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	var fill := Color(0.20, 0.22, 0.27, 1.0)
-	var edge := Color(0.30, 0.33, 0.40, 1.0)
-	var hw: float = W / 2.0
-	var hh: float = H / 2.0
-	for y: int in range(H):
-		for x: int in range(W):
-			# Diamond test centred on the tile: |dx|/hw + |dy|/hh <= 1.
-			var d: float = abs(x - hw + 0.5) / hw + abs(y - hh + 0.5) / hh
-			if d <= 1.0:
-				img.set_pixel(x, y, edge if d > 0.85 else fill)
-	return ImageTexture.create_from_image(img)
+## Returns this room's environment palette: the floor theme's look, or the
+## art bible defaults when there is no theme or the theme has no look.
+func get_look() -> RoomLook:
+	if _look == null:
+		if floor_theme != null and floor_theme.look != null:
+			_look = floor_theme.look
+		else:
+			_look = RoomLook.new()
+	return _look
 
 
 ## Builds the floor tiles from room_template.tile_cells instead of the default diamond.
@@ -542,14 +538,7 @@ func _build_navigation_from_template_boundary() -> void:
 ## the screen-space diamond defined by SegmentShape2D wall bounds.
 func _build_floor() -> void:
 	_tile_map.clear()
-	# Always reload — removes stale baked source from .tscn so the runtime path wins.
-	if _tile_map.tile_set.has_source(_FLOOR_SOURCE_ID):
-		_tile_map.tile_set.remove_source(_FLOOR_SOURCE_ID)
-	var atlas := TileSetAtlasSource.new()
-	atlas.texture = _get_floor_texture()
-	atlas.texture_region_size = Vector2i(64, 32)
-	atlas.create_tile(_FLOOR_ATLAS_COORD)
-	_tile_map.tile_set.add_source(atlas, _FLOOR_SOURCE_ID)
+	_install_floor_atlas()
 	# Isometric projection: tile (tx, ty) → screen ((tx-ty)*32, (tx+ty)*16).
 	# Diamond filter: |screen_x|/WALL_HALF_X + |screen_y|/WALL_HALF_Y ≤ 1
 	# → |tx-ty|/16 + |tx+ty|/20 ≤ 1  (x_radius=16, y_radius=20)
@@ -559,7 +548,7 @@ func _build_floor() -> void:
 		for ty: int in range(-_FLOOR_RADIUS, _FLOOR_RADIUS + 1):
 			var norm: float = float(abs(tx - ty)) / float(x_radius) + float(abs(tx + ty)) / float(y_radius)
 			if norm <= 1.0:
-				_tile_map.set_cell(Vector2i(tx, ty), _FLOOR_SOURCE_ID, _FLOOR_ATLAS_COORD)
+				_set_floor_cell(Vector2i(tx, ty))
 	# Flood-fill from origin — remove any tile not 4-connected to the main body.
 	# Tip tiles at norm==1.0 can be isolated singletons in the staggered grid.
 	var all_cells: Dictionary = {}
@@ -709,6 +698,70 @@ func _build_walls() -> void:
 	var cshape := CollisionShape2D.new()
 	cshape.shape = shape
 	_arena_bounds.add_child(cshape)
+
+
+## Hangs a slab face under every lower boundary edge of the floor (ADR-0021), so
+## the room reads as a solid platform instead of tiles floating in the void.
+## Faces sit at z -1, under the tiles, and fade from edge_face to edge_face_bottom.
+## The left-facing side is lit slightly more than the right-facing one.
+func _build_platform_edge() -> void:
+	var old: Node = get_node_or_null(^"PlatformEdge")
+	if old != null:
+		old.free()
+	var look: RoomLook = get_look()
+	var root := Node2D.new()
+	root.name = "PlatformEdge"
+	root.z_index = -1
+	add_child(root)
+	if look.edge_depth <= 0.0:
+		return
+	var drop := Vector2(0.0, look.edge_depth)
+	for edge: PackedVector2Array in get_lower_boundary_edges():
+		var a: Vector2 = edge[0]
+		var b: Vector2 = edge[1]
+		# Left-facing edges run down-right from the left corner (a.x < b.x, a.y < b.y).
+		var faces_left: bool = (b.x - a.x) * (b.y - a.y) > 0.0
+		var top: Color = look.edge_face if faces_left else look.edge_face.darkened(0.25)
+		var face := Polygon2D.new()
+		face.polygon = PackedVector2Array([a, b, b + drop, a + drop])
+		face.vertex_colors = PackedColorArray([top, top, look.edge_face_bottom, look.edge_face_bottom])
+		root.add_child(face)
+
+
+## Returns the floor's boundary edges on the lower half of their tile (the ones a
+## viewer looking down sees the side of), each as [a, b] with a.x < b.x.
+func get_lower_boundary_edges() -> Array[PackedVector2Array]:
+	var corner_offsets: Array[Vector2] = [
+		Vector2(0, -_TILE_Y_STEP), Vector2(_TILE_X_STEP, 0),
+		Vector2(0, _TILE_Y_STEP), Vector2(-_TILE_X_STEP, 0),
+	]
+	var count: Dictionary = {}
+	var lower: Dictionary = {}  # edge key → [a, b] for edges on the lower half of a tile
+	for cell: Vector2i in _tile_map.get_used_cells():
+		var center: Vector2 = _tile_map.map_to_local(cell)
+		for i: int in range(4):
+			var a: Vector2 = center + corner_offsets[i]
+			var b: Vector2 = center + corner_offsets[(i + 1) % 4]
+			var key: String = _edge_key(a, b)
+			count[key] = int(count.get(key, 0)) + 1
+			if (a.y + b.y) * 0.5 > center.y:
+				lower[key] = PackedVector2Array([a, b] if a.x < b.x else [b, a])
+	var out: Array[PackedVector2Array] = []
+	for key: String in lower:
+		if int(count[key]) == 1:
+			out.append(lower[key] as PackedVector2Array)
+	return out
+
+
+## Adds the screen-space backdrop and vignette for this floor's look (ADR-0021).
+func _add_backdrop() -> void:
+	var old: Node = get_node_or_null(^"RoomBackdrop")
+	if old != null:
+		old.free()
+	var backdrop := RoomBackdrop.new()
+	backdrop.name = "RoomBackdrop"
+	backdrop.setup(get_look())
+	add_child(backdrop)
 
 
 ## Returns an order-independent key for the edge between integer-rounded points [param a]
@@ -1026,6 +1079,11 @@ func _build_hazards(taken: Array[Vector2]) -> Array[Vector2]:
 			avoid.append_array(used)
 			var picked: Array[Vector2] = pick_spread_positions(
 				candidates, 1, avoid, _PILLAR_KEEP_CLEAR_DIST, 0.0, 0.0, rng.randi())
+			if picked.is_empty():
+				# Crowded room (debris landed badly): relax the clearance rather than
+				# silently dropping a hazard the template asked for.
+				picked = pick_spread_positions(
+					candidates, 1, avoid, _HAZARD_FALLBACK_CLEAR_DIST, 0.0, 0.0, rng.randi())
 			if picked.is_empty():
 				hazard.free()
 				continue

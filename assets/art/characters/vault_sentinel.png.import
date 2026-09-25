@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://by70qhuik2dy7"
-path="res://.godot/imported/iso_floor_stone2.png-19aa360826f1a653f676ad7ec64955c5.ctex"
+uid="uid://cuoopr4oia1nf"
+path="res://.godot/imported/vault_sentinel.png-218345ca743d846ba6a8303209923065.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/art/tiles/iso_floor_stone2.png"
-dest_files=["res://.godot/imported/iso_floor_stone2.png-19aa360826f1a653f676ad7ec64955c5.ctex"]
+source_file="res://assets/art/characters/vault_sentinel.png"
+dest_files=["res://.godot/imported/vault_sentinel.png-218345ca743d846ba6a8303209923065.ctex"]
 
 [params]
 
