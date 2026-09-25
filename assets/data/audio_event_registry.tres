@@ -32,6 +32,26 @@
 [ext_resource type="AudioStream" path="res://assets/audio/music/mus_combat_floor.mp3" id="30_mus_combat_floor"]
 [ext_resource type="AudioStream" path="res://assets/audio/music/mus_combat_elite.mp3" id="31_mus_combat_elite"]
 [ext_resource type="AudioStream" path="res://assets/audio/music/mus_combat_boss.mp3" id="32_mus_combat_boss"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/bullet_fire.wav" id="fp_bullet_fire"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/enemy_windup.wav" id="fp_enemy_windup"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/laser_charge.wav" id="fp_laser_charge"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/laser_fire.wav" id="fp_laser_fire"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/mortar_whistle.wav" id="fp_mortar_whistle"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/mortar_blast.wav" id="fp_mortar_blast"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/enemy_alert.wav" id="fp_enemy_alert"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/boss_phase.wav" id="fp_boss_phase"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/perfect_dodge.wav" id="fp_perfect_dodge"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/perfect_cast.wav" id="fp_perfect_cast"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/special_ready.wav" id="fp_special_ready"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/special_fire.wav" id="fp_special_fire"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/graze.wav" id="fp_graze"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/orb_pickup.wav" id="fp_orb_pickup"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/dash_ready.wav" id="fp_dash_ready"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/rank_up.wav" id="fp_rank_up"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/room_rank.wav" id="fp_room_rank"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/pillar_break.wav" id="fp_pillar_break"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/reaction.wav" id="fp_reaction"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/vent_ignite.wav" id="fp_vent_ignite"]
 
 ;; ── SFX: Combat / Spells ────────────────────────────────────────────────────
 [sub_resource type="Resource" id="R_spell_cast"]
@@ -220,6 +240,188 @@ stream = ExtResource("32_mus_combat_boss")
 bus = &"Music"
 priority = 0
 
+
+;; ── SFX: fast-pace / bullet-hell cues (tools/audio-gen/synth_sfx.py) ──────────
+[sub_resource type="Resource" id="R_bullet_fire"]
+script = ExtResource("2_data")
+stream = ExtResource("fp_bullet_fire")
+bus = &"SFX"
+priority = 0
+min_interval_sec = 0.07
+pitch_jitter = 0.12
+volume_db = -6.0
+
+[sub_resource type="Resource" id="R_enemy_windup"]
+script = ExtResource("2_data")
+stream = ExtResource("fp_enemy_windup")
+bus = &"SFX"
+priority = 0
+min_interval_sec = 0.12
+pitch_jitter = 0.08
+volume_db = -4.0
+
+[sub_resource type="Resource" id="R_laser_charge"]
+script = ExtResource("2_data")
+stream = ExtResource("fp_laser_charge")
+bus = &"SFX"
+priority = 1
+min_interval_sec = 0.15
+pitch_jitter = 0.05
+volume_db = 0.0
+
+[sub_resource type="Resource" id="R_laser_fire"]
+script = ExtResource("2_data")
+stream = ExtResource("fp_laser_fire")
+bus = &"SFX"
+priority = 1
+min_interval_sec = 0.12
+pitch_jitter = 0.05
+volume_db = 0.0
+
+[sub_resource type="Resource" id="R_mortar_whistle"]
+script = ExtResource("2_data")
+stream = ExtResource("fp_mortar_whistle")
+bus = &"SFX"
+priority = 1
+min_interval_sec = 0.15
+pitch_jitter = 0.06
+volume_db = -2.0
+
+[sub_resource type="Resource" id="R_mortar_blast"]
+script = ExtResource("2_data")
+stream = ExtResource("fp_mortar_blast")
+bus = &"SFX"
+priority = 1
+min_interval_sec = 0.08
+pitch_jitter = 0.08
+volume_db = 0.0
+
+[sub_resource type="Resource" id="R_enemy_alert"]
+script = ExtResource("2_data")
+stream = ExtResource("fp_enemy_alert")
+bus = &"SFX"
+priority = 1
+min_interval_sec = 0.2
+pitch_jitter = 0.06
+volume_db = -2.0
+
+[sub_resource type="Resource" id="R_boss_phase"]
+script = ExtResource("2_data")
+stream = ExtResource("fp_boss_phase")
+bus = &"SFX"
+priority = 2
+min_interval_sec = 0.5
+pitch_jitter = 0.0
+volume_db = 0.0
+
+[sub_resource type="Resource" id="R_perfect_dodge"]
+script = ExtResource("2_data")
+stream = ExtResource("fp_perfect_dodge")
+bus = &"SFX"
+priority = 2
+min_interval_sec = 0.1
+pitch_jitter = 0.0
+volume_db = 0.0
+
+[sub_resource type="Resource" id="R_perfect_cast"]
+script = ExtResource("2_data")
+stream = ExtResource("fp_perfect_cast")
+bus = &"SFX"
+priority = 2
+min_interval_sec = 0.05
+pitch_jitter = 0.0
+volume_db = 0.0
+
+[sub_resource type="Resource" id="R_special_ready"]
+script = ExtResource("2_data")
+stream = ExtResource("fp_special_ready")
+bus = &"SFX"
+priority = 2
+min_interval_sec = 0.5
+pitch_jitter = 0.0
+volume_db = 0.0
+
+[sub_resource type="Resource" id="R_special_fire"]
+script = ExtResource("2_data")
+stream = ExtResource("fp_special_fire")
+bus = &"SFX"
+priority = 2
+min_interval_sec = 0.1
+pitch_jitter = 0.0
+volume_db = 0.0
+
+[sub_resource type="Resource" id="R_graze"]
+script = ExtResource("2_data")
+stream = ExtResource("fp_graze")
+bus = &"SFX"
+priority = 0
+min_interval_sec = 0.06
+pitch_jitter = 0.15
+volume_db = -6.0
+
+[sub_resource type="Resource" id="R_orb_pickup"]
+script = ExtResource("2_data")
+stream = ExtResource("fp_orb_pickup")
+bus = &"SFX"
+priority = 0
+min_interval_sec = 0.04
+pitch_jitter = 0.1
+volume_db = -3.0
+
+[sub_resource type="Resource" id="R_dash_ready"]
+script = ExtResource("2_data")
+stream = ExtResource("fp_dash_ready")
+bus = &"SFX"
+priority = 0
+min_interval_sec = 0.1
+pitch_jitter = 0.0
+volume_db = -4.0
+
+[sub_resource type="Resource" id="R_rank_up"]
+script = ExtResource("2_data")
+stream = ExtResource("fp_rank_up")
+bus = &"SFX"
+priority = 2
+min_interval_sec = 0.3
+pitch_jitter = 0.0
+volume_db = 0.0
+
+[sub_resource type="Resource" id="R_room_rank"]
+script = ExtResource("2_data")
+stream = ExtResource("fp_room_rank")
+bus = &"SFX"
+priority = 2
+min_interval_sec = 0.5
+pitch_jitter = 0.0
+volume_db = 0.0
+
+[sub_resource type="Resource" id="R_pillar_break"]
+script = ExtResource("2_data")
+stream = ExtResource("fp_pillar_break")
+bus = &"SFX"
+priority = 1
+min_interval_sec = 0.1
+pitch_jitter = 0.1
+volume_db = 0.0
+
+[sub_resource type="Resource" id="R_reaction"]
+script = ExtResource("2_data")
+stream = ExtResource("fp_reaction")
+bus = &"SFX"
+priority = 1
+min_interval_sec = 0.1
+pitch_jitter = 0.1
+volume_db = -1.0
+
+[sub_resource type="Resource" id="R_vent_ignite"]
+script = ExtResource("2_data")
+stream = ExtResource("fp_vent_ignite")
+bus = &"SFX"
+priority = 0
+min_interval_sec = 0.25
+pitch_jitter = 0.1
+volume_db = -3.0
+
 [resource]
 script = ExtResource("1_registry")
 events = {
@@ -252,5 +454,25 @@ events = {
 &"mus_rest": SubResource("R_mus_rest"),
 &"mus_combat_floor": SubResource("R_mus_combat_floor"),
 &"mus_combat_elite": SubResource("R_mus_combat_elite"),
-&"mus_combat_boss": SubResource("R_mus_combat_boss")
+&"mus_combat_boss": SubResource("R_mus_combat_boss"),
+&"sfx_bullet_fire": SubResource("R_bullet_fire"),
+&"sfx_enemy_windup": SubResource("R_enemy_windup"),
+&"sfx_laser_charge": SubResource("R_laser_charge"),
+&"sfx_laser_fire": SubResource("R_laser_fire"),
+&"sfx_mortar_whistle": SubResource("R_mortar_whistle"),
+&"sfx_mortar_blast": SubResource("R_mortar_blast"),
+&"sfx_enemy_alert": SubResource("R_enemy_alert"),
+&"sfx_boss_phase": SubResource("R_boss_phase"),
+&"sfx_perfect_dodge": SubResource("R_perfect_dodge"),
+&"sfx_perfect_cast": SubResource("R_perfect_cast"),
+&"sfx_special_ready": SubResource("R_special_ready"),
+&"sfx_special_fire": SubResource("R_special_fire"),
+&"sfx_graze": SubResource("R_graze"),
+&"sfx_orb_pickup": SubResource("R_orb_pickup"),
+&"sfx_dash_ready": SubResource("R_dash_ready"),
+&"sfx_rank_up": SubResource("R_rank_up"),
+&"sfx_room_rank": SubResource("R_room_rank"),
+&"sfx_pillar_break": SubResource("R_pillar_break"),
+&"sfx_reaction": SubResource("R_reaction"),
+&"sfx_vent_ignite": SubResource("R_vent_ignite")
 }

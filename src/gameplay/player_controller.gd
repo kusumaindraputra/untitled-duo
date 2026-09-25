@@ -308,6 +308,7 @@ func _physics_process(delta: float) -> void:
 			var was_empty: bool = _dash_charges <= 0
 			_dash_charges = mini(_dash_charges + 1, _max_dash_charges())
 			dash_charges_changed.emit(_dash_charges, _max_dash_charges())
+			Sfx.play(&"sfx_dash_ready")
 			if was_empty:
 				dash_cooldown_changed.emit(true)
 			if _dash_charges < _max_dash_charges():

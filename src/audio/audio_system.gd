@@ -99,6 +99,12 @@ var _slot_priorities: Array[int] = []
 ## Invalid entries are skipped or clamped; all play_event() calls use this map.
 var _validated_events: Dictionary[StringName, AudioEventData] = {}
 
+## Last play time (msec) per event, for AudioEventData.min_interval_sec throttling.
+var _last_play_ms: Dictionary[StringName, int] = {}
+
+## Pitch jitter source. Seedable so tests stay deterministic.
+var _rng := RandomNumberGenerator.new()
+
 # ── Music state machine — instance variables (Story 003) ─────────────────────
 
 ## Current music FSM state. Never read directly by external systems (ADR-0003).
@@ -263,6 +269,8 @@ func play_event(event_name: StringName) -> void:
 		return
 
 	var data: AudioEventData = _validated_events[event_name]
+	if _is_throttled(event_name, data):
+		return
 	match data.bus:
 		BUS_SFX:
 			_assign_sfx_pool_slot(data)
@@ -274,6 +282,24 @@ func play_event(event_name: StringName) -> void:
 			push_error("AudioSystem: play_event('%s') targets BUS_MUSIC — music is managed by the FSM; use override_combat_cue() to change tracks." % event_name)
 		_:
 			push_error("AudioSystem: Unknown bus '%s' for event '%s'." % [data.bus, event_name])
+
+
+## Returns true (and drops the call) when [param event_name] played less than
+## data.min_interval_sec ago. Records the play time otherwise.
+func _is_throttled(event_name: StringName, data: AudioEventData) -> bool:
+	if data.min_interval_sec <= 0.0:
+		return false
+	var now: int = Time.get_ticks_msec()
+	var last: int = _last_play_ms.get(event_name, -1)
+	if last >= 0 and now - last < int(data.min_interval_sec * 1000.0):
+		return true
+	_last_play_ms[event_name] = now
+	return false
+
+
+## Seeds the pitch-jitter RNG (tests only).
+func set_rng_seed(seed_value: int) -> void:
+	_rng.seed = seed_value
 
 
 ## Returns true if [param event_name] is registered in the validated event map.
@@ -517,18 +543,21 @@ func _play_on_ui_player(data: AudioEventData) -> void:
 ## When all 24 slots are playing, evicts the lowest-priority oldest slot (TR-AS-012).
 func _assign_sfx_pool_slot(data: AudioEventData) -> void:
 	# Step 1: find first non-playing slot.
+	var target: int = -1
 	for i: int in range(SFX_POOL_SIZE):
 		if not _sfx_pool[i].playing:
-			_sfx_pool[i].stream = data.stream
-			_sfx_pool[i].play()
-			_timestamps[i] = Time.get_ticks_msec()
-			_slot_priorities[i] = data.priority
-			return
+			target = i
+			break
 	# Step 2: all slots occupied — evict by priority tier, oldest first.
-	var target: int = _find_eviction_target(data.priority)
-	_sfx_pool[target].stop()
-	_sfx_pool[target].stream = data.stream
-	_sfx_pool[target].play()
+	if target < 0:
+		target = _find_eviction_target(data.priority)
+		_sfx_pool[target].stop()
+	var player: AudioStreamPlayer = _sfx_pool[target]
+	player.stream = data.stream
+	player.volume_db = data.volume_db
+	player.pitch_scale = 1.0 + _rng.randf_range(-data.pitch_jitter, data.pitch_jitter) \
+		if data.pitch_jitter > 0.0 else 1.0
+	player.play()
 	_timestamps[target] = Time.get_ticks_msec()
 	_slot_priorities[target] = data.priority
 

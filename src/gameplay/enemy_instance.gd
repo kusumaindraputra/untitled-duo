@@ -719,6 +719,7 @@ func _fire_pattern_volley(pattern: BulletPattern, angles: PackedFloat32Array, sp
 				laser.anchor = self
 				parent_node.add_child(laser)
 				laser.global_position = global_position
+			Sfx.play(&"sfx_laser_charge")
 		BulletPattern.Kind.MORTAR:
 			var target: Vector2 = _fayde_ref.global_position if is_instance_valid(_fayde_ref) \
 				else global_position
@@ -728,6 +729,7 @@ func _fire_pattern_volley(pattern: BulletPattern, angles: PackedFloat32Array, sp
 			shell.telegraph_mult = _telegraph_mult
 			parent_node.add_child(shell)
 			shell.global_position = target
+			Sfx.play(&"sfx_mortar_whistle")
 		_:
 			var pool: BulletPool = BulletPool.for_parent(parent_node)
 			if pool == null:
@@ -736,6 +738,7 @@ func _fire_pattern_volley(pattern: BulletPattern, angles: PackedFloat32Array, sp
 				var b: Projectile = pool.acquire()
 				b.global_position = global_position
 				b.launch_pattern(Vector2.from_angle(a), damage, pattern, speed * _bullet_speed_mult)
+			Sfx.play(&"sfx_bullet_fire")
 
 
 ## Brief pre-fire glow in the pattern's colour so every volley is telegraphed.
@@ -743,6 +746,7 @@ func _fire_pattern_volley(pattern: BulletPattern, angles: PackedFloat32Array, sp
 func _start_windup_flash(pattern: BulletPattern) -> void:
 	if _vfx_tween != null or pattern.windup_sec <= 0.0:
 		return
+	Sfx.play(&"sfx_enemy_windup")
 	if _windup_tween:
 		_windup_tween.kill()
 	var c: Color = pattern.color
@@ -757,8 +761,7 @@ func _on_phase_up(phase: int) -> void:
 	request_hit_flash()
 	if is_instance_valid(_fayde_ref) and _fayde_ref.has_method(&"add_camera_trauma"):
 		_fayde_ref.add_camera_trauma(0.35)
-	if _audio != null and _audio.has_method(&"has_event") and _audio.has_event(&"sfx_boss_slam_telegraph"):
-		_audio.play_event(&"sfx_boss_slam_telegraph")
+	Sfx.play(&"sfx_boss_phase")
 
 
 # ── Awareness (ADR-0024) ──────────────────────────────────────────────────────
@@ -787,6 +790,7 @@ func alert(chain: bool = true) -> void:
 	_dormant = false
 	_dormant_timer = 0.0
 	_show_alert_mark()
+	Sfx.play(&"sfx_enemy_alert")
 	alerted.emit()
 	if chain and is_inside_tree():
 		for node: Node in get_tree().get_nodes_in_group(&"enemy"):

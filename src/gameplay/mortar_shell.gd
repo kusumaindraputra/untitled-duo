@@ -66,6 +66,7 @@ func explode() -> void:
 		return
 	_exploded = true
 	_flash = BLAST_FLASH_SEC
+	Sfx.play(&"sfx_mortar_blast")
 	if is_instance_valid(_player):
 		var d: float = global_position.distance_to(_player.global_position)
 		if d <= pattern.radius + TUNING.player_hurt_radius:
