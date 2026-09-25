@@ -111,3 +111,44 @@ extends Resource
 
 ## Hint shown in the preparation panel when quick continue is available.
 @export var quick_continue_hint: String = "No new Prana — press Space or Enter to continue"
+
+@export_group("Meta Progression (ADR-0025)")
+
+## Menu progress line: shards, runs, wins, best floor.
+@export var progress_line_format: String = "Cipher Shards  %d      Runs  %d      Wins  %d      Best Floor  %d"
+
+## Header above the Heirloom row on the main menu.
+@export var heirloom_header: String = "HEIRLOOM — a sigil you start every run with"
+
+## Heirloom button, locked: title, then shard cost.
+@export var heirloom_locked_format: String = "%s\n%d shards"
+
+## Heirloom button, unlocked but not equipped.
+@export var heirloom_unlocked_format: String = "%s\nEquip"
+
+## Heirloom button, equipped.
+@export var heirloom_equipped_format: String = "%s\n✔ Equipped"
+
+## Description line under the Heirloom row: sigil description, then the state hint.
+@export var heirloom_desc_format: String = "%s  —  %s"
+
+## State hints for the Heirloom description line.
+@export var heirloom_hint_buy: String = "press to unlock"
+@export var heirloom_hint_poor: String = "not enough shards yet"
+@export var heirloom_hint_equip: String = "press to equip"
+@export var heirloom_hint_unequip: String = "press to unequip"
+
+## Hard Mode toggle label (shown once unlocked).
+@export var hard_mode_label: String = "Hard Mode  (faster bullets, more elites, +50% shards)"
+
+## Shown instead of the toggle while Hard Mode is locked.
+@export var hard_mode_locked: String = "Win a run to unlock Hard Mode"
+
+## End-of-run stat row label for the shard payout.
+@export var shards_earned_label: String = "Cipher Shards"
+
+## Line on the end screen the first time Hard Mode unlocks.
+@export var hard_mode_unlocked_banner: String = "HARD MODE UNLOCKED — switch it on from the main menu"
+
+## Line on the core-pick screen naming the equipped Heirloom (%s = sigil title).
+@export var heirloom_active_format: String = "Heirloom: %s"

@@ -51,6 +51,16 @@ const _BOSS_POOL_PATHS: Array[String] = [
 	"res://assets/data/enemy_pool_configs/enemy_pool_boss_f3.tres",
 ]
 
+const _META: MetaTuning = preload("res://assets/data/meta_tuning.tres")
+const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
+
+## Where between-run progress is read and written (ADR-0025).
+var progress_path: String = MetaProgress.DEFAULT_PATH
+## Between-run progress: Heirloom, Hard Mode, shard payout at run end.
+var _meta: MetaProgress = null
+## Guards the shard payout so a run is only recorded once.
+var _run_recorded: bool = false
+
 var _dungeon_graph: DungeonGraph = null
 var _gen: DungeonGenerator = DungeonGenerator.new()
 var _current_floor: int = 1
@@ -94,6 +104,7 @@ var _rooms_entered: int = 1
 func _ready() -> void:
 	Engine.time_scale = 1.0  # reset from any prior slow-mo (scene reload via R key)
 	_register_input_actions()
+	_meta = MetaProgress.load_from(progress_path)
 	_load_pool_configs()
 	HealthAndDamage.heavy_hit.connect(_on_heavy_hit)
 
@@ -370,6 +381,16 @@ func _show_core_pick() -> void:
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(sub)
 
+	var heirloom: StringName = _meta.run_heirloom() if _meta != null else &""
+	if heirloom != &"":
+		var info: Dictionary = MetaProgress.heirloom_info(heirloom)
+		var hl := Label.new()
+		hl.text = _COPY.heirloom_active_format % str(info.get("title", heirloom))
+		hl.add_theme_font_size_override(&"font_size", 18)
+		hl.add_theme_color_override(&"font_color", Color(1.0, 0.85, 0.4))
+		hl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vbox.add_child(hl)
+
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override(&"separation", 14)
@@ -402,6 +423,9 @@ func _on_core_picked(type_id: int) -> void:
 		_core_pick_layer = null
 	get_tree().paused = false
 	GameStateManager.start_run()
+	# ADR-0025: the equipped Heirloom is a stat sigil granted before the first room.
+	if _meta != null and _sigil_manager != null and _meta.run_heirloom() != &"":
+		_sigil_manager.apply_sigil(_meta.run_heirloom())
 	$CanvasLayer/CombatHUD.show_floor_intro(_current_floor)
 	_show_tutorial_overlay()
 
@@ -745,11 +769,14 @@ func _load_pool_configs() -> void:
 ## Sets WaveManager pool configs for the current floor (combat + boss).
 func _apply_floor_pool_config() -> void:
 	var floor_idx: int = clampi(_current_floor - 1, 0, _floor_pool_configs.size() - 1)
+	var hard: bool = _meta != null and _meta.hard_mode_active(_META)
 	if not _floor_pool_configs.is_empty():
-		$WaveManager.enemy_pool_config = _floor_pool_configs[floor_idx]
+		var cfg: EnemyPoolConfig = _floor_pool_configs[floor_idx]
+		$WaveManager.enemy_pool_config = MetaProgress.apply_hard_mode(cfg, _META) if hard else cfg
 	if not _boss_pool_configs.is_empty():
 		var boss_idx: int = clampi(_current_floor - 1, 0, _boss_pool_configs.size() - 1)
-		$WaveManager.boss_pool_config = _boss_pool_configs[boss_idx]
+		var boss_cfg: EnemyPoolConfig = _boss_pool_configs[boss_idx]
+		$WaveManager.boss_pool_config = MetaProgress.apply_hard_mode(boss_cfg, _META) if hard else boss_cfg
 
 
 ## Death slow-mo: brief 0.15× time-scale window so the player can read the final
@@ -769,6 +796,15 @@ func _on_run_ended(win: bool) -> void:
 			audio.play_event(evt)
 
 	var run_data: Dictionary = RunManager.get_run_data()
+	# ADR-0025: pay Cipher Shards once per run and save before building the overlay.
+	var shards_earned: int = 0
+	var hard_newly_unlocked: bool = false
+	if _meta != null and not _run_recorded:
+		_run_recorded = true
+		var was_unlocked: bool = _meta.is_hard_mode_unlocked(_META)
+		shards_earned = _meta.record_run(_META, run_data, win)
+		hard_newly_unlocked = not was_unlocked and _meta.is_hard_mode_unlocked(_META)
+		_meta.save_to(progress_path)
 	var floor_reached: int = run_data.get("current_floor", 1)
 	var rooms_cleared: int = run_data.get("rooms_cleared", 0)
 	var enemies_killed: int = run_data.get("enemies_killed", 0)
@@ -822,6 +858,15 @@ func _on_run_ended(win: bool) -> void:
 	_add_stat_row(grid, "Enemies Slain", str(enemies_killed))
 	_add_stat_row(grid, "Best Combo", "x%d" % best_combo)
 	_add_stat_row(grid, "Time", _format_run_time(run_time_sec))
+	_add_stat_row(grid, _COPY.shards_earned_label, "+%d" % shards_earned)
+
+	if hard_newly_unlocked:
+		var unlock_label := Label.new()
+		unlock_label.text = _COPY.hard_mode_unlocked_banner
+		unlock_label.add_theme_font_size_override(&"font_size", 20)
+		unlock_label.add_theme_color_override(&"font_color", Color(0.78, 0.45, 1.0))
+		unlock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vbox.add_child(unlock_label)
 
 	var spacer2 := Control.new()
 	spacer2.custom_minimum_size = Vector2(0, 40)

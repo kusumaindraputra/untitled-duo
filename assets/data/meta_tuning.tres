@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="MetaTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/meta_tuning.gd" id="1_meta"]
+
+[resource]
+script = ExtResource("1_meta")
+shards_per_floor = 10
+shards_per_room = 3
+kills_per_shard = 5
+win_bonus = 60
+hard_mode_shard_mult = 1.5
+heirloom_ids = Array[StringName]([&"move_speed", &"damage", &"graze_ring", &"dash_charge", &"dash_cut"])
+heirloom_costs = Array[int]([30, 45, 50, 70, 90])
+hard_mode_wins_required = 1
+hard_bullet_speed_mult = 1.15
+hard_fire_rate_mult = 1.2
+hard_telegraph_mult = 0.85
+hard_extra_enemies = 2
+hard_elite_chance_bonus = 0.1
