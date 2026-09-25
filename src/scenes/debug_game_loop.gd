@@ -93,6 +93,7 @@ var _sigil_manager: SigilManager = null
 ## Fast-pace layer (ADR-0019). Created in _ready(), wired to the player and HUD there.
 var _pace_director: PaceDirector = null
 var _sigil_effects: SigilEffects = null
+var _final_boss: FinalBossDirector = null
 
 ## Run-scoped transient bag of Prana acquired from post-room rewards, awaiting
 ## placement into the grid during the next prep phase. Created in _ready().
@@ -159,6 +160,13 @@ func _ready() -> void:
 	$CanvasLayer.move_child(indicators, 0)
 	# Boss-intro UI: WaveManager announces boss spawns; HUD shows name card + HP bar.
 	$WaveManager.boss_spawned.connect(hud._on_boss_spawned)
+	# ADR-0026: the Floor 3 Cipher Keeper changes the arena at each phase.
+	_final_boss = FinalBossDirector.new()
+	_final_boss.name = "FinalBossDirector"
+	_final_boss.hud = hud
+	add_child(_final_boss)
+	$WaveManager.boss_spawned.connect(func(boss: Node) -> void:
+		_final_boss.attach(boss, SceneManager.get_current_scene() as Node2D))
 	# Pause overlay: GameStateManager drives the paused/resumed transitions; we just
 	# build/free the overlay in response so ESC works from PREP and COMBAT alike.
 	GameStateManager.game_paused.connect(_on_game_paused)

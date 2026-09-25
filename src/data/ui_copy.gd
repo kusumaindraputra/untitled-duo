@@ -179,6 +179,15 @@ extends Resource
 @export var wayshrine_leave: String = "Walk on"
 @export var wayshrine_too_weak: String = "Too weak to offer blood"
 
+@export_group("Final Boss (ADR-0026)")
+
+## Banner for each Cipher Keeper phase (1st, 2nd, 3rd HP threshold crossed).
+@export var keeper_phase_banners: Array[String] = [
+	"The first lock breaks — a beam pylon rises",
+	"The vault closes in",
+	"THE LAST CIPHER — hold on",
+]
+
 @export_group("Combat Tutorial")
 
 ## Heading of the in-combat coach panel.
