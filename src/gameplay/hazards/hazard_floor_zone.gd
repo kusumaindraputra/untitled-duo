@@ -27,8 +27,16 @@ func get_phase() -> Phase:
 	return phase_at(_active_time, spec)
 
 
+## Phase seen on the previous tick, so the ignite cue plays once per burn.
+var _last_phase: Phase = Phase.DORMANT
+
+
 func _hazard_tick(_delta: float) -> void:
-	if get_phase() != Phase.BURNING or not is_instance_valid(_player):
+	var phase: Phase = get_phase()
+	if phase == Phase.BURNING and _last_phase != Phase.BURNING:
+		Sfx.play(&"sfx_vent_ignite")
+	_last_phase = phase
+	if phase != Phase.BURNING or not is_instance_valid(_player):
 		return
 	if in_iso_radius(_player.global_position - global_position, spec.zone_radius):
 		_hit_player(false)

@@ -134,6 +134,7 @@ static func clear_all(tree: SceneTree) -> void:
 
 
 func _apply() -> void:
+	Sfx.play(&"sfx_orb_pickup")
 	if kind == Kind.HP:
 		if is_instance_valid(_player):
 			HealthAndDamage.apply_heal(_player, amount)

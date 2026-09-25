@@ -59,6 +59,7 @@ func distance_to_arms(point: Vector2) -> float:
 
 
 func _on_activated() -> void:
+	_live_cue_played = false
 	_lengths.resize(maxi(spec.arm_count, 1))
 	for i: int in _lengths.size():
 		_lengths[i] = _reach()
@@ -69,8 +70,15 @@ func _reach() -> float:
 	return maxf(spec.arm_length - spec.arm_inner_radius, 0.0)
 
 
+## True once the live-beam cue has played for this activation.
+var _live_cue_played: bool = false
+
+
 func _hazard_tick(delta: float) -> void:
 	_graze_cd = maxf(_graze_cd - delta, 0.0)
+	if not _live_cue_played and is_live():
+		_live_cue_played = true
+		Sfx.play(&"sfx_laser_fire")
 	var world: World2D = get_world_2d() if is_inside_tree() else null
 	for i: int in _lengths.size():
 		var a: float = arm_angle(_active_time, spec.rotation_deg_per_sec, i, spec.arm_count)

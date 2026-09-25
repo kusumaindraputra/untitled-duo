@@ -30,6 +30,12 @@ extends Resource
 ## Camera2D position smoothing speed. Higher = snappier.
 @export var smooth_speed: float = 8.0
 
+@export_group("Shake")
+
+## Camera trauma added by every hit Fayde takes, so even chip damage is felt.
+## Heavy hits add their own, larger kick on top (PlayerController._on_heavy_hit).
+@export_range(0.0, 1.0) var player_hit_trauma: float = 0.2
+
 
 ## Visible game-px area at [param zoom] for a [param viewport] size.
 static func visible_area(zoom: float, viewport: Vector2 = Vector2(1152.0, 648.0)) -> Vector2:

@@ -72,6 +72,9 @@ const HEAL_FLASH_DURATION: float = 0.5
 ## Tracked from chain_index_changed — true when the next hit is the final chain attack.
 var _next_is_ender: bool = false
 
+## True while the Special meter is full, so the ready chime plays once per fill.
+var _special_was_full: bool = false
+
 ## AudioSystem Autoload reference; null-safe — set in _ready(), overridable for tests.
 ## Variant (not Node) intentional — allows mock injection.
 var _audio: Variant = null
@@ -134,6 +137,8 @@ func _ready() -> void:
 	SpellCastingEffects.cascade_burst.connect(_on_cascade_burst)
 	SpellCastingEffects.perfect_cast.connect(_on_perfect_cast)
 	SpellCastingEffects.special_fired.connect(_on_special_fired)
+	SpellCastingEffects.special_meter_changed.connect(_on_special_meter_changed)
+	SpellCastingEffects.grazed.connect(_on_grazed)
 	CombinationResolution.combo_resolved.connect(_on_combo_resolved)
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	HealthAndDamage.damage_taken.connect(_on_damage_taken)
@@ -184,6 +189,10 @@ func _exit_tree() -> void:
 		SpellCastingEffects.perfect_cast.disconnect(_on_perfect_cast)
 	if SpellCastingEffects.special_fired.is_connected(_on_special_fired):
 		SpellCastingEffects.special_fired.disconnect(_on_special_fired)
+	if SpellCastingEffects.special_meter_changed.is_connected(_on_special_meter_changed):
+		SpellCastingEffects.special_meter_changed.disconnect(_on_special_meter_changed)
+	if SpellCastingEffects.grazed.is_connected(_on_grazed):
+		SpellCastingEffects.grazed.disconnect(_on_grazed)
 	if GameStateManager.preparation_started.is_connected(_on_preparation_started):
 		GameStateManager.preparation_started.disconnect(_on_preparation_started)
 	if _in_hitstop:
@@ -331,6 +340,7 @@ func _on_reaction_triggered(reaction_name: String, world_pos: Vector2, prana_typ
 	if now - int(_reaction_label_last_us.get(reaction_name, -REACTION_LABEL_COOLDOWN_US)) < REACTION_LABEL_COOLDOWN_US:
 		return
 	_reaction_label_last_us[reaction_name] = now
+	_audio_play(&"sfx_reaction")
 	var type_data: PranaType = PranaCatalog.get_type(prana_type_id)
 	var label := _ReactionLabel.new()
 	label.text = reaction_name
@@ -367,7 +377,7 @@ func _on_perfect_cast(world_pos: Vector2, streak: int) -> void:
 	label.top_level = true
 	get_tree().root.add_child(label)
 	label.global_position = world_pos + Vector2(0.0, -14.0)
-	_audio_play(&"sfx_combo_advance")
+	_audio_play(&"sfx_perfect_cast")
 
 
 ## Draws the Special: a large burst ring (or a compact one for the Stormgold chain)
@@ -382,11 +392,25 @@ func _on_special_fired(prana_type_id: int, world_pos: Vector2, radius: float) ->
 	ring.top_level = true
 	get_tree().root.add_child(ring)
 	ring.global_position = world_pos
-	_audio_play(&"sfx_heavy_hit")
+	_audio_play(&"sfx_special_fire")
 	_start_shake(SPECIAL_SHAKE_MULT)
 
 
 ## Frees the active combo window ring if one exists. Idempotent.
+## Plays the "Special ready" chime once each time the meter fills up.
+func _on_special_meter_changed(value: float, max_value: float) -> void:
+	var full: bool = max_value > 0.0 and value >= max_value
+	if full and not _special_was_full:
+		_audio_play(&"sfx_special_ready")
+	_special_was_full = full
+
+
+## A graze tick: a quiet high click (throttled in the registry).
+func _on_grazed(_world_pos: Vector2, _meter_gain: float) -> void:
+	if not _dying:
+		_audio_play(&"sfx_graze")
+
+
 func _free_combo_ring() -> void:
 	if _combo_ring != null:
 		if is_instance_valid(_combo_ring):

@@ -10,3 +10,4 @@ boss_reveal_zoom = 1.4
 boss_reveal_hold_sec = 0.9
 look_ahead_max = 40.0
 smooth_speed = 8.0
+player_hit_trauma = 0.2

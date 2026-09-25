@@ -54,6 +54,7 @@ func _physics_process(delta: float) -> void:
 			if _timer <= 0.0:
 				_phase = Phase.ACTIVE
 				_timer = pattern.active_sec
+				Sfx.play(&"sfx_laser_fire")
 				_update_beam_length(true)
 		Phase.ACTIVE:
 			_check_player()

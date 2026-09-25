@@ -36,6 +36,8 @@ var _pending_meter_bonus: float = 0.0
 ## Real-time deadline (usec) for a Perfect Dodge slow-mo waiting on a hitstop; 0 = none.
 var _slowmo_retry_until_us: int = 0
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
+## Live rank at the last style emit — a better rank than this plays the rank-up cue.
+var _last_rank: StyleMeter.Rank = StyleMeter.Rank.D
 
 
 func _ready() -> void:
@@ -119,6 +121,7 @@ func _on_perfect_dodged(world_pos: Vector2) -> void:
 	if is_inside_tree() and not TimeWarp.try_apply(
 			get_tree(), TUNING.perfect_dodge_time_scale, TUNING.perfect_dodge_slowmo_sec):
 		_slowmo_retry_until_us = Time.get_ticks_usec() + int(SLOWMO_RETRY_SEC * 1_000_000.0)
+	Sfx.play(&"sfx_perfect_dodge")
 	perfect_dodge_triggered.emit(world_pos)
 
 
@@ -197,6 +200,7 @@ func finish_room() -> void:
 	_pending_meter_bonus = StyleMeter.pick(TUNING.rank_meter_bonus, rank)
 	if heal > 0.0 and is_instance_valid(_player):
 		HealthAndDamage.apply_heal(_player, heal)
+	Sfx.play(&"sfx_room_rank")
 	room_ranked.emit(StyleMeter.letter(rank), heal, _pending_meter_bonus)
 
 
@@ -231,4 +235,9 @@ func _spawn_orb(parent_node: Node, pos: Vector2, kind: PickupOrb.Kind, amount: f
 
 
 func _emit_style() -> void:
+	var live: StyleMeter.Rank = style.get_live_rank()
+	# Rank enum runs S = 0 … D = 4, so a smaller value is a better rank.
+	if _in_combat and live < _last_rank:
+		Sfx.play(&"sfx_rank_up")
+	_last_rank = live
 	style_changed.emit(style.get_value(), TUNING.style_max, StyleMeter.letter(style.get_live_rank()))

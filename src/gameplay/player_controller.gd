@@ -308,6 +308,7 @@ func _physics_process(delta: float) -> void:
 			var was_empty: bool = _dash_charges <= 0
 			_dash_charges = mini(_dash_charges + 1, _max_dash_charges())
 			dash_charges_changed.emit(_dash_charges, _max_dash_charges())
+			Sfx.play(&"sfx_dash_ready")
 			if was_empty:
 				dash_cooldown_changed.emit(true)
 			if _dash_charges < _max_dash_charges():
@@ -770,6 +771,7 @@ func _on_player_damage_taken(target: Node, final_damage: int, _current_hp: int) 
 	if target.is_in_group(&"player") and final_damage > 0:
 		_post_hit_blink_timer = HealthAndDamage.FAYDE_IFRAME_DURATION
 		_blink_timer = 0.0  # start fresh so first blink fires immediately
+		add_camera_trauma(CAMERA_TUNING.player_hit_trauma)
 
 
 ## Inner class: single procedural dash dust puff.

@@ -135,6 +135,7 @@ static func cast_beam(world: World2D, from: Vector2, angle: float, length: float
 
 func _break() -> void:
 	_broken = true
+	Sfx.play(&"sfx_pillar_break")
 	destroyed.emit(global_position)
 	if not is_inside_tree():
 		return

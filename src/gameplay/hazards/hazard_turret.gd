@@ -67,6 +67,7 @@ func _fire(angles: PackedFloat32Array, speed: float) -> void:
 		var b: Projectile = pool.acquire()
 		b.global_position = muzzle
 		b.launch_pattern(Vector2.from_angle(a), spec.damage, spec.pattern, speed)
+	Sfx.play(&"sfx_bullet_fire")
 
 
 func _draw() -> void:
