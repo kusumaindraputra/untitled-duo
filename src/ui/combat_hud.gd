@@ -82,6 +82,9 @@ const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
 
 ## Upward pixel offset for chain dots above Fayde's world position in screen-space (AC-HUD-27).
 const DOT_OFFSET_ABOVE_PLAYER: float = 48.0
+## World-space height the chain dots float above Fayde's feet: clears the top of his
+## 32 px sprite (ADR-0022) at any camera zoom. Never closer than DOT_OFFSET_ABOVE_PLAYER.
+const DOT_WORLD_LIFT: float = 38.0
 
 
 # ── Public child node references (created in _ready() for testability) ────────
@@ -309,7 +312,9 @@ func _process(delta: float) -> void:
 		# NOTIFICATION_RESIZED fires); minimum_size is computed immediately from children's
 		# custom_minimum_size, giving stable centering even on the first frame.
 		var dot_x: float = screen_pos.x - chain_dots_container.get_minimum_size().x * 0.5
-		var dot_y: float = maxf(screen_pos.y - DOT_OFFSET_ABOVE_PLAYER, 0.0)
+		var zoom_y: float = get_viewport().get_canvas_transform().get_scale().y
+		var lift: float = maxf(DOT_OFFSET_ABOVE_PLAYER, DOT_WORLD_LIFT * zoom_y)
+		var dot_y: float = maxf(screen_pos.y - lift, 0.0)
 		chain_dots_container.position = Vector2(dot_x, dot_y)
 
 

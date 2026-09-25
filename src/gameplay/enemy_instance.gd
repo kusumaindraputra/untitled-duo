@@ -339,6 +339,8 @@ func init(enemy_type_id: int, catalog: Variant = null) -> void:
 	var debug_circle: Node = get_node_or_null("DebugCircle")
 	if debug_circle != null:
 		debug_circle.set("color", et.debug_color)
+		debug_circle.set("hide_body", et.sprite_sheet != null)
+	_apply_sprite(et)
 	if _archetype == GameEnums.EnemyArchetype.SWARMER:
 		var rng := RandomNumberGenerator.new()
 		rng.randomize()
@@ -1078,6 +1080,24 @@ func _spawn_death_burst(prana_affiliation: GameEnums.DamageClass) -> void:
 	if parent_node == null:
 		return
 	parent_node.add_child(burst)
+
+
+## Shows [param et]'s pixel-art sheet (ADR-0022), creating the PixelCharacter child
+## on first use. The sprite is counter-scaled by base_scale so one sheet pixel lands
+## on exactly sprite_pixel_scale screen-world pixels.
+func _apply_sprite(et: EnemyType) -> void:
+	var pc: PixelCharacter = get_node_or_null(^"PixelCharacter") as PixelCharacter
+	if et.sprite_sheet == null:
+		if pc != null:
+			pc.visible = false
+		return
+	if pc == null:
+		pc = PixelCharacter.new()
+		pc.name = "PixelCharacter"
+		add_child(pc)
+	pc.visible = true
+	pc.sheet = et.sprite_sheet
+	pc.pixel_scale = et.sprite_pixel_scale / maxf(et.base_scale, 0.01)
 
 
 ## Inner class: single procedural death burst instance.

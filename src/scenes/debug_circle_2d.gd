@@ -14,6 +14,9 @@ extends Node2D
 @export var color: Color = Color.WHITE
 ## Legacy radius export — kept so EnemyInstance.tscn loads without error.
 @export var radius: float = 8.0
+## True once a PixelCharacter sprite draws the body (ADR-0022): only the ground
+## shadow and the player's aim / cast beam are drawn here.
+@export var hide_body: bool = false
 
 const _BODY_W: float = 12.0
 const _BODY_H: float = 24.0
@@ -32,28 +35,30 @@ func _draw() -> void:
 	# Ellipse at feet tells the eye exactly where on the floor the entity stands.
 	_draw_ellipse(Vector2(0.0, 2.0), _SHADOW_RX, _SHADOW_RY, Color(0.0, 0.0, 0.0, 0.50))
 
-	# Body — feet at origin, extends upward (negative Y)
-	var body_rect := Rect2(-_BODY_W * 0.5, -_BODY_H, _BODY_W, _BODY_H)
-	draw_rect(body_rect, outline)
-	draw_rect(body_rect.grow(-1.0), color)
-
-	# Head — sits directly above the body
 	var head_cy: float = -_BODY_H - _HEAD_R
-	draw_circle(Vector2(0.0, head_cy), _HEAD_R + 1.0, outline)
-	draw_circle(Vector2(0.0, head_cy), _HEAD_R, color)
+	if not hide_body:
+		# Body — feet at origin, extends upward (negative Y)
+		var body_rect := Rect2(-_BODY_W * 0.5, -_BODY_H, _BODY_W, _BODY_H)
+		draw_rect(body_rect, outline)
+		draw_rect(body_rect.grow(-1.0), color)
+
+		# Head — sits directly above the body
+		draw_circle(Vector2(0.0, head_cy), _HEAD_R + 1.0, outline)
+		draw_circle(Vector2(0.0, head_cy), _HEAD_R, color)
 
 	var parent := get_parent()
 	if not (parent and parent.has_method(&"get_facing_direction")):
 		return
 
-	# Vertical accent — player-only identifier (art bible 3.2: "single vertical accent")
-	var accent_base_y: float = head_cy - _HEAD_R
-	draw_line(
-		Vector2(0.0, accent_base_y),
-		Vector2(0.0, accent_base_y - 9.0),
-		color.lightened(0.35),
-		2.0
-	)
+	if not hide_body:
+		# Vertical accent — player-only identifier (art bible 3.2: "single vertical accent")
+		var accent_base_y: float = head_cy - _HEAD_R
+		draw_line(
+			Vector2(0.0, accent_base_y),
+			Vector2(0.0, accent_base_y - 9.0),
+			color.lightened(0.35),
+			2.0
+		)
 
 	# Facing direction arrow or cast beam
 	var dir: Vector2 = parent.get_facing_direction()
