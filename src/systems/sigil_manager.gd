@@ -46,6 +46,10 @@ var _bag_provider: Callable = func() -> Node:
 ## The live choice overlay while a selection is pending; null otherwise.
 var _overlay: CanvasLayer = null
 
+## Runtime for behaviour sigils (ADR-0026). Set by debug_game_loop; when null a
+## behaviour sigil is ignored with a warning.
+var effects: SigilEffects = null
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 ## Returns a copy of the full reward pool (stat sigils + one Prana sigil per type).
@@ -108,6 +112,13 @@ func apply_sigil(sigil_id: StringName) -> void:
 		var bag: Node = _bag_provider.call()
 		if is_instance_valid(bag) and bag.has_method(&"add"):
 			bag.add(type_id)
+		sigil_applied.emit(sigil_id)
+		return
+	if SigilEffects.handles(sigil_id):
+		if not is_instance_valid(effects):
+			push_warning("SigilManager.apply_sigil: no SigilEffects for '%s'" % sigil_id)
+			return
+		effects.add_stack(sigil_id)
 		sigil_applied.emit(sigil_id)
 		return
 	match sigil_id:
@@ -203,7 +214,8 @@ func offer_sigils() -> void:
 ## Builds a single clickable reward card button. Card titles/descriptions come from
 ## CONFIG (centralized copy, staged for localization — see /localize). Prana sigils
 ## (carrying a "prana_type" key) are tinted with the element's canonical colour from
-## PranaCatalog so they read distinctly from stat sigils in the mixed menu.
+## PranaCatalog so they read distinctly from stat sigils in the mixed menu. Behaviour
+## sigils (carrying "behaviour") get the gold accent so play-changing picks stand out.
 func _make_sigil_card(sigil: Dictionary) -> Button:
 	var card := Button.new()
 	card.custom_minimum_size = Vector2(220, 120)
@@ -214,6 +226,8 @@ func _make_sigil_card(sigil: Dictionary) -> Button:
 		var type_id: int = sigil["prana_type"]
 		if type_id >= 0 and type_id < PranaCatalog.type_count():
 			card.add_theme_color_override(&"font_color", PranaCatalog.get_type_color(type_id))
+	elif sigil.get("behaviour", false):
+		card.add_theme_color_override(&"font_color", CONFIG.behaviour_card_color)
 	var id: StringName = sigil["id"]
 	card.pressed.connect(func() -> void: _on_sigil_chosen(id))
 	return card

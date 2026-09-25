@@ -84,6 +84,7 @@ var _sigil_manager: SigilManager = null
 
 ## Fast-pace layer (ADR-0019). Created in _ready(), wired to the player and HUD there.
 var _pace_director: PaceDirector = null
+var _sigil_effects: SigilEffects = null
 
 ## Run-scoped transient bag of Prana acquired from post-room rewards, awaiting
 ## placement into the grid during the next prep phase. Created in _ready().
@@ -164,6 +165,13 @@ func _ready() -> void:
 	_pace_director.style_changed.connect(hud.set_style)
 	_pace_director.room_ranked.connect(hud.show_room_rank)
 	_pace_director.perfect_dodge_triggered.connect(hud.show_perfect_dodge)
+	# ADR-0026 behaviour sigils: effects hang off gameplay signals; SigilManager adds stacks.
+	_sigil_effects = SigilEffects.new()
+	_sigil_effects.name = "SigilEffects"
+	_sigil_effects.player = $PlayerController
+	add_child(_sigil_effects)
+	_sigil_manager.effects = _sigil_effects
+	_pace_director.perfect_dodge_triggered.connect(_sigil_effects.on_perfect_dodge)
 	# Transient reward bag: Prana picked from post-room rewards land here, then the
 	# prep grid places them. Found by SigilManager (writer) + PranaGrid (reader) via group.
 	_prana_bag = PranaBag.new()
