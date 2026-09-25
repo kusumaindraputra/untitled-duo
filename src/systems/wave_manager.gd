@@ -541,6 +541,10 @@ func _spawn_entries(entries: Array, reinforcement: bool) -> int:
 		add_child(enemy)
 		enemy.global_position = final_pos
 		enemy.init(entry["type_id"])
+		# ADR-0024 — opening-wave enemies wait to notice Fayde; reinforcements arrive
+		# already hunting her (bosses are always awake — enter_dormant ignores them).
+		if not reinforcement:
+			enemy.enter_dormant()
 		if elite:
 			enemy.make_elite(BULLET_HELL_TUNING)
 		var cfg: EnemyPoolConfig = _get_pool_config()

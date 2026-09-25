@@ -20,7 +20,7 @@ const _FLOOR_SOURCE_ID: int = 0
 ## Scan radius. Must be >= max(x_radius, y_radius) = max(20, 24).
 const _FLOOR_RADIUS: int = 26
 ## Arena diamond half-extents in screen pixels.
-## Full diamond 1280×768 game-px. At combat zoom 1.5×: visible 768×432 — Fayde (~64px)
+## Full diamond 1280×768 game-px. At combat zoom 2.0×: visible 576×324 — Fayde (~64px)
 ## occupies ~15% of height, matching Hades character-to-room scale ratio.
 ## At prep zoom 0.55×: full arena visible with ~400px border.
 ## x_radius = 640/32 = 20 tiles wide, y_radius = 384/16 = 24 tiles deep.
@@ -110,7 +110,7 @@ func _ready() -> void:
 # ── Public API ────────────────────────────────────────────────────────────────
 
 ## Returns the player spawn position: SW corner tile center.
-## Guaranteed inside the safe zone (norm 0.5–0.82) — not OOB at combat zoom 1.5×.
+## Guaranteed inside the safe zone (norm 0.5–0.82) — not OOB at combat zoom 2.0×.
 ## Fallback: Vector2.ZERO if no valid tile found (e.g. empty tile map in tests).
 func get_player_spawn_position() -> Vector2:
 	return _find_sw_position()
@@ -622,7 +622,7 @@ func _place_spawn_markers() -> void:
 				continue
 			var pos: Vector2 = _tile_map.map_to_local(c)
 			# Exclude tiles in the outer 22% of the diamond — boundary tiles put enemies
-			# at the visible edge of the floor and appear OOB at combat zoom 1.5×.
+			# at the visible edge of the floor and appear OOB at combat zoom 2.0×.
 			var norm_check: float = absf(pos.x) / float(_WALL_HALF_X) + absf(pos.y) / float(_WALL_HALF_Y)
 			if norm_check > 0.78:
 				continue
