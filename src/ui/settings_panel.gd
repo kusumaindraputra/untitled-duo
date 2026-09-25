@@ -30,13 +30,15 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	if settings == null:
 		settings = GameSettings.active()
+	GameSettings.ensure_actions()
+	settings.apply_keys()
 	_build()
 	_back.grab_focus()
 
 
 func _build() -> void:
 	var bg := ColorRect.new()
-	bg.color = Color(0.03, 0.02, 0.05, 0.94)
+	bg.color = Color(0.03, 0.02, 0.05, 0.98)
 	bg.anchor_right = 1.0
 	bg.anchor_bottom = 1.0
 	add_child(bg)

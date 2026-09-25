@@ -25,6 +25,13 @@ const RESOLUTIONS: Array[Vector2i] = [
 const REMAPPABLE: Array[StringName] = [
 	&"move_up", &"move_down", &"move_left", &"move_right", &"dash", &"cast", &"special",
 ]
+## Default keyboard keys for remappable actions the run scene registers itself
+## (cast / special come from SpellCastingEffects). Lets the main menu's Settings show
+## and rebind them before a run has started.
+const DEFAULT_KEYS: Dictionary[StringName, Key] = {
+	&"move_up": KEY_W, &"move_down": KEY_S, &"move_left": KEY_A, &"move_right": KEY_D,
+	&"dash": KEY_SHIFT,
+}
 ## Screen flash strength when reduce_flashes is on.
 const REDUCED_FLASH_SCALE: float = 0.3
 
@@ -106,6 +113,18 @@ func rebind(action: StringName, keycode: Key) -> bool:
 	key_overrides[action] = keycode
 	set_action_key(action, keycode)
 	return true
+
+
+## Creates any missing remappable action with its DEFAULT_KEYS key. Existing
+## actions are left untouched.
+static func ensure_actions() -> void:
+	for action: StringName in DEFAULT_KEYS:
+		if InputMap.has_action(action):
+			continue
+		InputMap.add_action(action, 0.2)
+		var k := InputEventKey.new()
+		k.keycode = DEFAULT_KEYS[action]
+		InputMap.action_add_event(action, k)
 
 
 ## Forgets every override and puts the default keys back.

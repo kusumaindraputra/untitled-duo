@@ -87,6 +87,28 @@ func test_final_boss_ring_phase_spawns_closing_ring_in_room() -> void:
 		if c is HazardClosingRing:
 			rings += 1
 	assert_int(rings).is_equal(1)
-	assert_array(applied).contains_exactly([CFG.ring_phase])
+	assert_int(applied.back()).is_equal(CFG.ring_phase)
+	room.free()
+	d.free()
+
+
+func test_final_boss_skipped_phase_is_still_applied() -> void:
+	var d := FinalBossDirector.new()
+	add_child(d)
+	var room := Node2D.new()
+	add_child(room)
+	var boss := _FakeBoss.new()
+	boss.type_id = CFG.boss_type_id
+	room.add_child(boss)
+	d.attach(boss, room)
+	var applied: Array[int] = []
+	d.phase_applied.connect(func(p: int) -> void: applied.append(p))
+	boss.phase_changed.emit(CFG.ring_phase)
+	assert_array(applied).contains_exactly([CFG.sweep_phase, CFG.ring_phase])
+	var sweeps: int = 0
+	for c: Node in room.get_children():
+		if c is HazardSweepLaser:
+			sweeps += 1
+	assert_int(sweeps).is_equal(1)
 	room.free()
 	d.free()

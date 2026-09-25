@@ -24,6 +24,9 @@ var hud: CombatHUD = null
 
 var _boss: Node2D = null
 var _room: Node2D = null
+## Highest phase already applied. A big hit can cross two thresholds in one frame,
+## so every phase in between is applied too.
+var _applied_phase: int = 0
 
 
 ## True when [param type_id] is the final boss.
@@ -55,12 +58,19 @@ func attach(boss: Node, room: Node2D) -> bool:
 		return false
 	_boss = boss as Node2D
 	_room = room
+	_applied_phase = 0
 	if boss.has_signal(&"phase_changed"):
 		boss.connect(&"phase_changed", _on_phase_changed)
 	return true
 
 
 func _on_phase_changed(phase: int) -> void:
+	while _applied_phase < phase:
+		_applied_phase += 1
+		_apply_phase(_applied_phase)
+
+
+func _apply_phase(phase: int) -> void:
 	for spec: HazardSpec in hazards_for_phase(phase):
 		_spawn_hazard(spec)
 	if phase == CONFIG.breather_phase and is_inside_tree():

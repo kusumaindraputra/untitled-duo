@@ -1202,7 +1202,7 @@ func _apply_sprite(et: EnemyType) -> void:
 	pc.visible = true
 	pc.sheet = et.sprite_sheet
 	pc.pixel_scale = et.sprite_pixel_scale / maxf(et.base_scale, 0.01)
-	pc.self_modulate = et.sprite_tint
+	pc.modulate = et.sprite_tint
 
 
 ## Inner class: single procedural death burst instance.
