@@ -44,6 +44,13 @@ const _DEBRIS_MIN_CENTER_DIST: float = 90.0
 const _DEBRIS_MIN_SPAWN_DIST: float = 110.0
 const _DEBRIS_MIN_BETWEEN_DIST: float = 75.0
 const _DEBRIS_PLACE_ATTEMPTS: int = 80
+## RING layout: tiles closer to the centre than this diamond norm form the walled core.
+const RING_HOLE_NORM: float = 0.3
+## CROSS layout: half-width of the vertical arm and half-height of the horizontal arm (px).
+const CROSS_ARM_HALF_X: int = 128
+const CROSS_ARM_HALF_Y: int = 80
+## Pillars and random hazards keep this far from spawn markers, Fayde's start and doors.
+const _PILLAR_KEEP_CLEAR_DIST: float = 120.0
 
 ## Obstacle placement parameters. Set in the scene inspector to override per-template
 ## defaults. Falls back to a default ObstacleConfig (5–9 obstacles, inner 82 % diamond,
@@ -54,6 +61,10 @@ const _DEBRIS_PLACE_ATTEMPTS: int = 80
 ## When set, _ready() uses template tile_cells, valid_zone_polygons, and spawn_positions
 ## instead of generating a default diamond. null = default diamond arena.
 @export var room_template: RoomTemplate = null
+
+## Floor identity (ADR-0020): floor tint, pillar colour, debris tint. Set by
+## RoomTransitionManager before the room enters the tree. null = floor 1 look.
+@export var floor_theme: FloorTheme = null
 
 ## Anchor object to place in this room (LD-22).
 ## Set by RoomPopulator when room type is Memory Chamber. null = no anchor in this room.
@@ -83,7 +94,11 @@ func _ready() -> void:
 		_build_navigation_from_template_boundary()
 	else:
 		_build_navigation()
-	_build_debris_obstacles()
+	var debris: Array[Vector2] = _build_debris_obstacles()
+	_apply_floor_theme()
+	var reserved: Array[Vector2] = debris.duplicate()
+	reserved.append_array(_build_hazards(debris))
+	_build_pillars(reserved)
 	if anchor_object_data != null:
 		_place_anchor_object(anchor_object_data)
 	_spawn_exit_door()
@@ -234,6 +249,10 @@ func _resolve_layout_cells() -> Array[Vector2i]:
 			return _generate_arena_cells()
 		4:   # CORRIDOR — narrow elongated diamond, linear movement
 			return _generate_corridor_cells()
+		5:   # RING — walled core in the middle, fight around it (ADR-0020)
+			return _generate_ring_cells()
+		6:   # CROSS — four arms around an open hub (ADR-0020)
+			return _generate_cross_cells()
 	return []   # DIAMOND (0) or unknown → default diamond
 
 
@@ -305,6 +324,41 @@ func _generate_split_cells() -> Array[Vector2i]:
 			if in_left or in_right or in_bridge:
 				cells[Vector2i(tx, ty)] = true
 	return _flood_fill_cells(cells, Vector2i(0, 0))
+
+
+## Generates tile cells for a diamond with a walled core in the middle (RING layout).
+## Tiles whose screen-space diamond norm is below RING_HOLE_NORM are left empty;
+## _build_walls() turns the hole's rim into wall, so the core blocks movement AND enemy
+## bullets. Works in screen space via map_to_local, so it holds for any tile layout.
+## (ADR-0020)
+func _generate_ring_cells() -> Array[Vector2i]:
+	return _cells_where(func(p: Vector2) -> bool:
+		var norm: float = absf(p.x) / float(_WALL_HALF_X) + absf(p.y) / float(_WALL_HALF_Y)
+		return norm <= 1.0 and norm >= RING_HOLE_NORM,
+		Vector2(0.0, _WALL_HALF_Y * 0.65))
+
+
+## Generates tile cells for a plus-shaped room (CROSS layout): four arms that meet
+## in an open hub. The corners of the diamond are cut away, so enemies funnel in
+## along the arms and the hub is the only wide space. (ADR-0020)
+func _generate_cross_cells() -> Array[Vector2i]:
+	return _cells_where(func(p: Vector2) -> bool:
+		var norm: float = absf(p.x) / float(_WALL_HALF_X) + absf(p.y) / float(_WALL_HALF_Y)
+		return norm <= 1.0 and (absf(p.x) <= CROSS_ARM_HALF_X or absf(p.y) <= CROSS_ARM_HALF_Y),
+		Vector2.ZERO)
+
+
+## Returns the connected set of tiles whose room-local centre passes [param keep],
+## flood-filled from the tile under [param start_pos]. Scans ±_FLOOR_RADIUS on both
+## axes, which covers the default diamond for the stacked isometric layout.
+func _cells_where(keep: Callable, start_pos: Vector2) -> Array[Vector2i]:
+	var cells: Dictionary = {}
+	for tx: int in range(-_FLOOR_RADIUS, _FLOOR_RADIUS + 1):
+		for ty: int in range(-_FLOOR_RADIUS, _FLOOR_RADIUS + 1):
+			var c := Vector2i(tx, ty)
+			if keep.call(_tile_map.map_to_local(c)):
+				cells[c] = true
+	return _flood_fill_cells(cells, _tile_map.local_to_map(start_pos))
 
 
 ## Flood-fill from [param start] over [param all_cells], returning only the
@@ -834,7 +888,7 @@ func _generate_debris_on_floor(spawn_positions: Array[Vector2], candidates: Arra
 ## are guaranteed inside the arena for every layout. When no tile map is present (headless
 ## edge case) it falls back to the legacy diamond sampler. A room_template's valid_zone_rects,
 ## when set, further constrains placement on top of the on-floor mask. (LD-02, LD-12)
-func _build_debris_obstacles() -> void:
+func _build_debris_obstacles() -> Array[Vector2]:
 	var spawn_positions: Array[Vector2] = get_spawn_markers()
 	var zone_check: Callable = _get_zone_check()
 	var candidates: Array[Vector2] = _interior_tile_centers()
@@ -900,8 +954,146 @@ func _build_debris_obstacles() -> void:
 		top.color = Color(0.62, 0.57, 0.51, 1.0)
 		top.z_index = 6
 		body.add_child(top)
+		if floor_theme != null:
+			body.modulate = floor_theme.debris_tint
 
 		add_child(body)
+	return positions
+
+
+# ── Stage layout (ADR-0020) ───────────────────────────────────────────────────
+
+## Applies the floor theme's tile tint. Debris and pillar colours are applied as
+## they are built. No-op without a theme (floor 1 look).
+func _apply_floor_theme() -> void:
+	if floor_theme == null or _tile_map == null:
+		return
+	_tile_map.modulate = floor_theme.floor_tint
+
+
+## Points pillars and random hazards must keep clear of: spawn markers, Fayde's
+## start tile and the exit-door slots (computed the same way _spawn_exit_door does).
+func _keep_clear_points() -> Array[Vector2]:
+	var pts: Array[Vector2] = []
+	for m: Vector2 in get_spawn_markers():
+		pts.append(to_local(m) if is_inside_tree() else m)
+	var sw: Vector2 = _find_sw_position()
+	if sw != Vector2.ZERO:
+		pts.append(sw)
+	pts.append_array(_find_ne_positions(3))
+	return pts
+
+
+## Half-extents of the built floor in pixels (max |x|, max |y| over tile edges).
+## Falls back to the default diamond when no tiles exist.
+func _floor_half_extents() -> Vector2:
+	var ex := Vector2.ZERO
+	if _tile_map != null:
+		for c: Vector2i in _tile_map.get_used_cells():
+			var p: Vector2 = _tile_map.map_to_local(c)
+			ex.x = maxf(ex.x, absf(p.x) + _TILE_X_STEP)
+			ex.y = maxf(ex.y, absf(p.y) + _TILE_Y_STEP)
+	if ex == Vector2.ZERO:
+		return Vector2(_WALL_HALF_X, _WALL_HALF_Y)
+	return ex
+
+
+## Builds the template's hazards under a "Hazards" node. Random-position hazards
+## take a free interior tile clear of spawns, doors, Fayde's start and [param taken].
+## Returns the room-local positions used, so pillars keep clear of them.
+func _build_hazards(taken: Array[Vector2]) -> Array[Vector2]:
+	var used: Array[Vector2] = []
+	if room_template == null or room_template.hazards.is_empty():
+		return used
+	var holder := Node2D.new()
+	holder.name = "Hazards"
+	add_child(holder)
+	var clear: Array[Vector2] = _keep_clear_points()
+	var candidates: Array[Vector2] = _interior_tile_centers()
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	for spec: HazardSpec in room_template.hazards:
+		var hazard: StageHazard = StageHazard.create(spec)
+		if hazard == null:
+			continue
+		var pos: Vector2 = spec.position
+		if spec.kind == HazardSpec.Kind.CLOSING_RING:
+			pos = Vector2.ZERO
+			(hazard as HazardClosingRing).half_extents = _floor_half_extents()
+		elif spec.random_position:
+			var avoid: Array[Vector2] = clear.duplicate()
+			avoid.append_array(taken)
+			avoid.append_array(used)
+			var picked: Array[Vector2] = pick_spread_positions(
+				candidates, 1, avoid, _PILLAR_KEEP_CLEAR_DIST, 0.0, 0.0, rng.randi())
+			if picked.is_empty():
+				hazard.free()
+				continue
+			pos = picked[0]
+		hazard.position = pos
+		used.append(pos)
+		holder.add_child(hazard)
+	return used
+
+
+## Places full-cover pillars (ADR-0020) from the obstacle config. They take interior
+## tiles clear of spawns, doors, Fayde's start and [param taken] (debris, hazards).
+func _build_pillars(taken: Array[Vector2]) -> void:
+	var cfg: ObstacleConfig = _get_obstacle_config()
+	if cfg.pillar_count_max <= 0:
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var count: int = rng.randi_range(maxi(cfg.pillar_count_min, 0), cfg.pillar_count_max)
+	var avoid: Array[Vector2] = _keep_clear_points()
+	avoid.append_array(taken)
+	var positions: Array[Vector2] = pick_spread_positions(
+		_interior_tile_centers(), count, avoid, _PILLAR_KEEP_CLEAR_DIST,
+		cfg.pillar_min_between_dist, cfg.min_center_dist, rng.randi())
+	var col: Color = floor_theme.pillar_color if floor_theme != null else Color(0.46, 0.44, 0.52, 1.0)
+	for pos: Vector2 in positions:
+		var pillar := CoverPillar.new()
+		pillar.name = "Pillar"
+		pillar.setup(cfg.pillar_hits, cfg.pillar_radius, col)
+		pillar.position = pos
+		add_child(pillar)
+
+
+## Pure: picks up to [param count] points from [param candidates] (shuffled with
+## [param rng_seed]) so that each pick is at least [param avoid_dist] from every point in
+## [param avoid], at least [param min_between] from other picks, and at least
+## [param min_center] from the room origin. May return fewer when space runs out.
+static func pick_spread_positions(candidates: Array[Vector2], count: int, avoid: Array[Vector2],
+		avoid_dist: float, min_between: float, min_center: float, rng_seed: int) -> Array[Vector2]:
+	var placed: Array[Vector2] = []
+	if count <= 0:
+		return placed
+	var rng := RandomNumberGenerator.new()
+	rng.seed = rng_seed
+	var pool: Array[Vector2] = candidates.duplicate()
+	for i: int in range(pool.size() - 1, 0, -1):
+		var j: int = rng.randi_range(0, i)
+		var tmp: Vector2 = pool[i]
+		pool[i] = pool[j]
+		pool[j] = tmp
+	for cand: Vector2 in pool:
+		if placed.size() >= count:
+			break
+		if cand.length() < min_center:
+			continue
+		var ok: bool = true
+		for a: Vector2 in avoid:
+			if cand.distance_to(a) < avoid_dist:
+				ok = false
+				break
+		if ok:
+			for p: Vector2 in placed:
+				if cand.distance_to(p) < min_between:
+					ok = false
+					break
+		if ok:
+			placed.append(cand)
+	return placed
 
 
 ## Places one AnchorObjectNode at a safe position inside the walkable zone (LD-22).

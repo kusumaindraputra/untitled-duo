@@ -36,7 +36,9 @@ extends Resource
 @export var floor_radius: int = 26
 
 ## Procedural layout style. Ignored when tile_cells is non-empty (hand-authored wins).
-## 0=Diamond (full default), 1=Narrow (60 % size diamond), 2=Split (two chambers + bridge).
+## 0=Diamond (full default), 1=Narrow (60 % size diamond), 2=Split (two chambers + bridge),
+## 3=Arena (wide, shallow), 4=Corridor (narrow, deep), 5=Ring (walled core in the
+## middle), 6=Cross (four arms around a hub). 5 and 6 added by ADR-0020.
 @export var layout_style: int = 0
 
 # ── Walls & Navigation ──────────────────────────────────────────────────────────
@@ -70,3 +72,8 @@ extends Resource
 ## Optional obstacle config override. null = use IsometricRoom.obstacle_config.
 ## Templates like "The Maze" can set lower clearance, "The Arena" can set wider spacing.
 @export var obstacle_config: ObstacleConfig = null
+
+# ── Hazards (ADR-0020) ───────────────────────────────────────────────────────────
+
+## Environmental hazards built into this room. Empty = no hazards (default).
+@export var hazards: Array[HazardSpec] = []

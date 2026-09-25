@@ -39,6 +39,12 @@ const _FLOOR_POOL_PATHS: Array[String] = [
 ]
 ## Per-floor boss pool paths. F1=Sentinel, F2=WarpedWarden mid-boss, F3=Sentinel
 ## (its own config so the ADR-0019 difficulty curve can push it harder than F1).
+## Per-floor identity (ADR-0020): template pools, floor tint, pillar colour.
+const _FLOOR_THEME_PATHS: Array[String] = [
+	"res://assets/data/floor_themes/floor_theme_1.tres",
+	"res://assets/data/floor_themes/floor_theme_2.tres",
+	"res://assets/data/floor_themes/floor_theme_3.tres",
+]
 const _BOSS_POOL_PATHS: Array[String] = [
 	"res://assets/data/enemy_pool_configs/enemy_pool_boss.tres",
 	"res://assets/data/enemy_pool_configs/enemy_pool_boss_f2.tres",
@@ -96,8 +102,9 @@ func _ready() -> void:
 	SceneManager.set_initial_scene($SubSceneRoot/IsometricRoom)
 
 	# Generate floor 1 and give it to RoomTransitionManager.
-	_dungeon_graph = _gen.generate(7, _current_floor)
 	var rtm: RoomTransitionManager = $RoomTransitionManager
+	_apply_floor_theme(rtm)
+	_dungeon_graph = _gen.generate(7, _current_floor)
 	rtm.setup(_dungeon_graph)
 	rtm.room_transition_completed.connect(_on_room_transitioned)
 
@@ -388,6 +395,7 @@ func _on_core_picked(type_id: int) -> void:
 		_core_pick_layer = null
 	get_tree().paused = false
 	GameStateManager.start_run()
+	$CanvasLayer/CombatHUD.show_floor_intro(_current_floor)
 	_show_tutorial_overlay()
 
 
@@ -695,10 +703,24 @@ func _on_floor_completed() -> void:
 	_current_floor += 1
 	# Reset to 0 so the entry-room transition of the new floor increments it back to 1.
 	_rooms_entered = 0
+	_apply_floor_theme($RoomTransitionManager)
 	_dungeon_graph = _gen.generate(7, _current_floor)
 	GameStateManager.set_is_final_floor(_current_floor >= total_floors)
 	_apply_floor_pool_config()
+	$CanvasLayer/CombatHUD.show_floor_intro(_current_floor)
 	$RoomTransitionManager.load_floor(_dungeon_graph)
+
+
+## Applies the current floor's FloorTheme (ADR-0020): its template pools go to the
+## generator, and [param rtm] hands its look to every room it loads.
+func _apply_floor_theme(rtm: RoomTransitionManager) -> void:
+	var idx: int = clampi(_current_floor - 1, 0, _FLOOR_THEME_PATHS.size() - 1)
+	var theme: FloorTheme = load(_FLOOR_THEME_PATHS[idx]) as FloorTheme
+	if theme == null:
+		push_warning("debug_game_loop: floor theme missing at %s" % _FLOOR_THEME_PATHS[idx])
+		return
+	_gen.apply_floor_theme(theme)
+	rtm.floor_theme = theme
 
 
 ## Loads per-floor EnemyPoolConfig resources into _floor_pool_configs and _boss_pool_configs.

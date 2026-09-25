@@ -187,8 +187,10 @@ var _combo_counter_tween: Tween = null
 var _recognition_callout_label: Label = null
 var _recognition_callout_tween: Tween = null
 
-## Floor indicator label — shows "Floor N" in the top-left corner.
+## Floor indicator label — shows "Floor N · name" in the top-left corner.
 var _floor_label: Label = null
+## ADR-0020 — the live floor-intro banner, so a new one replaces it instead of stacking.
+var _floor_banner: Label = null
 
 ## Run-progress breadcrumb — shows "Room X / Y" under the floor label so the player
 ## can sense how far into the floor they are. Driven by debug_game_loop on each
@@ -431,10 +433,10 @@ func _create_ui_nodes() -> void:
 	add_child(_recognition_callout_label)
 
 	_floor_label = Label.new()
-	_floor_label.text = "Floor 1"
+	_floor_label.text = floor_label_text(1)
 	_floor_label.add_theme_font_size_override(&"font_size", 14)
 	_floor_label.position = Vector2(8, 152)
-	_floor_label.size = Vector2(120, 20)
+	_floor_label.size = Vector2(260, 20)
 	add_child(_floor_label)
 
 	_room_label = Label.new()
@@ -609,6 +611,49 @@ func show_room_rank(rank_letter: String, heal: float, meter_bonus: float) -> voi
 	_rank_tween.tween_interval(1.4)
 	_rank_tween.tween_property(_rank_banner, "modulate:a", 0.0, 0.4)
 	_rank_tween.tween_callback(func() -> void: _rank_banner.visible = false)
+
+
+## ADR-0020 — floor name for [param floor_num] (1-based), or "" past the list.
+static func floor_name(floor_num: int) -> String:
+	var names: Array[String] = _COPY.floor_names
+	return names[floor_num - 1] if floor_num >= 1 and floor_num <= names.size() else ""
+
+
+## ADR-0020 — HUD floor label text, e.g. "Floor 2 · Functional Corridors".
+static func floor_label_text(floor_num: int) -> String:
+	var n: String = floor_name(floor_num)
+	return _COPY.floor_label_format % [floor_num, n] if n != "" else "Floor %d" % floor_num
+
+
+## ADR-0020 — big "FLOOR N / name" banner when a floor starts. Fades out by itself.
+func show_floor_intro(floor_num: int) -> void:
+	if _floor_label != null:
+		_floor_label.text = floor_label_text(floor_num)
+	if not is_inside_tree():
+		return
+	if is_instance_valid(_floor_banner):
+		_floor_banner.queue_free()
+	var banner := Label.new()
+	_floor_banner = banner
+	banner.text = _COPY.floor_intro_format % [floor_num, floor_name(floor_num)]
+	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	banner.add_theme_font_size_override(&"font_size", 30)
+	banner.add_theme_color_override(&"font_color", Color(0.85, 0.92, 1.0))
+	banner.add_theme_color_override(&"font_outline_color", Color.BLACK)
+	banner.add_theme_constant_override(&"outline_size", 6)
+	banner.anchor_left = 0.0
+	banner.anchor_right = 1.0
+	banner.anchor_top = 0.16
+	banner.anchor_bottom = 0.16
+	banner.offset_bottom = 90.0
+	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	banner.modulate = Color(1, 1, 1, 0)
+	add_child(banner)
+	var tw: Tween = banner.create_tween()
+	tw.tween_property(banner, "modulate:a", 1.0, 0.3)
+	tw.tween_interval(1.8)
+	tw.tween_property(banner, "modulate:a", 0.0, 0.6)
+	tw.tween_callback(banner.queue_free)
 
 
 ## ADR-0019 — "PERFECT DODGE" pops above Fayde and floats up.
@@ -972,7 +1017,7 @@ func _on_run_started() -> void:
 		_special_bar.visible = false
 		_special_label.visible = false
 	if _floor_label != null:
-		_floor_label.text = "Floor 1"
+		_floor_label.text = floor_label_text(1)
 	_free_all_damage_labels()
 
 
@@ -1073,7 +1118,7 @@ func _on_preparation_started(_idx: int, _rem: int) -> void:
 		_style_bar.visible = false
 	if _floor_label != null:
 		var floor_num: int = RunManager.get_run_data().get("current_floor", 1)
-		_floor_label.text = "Floor %d" % floor_num
+		_floor_label.text = floor_label_text(floor_num)
 
 
 ## Handles combat_started from GameStateManager.

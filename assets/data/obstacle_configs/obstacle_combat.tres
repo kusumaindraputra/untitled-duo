@@ -11,3 +11,6 @@ min_center_dist = 90.0
 min_spawn_dist = 110.0
 min_between_dist = 75.0
 place_attempts = 80
+pillar_count_min = 2
+pillar_count_max = 3
+pillar_hits = 24

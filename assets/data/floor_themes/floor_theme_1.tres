@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="FloorTheme" load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://src/data/floor_theme.gd" id="1_script"]
+[ext_resource type="Script" path="res://src/data/room_template.gd" id="1_rt"]
+[ext_resource type="Resource" path="res://assets/data/room_templates/template_diamond.tres" id="2_t"]
+[ext_resource type="Resource" path="res://assets/data/room_templates/template_split.tres" id="3_t"]
+[ext_resource type="Resource" path="res://assets/data/room_templates/template_corridor.tres" id="4_t"]
+[ext_resource type="Resource" path="res://assets/data/room_templates/template_arena.tres" id="5_t"]
+[ext_resource type="Resource" path="res://assets/data/room_templates/template_gauntlet.tres" id="6_t"]
+[ext_resource type="Resource" path="res://assets/data/room_templates/template_rest.tres" id="7_t"]
+[ext_resource type="Resource" path="res://assets/data/room_templates/template_boss.tres" id="8_t"]
+
+[resource]
+script = ExtResource("1_script")
+combat_templates = Array[ExtResource("1_rt")]([ExtResource("2_t"), ExtResource("3_t"), ExtResource("4_t"), ExtResource("5_t")])
+combat_weights = Array[float]([3.0, 2.0, 2.0, 2.0])
+elite_templates = Array[ExtResource("1_rt")]([ExtResource("3_t"), ExtResource("4_t"), ExtResource("6_t")])
+elite_weights = Array[float]([2.0, 2.0, 1.0])
+rest_templates = Array[ExtResource("1_rt")]([ExtResource("7_t")])
+boss_templates = Array[ExtResource("1_rt")]([ExtResource("8_t")])
+floor_tint = Color(1, 1, 1, 1)
+pillar_color = Color(0.46, 0.44, 0.52, 1)
+debris_tint = Color(1, 1, 1, 1)
