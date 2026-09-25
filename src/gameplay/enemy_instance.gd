@@ -88,6 +88,8 @@ var _boss_charge_dir: Vector2 = Vector2.ZERO
 var _pattern_runners: Array[BulletPatternRunner] = []
 ## ADR-0019 difficulty curve (set by WaveManager from the floor's EnemyPoolConfig).
 var _bullet_speed_mult: float = 1.0
+## ADR-0028 — this run's boss variant (null for non-bosses and unvaried bosses).
+var _boss_variant: BossVariant = null
 var _fire_rate_mult: float = 1.0
 var _telegraph_mult: float = 1.0
 ## Volley released once on death (Splitter). Null = none.
@@ -377,6 +379,7 @@ func init(enemy_type_id: int, catalog: Variant = null) -> void:
 			_pattern_runners.append(BulletPatternRunner.new(pattern))
 	_active_layer_count = -1
 	_is_elite = false
+	_boss_variant = null
 	if _archetype == GameEnums.EnemyArchetype.BOSS:
 		_boss_attack = 0
 		_boss_phase = -1
@@ -450,6 +453,34 @@ func apply_difficulty(bullet_speed_mult: float, fire_rate_mult: float, telegraph
 ## Difficulty multipliers as [bullet_speed, fire_rate, telegraph] (test / debug hook).
 func get_difficulty() -> Vector3:
 	return Vector3(_bullet_speed_mult, _fire_rate_mult, _telegraph_mult)
+
+
+## ADR-0028 — applies this run's [param variant] to a boss: extra bullet layers,
+## HP, bullet speed, fire rate, move speed and sprite tint. Call after init() and
+## apply_difficulty(); the variant's multipliers stack on the floor's. The H&D pool
+## must be registered with the same HP multiplier (WaveManager does this).
+func apply_boss_variant(variant: BossVariant) -> void:
+	if variant == null or _archetype != GameEnums.EnemyArchetype.BOSS:
+		return
+	_boss_variant = variant
+	_max_hp = maxi(roundi(float(_max_hp) * variant.hp_mult), 1)
+	_current_hp = _max_hp
+	_move_speed *= variant.move_speed_mult
+	_bullet_speed_mult = clampf(_bullet_speed_mult * variant.bullet_speed_mult, 0.25, 3.0)
+	_fire_rate_mult = clampf(_fire_rate_mult * variant.fire_rate_mult, 0.25, 3.0)
+	for pattern: BulletPattern in variant.extra_layers:
+		if pattern != null:
+			_pattern_runners.append(BulletPatternRunner.new(pattern))
+	for runner: BulletPatternRunner in _pattern_runners:
+		runner.rate_mult = _fire_rate_mult
+	var pc: PixelCharacter = get_node_or_null(^"PixelCharacter") as PixelCharacter
+	if pc != null:
+		pc.modulate *= variant.tint
+
+
+## The run's variant applied to this boss, or null.
+func get_boss_variant() -> BossVariant:
+	return _boss_variant
 
 
 ## True after make_elite().

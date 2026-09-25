@@ -179,14 +179,40 @@ extends Resource
 @export var wayshrine_leave: String = "Walk on"
 @export var wayshrine_too_weak: String = "Too weak to offer blood"
 
-@export_group("Final Boss (ADR-0026)")
+@export_group("Floor Bosses (ADR-0026, ADR-0028)")
 
+## Banner for each Vault Sentinel phase (Floor 1).
+@export var sentinel_phase_banners: Array[String] = [
+	"The vault's defences wake — turrets online",
+	"LOCKDOWN — the Sentinel draws its laser cross",
+]
+## Banner for each Warped Warden phase (Floor 2).
+@export var warden_phase_banners: Array[String] = [
+	"Space folds — the floor starts to burn",
+	"Rifts open — shells rain down",
+	"TIME COLLAPSES — the field goes quiet, then breaks",
+]
 ## Banner for each Cipher Keeper phase (1st, 2nd, 3rd HP threshold crossed).
 @export var keeper_phase_banners: Array[String] = [
 	"The first lock breaks — a beam pylon rises",
 	"The vault closes in",
 	"THE LAST CIPHER — hold on",
 ]
+## Per-run boss variant names, keyed by BossVariant.id. Shown after the boss name
+## ("Vault Sentinel · Overclocked").
+@export var boss_variant_titles: Dictionary = {
+	"bulwark": "Bulwark",
+	"overclocked": "Overclocked",
+	"lockdown": "Lockdown",
+	"mirrored": "Mirrored",
+	"hunting": "Hunting",
+	"unstable": "Unstable",
+	"gilded": "Gilded",
+	"fractured": "Fractured",
+	"tempest": "Tempest",
+}
+## Joins a boss name and its variant title.
+@export var boss_variant_format: String = "%s · %s"
 
 @export_group("Settings (ADR-0026)")
 

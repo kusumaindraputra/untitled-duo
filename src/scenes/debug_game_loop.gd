@@ -95,7 +95,9 @@ var _sigil_manager: SigilManager = null
 ## Fast-pace layer (ADR-0019). Created in _ready(), wired to the player and HUD there.
 var _pace_director: PaceDirector = null
 var _sigil_effects: SigilEffects = null
-var _final_boss: FinalBossDirector = null
+var _boss_director: BossDirector = null
+## ADR-0028 — seed of this run; picks each floor boss's variant.
+var _run_seed: int = 0
 
 ## Run-scoped transient bag of Prana acquired from post-room rewards, awaiting
 ## placement into the grid during the next prep phase. Created in _ready().
@@ -133,6 +135,7 @@ func _ready() -> void:
 	_apply_floor_theme(rtm)
 	_dungeon_graph = _gen.generate(_floor_room_count, _current_floor)
 	_room_rng.randomize()
+	_run_seed = int(_room_rng.seed)
 	RoomModifiers.assign(_dungeon_graph, _room_rng)
 	rtm.setup(_dungeon_graph)
 	rtm.room_transition_completed.connect(_on_room_transitioned)
@@ -163,13 +166,15 @@ func _ready() -> void:
 	$CanvasLayer.move_child(indicators, 0)
 	# Boss-intro UI: WaveManager announces boss spawns; HUD shows name card + HP bar.
 	$WaveManager.boss_spawned.connect(hud._on_boss_spawned)
-	# ADR-0026: the Floor 3 Cipher Keeper changes the arena at each phase.
-	_final_boss = FinalBossDirector.new()
-	_final_boss.name = "FinalBossDirector"
-	_final_boss.hud = hud
-	add_child(_final_boss)
+	# ADR-0028: every floor boss changes the arena at each phase, and each plays one
+	# of its variants, picked once per run from the run seed.
+	$WaveManager.boss_variants = BossDirector.ROSTER.pick_all(_run_seed)
+	_boss_director = BossDirector.new()
+	_boss_director.name = "BossDirector"
+	_boss_director.hud = hud
+	add_child(_boss_director)
 	$WaveManager.boss_spawned.connect(func(boss: Node) -> void:
-		_final_boss.attach(boss, SceneManager.get_current_scene() as Node2D))
+		_boss_director.attach(boss, SceneManager.get_current_scene() as Node2D))
 	# Pause overlay: GameStateManager drives the paused/resumed transitions; we just
 	# build/free the overlay in response so ESC works from PREP and COMBAT alike.
 	GameStateManager.game_paused.connect(_on_game_paused)
