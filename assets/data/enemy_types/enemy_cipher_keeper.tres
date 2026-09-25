@@ -28,5 +28,5 @@ scene = ExtResource("2_scene")
 base_scale = 3.0
 pattern_layers = Array[ExtResource("3_bp")]([ExtResource("p_lattice"), ExtResource("p_fan"), ExtResource("p_homing"), ExtResource("p_weave"), ExtResource("p_mortar")])
 sprite_sheet = ExtResource("sprite_sheet")
-sprite_pixel_scale = 2.4
+sprite_pixel_scale = 3.0
 sprite_tint = Color(1, 0.82, 0.45, 1)
