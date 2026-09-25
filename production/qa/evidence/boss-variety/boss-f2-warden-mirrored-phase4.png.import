@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://eh5uj1hc0sh"
-path="res://.godot/imported/f2-warden-unstable-phase3.png-e21a3accfe3b29ef71dfeb826c34a2b6.ctex"
+uid="uid://fqtapqlsnr28"
+path="res://.godot/imported/boss-f2-warden-mirrored-phase4.png-3be4d5c0c1cb5be674ef45b0b8cc47a7.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://production/qa/evidence/boss-variety/f2-warden-unstable-phase3.png"
-dest_files=["res://.godot/imported/f2-warden-unstable-phase3.png-e21a3accfe3b29ef71dfeb826c34a2b6.ctex"]
+source_file="res://production/qa/evidence/boss-variety/boss-f2-warden-mirrored-phase4.png"
+dest_files=["res://.godot/imported/boss-f2-warden-mirrored-phase4.png-3be4d5c0c1cb5be674ef45b0b8cc47a7.ctex"]
 
 [params]
 

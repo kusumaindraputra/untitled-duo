@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://w3g4fshu5r0g"
-path="res://.godot/imported/f1-sentinel-name-card.png-277baf8a31a5638af052dd56eb002b1c.ctex"
+uid="uid://sbduv14wy4dt"
+path="res://.godot/imported/boss-f3-keeper-fractured-phase2.png-85d8739545eb6394121ae667636ed08d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://production/qa/evidence/boss-variety/f1-sentinel-name-card.png"
-dest_files=["res://.godot/imported/f1-sentinel-name-card.png-277baf8a31a5638af052dd56eb002b1c.ctex"]
+source_file="res://production/qa/evidence/boss-variety/boss-f3-keeper-fractured-phase2.png"
+dest_files=["res://.godot/imported/boss-f3-keeper-fractured-phase2.png-85d8739545eb6394121ae667636ed08d.ctex"]
 
 [params]
 

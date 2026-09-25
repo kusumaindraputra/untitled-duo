@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bpoftn2xf7qs1"
-path="res://.godot/imported/f3-keeper-tempest-phase4.png-f59b868250c7c97049d63ddcd84b2220.ctex"
+uid="uid://cvq58iuwm3f7a"
+path="res://.godot/imported/boss-f1-sentinel-lockdown-intro.png-409ffcde1a5b83773b18c180cda0bb49.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://production/qa/evidence/boss-variety/f3-keeper-tempest-phase4.png"
-dest_files=["res://.godot/imported/f3-keeper-tempest-phase4.png-f59b868250c7c97049d63ddcd84b2220.ctex"]
+source_file="res://production/qa/evidence/boss-variety/boss-f1-sentinel-lockdown-intro.png"
+dest_files=["res://.godot/imported/boss-f1-sentinel-lockdown-intro.png-409ffcde1a5b83773b18c180cda0bb49.ctex"]
 
 [params]
 
