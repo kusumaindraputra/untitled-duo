@@ -771,6 +771,7 @@ func _on_player_damage_taken(target: Node, final_damage: int, _current_hp: int) 
 	if target.is_in_group(&"player") and final_damage > 0:
 		_post_hit_blink_timer = HealthAndDamage.FAYDE_IFRAME_DURATION
 		_blink_timer = 0.0  # start fresh so first blink fires immediately
+		add_camera_trauma(CAMERA_TUNING.player_hit_trauma)
 
 
 ## Inner class: single procedural dash dust puff.

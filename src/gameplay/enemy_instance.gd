@@ -450,6 +450,12 @@ func is_elite() -> bool:
 	return _is_elite
 
 
+## True while a pattern windup flash is running (a volley is about to fire).
+## OffscreenIndicators flashes this enemy's edge arrow while it is true.
+func is_winding_up() -> bool:
+	return _windup_tween != null and _windup_tween.is_running()
+
+
 ## Number of bullet-pattern layers this enemy owns (test / debug hook).
 func get_pattern_layer_count() -> int:
 	return _pattern_runners.size()

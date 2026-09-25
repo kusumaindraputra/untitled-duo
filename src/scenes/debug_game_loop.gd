@@ -125,6 +125,13 @@ func _ready() -> void:
 	hud.fayde_node = $PlayerController
 	hud.set_room_progress(_rooms_entered, _dungeon_graph.room_count())
 	_update_minimap()
+	# Edge arrows for off-screen enemies (combat camera shows less than the room).
+	# Index 0 on the HUD layer so HUD panels draw over the arrows.
+	var indicators := OffscreenIndicators.new()
+	indicators.name = "OffscreenIndicators"
+	indicators.player = $PlayerController
+	$CanvasLayer.add_child(indicators)
+	$CanvasLayer.move_child(indicators, 0)
 	# Boss-intro UI: WaveManager announces boss spawns; HUD shows name card + HP bar.
 	$WaveManager.boss_spawned.connect(hud._on_boss_spawned)
 	# Pause overlay: GameStateManager drives the paused/resumed transitions; we just
