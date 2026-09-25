@@ -1131,14 +1131,14 @@ class _DeathBurst extends Node2D:
 				c = type_data.color
 		# Expanding ring: radius 8 → 55 px.
 		var ring_r: float = lerpf(8.0, 55.0, p)
-		draw_arc(Vector2.ZERO, ring_r, 0.0, TAU, 20, Color(c.r, c.g, c.b, alpha * 0.7), 3.0, true)
+		PixelVFX.stroke_ring(self, ring_r, 3.0, c, alpha * 0.7)
 		# 6 outward dots along radial rays.
 		for i: int in 6:
 			var angle: float = (TAU / 6.0) * float(i)
 			var dot_dist: float = lerpf(5.0, 40.0, p)
 			var dot_r: float = lerpf(4.0, 1.5, p)
-			draw_circle(Vector2.from_angle(angle) * dot_dist, dot_r,
-					Color(c.r, c.g, c.b, alpha * 0.85))
+			PixelVFX.fill_disc(self, Vector2.from_angle(angle) * dot_dist, maxf(dot_r, 1.5),
+					c, alpha * 0.85)
 
 
 ## Inner class: HP bar drawn above the enemy head.

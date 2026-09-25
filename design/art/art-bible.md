@@ -753,7 +753,7 @@ assets/
 | Fayde | 20×32 px per frame | `assets/art/characters/fayde.png` + `fayde_glow.png` | Pixel art; Nearest filter; 4×2 sheet (idle, move) |
 | Standard enemies | 14–26 px per side | One sheet per enemy in `assets/art/characters/` | Pixel art; Nearest filter; 4×2 sheet |
 | Bosses | 48×48 px per frame, shown 2× | One sheet per boss | Pixel art; Nearest filter; 4×2 sheet |
-| Prana particles | ≤ 32×32 px per frame | VFX atlas (per Prana type) | Pixel art OK for VFX; Nearest filter |
+| Spell VFX (swing, beam, impact, cone, rings) | Procedural, 1 px = 1 world unit | Drawn by `PixelVFX` (ADR-0023) | Pixel grid, no anti-aliasing, 3-tone ramp, flat alpha steps |
 | UI elements | Powers of 2, ≤ 256 px | UI atlas | Full palette; linear filter |
 | Environment tiles | 64×32 px | Per-tier tileset atlas | Pixel art; Nearest filter; E1–E7 only |
 
@@ -761,6 +761,7 @@ assets/
 - Character sprites: anti-aliasing allowed, linear filter, bold 2–3px outline
 - Environment tiles: no anti-aliasing, Nearest filter, 1px darkened outline
 - Flat shadow ellipse beneath all entities — no dynamic lighting on sprite layers
+- Spell VFX: same pixel size as the character sprites, rasterised on the world pixel grid; no smooth vector strokes (ADR-0023)
 
 ---
 
