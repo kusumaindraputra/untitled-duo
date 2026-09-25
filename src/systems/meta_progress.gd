@@ -29,6 +29,8 @@ var unlocked: Array[StringName] = []
 ## Heirloom granted at the next run start; &"" = none.
 var equipped: StringName = &""
 var hard_mode: bool = false
+## True once the in-combat tutorial coach has been completed.
+var tutorial_done: bool = false
 
 
 # ── Payout ────────────────────────────────────────────────────────────────────
@@ -150,6 +152,7 @@ static func load_from(path: String = DEFAULT_PATH) -> MetaProgress:
 			p.unlocked.append(sid)
 	p.equipped = StringName(str(cfg.get_value(_SECTION, "equipped", "")))
 	p.hard_mode = bool(cfg.get_value(_SECTION, "hard_mode", false))
+	p.tutorial_done = bool(cfg.get_value(_SECTION, "tutorial_done", false))
 	return p
 
 
@@ -168,4 +171,5 @@ func save_to(path: String = DEFAULT_PATH) -> Error:
 	cfg.set_value(_SECTION, "unlocked", ids)
 	cfg.set_value(_SECTION, "equipped", String(equipped))
 	cfg.set_value(_SECTION, "hard_mode", hard_mode)
+	cfg.set_value(_SECTION, "tutorial_done", tutorial_done)
 	return cfg.save(path)

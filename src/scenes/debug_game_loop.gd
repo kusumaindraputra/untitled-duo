@@ -60,6 +60,8 @@ var progress_path: String = MetaProgress.DEFAULT_PATH
 var _meta: MetaProgress = null
 ## Guards the shard payout so a run is only recorded once.
 var _run_recorded: bool = false
+## In-combat tutorial checklist; null once completed or when already done.
+var _coach: TutorialCoach = null
 
 var _dungeon_graph: DungeonGraph = null
 var _gen: DungeonGenerator = DungeonGenerator.new()
@@ -428,6 +430,43 @@ func _on_core_picked(type_id: int) -> void:
 		_sigil_manager.apply_sigil(_meta.run_heirloom())
 	$CanvasLayer/CombatHUD.show_floor_intro(_current_floor)
 	_show_tutorial_overlay()
+	if _meta == null or not _meta.tutorial_done:
+		_start_coach()
+
+
+## Spawns the in-combat tutorial checklist and wires it to the moves it teaches.
+## No-op when one is already running.
+func _start_coach() -> void:
+	if is_instance_valid(_coach):
+		return
+	_coach = TutorialCoach.new()
+	_coach.name = "TutorialCoach"
+	_coach.player = $PlayerController
+	$CanvasLayer.add_child(_coach)
+	SpellCastingEffects.cast_started.connect(_coach.on_cast_started)
+	SpellCastingEffects.perfect_cast.connect(_coach.on_perfect_cast)
+	SpellCastingEffects.special_fired.connect(_coach.on_special_fired)
+	_pace_director.perfect_dodge_triggered.connect(_coach.on_perfect_dodge)
+	_coach.completed.connect(_on_coach_completed)
+
+
+## Marks the tutorial done in the saved progress so later runs skip it.
+func _on_coach_completed() -> void:
+	if _meta != null:
+		_meta.tutorial_done = true
+		_meta.save_to(progress_path)
+
+
+## Pause-menu action: clears the saved flag and shows the coach again.
+func _replay_tutorial() -> void:
+	if _meta != null:
+		_meta.tutorial_done = false
+		_meta.save_to(progress_path)
+	if is_instance_valid(_coach):
+		_coach.queue_free()
+		_coach = null
+	_start_coach()
+	GameStateManager.resume_game()
 
 
 ## Builds a one-time coaching panel on the LEFT (the Prana grid sits on the right,
@@ -560,6 +599,14 @@ func _on_game_paused() -> void:
 	restart.add_theme_font_size_override(&"font_size", 22)
 	restart.pressed.connect(_restart_from_pause)
 	vbox.add_child(restart)
+
+	var replay := Button.new()
+	replay.text = _COPY.coach_replay_button
+	replay.custom_minimum_size = Vector2(240, 52)
+	replay.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	replay.add_theme_font_size_override(&"font_size", 22)
+	replay.pressed.connect(_replay_tutorial)
+	vbox.add_child(replay)
 
 	var to_menu := Button.new()
 	to_menu.text = "Main Menu"

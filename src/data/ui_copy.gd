@@ -152,3 +152,25 @@ extends Resource
 
 ## Line on the core-pick screen naming the equipped Heirloom (%s = sigil title).
 @export var heirloom_active_format: String = "Heirloom: %s"
+
+@export_group("Combat Tutorial")
+
+## Heading of the in-combat coach panel.
+@export var coach_heading: String = "LEARN TO FIGHT"
+
+## Coach steps, in display order. Each line is shown with a checkbox and ticks when
+## the player actually does it. Order matches TutorialCoach.STEPS.
+@export var coach_steps: Array[String] = [
+	"Move  —  WASD / left stick",
+	"Cast  —  SPACE / A  (your grid picks the spell)",
+	"Dash  —  SHIFT / X  (you can't be hit mid-dash)",
+	"Perfect Dodge  —  dash THROUGH a bullet",
+	"Perfect Cast  —  press again as the ring closes",
+	"Special  —  F / right mouse / Y when the meter is full",
+]
+
+## Shown when every step is ticked.
+@export var coach_done: String = "Nice. You know everything — go get them."
+
+## Pause-menu button that turns the coach back on.
+@export var coach_replay_button: String = "Replay Tutorial"
