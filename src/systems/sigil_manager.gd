@@ -35,6 +35,8 @@ const CONFIG: SigilConfig = preload("res://assets/data/sigil_config.tres")
 ## routes the card to the PranaBag instead of the sigil dispatch table.
 const _PRANA_ID_PREFIX: String = "prana_"
 
+const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
+
 ## Resolves the player node. Overridable in tests via set_player_provider().
 var _player_provider: Callable = func() -> Node:
 	return get_tree().get_first_node_in_group(&"player")
@@ -45,6 +47,13 @@ var _bag_provider: Callable = func() -> Node:
 
 ## The live choice overlay while a selection is pending; null otherwise.
 var _overlay: CanvasLayer = null
+
+## Picks still owed in the current offer (ADR-0026: Cursed / flawless Challenge give 2).
+var _picks_left: int = 0
+var _picks_total: int = 0
+
+## Emitted when the last owed pick of an offer has been made and the overlay closed.
+signal offer_finished
 
 ## Runtime for behaviour sigils (ADR-0026). Set by debug_game_loop; when null a
 ## behaviour sigil is ignored with a warning.
@@ -167,10 +176,22 @@ func set_bag_provider(provider: Callable) -> void:
 
 
 ## Builds the modal choice overlay with three sigils and pauses the tree until the
-## player picks one. No-op if an overlay is already open.
-func offer_sigils() -> void:
+## player picks one. [param picks] > 1 re-opens the overlay with fresh choices after
+## each pick. No-op if an overlay is already open.
+func offer_sigils(picks: int = 1) -> void:
 	if _overlay != null:
 		return
+	_picks_total = maxi(picks, 1)
+	_picks_left = _picks_total
+	_open_overlay()
+
+
+## Number of picks still owed in the current offer (0 when none is open).
+func picks_left() -> int:
+	return _picks_left
+
+
+func _open_overlay() -> void:
 	var choices: Array[Dictionary] = roll_choices(3)
 	get_tree().paused = true
 
@@ -193,6 +214,8 @@ func offer_sigils() -> void:
 
 	var heading := Label.new()
 	heading.text = CONFIG.heading
+	if _picks_total > 1:
+		heading.text += _COPY.sigil_pick_format % [_picks_total - _picks_left + 1, _picks_total]
 	heading.add_theme_font_size_override(&"font_size", 32)
 	heading.add_theme_color_override(&"font_color", Color(1.0, 0.85, 0.4))
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -233,10 +256,16 @@ func _make_sigil_card(sigil: Dictionary) -> Button:
 	return card
 
 
-## Applies the chosen sigil, tears down the overlay, and unpauses the tree.
+## Applies the chosen sigil and tears down the overlay. Re-opens it while picks are
+## still owed; otherwise unpauses the tree and emits offer_finished.
 func _on_sigil_chosen(sigil_id: StringName) -> void:
 	apply_sigil(sigil_id)
 	if _overlay != null:
 		_overlay.queue_free()
 		_overlay = null
+	_picks_left = maxi(_picks_left - 1, 0)
+	if _picks_left > 0:
+		_open_overlay()
+		return
 	get_tree().paused = false
+	offer_finished.emit()

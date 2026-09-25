@@ -177,7 +177,8 @@ func _wire_exit_doors(room_scene: Node) -> void:
 		if i < outgoing.size():
 			door.destination_idx = outgoing[i]
 			var dest_room: Dictionary = _graph.get_room(outgoing[i])
-			door.set_destination_type(int(dest_room.get("type", DungeonGraph.ROOM_TYPE_COMBAT)))
+			door.set_destination_type(int(dest_room.get("type", DungeonGraph.ROOM_TYPE_COMBAT)),
+				int(dest_room.get(RoomModifiers.KEY, RoomModifiers.NONE)))
 			if not door.player_entered.is_connected(request_transition):
 				door.player_entered.connect(request_transition)
 			door.show()

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="RoomModifierTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/room_modifier_tuning.gd" id="1_rmt"]
+
+[resource]
+script = ExtResource("1_rmt")
+challenge_chance = 0.25
+cursed_chance = 0.2
+max_modified_per_floor = 2
+challenge_shards = 8
+challenge_picks = 2
+cursed_extra_enemies = 2
+cursed_elite_bonus = 0.25
+cursed_bullet_speed_mult = 1.1
+cursed_picks = 2
+wayshrine_hp_cost = 20

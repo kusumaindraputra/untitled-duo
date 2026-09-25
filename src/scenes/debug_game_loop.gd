@@ -68,6 +68,14 @@ var _gen: DungeonGenerator = DungeonGenerator.new()
 var _current_floor: int = 1
 var _floor_pool_configs: Array[EnemyPoolConfig] = []
 var _boss_pool_configs: Array[EnemyPoolConfig] = []
+## ADR-0026 room variety: the floor's combat pool before any Cursed tweak, the
+## current room's RoomModifiers value, whether Fayde is unhit in it, and the bonus
+## Cipher Shards earned by flawless Challenge rooms this run.
+var _base_combat_cfg: EnemyPoolConfig = null
+var _room_modifier: int = RoomModifiers.NONE
+var _room_flawless: bool = true
+var _bonus_shards: int = 0
+var _room_rng := RandomNumberGenerator.new()
 
 ## Guards hit-stop from stacking during the death slow-mo sequence.
 var _in_death_sequence: bool = false
@@ -110,6 +118,7 @@ func _ready() -> void:
 	_meta = MetaProgress.load_from(progress_path)
 	_load_pool_configs()
 	HealthAndDamage.heavy_hit.connect(_on_heavy_hit)
+	HealthAndDamage.damage_taken.connect(_on_damage_taken)
 
 	# Tell SceneManager about the initial room already in main.tscn so the first
 	# room transition correctly frees it instead of leaving a duplicate.
@@ -119,6 +128,8 @@ func _ready() -> void:
 	var rtm: RoomTransitionManager = $RoomTransitionManager
 	_apply_floor_theme(rtm)
 	_dungeon_graph = _gen.generate(7, _current_floor)
+	_room_rng.randomize()
+	RoomModifiers.assign(_dungeon_graph, _room_rng)
 	rtm.setup(_dungeon_graph)
 	rtm.room_transition_completed.connect(_on_room_transitioned)
 
@@ -714,11 +725,13 @@ func _update_minimap() -> void:
 	var rtm: RoomTransitionManager = $RoomTransitionManager
 	var types: Array[int] = []
 	var states: Array[int] = []
+	var mods: Array[int] = []
 	for i: int in _dungeon_graph.room_count():
 		var room: Dictionary = _dungeon_graph.get_room(i)
 		types.append(int(room.get("type", DungeonGraph.ROOM_TYPE_COMBAT)))
 		states.append(int(room.get("state", DungeonGraph.ROOM_STATE_UNVISITED)))
-	hud.set_minimap(types, states, rtm.get_current_room_idx())
+		mods.append(int(room.get(RoomModifiers.KEY, RoomModifiers.NONE)))
+	hud.set_minimap(types, states, rtm.get_current_room_idx(), mods)
 
 
 ## Configures WaveManager for the room at [param room_idx]: sets room_type and is_final_room.
@@ -733,6 +746,18 @@ func _configure_wave_manager_for_room(room_idx: int) -> void:
 	$WaveManager.room_type = rtype
 	$WaveManager.is_final_room = (rtype == DungeonGraph.ROOM_TYPE_BOSS)
 	_select_room_music(rtype)
+	# ADR-0026: Cursed rooms get a harder copy of the floor pool; Challenge tracks hits.
+	_room_modifier = RoomModifiers.of(_dungeon_graph, room_idx)
+	_room_flawless = true
+	if _base_combat_cfg != null:
+		$WaveManager.enemy_pool_config = RoomModifiers.apply_cursed(_base_combat_cfg) \
+			if _room_modifier == RoomModifiers.CURSED else _base_combat_cfg
+	var hud: CombatHUD = get_node_or_null(^"CanvasLayer/CombatHUD") as CombatHUD
+	if hud != null:
+		if _room_modifier == RoomModifiers.CHALLENGE:
+			hud.show_room_banner(_COPY.challenge_banner, Color(1.0, 1.0, 1.0))
+		elif _room_modifier == RoomModifiers.CURSED:
+			hud.show_room_banner(_COPY.cursed_banner, Color(0.8, 0.5, 1.0))
 
 
 ## Picks the combat-state music cue for [param rtype] via AudioSystem.
@@ -791,6 +816,7 @@ func _on_floor_completed() -> void:
 	_rooms_entered = 0
 	_apply_floor_theme($RoomTransitionManager)
 	_dungeon_graph = _gen.generate(7, _current_floor)
+	RoomModifiers.assign(_dungeon_graph, _room_rng)
 	GameStateManager.set_is_final_floor(_current_floor >= total_floors)
 	_apply_floor_pool_config()
 	$CanvasLayer/CombatHUD.show_floor_intro(_current_floor)
@@ -827,7 +853,8 @@ func _apply_floor_pool_config() -> void:
 	var hard: bool = _meta != null and _meta.hard_mode_active(_META)
 	if not _floor_pool_configs.is_empty():
 		var cfg: EnemyPoolConfig = _floor_pool_configs[floor_idx]
-		$WaveManager.enemy_pool_config = MetaProgress.apply_hard_mode(cfg, _META) if hard else cfg
+		_base_combat_cfg = MetaProgress.apply_hard_mode(cfg, _META) if hard else cfg
+		$WaveManager.enemy_pool_config = _base_combat_cfg
 	if not _boss_pool_configs.is_empty():
 		var boss_idx: int = clampi(_current_floor - 1, 0, _boss_pool_configs.size() - 1)
 		var boss_cfg: EnemyPoolConfig = _boss_pool_configs[boss_idx]
@@ -857,6 +884,7 @@ func _on_run_ended(win: bool) -> void:
 	if _meta != null and not _run_recorded:
 		_run_recorded = true
 		var was_unlocked: bool = _meta.is_hard_mode_unlocked(_META)
+		run_data["bonus_shards"] = _bonus_shards
 		shards_earned = _meta.record_run(_META, run_data, win)
 		hard_newly_unlocked = not was_unlocked and _meta.is_hard_mode_unlocked(_META)
 		_meta.save_to(progress_path)
@@ -982,8 +1010,41 @@ func _on_wave_ended() -> void:
 	var rtype: int = $WaveManager.room_type
 	if _sigil_manager != null \
 			and (rtype == DungeonGraph.ROOM_TYPE_COMBAT or rtype == DungeonGraph.ROOM_TYPE_ELITE):
+		# ADR-0026: Cursed and flawless Challenge rooms owe two picks.
+		var picks: int = RoomModifiers.picks_for(_room_modifier, _room_flawless)
+		var bonus: int = RoomModifiers.bonus_shards(_room_modifier, _room_flawless)
+		if bonus > 0:
+			_bonus_shards += bonus
+			$CanvasLayer/CombatHUD.show_room_banner(_COPY.challenge_won_format % bonus,
+				Color(1.0, 0.85, 0.4))
 		await get_tree().create_timer(0.5).timeout
-		_sigil_manager.offer_sigils()
+		_sigil_manager.offer_sigils(picks)
+	elif _sigil_manager != null and rtype == DungeonGraph.ROOM_TYPE_REST:
+		await get_tree().create_timer(0.5).timeout
+		_open_wayshrine()
+
+
+## ADR-0026: Rest rooms are Wayshrines — trade HP for one sigil pick, or walk on.
+func _open_wayshrine() -> void:
+	var cost: int = RoomModifiers.TUNING.wayshrine_hp_cost
+	var panel := WayshrinePanel.new()
+	panel.name = "WayshrinePanel"
+	panel.setup(cost, RoomModifiers.can_pay_wayshrine(HealthAndDamage.get_fayde_hp()))
+	panel.trade_chosen.connect(func() -> void:
+		if HealthAndDamage.pay_fayde_hp(cost):
+			_sigil_manager.offer_sigils.call_deferred(1))
+	add_child(panel)
+
+
+## ADR-0026: the first hit taken in a Challenge room loses its bonus.
+func _on_damage_taken(target: Node, _final_damage: int, _current_hp: int) -> void:
+	if _room_modifier != RoomModifiers.CHALLENGE or not _room_flawless:
+		return
+	if not target.is_in_group(&"player") \
+			or GameStateManager.get_active_state() != GameEnums.GameState.COMBAT_PHASE:
+		return
+	_room_flawless = false
+	$CanvasLayer/CombatHUD.show_room_banner(_COPY.challenge_lost, Color(1.0, 0.45, 0.4))
 
 
 func _ensure_key_action(action: StringName, keycode: Key) -> void:

@@ -153,6 +153,32 @@ extends Resource
 ## Line on the core-pick screen naming the equipped Heirloom (%s = sigil title).
 @export var heirloom_active_format: String = "Heirloom: %s"
 
+@export_group("Room Variety (ADR-0026)")
+
+## Door labels for modified destinations (Rest rooms are always Wayshrines).
+@export var door_challenge: String = "⚔ Challenge"
+@export var door_cursed: String = "☠ Cursed"
+@export var door_wayshrine: String = "♥ Wayshrine"
+
+## Banner when entering a Challenge room.
+@export var challenge_banner: String = "CHALLENGE — clear it without a hit"
+## Banner the first time Fayde is hit in a Challenge room.
+@export var challenge_lost: String = "Challenge lost"
+## Banner after a flawless Challenge clear (%d = bonus shards).
+@export var challenge_won_format: String = "FLAWLESS — +%d shards and an extra sigil"
+## Banner when entering a Cursed room.
+@export var cursed_banner: String = "CURSED — tougher foes, two sigils"
+
+## Sigil overlay suffix when more than one pick is owed (%d of %d).
+@export var sigil_pick_format: String = "  (%d of %d)"
+
+## Wayshrine panel (Rest rooms).
+@export var wayshrine_heading: String = "WAYSHRINE"
+@export var wayshrine_body: String = "The shrine asks for blood. Offer it to inscribe a sigil?"
+@export var wayshrine_trade_format: String = "Offer %d HP"
+@export var wayshrine_leave: String = "Walk on"
+@export var wayshrine_too_weak: String = "Too weak to offer blood"
+
 @export_group("Combat Tutorial")
 
 ## Heading of the in-combat coach panel.
