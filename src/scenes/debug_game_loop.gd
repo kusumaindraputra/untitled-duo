@@ -117,6 +117,7 @@ func _ready() -> void:
 	Engine.time_scale = 1.0  # reset from any prior slow-mo (scene reload via R key)
 	_register_input_actions()
 	_meta = MetaProgress.load_from(progress_path)
+	GameSettings.active().apply_display_once()
 	_load_pool_configs()
 	HealthAndDamage.heavy_hit.connect(_on_heavy_hit)
 	HealthAndDamage.damage_taken.connect(_on_damage_taken)
@@ -604,11 +605,6 @@ func _on_game_paused() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title)
 
-	# Volume controls — one slider per player-facing bus, wired to AudioSystem.
-	vbox.add_child(_make_spacer(8))
-	_add_volume_slider(vbox, "Master", AudioSystem.get_master_volume(), AudioSystem.set_master_volume)
-	_add_volume_slider(vbox, "Music", AudioSystem.get_music_volume(), AudioSystem.set_music_volume)
-	_add_volume_slider(vbox, "SFX", AudioSystem.get_sfx_volume(), AudioSystem.set_sfx_volume)
 	vbox.add_child(_make_spacer(8))
 
 	var resume := Button.new()
@@ -626,6 +622,21 @@ func _on_game_paused() -> void:
 	restart.add_theme_font_size_override(&"font_size", 22)
 	restart.pressed.connect(_restart_from_pause)
 	vbox.add_child(restart)
+
+	# ADR-0026: volume, display, comfort and keys live in the Settings panel.
+	var settings := Button.new()
+	settings.text = _COPY.settings_button.capitalize()
+	settings.custom_minimum_size = Vector2(240, 52)
+	settings.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	settings.add_theme_font_size_override(&"font_size", 22)
+	settings.pressed.connect(func() -> void:
+		vbox.visible = false
+		var panel := SettingsPanel.new()
+		panel.closed.connect(func() -> void:
+			vbox.visible = true
+			settings.grab_focus())
+		_pause_layer.add_child(panel))
+	vbox.add_child(settings)
 
 	var replay := Button.new()
 	replay.text = _COPY.coach_replay_button
@@ -653,37 +664,6 @@ func _on_game_paused() -> void:
 
 	add_child(_pause_layer)
 	resume.grab_focus()
-
-
-## Builds a labelled 0–100 volume slider on [param parent] for one audio bus.
-## [param current_db] seeds the handle; [param setter] receives the new dB on change.
-## dB↔slider maps linearly over the full [−80, 0] range; the AudioSystem setter clamps
-## per-bus invariants (e.g. Music caps at −3 dB), so the slider top is "as loud as allowed".
-func _add_volume_slider(parent: Node, bus_label: String, current_db: float, setter: Callable) -> void:
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override(&"separation", 12)
-
-	var name_label := Label.new()
-	name_label.text = bus_label
-	name_label.custom_minimum_size = Vector2(86, 0)
-	name_label.add_theme_font_size_override(&"font_size", 18)
-	name_label.add_theme_color_override(&"font_color", Color(0.78, 0.78, 0.84))
-	row.add_child(name_label)
-
-	var slider := HSlider.new()
-	slider.custom_minimum_size = Vector2(220, 0)
-	slider.min_value = 0.0
-	slider.max_value = 100.0
-	slider.step = 1.0
-	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	slider.value = clampf((current_db + 80.0) / 80.0 * 100.0, 0.0, 100.0)
-	slider.value_changed.connect(func(v: float) -> void: setter.call(lerpf(-80.0, 0.0, v / 100.0)))
-	# Persist on release so the choice survives a restart, without thrashing disk per drag step.
-	slider.drag_ended.connect(func(_changed: bool) -> void: AudioSystem.save_audio_settings())
-	row.add_child(slider)
-
-	parent.add_child(row)
 
 
 ## Frees the pause overlay in response to GameStateManager.game_resumed.
@@ -813,6 +793,8 @@ func _register_input_actions() -> void:
 	_ensure_key_action(&"prana_place",      KEY_E)
 	_ensure_key_action(&"prana_clear",      KEY_Q)
 	_ensure_key_action(&"prana_type_cycle", KEY_C)
+	# ADR-0026: player key bindings replace the defaults registered above.
+	GameSettings.active().apply_keys()
 
 
 ## Called when the boss of a non-final floor is defeated.
@@ -1008,7 +990,7 @@ func _on_wave_ended() -> void:
 	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$CanvasLayer.add_child(wash)
 	var tw: Tween = create_tween()
-	tw.tween_property(wash, "color:a", 0.18, 0.15).set_ease(Tween.EASE_OUT)
+	tw.tween_property(wash, "color:a", 0.18 * GameSettings.flash_multiplier(), 0.15).set_ease(Tween.EASE_OUT)
 	tw.tween_interval(0.6)
 	tw.tween_property(wash, "color:a", 0.0, 0.5).set_ease(Tween.EASE_IN)
 	tw.tween_callback(wash.queue_free)

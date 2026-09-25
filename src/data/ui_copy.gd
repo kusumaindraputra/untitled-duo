@@ -188,6 +188,36 @@ extends Resource
 	"THE LAST CIPHER — hold on",
 ]
 
+@export_group("Settings (ADR-0026)")
+
+@export var settings_button: String = "SETTINGS"
+@export var settings_title: String = "SETTINGS"
+@export var settings_display_heading: String = "Display"
+@export var settings_fullscreen: String = "Fullscreen"
+@export var settings_window_size: String = "Window size"
+@export var settings_vsync: String = "V-Sync"
+@export var settings_comfort_heading: String = "Comfort"
+@export var settings_screen_shake: String = "Screen shake"
+@export var settings_reduce_flashes: String = "Reduce screen flashes"
+@export var settings_audio_heading: String = "Audio"
+@export var settings_master: String = "Master"
+@export var settings_music: String = "Music"
+@export var settings_sfx: String = "SFX"
+@export var settings_controls_heading: String = "Keyboard"
+## Names of GameSettings.REMAPPABLE actions, same order.
+@export var settings_action_names: Array[String] = [
+	"Move up", "Move down", "Move left", "Move right", "Dash", "Cast", "Special",
+]
+@export var settings_press_key: String = "Press a key…"
+@export var settings_reset_keys: String = "Reset keys"
+@export var settings_gamepad_note: String = "Gamepad buttons are fixed for now."
+@export var settings_back: String = "Back  (Esc)"
+
+@export_group("Release")
+
+## Version line on the main menu (%s = application/config/version).
+@export var version_format: String = "v%s"
+
 @export_group("Combat Tutorial")
 
 ## Heading of the in-combat coach panel.

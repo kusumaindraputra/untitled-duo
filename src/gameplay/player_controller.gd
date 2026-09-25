@@ -754,7 +754,7 @@ func _spawn_pixel_ghosts(pixel: PixelCharacter, dash_dir: Vector2) -> void:
 ## Values: 0.2 = light (Cluster hit), 0.5 = medium (Charger charge), 0.85 = heavy (death).
 ## Trauma decays at TRAUMA_DECAY per second and is squared before offset application.
 func add_camera_trauma(amount: float) -> void:
-	_trauma = minf(_trauma + amount, 1.0)
+	_trauma = minf(_trauma + amount * GameSettings.shake_multiplier(), 1.0)
 
 
 ## Responds to heavy_hit (final_damage >= HEAVY_HIT_THRESHOLD) with camera trauma.

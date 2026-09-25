@@ -32,6 +32,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	progress = MetaProgress.load_from(progress_path)
+	GameSettings.active().apply_display_once()
 	_build_ui()
 
 
@@ -77,20 +78,25 @@ func _build_ui() -> void:
 	_build_progress_panel(vbox)
 	vbox.add_child(_make_spacer(4))
 
-	# Volume controls — wired straight to the AudioSystem bus setters.
-	_add_volume_slider(vbox, "Master", AudioSystem.get_master_volume(), AudioSystem.set_master_volume)
-	_add_volume_slider(vbox, "Music", AudioSystem.get_music_volume(), AudioSystem.set_music_volume)
-	_add_volume_slider(vbox, "SFX", AudioSystem.get_sfx_volume(), AudioSystem.set_sfx_volume)
+	# Volume, display, comfort and key bindings live in the Settings panel (ADR-0026).
+	var bottom := HBoxContainer.new()
+	bottom.alignment = BoxContainer.ALIGNMENT_CENTER
+	bottom.add_theme_constant_override(&"separation", 16)
+	vbox.add_child(bottom)
 
-	vbox.add_child(_make_spacer(8))
+	var settings := Button.new()
+	settings.text = _COPY.settings_button
+	settings.custom_minimum_size = Vector2(200, 42)
+	settings.add_theme_font_size_override(&"font_size", 22)
+	settings.pressed.connect(_on_settings_pressed.bind(settings))
+	bottom.add_child(settings)
 
 	var quit := Button.new()
 	quit.text = "QUIT"
 	quit.custom_minimum_size = Vector2(200, 42)
-	quit.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	quit.add_theme_font_size_override(&"font_size", 22)
 	quit.pressed.connect(_on_quit_pressed)
-	vbox.add_child(quit)
+	bottom.add_child(quit)
 
 	var controls := Label.new()
 	controls.text = "WASD / Stick  Move      Shift / X  Dash      Space / A  Cast      Enter / Y  Confirm"
@@ -99,8 +105,28 @@ func _build_ui() -> void:
 	controls.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(controls)
 
+	var version := _make_label(_COPY.version_format % version_string(), 14, Color(0.45, 0.45, 0.52))
+	version.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	version.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	version.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	version.offset_right = -12.0
+	version.offset_bottom = -8.0
+	add_child(version)
+
 	# Focus Play so keyboard (Enter/Space) and gamepad (ui_accept) work immediately.
 	play.grab_focus()
+
+
+## The game version from project settings (application/config/version).
+static func version_string() -> String:
+	return str(ProjectSettings.get_setting("application/config/version", "dev"))
+
+
+## Opens the Settings panel; focus returns to [param from] when it closes.
+func _on_settings_pressed(from: Button) -> void:
+	var panel := SettingsPanel.new()
+	panel.closed.connect(from.grab_focus)
+	add_child(panel)
 
 
 ## Builds the between-run progress block: shard/stat line, Heirloom row, Hard Mode.
@@ -208,36 +234,6 @@ func _on_play_pressed() -> void:
 ## Quits the application. Honoured by exported/web builds; stops the run in the editor.
 func _on_quit_pressed() -> void:
 	get_tree().quit()
-
-
-## Builds a labelled 0–100 volume slider on [param parent] for one audio bus.
-## [param current_db] seeds the handle; [param setter] receives the new dB on change.
-## dB↔slider maps linearly over [−80, 0]; the AudioSystem setter clamps per-bus invariants.
-func _add_volume_slider(parent: Node, bus_label: String, current_db: float, setter: Callable) -> void:
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override(&"separation", 12)
-
-	var name_label := Label.new()
-	name_label.text = bus_label
-	name_label.custom_minimum_size = Vector2(86, 0)
-	name_label.add_theme_font_size_override(&"font_size", 18)
-	name_label.add_theme_color_override(&"font_color", Color(0.78, 0.78, 0.84))
-	row.add_child(name_label)
-
-	var slider := HSlider.new()
-	slider.custom_minimum_size = Vector2(240, 0)
-	slider.min_value = 0.0
-	slider.max_value = 100.0
-	slider.step = 1.0
-	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	slider.value = clampf((current_db + 80.0) / 80.0 * 100.0, 0.0, 100.0)
-	slider.value_changed.connect(func(v: float) -> void: setter.call(lerpf(-80.0, 0.0, v / 100.0)))
-	# Persist on release so the choice survives a restart, without thrashing disk per drag step.
-	slider.drag_ended.connect(func(_changed: bool) -> void: AudioSystem.save_audio_settings())
-	row.add_child(slider)
-
-	parent.add_child(row)
 
 
 ## Returns a fixed-height invisible spacer Control for VBox layout.
