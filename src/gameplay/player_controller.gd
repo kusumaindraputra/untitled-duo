@@ -54,29 +54,20 @@ const BLINK_INTERVAL: float = 0.06
 ## input is suppressed so the push-away reads clearly regardless of held keys.
 const KNOCKBACK_DURATION: float = 0.08
 
-## Camera smoothing speed — pixels/sec² toward the target position.
-## Higher = snappier; 8.0 gives subtle smoothing without sluggish feel.
-const CAMERA_SMOOTH_SPEED: float = 8.0
-## Maximum camera look-ahead offset in pixels (ahead of player in movement direction).
-const CAMERA_LOOK_AHEAD_MAX: float = 30.0
+## Camera zoom, look-ahead and smoothing live in camera_tuning.tres (ADR-0024).
+const CAMERA_TUNING: CameraTuning = preload("res://assets/data/camera_tuning.tres")
 
 ## Movement speed multiplier during cast lock — Fayde can still move but at reduced speed.
 ## GDD Rule 6: movement is dampened, not zeroed, during the post-hit recovery window.
 const CAST_LOCK_SPEED_FACTOR: float = 0.55
 
-## Camera zoom levels.
-## COMBAT 1.5×: visible 768×432 game-px, Fayde occupies ~15% height (Hades-like scale).
-## PREP 0.55×: visible 2094×1178 game-px, shows full 1280×768 arena with ~400px margin.
-const ZOOM_COMBAT: Vector2 = Vector2(1.5, 1.5)
-const ZOOM_PREP: Vector2 = Vector2(0.55, 0.55)
+## Zoom tween timing. The zoom levels themselves are in CAMERA_TUNING (ADR-0024):
+## combat 2.0× shows 576×324 game-px (Fayde ~10% of screen height), prep 0.55× the
+## whole 1280×768 arena.
 const ZOOM_TWEEN_DURATION: float = 0.35
 ## Faster TRANS_BACK punch-in for combat start — more energetic than the prep smooth-out.
 ## Replaces the old black-flash snap so the zoom-in IS the combat-start signal.
 const ZOOM_COMBAT_PUNCH_DURATION: float = 0.22
-## Boss-reveal zoom-out target (wider than ZOOM_COMBAT so the boss is framed in).
-const BOSS_REVEAL_ZOOM: Vector2 = Vector2(1.0, 1.0)
-## Seconds the camera holds at BOSS_REVEAL_ZOOM before easing back to ZOOM_COMBAT.
-const BOSS_REVEAL_HOLD_SEC: float = 0.9
 
 ## Trauma-based camera shake parameters (Gamefeel Audit Issue 2.3).
 ## Trauma decays at TRAUMA_DECAY units/sec; squared before applying to offset (quadratic feel).
@@ -136,7 +127,7 @@ var _post_hit_blink_timer: float = 0.0
 var _zoom_tween: Tween = null
 var _last_anim: String = ""
 
-## Combat-start flash — masks the 0.55x→1.5x zoom snap so it doesn't read as Fayde teleporting.
+## Combat-start flash — masks the prep→combat zoom snap so it doesn't read as Fayde teleporting.
 var _flash_rect: ColorRect = null
 var _flash_tween: Tween = null
 
@@ -350,7 +341,7 @@ func _physics_process(delta: float) -> void:
 	if is_instance_valid(_camera):
 		var speed_ratio: float = minf(velocity.length() / MOVE_SPEED, 1.0)
 		if velocity.length() > 1.0:
-			_camera.position = velocity.normalized() * speed_ratio * CAMERA_LOOK_AHEAD_MAX
+			_camera.position = velocity.normalized() * speed_ratio * CAMERA_TUNING.look_ahead_max
 		else:
 			_camera.position = _camera.position.lerp(Vector2.ZERO, delta * 4.0)
 
@@ -534,7 +525,7 @@ func _on_combat_started(_is_boss: bool = false) -> void:
 		if _zoom_tween:
 			_zoom_tween.kill()
 		_zoom_tween = create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		_zoom_tween.tween_property(_camera, "zoom", ZOOM_COMBAT, ZOOM_COMBAT_PUNCH_DURATION)
+		_zoom_tween.tween_property(_camera, "zoom", Vector2.ONE * CAMERA_TUNING.combat_zoom, ZOOM_COMBAT_PUNCH_DURATION)
 
 
 func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) -> void:
@@ -561,11 +552,11 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	_footstep_bag.clear()
 	if is_instance_valid(_camera):
 		_camera.position = Vector2.ZERO
-	_tween_zoom(ZOOM_PREP)
+	_tween_zoom(Vector2.ONE * CAMERA_TUNING.prep_zoom)
 
 
 func _on_room_cleared() -> void:
-	_tween_zoom(ZOOM_PREP)
+	_tween_zoom(Vector2.ONE * CAMERA_TUNING.prep_zoom)
 
 
 func _setup_spell_vfx() -> void:
@@ -651,7 +642,7 @@ func _setup_camera_smoothing() -> void:
 	if _camera == null:
 		return
 	_camera.position_smoothing_enabled = true
-	_camera.position_smoothing_speed = CAMERA_SMOOTH_SPEED
+	_camera.position_smoothing_speed = CAMERA_TUNING.smooth_speed
 
 
 func _tween_zoom(target: Vector2) -> void:
@@ -683,9 +674,9 @@ func boss_reveal_zoom() -> void:
 	if _zoom_tween:
 		_zoom_tween.kill()
 	_zoom_tween = create_tween().set_trans(Tween.TRANS_SINE)
-	_zoom_tween.tween_property(_camera, "zoom", BOSS_REVEAL_ZOOM, 0.5).set_ease(Tween.EASE_OUT)
-	_zoom_tween.tween_interval(BOSS_REVEAL_HOLD_SEC)
-	_zoom_tween.tween_property(_camera, "zoom", ZOOM_COMBAT, 0.6).set_ease(Tween.EASE_IN_OUT)
+	_zoom_tween.tween_property(_camera, "zoom", Vector2.ONE * CAMERA_TUNING.boss_reveal_zoom, 0.5).set_ease(Tween.EASE_OUT)
+	_zoom_tween.tween_interval(CAMERA_TUNING.boss_reveal_hold_sec)
+	_zoom_tween.tween_property(_camera, "zoom", Vector2.ONE * CAMERA_TUNING.combat_zoom, 0.6).set_ease(Tween.EASE_IN_OUT)
 
 
 func _on_player_died() -> void:

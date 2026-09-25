@@ -15,6 +15,11 @@ signal phase_changed(phase: int)
 
 ## Elite knobs (HP / damage / scale / extra pattern) — ADR-0018.
 const BULLET_HELL_TUNING: BulletHellTuning = preload("res://assets/data/bullet_hell_tuning.tres")
+## Aggro / alert knobs (ADR-0024).
+const AWARENESS_TUNING: EnemyAwarenessTuning = preload("res://assets/data/enemy_awareness_tuning.tres")
+
+## Emitted once when a dormant enemy notices Fayde (ADR-0024).
+signal alerted()
 
 # ── Private state ─────────────────────────────────────────────────────────────
 
@@ -96,6 +101,14 @@ var _is_elite: bool = false
 var _active_layer_count: int = -1
 ## Short pre-fire flash; separate from _vfx_tween so looping telegraphs are untouched.
 var _windup_tween: Tween = null
+
+## ADR-0024 — true while this enemy has not noticed Fayde yet: it stands still and
+## holds fire. Only WaveManager sets it (opening-wave spawns); default is awake.
+var _dormant: bool = false
+## Seconds of active combat spent dormant — wakes at AWARENESS_TUNING.max_dormant_sec.
+var _dormant_timer: float = 0.0
+## Tuning used by the awareness check. Overridable in tests.
+var _awareness: EnemyAwarenessTuning = AWARENESS_TUNING
 
 ## Active Tween for attack/telegraph modulate pulse. Null when idle.
 var _vfx_tween: Tween = null
@@ -282,6 +295,13 @@ func _physics_process(delta: float) -> void:
 	var raw_dir: Vector2 = _fayde_ref.global_position - global_position
 	if raw_dir.length() >= 0.01:
 		_dir_last_valid = raw_dir.normalized()
+
+	# ADR-0024 — dormant enemies wait until Fayde is inside their aggro area.
+	if _dormant:
+		_tick_dormant(delta)
+		if _dormant:
+			velocity = Vector2.ZERO
+			return
 
 	match _archetype:
 		GameEnums.EnemyArchetype.SHOOTER:
@@ -741,6 +761,72 @@ func _on_phase_up(phase: int) -> void:
 		_audio.play_event(&"sfx_boss_slam_telegraph")
 
 
+# ── Awareness (ADR-0024) ──────────────────────────────────────────────────────
+
+## Puts this enemy to sleep until it notices Fayde. Bosses ignore this and stay
+## awake. No-op when EnemyAwarenessTuning.enabled is false.
+func enter_dormant() -> void:
+	if not _awareness.enabled or _archetype == GameEnums.EnemyArchetype.BOSS:
+		return
+	if _state == EnemyState.DEAD:
+		return
+	_dormant = true
+	_dormant_timer = 0.0
+
+
+## Returns true while this enemy has not noticed Fayde yet.
+func is_dormant() -> bool:
+	return _dormant
+
+
+## Wakes this enemy and, when [param chain] is true, every dormant enemy within
+## EnemyAwarenessTuning.alert_link_radius of it. No-op when already awake.
+func alert(chain: bool = true) -> void:
+	if not _dormant:
+		return
+	_dormant = false
+	_dormant_timer = 0.0
+	_show_alert_mark()
+	alerted.emit()
+	if chain and is_inside_tree():
+		for node: Node in get_tree().get_nodes_in_group(&"enemy"):
+			var other := node as EnemyInstance
+			if other == null or other == self or not other._dormant:
+				continue
+			if iso_distance(global_position, other.global_position,
+					_awareness.iso_y_scale) <= _awareness.alert_link_radius:
+				other.alert(false)
+
+
+## Distance measured on the isometric floor: screen-y is stretched by
+## [param y_scale] first, so a fixed radius is a 2:1 ellipse on screen.
+static func iso_distance(a: Vector2, b: Vector2, y_scale: float = 2.0) -> float:
+	var d: Vector2 = b - a
+	return Vector2(d.x, d.y * y_scale).length()
+
+
+## Dormant tick: wakes on Fayde entering the aggro area or on the safety timeout.
+func _tick_dormant(delta: float) -> void:
+	_dormant_timer += delta
+	var dist: float = iso_distance(global_position, _fayde_ref.global_position,
+		_awareness.iso_y_scale)
+	var timed_out: bool = _awareness.max_dormant_sec > 0.0 \
+		and _dormant_timer >= _awareness.max_dormant_sec
+	if dist <= _awareness.aggro_radius or timed_out:
+		alert()
+
+
+## Pops a pixel "!" above the head for EnemyAwarenessTuning.alert_mark_sec.
+func _show_alert_mark() -> void:
+	if not is_inside_tree() or _awareness.alert_mark_sec <= 0.0:
+		return
+	var mark := _AlertMark.new()
+	mark.duration = _awareness.alert_mark_sec
+	mark.position = Vector2(0.0, -48.0)  # just above the HP bar (-35)
+	mark.z_index = 6
+	add_child(mark)
+
+
 ## Required by ADR-0011 (StatusEffectsManager API Contract).
 ## SEM calls this on Stun/Stagger apply. Re-entrant: resets timer on stun refresh.
 func apply_stun(duration: float) -> void:
@@ -867,6 +953,7 @@ func _on_damage_taken_hp_bar(target: Node, _damage: int, current_hp: int) -> voi
 	if target != self:
 		return
 	_current_hp = current_hp
+	alert()  # being hit always wakes a dormant enemy (ADR-0024)
 	if is_instance_valid(_hp_bar):
 		_hp_bar.show_hp(_current_hp, _max_hp)
 
@@ -1234,3 +1321,35 @@ class _SlamWarning extends Node2D:
 				Color(0.9, 0.2, 0.1, alpha), 3.0, true)
 		# Solid fill at low opacity so the zone is readable.
 		draw_circle(Vector2.ZERO, radius, Color(0.9, 0.2, 0.1, alpha * 0.15))
+
+
+## Inner class: pixel "!" that pops above an enemy the moment it notices Fayde
+## (ADR-0024). Rises 4 px with a quick scale pop, blinks out, then frees itself.
+class _AlertMark extends Node2D:
+	var duration: float = 0.5
+	var _elapsed: float = 0.0
+	var _base_y: float = 0.0
+
+	func _ready() -> void:
+		_base_y = position.y
+		scale = Vector2(0.4, 0.4)
+		var tw: Tween = create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(self, "scale", Vector2.ONE, 0.12)
+
+	func _process(delta: float) -> void:
+		_elapsed += delta
+		if _elapsed >= duration:
+			queue_free()
+			return
+		position.y = _base_y - 4.0 * minf(_elapsed / 0.15, 1.0)
+		# Blink during the last third so it reads as "gone" rather than cut off.
+		visible = _elapsed < duration * 0.66 or int(_elapsed * 20.0) % 2 == 0
+
+	func _draw() -> void:
+		var outline := Color(0.08, 0.02, 0.02)
+		var fill := Color(1.0, 0.82, 0.2)
+		# 4×12 bar + 4×4 dot on a 2 px pixel grid, dark outline for any floor colour.
+		draw_rect(Rect2(-4.0, -16.0, 8.0, 14.0), outline)
+		draw_rect(Rect2(-4.0, 0.0, 8.0, 8.0), outline)
+		draw_rect(Rect2(-2.0, -14.0, 4.0, 10.0), fill)
+		draw_rect(Rect2(-2.0, 2.0, 4.0, 4.0), fill)
