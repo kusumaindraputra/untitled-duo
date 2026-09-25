@@ -153,6 +153,71 @@ extends Resource
 ## Line on the core-pick screen naming the equipped Heirloom (%s = sigil title).
 @export var heirloom_active_format: String = "Heirloom: %s"
 
+@export_group("Room Variety (ADR-0026)")
+
+## Door labels for modified destinations (Rest rooms are always Wayshrines).
+@export var door_challenge: String = "⚔ Challenge"
+@export var door_cursed: String = "☠ Cursed"
+@export var door_wayshrine: String = "♥ Wayshrine"
+
+## Banner when entering a Challenge room.
+@export var challenge_banner: String = "CHALLENGE — clear it without a hit"
+## Banner the first time Fayde is hit in a Challenge room.
+@export var challenge_lost: String = "Challenge lost"
+## Banner after a flawless Challenge clear (%d = bonus shards).
+@export var challenge_won_format: String = "FLAWLESS — +%d shards and an extra sigil"
+## Banner when entering a Cursed room.
+@export var cursed_banner: String = "CURSED — tougher foes, two sigils"
+
+## Sigil overlay suffix when more than one pick is owed (%d of %d).
+@export var sigil_pick_format: String = "  (%d of %d)"
+
+## Wayshrine panel (Rest rooms).
+@export var wayshrine_heading: String = "WAYSHRINE"
+@export var wayshrine_body: String = "The shrine asks for blood. Offer it to inscribe a sigil?"
+@export var wayshrine_trade_format: String = "Offer %d HP"
+@export var wayshrine_leave: String = "Walk on"
+@export var wayshrine_too_weak: String = "Too weak to offer blood"
+
+@export_group("Final Boss (ADR-0026)")
+
+## Banner for each Cipher Keeper phase (1st, 2nd, 3rd HP threshold crossed).
+@export var keeper_phase_banners: Array[String] = [
+	"The first lock breaks — a beam pylon rises",
+	"The vault closes in",
+	"THE LAST CIPHER — hold on",
+]
+
+@export_group("Settings (ADR-0026)")
+
+@export var settings_button: String = "SETTINGS"
+@export var settings_title: String = "SETTINGS"
+@export var settings_display_heading: String = "Display"
+@export var settings_fullscreen: String = "Fullscreen"
+@export var settings_window_size: String = "Window size"
+@export var settings_vsync: String = "V-Sync"
+@export var settings_comfort_heading: String = "Comfort"
+@export var settings_screen_shake: String = "Screen shake"
+@export var settings_reduce_flashes: String = "Reduce screen flashes"
+@export var settings_audio_heading: String = "Audio"
+@export var settings_master: String = "Master"
+@export var settings_music: String = "Music"
+@export var settings_sfx: String = "SFX"
+@export var settings_controls_heading: String = "Keyboard"
+## Names of GameSettings.REMAPPABLE actions, same order.
+@export var settings_action_names: Array[String] = [
+	"Move up", "Move down", "Move left", "Move right", "Dash", "Cast", "Special",
+]
+@export var settings_press_key: String = "Press a key…"
+@export var settings_reset_keys: String = "Reset keys"
+@export var settings_gamepad_note: String = "Gamepad buttons are fixed for now."
+@export var settings_back: String = "Back  (Esc)"
+
+@export_group("Release")
+
+## Version line on the main menu (%s = application/config/version).
+@export var version_format: String = "v%s"
+
 @export_group("Combat Tutorial")
 
 ## Heading of the in-combat coach panel.

@@ -68,6 +68,14 @@ var _gen: DungeonGenerator = DungeonGenerator.new()
 var _current_floor: int = 1
 var _floor_pool_configs: Array[EnemyPoolConfig] = []
 var _boss_pool_configs: Array[EnemyPoolConfig] = []
+## ADR-0026 room variety: the floor's combat pool before any Cursed tweak, the
+## current room's RoomModifiers value, whether Fayde is unhit in it, and the bonus
+## Cipher Shards earned by flawless Challenge rooms this run.
+var _base_combat_cfg: EnemyPoolConfig = null
+var _room_modifier: int = RoomModifiers.NONE
+var _room_flawless: bool = true
+var _bonus_shards: int = 0
+var _room_rng := RandomNumberGenerator.new()
 
 ## Guards hit-stop from stacking during the death slow-mo sequence.
 var _in_death_sequence: bool = false
@@ -84,6 +92,8 @@ var _sigil_manager: SigilManager = null
 
 ## Fast-pace layer (ADR-0019). Created in _ready(), wired to the player and HUD there.
 var _pace_director: PaceDirector = null
+var _sigil_effects: SigilEffects = null
+var _final_boss: FinalBossDirector = null
 
 ## Run-scoped transient bag of Prana acquired from post-room rewards, awaiting
 ## placement into the grid during the next prep phase. Created in _ready().
@@ -107,8 +117,10 @@ func _ready() -> void:
 	Engine.time_scale = 1.0  # reset from any prior slow-mo (scene reload via R key)
 	_register_input_actions()
 	_meta = MetaProgress.load_from(progress_path)
+	GameSettings.active().apply_display_once()
 	_load_pool_configs()
 	HealthAndDamage.heavy_hit.connect(_on_heavy_hit)
+	HealthAndDamage.damage_taken.connect(_on_damage_taken)
 
 	# Tell SceneManager about the initial room already in main.tscn so the first
 	# room transition correctly frees it instead of leaving a duplicate.
@@ -118,6 +130,8 @@ func _ready() -> void:
 	var rtm: RoomTransitionManager = $RoomTransitionManager
 	_apply_floor_theme(rtm)
 	_dungeon_graph = _gen.generate(7, _current_floor)
+	_room_rng.randomize()
+	RoomModifiers.assign(_dungeon_graph, _room_rng)
 	rtm.setup(_dungeon_graph)
 	rtm.room_transition_completed.connect(_on_room_transitioned)
 
@@ -147,6 +161,13 @@ func _ready() -> void:
 	$CanvasLayer.move_child(indicators, 0)
 	# Boss-intro UI: WaveManager announces boss spawns; HUD shows name card + HP bar.
 	$WaveManager.boss_spawned.connect(hud._on_boss_spawned)
+	# ADR-0026: the Floor 3 Cipher Keeper changes the arena at each phase.
+	_final_boss = FinalBossDirector.new()
+	_final_boss.name = "FinalBossDirector"
+	_final_boss.hud = hud
+	add_child(_final_boss)
+	$WaveManager.boss_spawned.connect(func(boss: Node) -> void:
+		_final_boss.attach(boss, SceneManager.get_current_scene() as Node2D))
 	# Pause overlay: GameStateManager drives the paused/resumed transitions; we just
 	# build/free the overlay in response so ESC works from PREP and COMBAT alike.
 	GameStateManager.game_paused.connect(_on_game_paused)
@@ -164,6 +185,13 @@ func _ready() -> void:
 	_pace_director.style_changed.connect(hud.set_style)
 	_pace_director.room_ranked.connect(hud.show_room_rank)
 	_pace_director.perfect_dodge_triggered.connect(hud.show_perfect_dodge)
+	# ADR-0026 behaviour sigils: effects hang off gameplay signals; SigilManager adds stacks.
+	_sigil_effects = SigilEffects.new()
+	_sigil_effects.name = "SigilEffects"
+	_sigil_effects.player = $PlayerController
+	add_child(_sigil_effects)
+	_sigil_manager.effects = _sigil_effects
+	_pace_director.perfect_dodge_triggered.connect(_sigil_effects.on_perfect_dodge)
 	# Transient reward bag: Prana picked from post-room rewards land here, then the
 	# prep grid places them. Found by SigilManager (writer) + PranaGrid (reader) via group.
 	_prana_bag = PranaBag.new()
@@ -577,11 +605,6 @@ func _on_game_paused() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title)
 
-	# Volume controls — one slider per player-facing bus, wired to AudioSystem.
-	vbox.add_child(_make_spacer(8))
-	_add_volume_slider(vbox, "Master", AudioSystem.get_master_volume(), AudioSystem.set_master_volume)
-	_add_volume_slider(vbox, "Music", AudioSystem.get_music_volume(), AudioSystem.set_music_volume)
-	_add_volume_slider(vbox, "SFX", AudioSystem.get_sfx_volume(), AudioSystem.set_sfx_volume)
 	vbox.add_child(_make_spacer(8))
 
 	var resume := Button.new()
@@ -599,6 +622,21 @@ func _on_game_paused() -> void:
 	restart.add_theme_font_size_override(&"font_size", 22)
 	restart.pressed.connect(_restart_from_pause)
 	vbox.add_child(restart)
+
+	# ADR-0026: volume, display, comfort and keys live in the Settings panel.
+	var settings := Button.new()
+	settings.text = _COPY.settings_button.capitalize()
+	settings.custom_minimum_size = Vector2(240, 52)
+	settings.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	settings.add_theme_font_size_override(&"font_size", 22)
+	settings.pressed.connect(func() -> void:
+		vbox.visible = false
+		var panel := SettingsPanel.new()
+		panel.closed.connect(func() -> void:
+			vbox.visible = true
+			settings.grab_focus())
+		_pause_layer.add_child(panel))
+	vbox.add_child(settings)
 
 	var replay := Button.new()
 	replay.text = _COPY.coach_replay_button
@@ -626,37 +664,6 @@ func _on_game_paused() -> void:
 
 	add_child(_pause_layer)
 	resume.grab_focus()
-
-
-## Builds a labelled 0–100 volume slider on [param parent] for one audio bus.
-## [param current_db] seeds the handle; [param setter] receives the new dB on change.
-## dB↔slider maps linearly over the full [−80, 0] range; the AudioSystem setter clamps
-## per-bus invariants (e.g. Music caps at −3 dB), so the slider top is "as loud as allowed".
-func _add_volume_slider(parent: Node, bus_label: String, current_db: float, setter: Callable) -> void:
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override(&"separation", 12)
-
-	var name_label := Label.new()
-	name_label.text = bus_label
-	name_label.custom_minimum_size = Vector2(86, 0)
-	name_label.add_theme_font_size_override(&"font_size", 18)
-	name_label.add_theme_color_override(&"font_color", Color(0.78, 0.78, 0.84))
-	row.add_child(name_label)
-
-	var slider := HSlider.new()
-	slider.custom_minimum_size = Vector2(220, 0)
-	slider.min_value = 0.0
-	slider.max_value = 100.0
-	slider.step = 1.0
-	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	slider.value = clampf((current_db + 80.0) / 80.0 * 100.0, 0.0, 100.0)
-	slider.value_changed.connect(func(v: float) -> void: setter.call(lerpf(-80.0, 0.0, v / 100.0)))
-	# Persist on release so the choice survives a restart, without thrashing disk per drag step.
-	slider.drag_ended.connect(func(_changed: bool) -> void: AudioSystem.save_audio_settings())
-	row.add_child(slider)
-
-	parent.add_child(row)
 
 
 ## Frees the pause overlay in response to GameStateManager.game_resumed.
@@ -706,11 +713,13 @@ func _update_minimap() -> void:
 	var rtm: RoomTransitionManager = $RoomTransitionManager
 	var types: Array[int] = []
 	var states: Array[int] = []
+	var mods: Array[int] = []
 	for i: int in _dungeon_graph.room_count():
 		var room: Dictionary = _dungeon_graph.get_room(i)
 		types.append(int(room.get("type", DungeonGraph.ROOM_TYPE_COMBAT)))
 		states.append(int(room.get("state", DungeonGraph.ROOM_STATE_UNVISITED)))
-	hud.set_minimap(types, states, rtm.get_current_room_idx())
+		mods.append(int(room.get(RoomModifiers.KEY, RoomModifiers.NONE)))
+	hud.set_minimap(types, states, rtm.get_current_room_idx(), mods)
 
 
 ## Configures WaveManager for the room at [param room_idx]: sets room_type and is_final_room.
@@ -725,6 +734,18 @@ func _configure_wave_manager_for_room(room_idx: int) -> void:
 	$WaveManager.room_type = rtype
 	$WaveManager.is_final_room = (rtype == DungeonGraph.ROOM_TYPE_BOSS)
 	_select_room_music(rtype)
+	# ADR-0026: Cursed rooms get a harder copy of the floor pool; Challenge tracks hits.
+	_room_modifier = RoomModifiers.of(_dungeon_graph, room_idx)
+	_room_flawless = true
+	if _base_combat_cfg != null:
+		$WaveManager.enemy_pool_config = RoomModifiers.apply_cursed(_base_combat_cfg) \
+			if _room_modifier == RoomModifiers.CURSED else _base_combat_cfg
+	var hud: CombatHUD = get_node_or_null(^"CanvasLayer/CombatHUD") as CombatHUD
+	if hud != null:
+		if _room_modifier == RoomModifiers.CHALLENGE:
+			hud.show_room_banner(_COPY.challenge_banner, Color(1.0, 1.0, 1.0))
+		elif _room_modifier == RoomModifiers.CURSED:
+			hud.show_room_banner(_COPY.cursed_banner, Color(0.8, 0.5, 1.0))
 
 
 ## Picks the combat-state music cue for [param rtype] via AudioSystem.
@@ -772,6 +793,8 @@ func _register_input_actions() -> void:
 	_ensure_key_action(&"prana_place",      KEY_E)
 	_ensure_key_action(&"prana_clear",      KEY_Q)
 	_ensure_key_action(&"prana_type_cycle", KEY_C)
+	# ADR-0026: player key bindings replace the defaults registered above.
+	GameSettings.active().apply_keys()
 
 
 ## Called when the boss of a non-final floor is defeated.
@@ -783,6 +806,7 @@ func _on_floor_completed() -> void:
 	_rooms_entered = 0
 	_apply_floor_theme($RoomTransitionManager)
 	_dungeon_graph = _gen.generate(7, _current_floor)
+	RoomModifiers.assign(_dungeon_graph, _room_rng)
 	GameStateManager.set_is_final_floor(_current_floor >= total_floors)
 	_apply_floor_pool_config()
 	$CanvasLayer/CombatHUD.show_floor_intro(_current_floor)
@@ -819,7 +843,8 @@ func _apply_floor_pool_config() -> void:
 	var hard: bool = _meta != null and _meta.hard_mode_active(_META)
 	if not _floor_pool_configs.is_empty():
 		var cfg: EnemyPoolConfig = _floor_pool_configs[floor_idx]
-		$WaveManager.enemy_pool_config = MetaProgress.apply_hard_mode(cfg, _META) if hard else cfg
+		_base_combat_cfg = MetaProgress.apply_hard_mode(cfg, _META) if hard else cfg
+		$WaveManager.enemy_pool_config = _base_combat_cfg
 	if not _boss_pool_configs.is_empty():
 		var boss_idx: int = clampi(_current_floor - 1, 0, _boss_pool_configs.size() - 1)
 		var boss_cfg: EnemyPoolConfig = _boss_pool_configs[boss_idx]
@@ -849,6 +874,7 @@ func _on_run_ended(win: bool) -> void:
 	if _meta != null and not _run_recorded:
 		_run_recorded = true
 		var was_unlocked: bool = _meta.is_hard_mode_unlocked(_META)
+		run_data["bonus_shards"] = _bonus_shards
 		shards_earned = _meta.record_run(_META, run_data, win)
 		hard_newly_unlocked = not was_unlocked and _meta.is_hard_mode_unlocked(_META)
 		_meta.save_to(progress_path)
@@ -964,7 +990,7 @@ func _on_wave_ended() -> void:
 	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$CanvasLayer.add_child(wash)
 	var tw: Tween = create_tween()
-	tw.tween_property(wash, "color:a", 0.18, 0.15).set_ease(Tween.EASE_OUT)
+	tw.tween_property(wash, "color:a", 0.18 * GameSettings.flash_multiplier(), 0.15).set_ease(Tween.EASE_OUT)
 	tw.tween_interval(0.6)
 	tw.tween_property(wash, "color:a", 0.0, 0.5).set_ease(Tween.EASE_IN)
 	tw.tween_callback(wash.queue_free)
@@ -974,8 +1000,41 @@ func _on_wave_ended() -> void:
 	var rtype: int = $WaveManager.room_type
 	if _sigil_manager != null \
 			and (rtype == DungeonGraph.ROOM_TYPE_COMBAT or rtype == DungeonGraph.ROOM_TYPE_ELITE):
+		# ADR-0026: Cursed and flawless Challenge rooms owe two picks.
+		var picks: int = RoomModifiers.picks_for(_room_modifier, _room_flawless)
+		var bonus: int = RoomModifiers.bonus_shards(_room_modifier, _room_flawless)
+		if bonus > 0:
+			_bonus_shards += bonus
+			$CanvasLayer/CombatHUD.show_room_banner(_COPY.challenge_won_format % bonus,
+				Color(1.0, 0.85, 0.4))
 		await get_tree().create_timer(0.5).timeout
-		_sigil_manager.offer_sigils()
+		_sigil_manager.offer_sigils(picks)
+	elif _sigil_manager != null and rtype == DungeonGraph.ROOM_TYPE_REST:
+		await get_tree().create_timer(0.5).timeout
+		_open_wayshrine()
+
+
+## ADR-0026: Rest rooms are Wayshrines — trade HP for one sigil pick, or walk on.
+func _open_wayshrine() -> void:
+	var cost: int = RoomModifiers.TUNING.wayshrine_hp_cost
+	var panel := WayshrinePanel.new()
+	panel.name = "WayshrinePanel"
+	panel.setup(cost, RoomModifiers.can_pay_wayshrine(HealthAndDamage.get_fayde_hp()))
+	panel.trade_chosen.connect(func() -> void:
+		if HealthAndDamage.pay_fayde_hp(cost):
+			_sigil_manager.offer_sigils.call_deferred(1))
+	add_child(panel)
+
+
+## ADR-0026: the first hit taken in a Challenge room loses its bonus.
+func _on_damage_taken(target: Node, _final_damage: int, _current_hp: int) -> void:
+	if _room_modifier != RoomModifiers.CHALLENGE or not _room_flawless:
+		return
+	if not target.is_in_group(&"player") \
+			or GameStateManager.get_active_state() != GameEnums.GameState.COMBAT_PHASE:
+		return
+	_room_flawless = false
+	$CanvasLayer/CombatHUD.show_room_banner(_COPY.challenge_lost, Color(1.0, 0.45, 0.4))
 
 
 func _ensure_key_action(action: StringName, keycode: Key) -> void:

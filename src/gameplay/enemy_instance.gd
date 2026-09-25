@@ -75,6 +75,7 @@ var _hp_bar: _EnemyHPBar = null
 var _enemy_name: String = ""
 
 ## BOSS archetype — active attack index: 0=SLAM, 1=CHARGE, 2=SALVO.
+var _catalog_type_id: int = -1
 var _boss_attack: int = 0
 ## BOSS archetype — sub-phase within the current attack. -1 = "just entered, initialise me".
 var _boss_phase: int = -1
@@ -352,6 +353,7 @@ func init(enemy_type_id: int, catalog: Variant = null) -> void:
 		return
 	_archetype = et.archetype
 	_enemy_name = et.name
+	_catalog_type_id = et.id
 	_base_damage = et.base_damage
 	_move_speed = et.base_move_speed
 	_max_hp = et.base_hp
@@ -396,6 +398,11 @@ func is_alive() -> bool:
 ## boss_spawned for the boss-intro UI.
 func is_boss() -> bool:
 	return _archetype == GameEnums.EnemyArchetype.BOSS
+
+
+## EnemyType id this instance was initialised from (-1 before init()).
+func get_type_id() -> int:
+	return _catalog_type_id
 
 
 ## Returns the raw EnemyType.name (e.g. "VaultSentinel"). Presentation layer
@@ -1195,6 +1202,7 @@ func _apply_sprite(et: EnemyType) -> void:
 	pc.visible = true
 	pc.sheet = et.sprite_sheet
 	pc.pixel_scale = et.sprite_pixel_scale / maxf(et.base_scale, 0.01)
+	pc.modulate = et.sprite_tint
 
 
 ## Inner class: single procedural death burst instance.

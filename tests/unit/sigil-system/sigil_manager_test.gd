@@ -156,8 +156,9 @@ func test_sigil_manager_catalog_includes_prana_cards() -> void:
 
 	var catalog: Array[Dictionary] = sm.get_catalog()
 
-	# Pool = 8 stat sigils (5 core + 3 bullet-hell, ADR-0019) + 5 Prana sigils.
-	assert_int(catalog.size()).is_equal(13)
+	# Pool = 8 stat sigils (5 core + 3 bullet-hell, ADR-0019) + 7 behaviour sigils
+	# (ADR-0026) + 5 Prana sigils.
+	assert_int(catalog.size()).is_equal(20)
 	var prana_ids: Array = []
 	for c: Dictionary in catalog:
 		if String(c["id"]).begins_with("prana_"):

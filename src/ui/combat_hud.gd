@@ -194,6 +194,7 @@ var _recognition_callout_tween: Tween = null
 var _floor_label: Label = null
 ## ADR-0020 — the live floor-intro banner, so a new one replaces it instead of stacking.
 var _floor_banner: Label = null
+var _room_banner: Label = null
 
 ## Run-progress breadcrumb — shows "Room X / Y" under the floor label so the player
 ## can sense how far into the floor they are. Driven by debug_game_loop on each
@@ -222,6 +223,9 @@ const _MINIMAP_TYPE_COLORS: Array[Color] = [
 ## Per-type letter glyph so the minimap is readable without relying on colour alone
 ## (colorblind accessibility, ui-code.md). Parallel to _MINIMAP_TYPE_COLORS.
 const _MINIMAP_TYPE_LETTERS: Array[String] = ["C", "E", "R", "B"]
+## ADR-0026 room modifiers, indexed by RoomModifiers value (NONE, CHALLENGE, CURSED).
+const _MINIMAP_MOD_LETTERS: Array[String] = ["", "!", "X"]
+const _MINIMAP_MOD_COLORS: Array[Color] = [Color.TRANSPARENT, Color(1.0, 1.0, 1.0), Color(0.75, 0.35, 1.0)]
 
 ## Full-screen danger vignette (DESPERATE zone only). Pulses at ≤1.25Hz per HUD
 ## seizure-safety note. Separate from hp_bar pulse so edge signal is visible while
@@ -661,6 +665,36 @@ func show_floor_intro(floor_num: int) -> void:
 	tw.tween_callback(banner.queue_free)
 
 
+## ADR-0026 — short banner under the floor banner (Challenge / Cursed / results).
+## Replaces any banner still showing. Fades out by itself.
+func show_room_banner(text: String, color: Color) -> void:
+	if not is_inside_tree():
+		return
+	if is_instance_valid(_room_banner):
+		_room_banner.queue_free()
+	var banner := Label.new()
+	_room_banner = banner
+	banner.text = text
+	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	banner.add_theme_font_size_override(&"font_size", 22)
+	banner.add_theme_color_override(&"font_color", color)
+	banner.add_theme_color_override(&"font_outline_color", Color.BLACK)
+	banner.add_theme_constant_override(&"outline_size", 5)
+	banner.anchor_left = 0.0
+	banner.anchor_right = 1.0
+	banner.anchor_top = 0.3
+	banner.anchor_bottom = 0.3
+	banner.offset_bottom = 40.0
+	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	banner.modulate = Color(1, 1, 1, 0)
+	add_child(banner)
+	var tw: Tween = banner.create_tween()
+	tw.tween_property(banner, "modulate:a", 1.0, 0.2)
+	tw.tween_interval(1.8)
+	tw.tween_property(banner, "modulate:a", 0.0, 0.5)
+	tw.tween_callback(banner.queue_free)
+
+
 ## ADR-0019 — "PERFECT DODGE" pops above Fayde and floats up.
 func show_perfect_dodge(world_pos: Vector2) -> void:
 	if not is_inside_tree():
@@ -1038,7 +1072,10 @@ func set_room_progress(current: int, total: int) -> void:
 ## [param room_types] / [param room_states] are parallel arrays (one entry per room,
 ## values from DungeonGraph.ROOM_TYPE_* / ROOM_STATE_*); [param current_idx] is the
 ## room the player currently occupies. No-op before the HUD is built (headless tests).
-func set_minimap(room_types: Array, room_states: Array, current_idx: int) -> void:
+## [param modifiers] (optional, parallel to room_types) marks Challenge "!" and Cursed
+## "X" rooms with their own letter and border (ADR-0026).
+func set_minimap(room_types: Array, room_states: Array, current_idx: int,
+		modifiers: Array = []) -> void:
 	if _minimap_root == null:
 		return
 	for m: Panel in _minimap_markers:
@@ -1073,12 +1110,18 @@ func set_minimap(room_types: Array, room_states: Array, current_idx: int) -> voi
 			# Gold ring marks "you are here".
 			style.border_color = Color(1.0, 0.84, 0.3)
 			style.set_border_width_all(3)
+		var mod: int = int(modifiers[i]) if i < modifiers.size() else RoomModifiers.NONE
+		if mod != RoomModifiers.NONE and not is_current:
+			style.border_color = _MINIMAP_MOD_COLORS[mod]
+			style.set_border_width_all(2)
 		marker.add_theme_stylebox_override(&"panel", style)
 
 		# Type letter — redundant non-colour cue so room types are distinguishable
 		# without relying on hue alone (colorblind accessibility).
 		var glyph := Label.new()
 		glyph.text = _MINIMAP_TYPE_LETTERS[rtype] if rtype >= 0 and rtype < _MINIMAP_TYPE_LETTERS.size() else "?"
+		if mod != RoomModifiers.NONE:
+			glyph.text = _MINIMAP_MOD_LETTERS[mod]
 		glyph.add_theme_font_size_override(&"font_size", 12)
 		glyph.add_theme_color_override(&"font_color", Color(0.06, 0.05, 0.08, 1.0))
 		glyph.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

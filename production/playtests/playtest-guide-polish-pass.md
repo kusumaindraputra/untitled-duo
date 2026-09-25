@@ -53,6 +53,16 @@ Take timestamps. Write what the tester **says and does**, not what you think the
 | C3 | Do they get further than run 1? | floor / room reached per run |
 | C4 | Do they say "one more" or restart without being asked? | yes / no |
 
+### Part D — Run variety and the final boss (added for v0.9.0)
+
+| # | Watch for | Record |
+|---|-----------|--------|
+| D1 | At a branch, do they read the door labels and pick Cursed / Challenge on purpose? | which door, and what they said |
+| D2 | Do they notice the gold behaviour sigils and pick them over stat sigils? | which, and why |
+| D3 | At a Wayshrine, do they trade HP? At what HP? | yes / no + HP |
+| D4 | If they reach the Cipher Keeper: do they read the phase banners and move to the centre when the ring closes? | yes / no + quote |
+| D5 | Do they open Settings on their own? What do they change? | text |
+
 ## After the session — five questions
 
 Ask in this order, write answers verbatim.
@@ -73,6 +83,7 @@ Ask in this order, write answers verbatim.
 | Audio | Tester does not ask to turn SFX down; no complaint about noise |
 | Meta loop | Tester buys an Heirloom and starts another run unprompted |
 | No confusion loop | No stuck moment longer than 30 s |
+| Choices matter | Tester picks a door or sigil for a stated reason at least twice |
 
 ## Writing it up
 

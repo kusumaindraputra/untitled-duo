@@ -39,6 +39,8 @@ const _ENTRY_FILES: Array[String] = [
 	"enemy_mortar.tres",
 	"enemy_weaver.tres",
 	"enemy_splitter.tres",
+	# ADR-0026 final boss (Floor 3), id 11.
+	"enemy_cipher_keeper.tres",
 ]
 
 # ── Private state ─────────────────────────────────────────────────────────────

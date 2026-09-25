@@ -11,9 +11,22 @@ config_version=5
 [application]
 
 config/name="The Last Cipher"
+config/version="0.9.0"
 run/main_scene="res://src/scenes/MainMenu.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
+
+[debug]
+
+file_logging/enable_file_logging=true
+file_logging/enable_file_logging.pc=true
+
+[display]
+
+window/size/viewport_width=1152
+window/size/viewport_height=648
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
 
 [autoload]
 

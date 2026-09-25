@@ -32,6 +32,9 @@ extends Resource
 ## On-screen pixel size of one sheet pixel, after base_scale (keep it a whole number
 ## so pixels stay square: bosses use 2.0 whatever their base_scale).
 @export var sprite_pixel_scale: float = 1.0
+## Colour multiplied onto the sprite, so one sheet can serve a distinct enemy
+## (the final boss reuses the Vault Sentinel sheet in gold, ADR-0026).
+@export var sprite_tint: Color = Color.WHITE
 
 @export_group("Bullet Patterns (ADR-0018)")
 ## Attack layers fired on their own interval while the enemy is active. Each layer's

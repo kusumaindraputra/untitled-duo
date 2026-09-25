@@ -49,11 +49,13 @@ static func shards_for_run(t: MetaTuning, floor_reached: int, rooms: int, kills:
 
 
 ## Records a finished run, pays its shards and returns how many were paid.
-## [param run_data] is RunManager.get_run_data().
+## [param run_data] is RunManager.get_run_data(), optionally carrying "bonus_shards"
+## (flawless Challenge rooms, ADR-0026), which is added after the Hard Mode multiplier.
 func record_run(t: MetaTuning, run_data: Dictionary, win: bool) -> int:
 	var floor_reached: int = int(run_data.get("current_floor", 1))
 	var earned: int = shards_for_run(t, floor_reached, int(run_data.get("rooms_cleared", 0)),
-		int(run_data.get("enemies_killed", 0)), win, hard_mode)
+		int(run_data.get("enemies_killed", 0)), win, hard_mode) \
+		+ maxi(int(run_data.get("bonus_shards", 0)), 0)
 	shards += earned
 	lifetime_shards += earned
 	runs += 1

@@ -468,7 +468,7 @@ func _show_heavy_flash() -> void:
 		_heavy_flash_layer.add_child(_heavy_flash_rect)
 	if _heavy_flash_tween:
 		_heavy_flash_tween.kill()
-	_heavy_flash_rect.color.a = HEAVY_FLASH_ALPHA
+	_heavy_flash_rect.color.a = HEAVY_FLASH_ALPHA * GameSettings.flash_multiplier()
 	_heavy_flash_tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 	_heavy_flash_tween.tween_property(_heavy_flash_rect, "color:a", 0.0, HEAVY_FLASH_DURATION)
 
@@ -498,7 +498,7 @@ func _show_heal_wash() -> void:
 		_heal_flash_layer.add_child(_heal_flash_rect)
 	if _heal_flash_tween:
 		_heal_flash_tween.kill()
-	_heal_flash_rect.color.a = HEAL_FLASH_ALPHA
+	_heal_flash_rect.color.a = HEAL_FLASH_ALPHA * GameSettings.flash_multiplier()
 	_heal_flash_tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 	_heal_flash_tween.tween_property(_heal_flash_rect, "color:a", 0.0, HEAL_FLASH_DURATION)
 
@@ -811,7 +811,7 @@ func _tick_shake() -> void:
 	var now: int = Time.get_ticks_usec()
 	if now < _shake_end_us:
 		var progress: float = float(_shake_end_us - now) / float(SHAKE_DURATION_US)
-		var strength: float = SHAKE_AMPLITUDE * progress
+		var strength: float = SHAKE_AMPLITUDE * progress * GameSettings.shake_multiplier()
 		_camera.offset = Vector2(randf_range(-strength, strength), randf_range(-strength, strength))
 	elif _camera.offset != Vector2.ZERO:
 		_camera.offset = Vector2.ZERO

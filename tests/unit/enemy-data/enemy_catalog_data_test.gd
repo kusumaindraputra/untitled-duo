@@ -51,11 +51,12 @@ func _ids_of(types: Array) -> Array[int]:
 
 # ── Catalog composition ───────────────────────────────────────────────────────
 
-## AC-ED-01 / AC-ED-02: 9 active + 2 vs_scope = 11 total entries (ADR-0018 roster).
-func test_real_catalog_has_eleven_entries() -> void:
+## AC-ED-01 / AC-ED-02: 9 active + 3 vs_scope bosses = 12 total entries (ADR-0018
+## roster plus the ADR-0026 final boss).
+func test_real_catalog_has_twelve_entries() -> void:
 	var catalog: Node = _load_real_catalog()
 
-	assert_int(catalog.count()).is_equal(11)
+	assert_int(catalog.count()).is_equal(12)
 
 	catalog.free()
 

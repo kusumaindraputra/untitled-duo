@@ -42,6 +42,46 @@ extends Resource
 ## ADR-0019 — radius (px) of enemy bullets a dash cuts with the "dash_cut" sigil.
 @export var dash_cut_radius: float = 26.0
 
+@export_group("Behaviour Sigils")
+
+## Ember Wake: a burning patch is dropped every this many px of dash travel.
+@export var ember_spacing: float = 26.0
+## Ember Wake: patch radius (px) and lifetime (s).
+@export var ember_radius: float = 22.0
+@export var ember_duration: float = 1.6
+## Ember Wake: damage per tick to each enemy in a patch, per stack.
+@export var ember_damage: float = 4.0
+## Ember Wake: seconds between damage ticks.
+@export var ember_tick_sec: float = 0.3
+
+## Static Halo: a graze zaps the nearest enemy within this range (px).
+@export var static_range: float = 200.0
+## Static Halo: zap damage per stack.
+@export var static_damage: float = 9.0
+## Static Halo: minimum seconds between zaps.
+@export var static_cooldown: float = 0.15
+
+## Afterglow: fraction of the Special meter refunded after a Special, per stack (capped).
+@export var afterglow_refund: float = 0.3
+@export var afterglow_refund_cap: float = 0.75
+
+## Unravel: enemy bullets within this radius of a kill are cancelled (+50 % per extra stack).
+@export var unravel_radius: float = 70.0
+
+## Siphon: every this many kills heals siphon_heal HP per stack.
+@export var siphon_kills: int = 8
+@export var siphon_heal: float = 6.0
+
+## Riposte: a Perfect Dodge blasts enemies within this radius for this damage per stack.
+@export var riposte_radius: float = 110.0
+@export var riposte_damage: float = 22.0
+
+## Metronome: a Perfect Cast at streak >= metronome_streak heals this much per stack.
+@export var metronome_streak: int = 3
+@export var metronome_heal: float = 3.0
+## Text colour of behaviour-sigil cards in the reward overlay.
+@export var behaviour_card_color: Color = Color(1.0, 0.78, 0.35)
+
 @export_group("Copy")
 
 ## Heading shown at the top of the reward-choice overlay.
@@ -65,4 +105,11 @@ extends Resource
 	{"id": &"dash_charge", "title": "Third Step",       "desc": "+1 dash charge"},
 	{"id": &"dash_cut",   "title": "Severing Dash",     "desc": "Dashing cuts through enemy bullets"},
 	{"id": &"graze_ring", "title": "Wide Halo",         "desc": "+40% graze ring"},
+	{"id": &"ember_wake",  "title": "Ember Wake",       "desc": "Dashing leaves burning ground", "behaviour": true},
+	{"id": &"static_halo", "title": "Static Halo",      "desc": "Grazing a bullet zaps the nearest enemy", "behaviour": true},
+	{"id": &"afterglow",   "title": "Afterglow",        "desc": "A Special refunds 30% of its meter", "behaviour": true},
+	{"id": &"unravel",     "title": "Unravel",          "desc": "Kills erase nearby enemy bullets", "behaviour": true},
+	{"id": &"siphon",      "title": "Siphon",           "desc": "Every 8 kills restore 6 HP", "behaviour": true},
+	{"id": &"riposte",     "title": "Riposte",          "desc": "A Perfect Dodge blasts enemies around you", "behaviour": true},
+	{"id": &"metronome",   "title": "Metronome",        "desc": "Perfect Casts on a 3+ streak restore HP", "behaviour": true},
 ]

@@ -318,6 +318,25 @@ func apply_heal(target: Node, heal_amount: float) -> void:
 			_check_hp_zone_change()
 
 
+## Fayde's current HP (read-only view for UI such as the Wayshrine, ADR-0026).
+func get_fayde_hp() -> int:
+	return _fayde_current_hp
+
+
+## Spends [param amount] of Fayde's HP as a price (Wayshrine trade, ADR-0026). Never
+## kills: refused (returns false) unless Fayde keeps at least 1 HP. Not an attack, so
+## no i-frames and no damage modifiers; emits damage_taken so the HUD bar updates.
+func pay_fayde_hp(amount: int) -> bool:
+	if amount <= 0 or _fayde_dead or _fayde_current_hp - amount < 1:
+		return false
+	_fayde_current_hp -= amount
+	var fayde: Node = get_tree().get_first_node_in_group(&"player") if is_inside_tree() else null
+	if fayde != null:
+		damage_taken.emit(fayde, amount, _fayde_current_hp)
+	_check_hp_zone_change()
+	return true
+
+
 ## TEST SEAM ONLY — do not call from gameplay code.
 ##
 ## DEBUG QA ONLY — instantly kills all living enemies and emits enemy_killed for each.

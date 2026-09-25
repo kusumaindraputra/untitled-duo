@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="EnemyType" load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_type.gd" id="1_enemy_type"]
+[ext_resource type="PackedScene" path="res://src/gameplay/EnemyInstance.tscn" id="2_scene"]
+[ext_resource type="Script" path="res://src/data/bullet_pattern.gd" id="3_bp"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/keeper_lattice.tres" id="p_lattice"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/keeper_fan.tres" id="p_fan"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/keeper_homing.tres" id="p_homing"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/keeper_weave.tres" id="p_weave"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/keeper_mortar.tres" id="p_mortar"]
+[ext_resource type="Texture2D" path="res://assets/art/characters/vault_sentinel.png" id="sprite_sheet"]
+
+[resource]
+script = ExtResource("1_enemy_type")
+id = 11
+name = "CipherKeeper"
+archetype = 3
+prana_affiliation = -1
+base_hp = 900
+base_damage = 25.0
+base_move_speed = 55.0
+drop_prana_type = null
+drop_rate = null
+sprite_size = Vector2i(48, 48)
+debug_color = Color(0.95, 0.8, 0.35, 1)
+status = 1
+scene = ExtResource("2_scene")
+base_scale = 3.0
+pattern_layers = Array[ExtResource("3_bp")]([ExtResource("p_lattice"), ExtResource("p_fan"), ExtResource("p_homing"), ExtResource("p_weave"), ExtResource("p_mortar")])
+sprite_sheet = ExtResource("sprite_sheet")
+sprite_pixel_scale = 3.0
+sprite_tint = Color(1, 0.82, 0.45, 1)

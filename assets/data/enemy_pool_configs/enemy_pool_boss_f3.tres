@@ -6,9 +6,9 @@
 script = ExtResource("1_config")
 threat_budget_min = 20
 threat_budget_max = 20
-threat_cost = { 5: 20 }
-enemy_pool = Array[int]([5])
-guaranteed_types = Array[int]([5])
+threat_cost = { 11: 20 }
+enemy_pool = Array[int]([11])
+guaranteed_types = Array[int]([11])
 bullet_speed_mult = 1.2
 fire_rate_mult = 1.15
 telegraph_mult = 0.85

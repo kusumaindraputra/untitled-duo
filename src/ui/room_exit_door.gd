@@ -26,6 +26,7 @@ const _PLAYER_LAYER: int = 2
 
 ## Display names for each DungeonGraph.ROOM_TYPE_* value (same order as enum).
 const _ROOM_TYPE_NAMES: Array[String] = ["⚔ Combat", "💀 Elite", "♥ Rest", "👑 Boss"]
+const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
 
 ## Emitted when an unlocked door is entered by the player.
 signal player_entered(destination_idx: int)
@@ -35,6 +36,9 @@ var destination_idx: int = -1
 
 ## Room type of the destination (Combat/Elite/Rest/Boss). Drives visual label.
 var destination_type: int = DungeonGraph.ROOM_TYPE_COMBAT
+
+## RoomModifiers value of the destination (ADR-0026). Overrides the label.
+var destination_modifier: int = RoomModifiers.NONE
 
 ## True until room_cleared signal is received.
 var _locked: bool = true
@@ -54,8 +58,8 @@ func _ready() -> void:
 
 	_label = Label.new()
 	_label.add_theme_font_size_override(&"font_size", 13)
-	_label.position = Vector2(-50.0, -68.0)
-	_label.size = Vector2(100.0, 18.0)
+	_label.position = Vector2(-70.0, -68.0)
+	_label.size = Vector2(140.0, 18.0)
 	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_label.modulate = Color(0.95, 0.95, 1.0, 0.85)
 	add_child(_label)
@@ -73,10 +77,22 @@ func _exit_tree() -> void:
 
 # ── Public API ─────────────────────────────────────────────────────────────────
 
-## Sets the destination room type and updates the door label.
-func set_destination_type(type: int) -> void:
+## Sets the destination room type (and its RoomModifiers value) and updates the label.
+func set_destination_type(type: int, modifier: int = RoomModifiers.NONE) -> void:
 	destination_type = type
+	destination_modifier = modifier
 	_update_label()
+
+
+## Label text for a destination of [param type] with [param modifier].
+static func destination_name(type: int, modifier: int) -> String:
+	if modifier == RoomModifiers.CHALLENGE:
+		return _COPY.door_challenge
+	if modifier == RoomModifiers.CURSED:
+		return _COPY.door_cursed
+	if type == DungeonGraph.ROOM_TYPE_REST:
+		return _COPY.door_wayshrine
+	return _ROOM_TYPE_NAMES[type] if type >= 0 and type < _ROOM_TYPE_NAMES.size() else "Exit"
 
 
 # ── Private ────────────────────────────────────────────────────────────────────
@@ -114,7 +130,7 @@ func _update_label() -> void:
 	if _label == null:
 		return
 	var suffix: String = " [LOCKED]" if _locked else " ▼"
-	var base: String = _ROOM_TYPE_NAMES[destination_type] if destination_type < _ROOM_TYPE_NAMES.size() else "Exit"
+	var base: String = destination_name(destination_type, destination_modifier)
 	_label.text = base + suffix
 	_label.modulate.a = 0.5 if _locked else 0.92
 
