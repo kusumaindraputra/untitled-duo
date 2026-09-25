@@ -74,6 +74,8 @@ const REST_HEAL_VISUAL_DELAY: float = 0.5
 ## Elite multipliers, reinforcement warning time and bullet-cancel radii (ADR-0018).
 const BULLET_HELL_TUNING: BulletHellTuning = preload("res://assets/data/bullet_hell_tuning.tres")
 const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
+## Bullet-cancel meter gain (ADR-0019).
+const PACE_TUNING: PaceTuning = preload("res://assets/data/pace_tuning.tres")
 
 # ── Exports ───────────────────────────────────────────────────────────────────
 
@@ -541,6 +543,8 @@ func _spawn_entries(entries: Array, reinforcement: bool) -> int:
 		enemy.init(entry["type_id"])
 		if elite:
 			enemy.make_elite(BULLET_HELL_TUNING)
+		var cfg: EnemyPoolConfig = _get_pool_config()
+		enemy.apply_difficulty(cfg.bullet_speed_mult, cfg.fire_rate_mult, cfg.telegraph_mult)
 		if enemy.is_boss():
 			boss_spawned.emit(enemy)
 		# Spawn VFX: pop-in scale tween (0→final_scale, BACK ease for slight overshoot).
@@ -590,14 +594,17 @@ func _spawn_reinforcement_warning(pos: Vector2, duration: float) -> void:
 	w.global_position = pos
 
 
-## ADR-0018 — a Perfect Cast wipes enemy bullets around Fayde.
+## ADR-0018 — a Perfect Cast wipes enemy bullets around Fayde. ADR-0019 — each wiped
+## bullet adds PaceTuning.cancel_meter_gain to the Special meter.
 func _on_perfect_cast(_world_pos: Vector2, _streak: int) -> void:
 	if not is_inside_tree():
 		return
 	var player: Node2D = get_tree().get_first_node_in_group(&"player") as Node2D
 	if player != null:
-		Projectile.cancel_in_radius(get_tree(), player.global_position,
+		var n: int = Projectile.cancel_in_radius(get_tree(), player.global_position,
 			BULLET_HELL_TUNING.perfect_cancel_radius)
+		if n > 0:
+			SpellCastingEffects.add_special_meter(float(n) * PACE_TUNING.cancel_meter_gain)
 
 
 ## ADR-0018 — the Special wipes enemy bullets inside (a little beyond) its burst.

@@ -744,15 +744,30 @@ func _flash_enemy_white(ci: CanvasItem) -> void:
 # ── Hitstop ───────────────────────────────────────────────────────────────────
 
 func _start_hitstop(amplify: float = 1.0) -> void:
-	# No early-return guard — rapid hits reset/extend the timer so every hit lands.
+	_begin_hitstop(int(HITSTOP_DURATION_US * amplify))
+
+
+## ADR-0019 — public hitstop for kill punches: freezes for [param duration_sec] real
+## seconds at HITSTOP_TIME_SCALE, extending (never shortening) a running hitstop.
+func request_hitstop(duration_sec: float) -> void:
+	if duration_sec > 0.0:
+		_begin_hitstop(int(duration_sec * 1_000_000.0))
+
+
+func _begin_hitstop(duration_us: int) -> void:
+	# Rapid hits extend the timer so every hit lands. ADR-0019: another time warp
+	# (Perfect Dodge slow-mo, death slow-mo) owns time_scale — do not override it.
+	if not _in_hitstop and not TimeWarp.is_free():
+		return
 	Engine.time_scale = HITSTOP_TIME_SCALE
 	_in_hitstop = true
-	_hitstop_end_us = Time.get_ticks_usec() + int(HITSTOP_DURATION_US * amplify)
+	_hitstop_end_us = maxi(_hitstop_end_us, Time.get_ticks_usec() + duration_us)
 
 
 func _tick_hitstop() -> void:
 	if _in_hitstop and Time.get_ticks_usec() >= _hitstop_end_us:
-		Engine.time_scale = 1.0
+		# Only restore when nothing (e.g. the death slow-mo) took time_scale since.
+		TimeWarp.release(HITSTOP_TIME_SCALE)
 		_in_hitstop = false
 
 

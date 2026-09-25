@@ -80,3 +80,23 @@ extends Resource
 
 ## Callout floated when a boss enters a new pattern phase. Renders "{label} {n}".
 @export var boss_phase_label: String = "PHASE"
+
+@export_group("Fast Pace (ADR-0019)")
+
+## Callout floated on a Perfect Dodge.
+@export var perfect_dodge_label: String = "PERFECT DODGE"
+
+## Label beside the style meter. The live rank letter follows it.
+@export var style_label: String = "STYLE"
+
+## Room-clear rank banner; %s is the rank letter.
+@export var room_rank_format: String = "RANK %s"
+
+## Room-clear reward line; the first %d is HP healed, the second the Special head start.
+@export var room_rank_reward_format: String = "+%d HP   +%d Special next room"
+
+## Confirm button label when nothing changed since the last room (quick continue).
+@export var quick_continue_button: String = "Continue ▶"
+
+## Hint shown in the preparation panel when quick continue is available.
+@export var quick_continue_hint: String = "No new Prana — press Space or Enter to continue"

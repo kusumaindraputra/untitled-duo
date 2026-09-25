@@ -51,3 +51,13 @@ extends Resource
 ## ADR-0018 — the next reinforcement group arrives once this many enemies (or fewer)
 ## are still alive on the field.
 @export var reinforcement_trigger_alive: int = 2
+
+## ADR-0019 — per-floor difficulty curve. Multiplies the speed of every bullet enemies
+## fire in rooms using this config. 1.0 = authored pattern speed.
+@export_range(0.5, 2.0) var bullet_speed_mult: float = 1.0
+
+## ADR-0019 — multiplies how fast pattern cooldowns tick (1.2 = 20 % more volleys).
+@export_range(0.5, 2.0) var fire_rate_mult: float = 1.0
+
+## ADR-0019 — multiplies laser and mortar telegraph time (0.85 = 15 % less warning).
+@export_range(0.3, 1.5) var telegraph_mult: float = 1.0

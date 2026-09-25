@@ -25,6 +25,8 @@ var _locked_angle: float = 0.0
 ## Total volleys fired over this runner's life — drives SPIRAL rotation across firings.
 var _total_volleys: int = 0
 var _windup_sent: bool = false
+## ADR-0019 difficulty curve: multiplies how fast the cooldown between firings ticks.
+var rate_mult: float = 1.0
 
 
 func _init(p: BulletPattern) -> void:
@@ -49,7 +51,7 @@ func tick(delta: float, aim_angle: float) -> Array[Dictionary]:
 			events.append(_emit_volley(aim_angle))
 			_volley_timer += maxf(pattern.burst_interval, 0.0)
 		return events
-	_cooldown -= delta
+	_cooldown -= delta * maxf(rate_mult, 0.01)
 	if not _windup_sent and pattern.windup_sec > 0.0 and _cooldown <= pattern.windup_sec:
 		_windup_sent = true
 		events.append({ "type": EVENT_WINDUP })

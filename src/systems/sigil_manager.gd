@@ -127,6 +127,18 @@ func apply_sigil(sigil_id: StringName) -> void:
 			var p3: Node = _player_provider.call()
 			if is_instance_valid(p3):
 				HealthAndDamage.apply_heal(p3, CONFIG.heal_amount)
+		&"dash_charge":
+			var p4: Node = _player_provider.call()
+			if is_instance_valid(p4) and p4.has_method(&"add_dash_charges"):
+				p4.add_dash_charges(CONFIG.dash_charge_bonus)
+		&"dash_cut":
+			var p5: Node = _player_provider.call()
+			if is_instance_valid(p5) and p5.has_method(&"set_dash_cut_radius"):
+				p5.set_dash_cut_radius(CONFIG.dash_cut_radius)
+		&"graze_ring":
+			var p6: Node = _player_provider.call()
+			if is_instance_valid(p6) and p6.has_method(&"apply_graze_radius_mult"):
+				p6.apply_graze_radius_mult(CONFIG.graze_radius_mult)
 		_:
 			push_warning("SigilManager.apply_sigil: unknown sigil id '%s'" % sigil_id)
 			return
