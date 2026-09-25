@@ -801,6 +801,10 @@ func _register_input_actions() -> void:
 ## Generates the next floor and loads it via RTM — _on_room_transitioned handles
 ## spawn rewiring + restart_preparation() when load_floor() completes.
 func _on_floor_completed() -> void:
+	# ADR-0027: a cleared floor recovers the next memory before the next floor loads.
+	var card: MemoryFragmentModal = _recover_memory(StoryRules.Beat.FLOOR_CLEAR, 0)
+	if card != null:
+		await card.closed
 	_current_floor += 1
 	# Reset to 0 so the entry-room transition of the new floor increments it back to 1.
 	_rooms_entered = 0
@@ -878,6 +882,7 @@ func _on_run_ended(win: bool) -> void:
 		shards_earned = _meta.record_run(_META, run_data, win)
 		hard_newly_unlocked = not was_unlocked and _meta.is_hard_mode_unlocked(_META)
 		_meta.save_to(progress_path)
+		await _play_run_end_story(win, run_data)
 	var floor_reached: int = run_data.get("current_floor", 1)
 	var rooms_cleared: int = run_data.get("rooms_cleared", 0)
 	var enemies_killed: int = run_data.get("enemies_killed", 0)
@@ -975,6 +980,43 @@ func _on_run_ended(win: bool) -> void:
 
 	add_child(overlay)
 	again.grab_focus()
+
+
+## ADR-0027: recovers the next memory fragment for [param beat], saves progress and
+## shows the card. Returns the open card, or null when nothing was recovered.
+func _recover_memory(beat: StoryRules.Beat, rooms_cleared: int) -> MemoryFragmentModal:
+	if _meta == null or not StoryRules.beat_recovers(beat, rooms_cleared):
+		return null
+	var idx: int = _meta.recover_fragment(StoryRules.total())
+	if idx < 0:
+		return null
+	_meta.save_to(progress_path)
+	var card := MemoryFragmentModal.new()
+	card.name = "MemoryFragmentModal"
+	card.setup_fragment(StoryRules.fragment_at(idx), idx, StoryRules.total())
+	add_child(card)
+	return card
+
+
+## ADR-0027: the story beats at the end of a run, shown before the summary overlay.
+## A death recovers a memory; a win recovers one and then plays an ending, which is
+## the true ending once every fragment is found.
+func _play_run_end_story(win: bool, run_data: Dictionary) -> void:
+	var beat: StoryRules.Beat = StoryRules.Beat.WIN if win else StoryRules.Beat.DEATH
+	var card: MemoryFragmentModal = _recover_memory(beat, int(run_data.get("rooms_cleared", 0)))
+	if card != null:
+		await card.closed
+	if not win or not StoryRules.plays_ending(int(run_data.get("current_floor", 1))):
+		return
+	var is_true: bool = StoryRules.is_complete(_meta.fragments_found)
+	_meta.record_ending(is_true)
+	_meta.save_to(progress_path)
+	var ending := MemoryFragmentModal.new()
+	ending.name = "EndingModal"
+	ending.setup_ending(StoryRules.ending_for(_meta.fragments_found), is_true,
+		_meta.fragments_found, StoryRules.total())
+	add_child(ending)
+	await ending.closed
 
 
 ## Room-clear warm wash overlay — gold flash on wave_ended (Art Bible §2.4).

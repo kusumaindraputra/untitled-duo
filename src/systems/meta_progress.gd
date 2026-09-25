@@ -31,6 +31,12 @@ var equipped: StringName = &""
 var hard_mode: bool = false
 ## True once the in-combat tutorial coach has been completed.
 var tutorial_done: bool = false
+## Memory fragments recovered so far, in story order (ADR-0027).
+var fragments_found: int = 0
+## True once the ending with fragments missing has played.
+var ending_seen: bool = false
+## True once the ending with every fragment has played.
+var true_ending_seen: bool = false
 
 
 # ── Payout ────────────────────────────────────────────────────────────────────
@@ -135,6 +141,25 @@ static func apply_hard_mode(cfg: EnemyPoolConfig, t: MetaTuning) -> EnemyPoolCon
 	return hard
 
 
+# ── Story (ADR-0027) ──────────────────────────────────────────────────────────
+
+## Recovers the next fragment of a [param total]-fragment story. Returns its
+## 0-based story position, or -1 when every fragment is already found.
+func recover_fragment(total: int) -> int:
+	if fragments_found >= total:
+		return -1
+	fragments_found += 1
+	return fragments_found - 1
+
+
+## Marks an ending as seen; [param is_true] picks which one.
+func record_ending(is_true: bool) -> void:
+	if is_true:
+		true_ending_seen = true
+	else:
+		ending_seen = true
+
+
 # ── Persistence ───────────────────────────────────────────────────────────────
 
 ## Loads progress from [param path]. A missing or unreadable file gives fresh progress.
@@ -155,6 +180,9 @@ static func load_from(path: String = DEFAULT_PATH) -> MetaProgress:
 	p.equipped = StringName(str(cfg.get_value(_SECTION, "equipped", "")))
 	p.hard_mode = bool(cfg.get_value(_SECTION, "hard_mode", false))
 	p.tutorial_done = bool(cfg.get_value(_SECTION, "tutorial_done", false))
+	p.fragments_found = maxi(int(cfg.get_value(_SECTION, "fragments_found", 0)), 0)
+	p.ending_seen = bool(cfg.get_value(_SECTION, "ending_seen", false))
+	p.true_ending_seen = bool(cfg.get_value(_SECTION, "true_ending_seen", false))
 	return p
 
 
@@ -174,4 +202,7 @@ func save_to(path: String = DEFAULT_PATH) -> Error:
 	cfg.set_value(_SECTION, "equipped", String(equipped))
 	cfg.set_value(_SECTION, "hard_mode", hard_mode)
 	cfg.set_value(_SECTION, "tutorial_done", tutorial_done)
+	cfg.set_value(_SECTION, "fragments_found", fragments_found)
+	cfg.set_value(_SECTION, "ending_seen", ending_seen)
+	cfg.set_value(_SECTION, "true_ending_seen", true_ending_seen)
 	return cfg.save(path)

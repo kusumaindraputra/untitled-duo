@@ -1,7 +1,7 @@
 ## main_menu.gd — Front-end main menu for The Last Cipher (demo entry point).
 ##
-## The game boots here (project.godot main_scene). Offers Play (loads the single-floor
-## demo), live volume controls wired to AudioSystem, and Quit. Built entirely in code to
+## The game boots here (project.godot main_scene). Offers Play (loads the three-floor
+## run), Memories, Settings and Quit. Built entirely in code to
 ## match the project's programmatic-UI convention (see debug_game_loop / combat_hud).
 ##
 ## Display-only front-end: it never mutates gameplay state — it only swaps scenes and
@@ -9,8 +9,9 @@
 ## wiring is required here.
 extends Control
 
-## Scene loaded when the player presses Play. The single-floor demo build.
-const _DEMO_SCENE_PATH: String = "res://src/scenes/demo.tscn"
+## Scene loaded when the player presses Play: the full three-floor run, so the
+## Cipher Keeper and the ending are reachable (demo.tscn stops after floor 1).
+const _RUN_SCENE_PATH: String = "res://src/scenes/main.tscn"
 
 const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
 const _META: MetaTuning = preload("res://assets/data/meta_tuning.tres")
@@ -91,6 +92,15 @@ func _build_ui() -> void:
 	settings.pressed.connect(_on_settings_pressed.bind(settings))
 	bottom.add_child(settings)
 
+	# ADR-0027: archive of recovered memory fragments and seen endings.
+	var memories := Button.new()
+	memories.text = _COPY.memories_button_format % [
+		mini(progress.fragments_found, StoryRules.total()), StoryRules.total()]
+	memories.custom_minimum_size = Vector2(200, 42)
+	memories.add_theme_font_size_override(&"font_size", 22)
+	memories.pressed.connect(_on_memories_pressed.bind(memories))
+	bottom.add_child(memories)
+
 	var quit := Button.new()
 	quit.text = "QUIT"
 	quit.custom_minimum_size = Vector2(200, 42)
@@ -125,6 +135,14 @@ static func version_string() -> String:
 ## Opens the Settings panel; focus returns to [param from] when it closes.
 func _on_settings_pressed(from: Button) -> void:
 	var panel := SettingsPanel.new()
+	panel.closed.connect(from.grab_focus)
+	add_child(panel)
+
+
+## Opens the Memories archive; focus returns to [param from] when it closes.
+func _on_memories_pressed(from: Button) -> void:
+	var panel := MemoriesPanel.new()
+	panel.progress = progress
 	panel.closed.connect(from.grab_focus)
 	add_child(panel)
 
@@ -228,7 +246,7 @@ func _make_label(text: String, size: int, color: Color) -> Label:
 ## Loads the demo scene. Autoloads persist across the swap, so AudioSystem and game
 ## state carry over; the demo's own _ready() resets state and shows its intro flow.
 func _on_play_pressed() -> void:
-	get_tree().change_scene_to_file(_DEMO_SCENE_PATH)
+	get_tree().change_scene_to_file(_RUN_SCENE_PATH)
 
 
 ## Quits the application. Honoured by exported/web builds; stops the run in the editor.
