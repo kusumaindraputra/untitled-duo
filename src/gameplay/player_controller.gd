@@ -809,7 +809,9 @@ class _DashDust extends Node2D:
 			var angle: float = (TAU / 5.0) * float(i) + p * 0.5
 			var dist: float = lerpf(2.0, 22.0, p)
 			var r: float = lerpf(3.5, 0.5, p)
-			draw_circle(Vector2.from_angle(angle) * dist + Vector2(0, -p * 10.0), r, c)
+			var at: Vector2 = Vector2.from_angle(angle) * dist + Vector2(0, -p * 10.0)
+			PixelVFX.draw_spans(self, PixelVFX.disc_spans(maxf(r, 1.0)),
+					PixelVFX.with_alpha(c, alpha), PixelVFX.snap_origin(self) + at.round())
 
 
 ## Inner class: Fayde's hurtbox dot and graze ring (ADR-0018).
@@ -838,7 +840,9 @@ class _HurtboxDot extends Node2D:
 
 	func _draw() -> void:
 		var f: float = _flash / FLASH_SEC
-		draw_arc(Vector2.ZERO, graze_radius, 0.0, TAU, 32,
-				Color(1.0, 1.0, 1.0, 0.10 + 0.55 * f), 1.0 + 1.5 * f, true)
-		draw_circle(Vector2.ZERO, hurt_radius + 1.5, Color(0.05, 0.02, 0.1, 0.9))
-		draw_circle(Vector2.ZERO, hurt_radius, Color(1.0, 1.0, 1.0, 1.0))
+		# Pixel-art grid (ADR-0023): 1 px ring, 2 px while flashing.
+		var o: Vector2 = PixelVFX.snap_origin(self)
+		PixelVFX.draw_spans(self, PixelVFX.ring_spans(graze_radius, 1.0 + roundf(f)),
+				PixelVFX.with_alpha(Color.WHITE, 0.10 + 0.55 * f, PixelVFX.FILL_ALPHA_STEPS), o)
+		PixelVFX.draw_spans(self, PixelVFX.disc_spans(hurt_radius + 1.5), Color(0.05, 0.02, 0.1, 0.9), o)
+		PixelVFX.draw_spans(self, PixelVFX.disc_spans(hurt_radius), Color.WHITE, o)

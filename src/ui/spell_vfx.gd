@@ -637,11 +637,9 @@ class _DeathRing extends Node2D:
 		var p: float = clampf(elapsed / RING_DURATION, 0.0, 1.0)
 		var alpha: float = 1.0 - p
 		var ring_r: float = lerpf(10.0, 300.0, p)
-		draw_arc(Vector2.ZERO, ring_r, 0.0, TAU, 32,
-				Color(1.0, 0.1, 0.1, alpha * 0.7), 3.0, true)
+		PixelVFX.stroke_ring(self, ring_r, 3.0, Color(1.0, 0.1, 0.1), alpha * 0.7)
 		# Secondary thinner ring at 60% radius.
-		draw_arc(Vector2.ZERO, ring_r * 0.6, 0.0, TAU, 24,
-				Color(1.0, 0.3, 0.2, alpha * 0.4), 1.5, true)
+		PixelVFX.stroke_ring(self, ring_r * 0.6, 2.0, Color(1.0, 0.3, 0.2), alpha * 0.4)
 
 
 # ── Audio routing ──────────────────────────────────────────────────────────────
@@ -815,6 +813,7 @@ func _spawn_impact_vfx(pos: Vector2, color: Color) -> void:
 ## Arc shrinks from 360° to 0° over [member duration] seconds. Color from Prana type.
 ## Self-frees when duration expires. World-space, PROCESS_MODE_ALWAYS.
 class _ComboRing extends Node2D:
+	const _PERFECT_GOLD: Color = Color(1.0, 0.95, 0.6)
 	## Total duration of the combo window in seconds (COMBO_CONTINUATION_WINDOW = 2.0).
 	var duration: float = 2.0
 	## Prana type color for the ring.
@@ -843,17 +842,16 @@ class _ComboRing extends Node2D:
 		var alpha: float = 0.15 + remaining * 0.45
 		# Arc sweeps clockwise from top (−PI/2) — standard clock-face metaphor.
 		var end_angle: float = -PI / 2.0 + remaining * TAU
-		draw_arc(Vector2.ZERO, 50.0, -PI / 2.0, end_angle, 32,
-				Color(ring_color, alpha), 3.5, true)
+		PixelVFX.stroke_arc(self, 50.0, -PI / 2.0, end_angle, 3.0, ring_color, alpha)
 		if perfect_end <= perfect_start or elapsed > perfect_end:
 			return
 		# Sweet-spot marker: the slice of the ring the sweep crosses during the
 		# Perfect window. While inside it, the whole ring flashes bright.
 		var a_from: float = -PI / 2.0 + clampf(1.0 - perfect_end / duration, 0.0, 1.0) * TAU
 		var a_to: float = -PI / 2.0 + clampf(1.0 - perfect_start / duration, 0.0, 1.0) * TAU
-		draw_arc(Vector2.ZERO, 57.0, a_from, a_to, 8, Color(1.0, 0.95, 0.6, 0.9), 3.0, true)
+		PixelVFX.stroke_arc(self, 57.0, a_from, a_to, 3.0, _PERFECT_GOLD, 0.9)
 		if elapsed >= perfect_start:
-			draw_arc(Vector2.ZERO, 50.0, 0.0, TAU, 40, Color(1.0, 0.95, 0.6, 0.85), 5.0, true)
+			PixelVFX.stroke_ring(self, 50.0, 5.0, _PERFECT_GOLD, 0.85)
 
 
 # ── Inner class: hit impact VFX ──────────────────────────────────────────────
@@ -880,13 +878,12 @@ class _ImpactVFX extends Node2D:
 	func _draw() -> void:
 		var p: float = clampf(float(Time.get_ticks_usec() - _start_us) / float(DURATION_US), 0.0, 1.0)
 		# Outer shockwave ring — expands outward, fades.
-		draw_arc(Vector2.ZERO, 10.0 + p * 45.0, 0.0, TAU, 24,
-				Color(impact_color, 1.0 - p), 3.5, true)
-		# Inner pop — bright circle that shrinks and disappears by p=0.4.
+		PixelVFX.stroke_ring(self, 10.0 + p * 45.0, 3.0, impact_color, 1.0 - p)
+		# Inner pop — bright disc that shrinks and disappears by p=0.4.
 		var pop_p: float = minf(p / 0.4, 1.0)
 		var pop_r: float = lerpf(14.0, 0.0, pop_p)
-		if pop_r > 0.5:
-			draw_circle(Vector2.ZERO, pop_r, Color(impact_color * 1.5, 1.0 - pop_p))
+		if pop_r > 1.0:
+			PixelVFX.fill_disc(self, Vector2.ZERO, pop_r, impact_color, 1.0 - pop_p)
 
 
 # ── Inner class: attack range cone indicator ──────────────────────────────────
@@ -908,7 +905,7 @@ class _ConeIndicator extends Node2D:
 	const SEGMENTS: int = 12
 	const FILL_ALPHA: float = 0.08
 	const OUTLINE_ALPHA: float = 0.28
-	const OUTLINE_WIDTH: float = 1.5
+	const OUTLINE_WIDTH: float = 1.0
 
 	func _ready() -> void:
 		process_mode = PROCESS_MODE_ALWAYS
@@ -931,15 +928,16 @@ class _ConeIndicator extends Node2D:
 			var t: float = float(i) / float(SEGMENTS)
 			var a: float = base_angle - half_angle + t * half_angle * 2.0
 			pts.append(Vector2.from_angle(a) * cast_range)
-		# Filled transparent wedge.
-		draw_polygon(pts, PackedColorArray([Color(cone_color, FILL_ALPHA)]))
-		# Side edges (origin to arc extremes).
-		draw_line(Vector2.ZERO, pts[1], Color(cone_color, OUTLINE_ALPHA), OUTLINE_WIDTH, true)
-		draw_line(Vector2.ZERO, pts[pts.size() - 1], Color(cone_color, OUTLINE_ALPHA), OUTLINE_WIDTH, true)
-		# Arc edge.
-		draw_arc(Vector2.ZERO, cast_range,
-				base_angle - half_angle, base_angle + half_angle,
-				SEGMENTS, Color(cone_color, OUTLINE_ALPHA), OUTLINE_WIDTH, true)
+		# Scanline wedge fill: every other row, so the average matches FILL_ALPHA.
+		PixelVFX.fill_polygon(self, pts, cone_color, FILL_ALPHA * 2.0, 2)
+		# Side edges (origin to arc extremes) and arc edge, 1 px, flat colour.
+		var edge: Color = PixelVFX.with_alpha(cone_color, OUTLINE_ALPHA, PixelVFX.FILL_ALPHA_STEPS)
+		var o: Vector2 = PixelVFX.snap_origin(self)
+		var cells: Dictionary = PixelVFX.line_cells(Vector2.ZERO, pts[1], OUTLINE_WIDTH)
+		PixelVFX.line_cells(Vector2.ZERO, pts[pts.size() - 1], OUTLINE_WIDTH, cells)
+		PixelVFX.arc_cells(Vector2.ZERO, cast_range,
+				base_angle - half_angle, base_angle + half_angle, OUTLINE_WIDTH, cells)
+		PixelVFX.draw_spans(self, PixelVFX.cells_to_spans(cells), edge, o)
 
 
 # ── Inner class: per-Prana swing / whiff VFX ─────────────────────────────────
@@ -985,11 +983,11 @@ class _SwingVFX extends Node2D:
 		var span: float = deg_to_rad(130.0)
 		var base_angle: float = facing.angle()
 		# Outer arc: thick, overbright.
-		draw_arc(Vector2.ZERO, 65.0, base_angle - span * 0.5, base_angle + span * 0.5,
-				20, Color(swing_color * 1.6, alpha * 0.9), 4.0, true)
+		PixelVFX.stroke_arc(self, 65.0, base_angle - span * 0.5, base_angle + span * 0.5,
+				4.0, swing_color, alpha * 0.9)
 		# Inner thinner trace at 60% radius, narrower span.
-		draw_arc(Vector2.ZERO, 40.0, base_angle - span * 0.4, base_angle + span * 0.4,
-				14, Color(swing_color, alpha * 0.5), 2.0, true)
+		PixelVFX.stroke_arc(self, 40.0, base_angle - span * 0.4, base_angle + span * 0.4,
+				2.0, swing_color, alpha * 0.5)
 
 	## Voidblue — 3 parallel lunge lines stabbing forward, precise and silent.
 	func _draw_voidblue(p: float) -> void:
@@ -999,12 +997,11 @@ class _SwingVFX extends Node2D:
 		var dir: Vector2 = facing.normalized()
 		var perp: Vector2 = dir.orthogonal()
 		# Center line (brightest), two flanking lines (dimmer).
-		draw_line(Vector2.ZERO, dir * length,
-				Color(swing_color * 1.4, alpha * 1.0), 2.5, true)
-		draw_line(perp * 8.0, perp * 8.0 + dir * length * 0.85,
-				Color(swing_color, alpha * 0.55), 1.5, true)
-		draw_line(perp * -8.0, perp * -8.0 + dir * length * 0.85,
-				Color(swing_color, alpha * 0.55), 1.5, true)
+		PixelVFX.stroke_line(self, Vector2.ZERO, dir * length, 3.0, swing_color, alpha)
+		PixelVFX.stroke_line(self, perp * 8.0, perp * 8.0 + dir * length * 0.85,
+				1.0, swing_color, alpha * 0.55)
+		PixelVFX.stroke_line(self, perp * -8.0, perp * -8.0 + dir * length * 0.85,
+				1.0, swing_color, alpha * 0.55)
 
 	## Stormgold — straight bolt forward, bright gold, snap fade.
 	func _draw_stormgold(p: float) -> void:
@@ -1012,11 +1009,10 @@ class _SwingVFX extends Node2D:
 		var alpha: float = clampf(1.0 - p * 1.8, 0.0, 1.0)
 		var dir: Vector2 = facing.normalized()
 		# Main bolt.
-		draw_line(Vector2.ZERO, dir * 100.0,
-				Color(swing_color * 2.2, alpha), 3.5, true)
-		# Secondary thinner bolt (short inner glow).
-		draw_line(dir * 8.0, dir * 75.0,
-				Color(swing_color, alpha * 0.6), 1.5, true)
+		PixelVFX.stroke_line(self, Vector2.ZERO, dir * 100.0, 3.0, swing_color, alpha)
+		# Secondary bolt offset to one side (short inner glow).
+		var side: Vector2 = dir.orthogonal() * 3.0
+		PixelVFX.stroke_line(self, dir * 8.0 + side, dir * 75.0 + side, 1.0, swing_color, alpha * 0.6)
 
 	## Deepfrost — 5 crystal shards fanning 90°, geometric and cold.
 	func _draw_deepfrost(p: float) -> void:
@@ -1032,14 +1028,10 @@ class _SwingVFX extends Node2D:
 			var perp_s: Vector2 = shard_dir.orthogonal() * 4.5
 			# Brightness falls off toward outer shards.
 			var brightness: float = 1.0 - absf(t - 0.5) * 0.55
-			# Main shard line.
-			draw_line(Vector2.ZERO, tip,
-					Color(swing_color * 1.5, alpha * brightness), 2.5, true)
-			# Crystal facet edges.
-			draw_line(perp_s * 0.4, tip,
-					Color(swing_color, alpha * brightness * 0.45), 1.0, true)
-			draw_line(-perp_s * 0.4, tip,
-					Color(swing_color, alpha * brightness * 0.45), 1.0, true)
+			# Crystal facet edges first, main shard on top.
+			PixelVFX.stroke_line(self, perp_s * 0.6, tip, 1.0, swing_color, alpha * brightness * 0.45)
+			PixelVFX.stroke_line(self, -perp_s * 0.6, tip, 1.0, swing_color, alpha * brightness * 0.45)
+			PixelVFX.stroke_line(self, Vector2.ZERO, tip, 3.0, swing_color, alpha * brightness)
 
 	## Verdant — 2 organic vine curves sweeping from the flanks to forward.
 	func _draw_verdant(p: float) -> void:
@@ -1062,7 +1054,7 @@ class _SwingVFX extends Node2D:
 				var r0: Vector2 = q0.lerp(q1, t)
 				var r1: Vector2 = q1.lerp(q2, t)
 				pts.append(r0.lerp(r1, t))
-			draw_polyline(pts, Color(swing_color * 1.4, alpha * 0.9), 2.5, true)
+			PixelVFX.stroke_polyline(self, pts, 3.0, swing_color, alpha * 0.9)
 			# Outer tendril — wider arc, thinner, dimmer.
 			var op0: Vector2 = perp * s * 48.0
 			var op1: Vector2 = perp * s * 32.0 + dir * 18.0
@@ -1077,7 +1069,7 @@ class _SwingVFX extends Node2D:
 				var r0: Vector2 = q0.lerp(q1, t)
 				var r1: Vector2 = q1.lerp(q2, t)
 				pts2.append(r0.lerp(r1, t))
-			draw_polyline(pts2, Color(swing_color, alpha * 0.5), 1.5, true)
+			PixelVFX.stroke_polyline(self, pts2, 1.0, swing_color, alpha * 0.5)
 
 
 # ── Inner class: Cascade burst ring ───────────────────────────────────────────
@@ -1104,8 +1096,10 @@ class _BurstRing extends Node2D:
 	func _draw() -> void:
 		var p: float = clampf(float(Time.get_ticks_usec() - _start_us) / float(DURATION_US), 0.0, 1.0)
 		var r: float = lerpf(max_radius * 0.2, max_radius, p)
-		draw_circle(Vector2.ZERO, r, Color(ring_color, 0.18 * (1.0 - p)))
-		draw_arc(Vector2.ZERO, r, 0.0, TAU, 40, Color(ring_color * 1.4, 1.0 - p), 4.0, true)
+		PixelVFX.draw_spans(self, PixelVFX.disc_spans(r),
+				PixelVFX.with_alpha(ring_color, 0.18 * (1.0 - p), PixelVFX.FILL_ALPHA_STEPS),
+				PixelVFX.snap_origin(self))
+		PixelVFX.stroke_ring(self, r, 4.0, ring_color, 1.0 - p)
 
 
 # ── Inner class: floating reaction name ───────────────────────────────────────
