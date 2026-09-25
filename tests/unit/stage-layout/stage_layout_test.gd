@@ -90,6 +90,15 @@ func test_every_floor_theme_has_all_room_types() -> void:
 			assert_object(t).is_not_null()
 
 
+func test_every_floor_theme_room_count_builds_a_branching_floor() -> void:
+	for path: String in THEME_PATHS:
+		var theme: FloorTheme = load(path) as FloorTheme
+		assert_int(theme.room_count).is_greater_equal(PathBuilder.MIN_ROOM_COUNT)
+		var g: DungeonGraph = PathBuilder.new().generate(theme.room_count)
+		assert_object(g).is_not_null()
+		assert_int(g.room_count()).is_equal(theme.room_count)
+
+
 func test_floor_two_and_three_draw_rooms_floor_one_never_uses() -> void:
 	var f1: FloorTheme = load(THEME_PATHS[0])
 	for idx: int in [1, 2]:

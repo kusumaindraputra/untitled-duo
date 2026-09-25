@@ -65,6 +65,13 @@ post-hit grace apply.
 | 2 | Functional Corridors | Cool slate floor and blue haze, blue pillars | Crossfire 3 (Cross + sweep), Watchtower 2 (Ring + 2 turrets), Vent Line 2 (Corridor + 3 vents), Divide 2 (Split + turret), Diamond 1 | Kill Box (Cross + 2 turrets), Crossfire, Gauntlet | The Warden's Ring (Ring + pillars) |
 | 3 | Cipher Core | Mauve floor and violet haze, violet pillars | Core 3 (Ring + 3-arm core sweep + vent), Crucible 2 (closing ring + ring turret), Junction 2 (Cross + reverse sweep + turret), Furnace 2 (3 vents + turret) | Sanctum (Ring + 4-arm sweep + ring), Junction | The Last Cipher (slow closing ring) |
 
+Each floor has 12 rooms (`FloorTheme.room_count`). The graph branches after the
+second room into two 4-room paths that rejoin at Rest, so a player crosses 8 rooms per
+floor (6 fights: 5 combat or elite, then the boss) and 24 rooms per run. The HUD room
+counter shows those 8 (`PathBuilder.rooms_per_run`), not the 12 in the graph. Before
+2026-09-25 floors had 7 rooms (5–6 crossed) and a run took ~10 minutes; the target is
+now 15–25 minutes (game concept).
+
 A floor-intro banner ("FLOOR 2 / Functional Corridors") shows when each floor starts,
 and the HUD floor label shows the floor name.
 
@@ -130,7 +137,8 @@ iso circle hit     = length(dx, 2·dy) ≤ radius
 | | sweep `arm_count`, `rotation_deg_per_sec`, `arm_length`, `warmup_sec` | per room |
 | | vent `off_sec / telegraph_sec / on_sec`, `zone_radius` | 2.2 / 0.9 / 1.3 s, 56 px |
 | | ring `ring_delay_sec / ring_close_sec / ring_min_scale` | per room |
-| `FloorTheme` (`assets/data/floor_themes/*.tres`) | pools and weights, `look`, `floor_tint`, `pillar_color`, `debris_tint` | per floor |
+| `FloorTheme` (`assets/data/floor_themes/*.tres`) | `room_count` (min 5, even branch paths when `room_count` is even) | 12 on every floor |
+| | pools and weights, `look`, `floor_tint`, `pillar_color`, `debris_tint` | per floor |
 | `RoomLook` (`assets/data/room_looks/*.tres`) | floor colours, `worn/crack/glyph_chance`, `edge_depth`, backdrop colours, `vignette` | art bible E1–E7; floors 2–3 cool and mauve |
 | `UICopy` | `floor_names`, `floor_label_format`, `floor_intro_format` | |
 
@@ -149,3 +157,4 @@ iso circle hit     = length(dx, 2·dy) ≤ radius
 | AC-SL-09 | Every themed room builds with its pillars on floor tiles ≥ 120 px from spawn markers and all its hazards built | `stage_layout_test` |
 | AC-SL-10 | The Ring has an empty core; the Cross keeps its hub and cuts its corners | `stage_layout_test` |
 | AC-SL-11 | The generator only assigns templates from the applied floor theme | `stage_layout_test::test_generator_uses_theme_pools` |
+| AC-SL-12 | Every floor theme sets a `room_count` of at least 5 that builds a graph of that size; a 12-room floor has two equal 4-room paths and the HUD counts 8 rooms | `stage_layout_test`, `path_builder_test::test_rooms_per_run_12_rooms_walks_8` |

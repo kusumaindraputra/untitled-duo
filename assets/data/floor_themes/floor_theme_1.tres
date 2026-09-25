@@ -13,6 +13,7 @@
 
 [resource]
 script = ExtResource("1_script")
+room_count = 12
 combat_templates = Array[ExtResource("1_rt")]([ExtResource("2_t"), ExtResource("3_t"), ExtResource("4_t"), ExtResource("5_t")])
 combat_weights = Array[float]([3.0, 2.0, 2.0, 2.0])
 elite_templates = Array[ExtResource("1_rt")]([ExtResource("3_t"), ExtResource("4_t"), ExtResource("6_t")])

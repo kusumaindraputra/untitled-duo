@@ -66,6 +66,8 @@ var _coach: TutorialCoach = null
 var _dungeon_graph: DungeonGraph = null
 var _gen: DungeonGenerator = DungeonGenerator.new()
 var _current_floor: int = 1
+## Rooms in the current floor's graph, from its FloorTheme. 7 if the theme is missing.
+var _floor_room_count: int = 7
 var _floor_pool_configs: Array[EnemyPoolConfig] = []
 var _boss_pool_configs: Array[EnemyPoolConfig] = []
 ## ADR-0026 room variety: the floor's combat pool before any Cursed tweak, the
@@ -129,7 +131,7 @@ func _ready() -> void:
 	# Generate floor 1 and give it to RoomTransitionManager.
 	var rtm: RoomTransitionManager = $RoomTransitionManager
 	_apply_floor_theme(rtm)
-	_dungeon_graph = _gen.generate(7, _current_floor)
+	_dungeon_graph = _gen.generate(_floor_room_count, _current_floor)
 	_room_rng.randomize()
 	RoomModifiers.assign(_dungeon_graph, _room_rng)
 	rtm.setup(_dungeon_graph)
@@ -150,7 +152,7 @@ func _ready() -> void:
 	var hud: CombatHUD = $CanvasLayer/CombatHUD
 	hud.player_controller = $PlayerController
 	hud.fayde_node = $PlayerController
-	hud.set_room_progress(_rooms_entered, _dungeon_graph.room_count())
+	hud.set_room_progress(_rooms_entered, PathBuilder.rooms_per_run(_dungeon_graph))
 	_update_minimap()
 	# Edge arrows for off-screen enemies (combat camera shows less than the room).
 	# Index 0 on the HUD layer so HUD panels draw over the arrows.
@@ -698,7 +700,7 @@ func _on_room_transitioned(new_room_idx: int) -> void:
 		$PlayerController.position = (new_room as IsometricRoom).get_player_spawn_position()
 	_rooms_entered += 1
 	var hud: CombatHUD = $CanvasLayer/CombatHUD
-	hud.set_room_progress(_rooms_entered, _dungeon_graph.room_count())
+	hud.set_room_progress(_rooms_entered, PathBuilder.rooms_per_run(_dungeon_graph))
 	_update_minimap()
 	GameStateManager.restart_preparation()
 
@@ -809,7 +811,7 @@ func _on_floor_completed() -> void:
 	# Reset to 0 so the entry-room transition of the new floor increments it back to 1.
 	_rooms_entered = 0
 	_apply_floor_theme($RoomTransitionManager)
-	_dungeon_graph = _gen.generate(7, _current_floor)
+	_dungeon_graph = _gen.generate(_floor_room_count, _current_floor)
 	RoomModifiers.assign(_dungeon_graph, _room_rng)
 	GameStateManager.set_is_final_floor(_current_floor >= total_floors)
 	_apply_floor_pool_config()
@@ -827,6 +829,7 @@ func _apply_floor_theme(rtm: RoomTransitionManager) -> void:
 		return
 	_gen.apply_floor_theme(theme)
 	rtm.floor_theme = theme
+	_floor_room_count = theme.room_count
 
 
 ## Loads per-floor EnemyPoolConfig resources into _floor_pool_configs and _boss_pool_configs.

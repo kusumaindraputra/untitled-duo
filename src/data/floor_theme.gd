@@ -11,6 +11,12 @@
 class_name FloorTheme
 extends Resource
 
+@export_group("Layout")
+## Rooms in this floor's graph, Rest and Boss included (min PathBuilder.MIN_ROOM_COUNT).
+## The floor branches after the second room, so the player walks only one path:
+## PathBuilder.rooms_per_run() gives the rooms a player actually crosses.
+@export_range(5, 16) var room_count: int = 7
+
 @export_group("Template Pools")
 @export var combat_templates: Array[RoomTemplate] = []
 @export var combat_weights: Array[float] = []
