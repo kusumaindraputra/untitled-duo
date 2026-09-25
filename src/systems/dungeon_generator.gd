@@ -43,6 +43,13 @@ func set_path_builder(pb: PathBuilder) -> void:
 	_path_builder = pb
 
 
+## Uses [param theme]'s template pools for the next generate() calls (ADR-0020).
+## null keeps the current pools.
+func apply_floor_theme(theme: FloorTheme) -> void:
+	if theme != null:
+		theme.apply_to(_room_selector)
+
+
 ## Replaces the RoomSelector instance. Used for test injection or Layer 2+ pools.
 func set_room_selector(rs: RoomSelector) -> void:
 	_room_selector = rs

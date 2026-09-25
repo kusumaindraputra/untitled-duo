@@ -26,6 +26,9 @@ signal room_transition_completed(new_room_idx: int)
 const FADE_DURATION_SEC: float = 0.4
 
 var _graph: DungeonGraph = null
+## Floor identity handed to every room this manager loads (ADR-0020). Set by the
+## game loop before setup() / load_floor(). null = floor 1 look.
+var floor_theme: FloorTheme = null
 var _current_idx: int = -1
 var _is_transitioning: bool = false
 var _fade_rect: ColorRect = null
@@ -88,9 +91,12 @@ func request_transition(destination_idx: int) -> void:
 		return
 
 	var captured_tmpl: RoomTemplate = tmpl
+	var captured_theme: FloorTheme = floor_theme
 	SceneManager.change_room(packed, func(scene: Node) -> void:
-		if scene is IsometricRoom and captured_tmpl != null:
-			(scene as IsometricRoom).room_template = captured_tmpl
+		if scene is IsometricRoom:
+			if captured_tmpl != null:
+				(scene as IsometricRoom).room_template = captured_tmpl
+			(scene as IsometricRoom).floor_theme = captured_theme
 	)
 	await SceneManager.room_changed
 
@@ -140,9 +146,12 @@ func load_floor(graph: DungeonGraph) -> void:
 		return
 
 	var captured_tmpl: RoomTemplate = tmpl
+	var captured_theme: FloorTheme = floor_theme
 	SceneManager.change_room(packed, func(scene: Node) -> void:
-		if scene is IsometricRoom and captured_tmpl != null:
-			(scene as IsometricRoom).room_template = captured_tmpl
+		if scene is IsometricRoom:
+			if captured_tmpl != null:
+				(scene as IsometricRoom).room_template = captured_tmpl
+			(scene as IsometricRoom).floor_theme = captured_theme
 	)
 	await SceneManager.room_changed
 

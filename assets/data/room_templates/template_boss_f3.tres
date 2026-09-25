@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="RoomTemplate" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/data/room_template.gd" id="1_script"]
+[ext_resource type="Script" path="res://src/data/hazard_spec.gd" id="2_hazard"]
+[ext_resource type="Resource" path="res://assets/data/obstacle_configs/obstacle_boss.tres" id="3_obstacle"]
+
+[sub_resource type="Resource" id="Hazard_0"]
+script = ExtResource("2_hazard")
+kind = 3
+color = Color(1, 0.3, 0.25, 1)
+ring_delay_sec = 20.0
+ring_close_sec = 40.0
+ring_min_scale = 0.62
+
+[resource]
+script = ExtResource("1_script")
+display_name = "The Last Cipher"
+room_type = 3
+layout_style = 0
+tile_cells = Array[Vector2i]([])
+valid_zone_rects = Array[Rect2]([])
+spawn_positions = Array[Vector2]([])
+obstacle_config = ExtResource("3_obstacle")
+hazards = Array[ExtResource("2_hazard")]([SubResource("Hazard_0")])

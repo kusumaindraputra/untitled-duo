@@ -28,3 +28,21 @@ extends Resource
 
 ## Maximum rejection-sampling attempts per obstacle slot.
 @export var place_attempts: int = 80
+
+# ── Pillars (full cover, ADR-0020) ────────────────────────────────────────────
+
+## Minimum full-cover pillars per room. 0 = no pillars (default, legacy behaviour).
+@export var pillar_count_min: int = 0
+
+## Maximum full-cover pillars per room.
+@export var pillar_count_max: int = 0
+
+## Enemy bullets a pillar absorbs before it crumbles (a laser counts as
+## CoverPillar.LASER_HITS). Cover buys time, it does not solve the room.
+@export var pillar_hits: int = 14
+
+## Pillar collision radius in pixels.
+@export var pillar_radius: float = 20.0
+
+## Minimum gap between two pillars, in pixels. Keeps cover spread across the room.
+@export var pillar_min_between_dist: float = 150.0

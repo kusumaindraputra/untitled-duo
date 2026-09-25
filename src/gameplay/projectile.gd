@@ -20,11 +20,13 @@ const DEFAULT_RADIUS: float = 4.0
 const GROUP: StringName = &"enemy_bullet"
 
 ## Collision layer bits (matching project conventions).
-## Layer 4 (bit 3, value 8): Projectiles. Mask: walls only (bit 0, value 1) —
+## Layer 4 (bit 3, value 8): Projectiles. Mask: walls (bit 0, value 1) and full-cover
+## pillars (bit 5, value 32, ADR-0020) —
 ## Fayde is hit by a distance check against BulletHellTuning.player_hurt_radius,
 ## so her 8 px movement body no longer defines what counts as a hit.
 const COLLISION_LAYER_PROJECTILE: int = 8
 const COLLISION_MASK_WALLS: int = 1
+const COLLISION_MASK_FULL_COVER: int = 32
 
 const TUNING: BulletHellTuning = preload("res://assets/data/bullet_hell_tuning.tres")
 
@@ -62,9 +64,13 @@ func _ready() -> void:
 	col.shape = _shape
 	add_child(col)
 	collision_layer = COLLISION_LAYER_PROJECTILE
-	collision_mask = COLLISION_MASK_WALLS
+	collision_mask = COLLISION_MASK_WALLS | COLLISION_MASK_FULL_COVER
 	monitoring = true
-	monitorable = false
+	# Must stay monitorable: in Godot 4.6 an Area2D with monitorable = false no longer
+	# reports body_entered for static bodies, so bullets flew through walls and would
+	# fly through pillars (ADR-0020). No Area2D masks the projectile layer (8), so
+	# being monitorable adds no unwanted overlaps.
+	monitorable = true
 	z_index = 2100  # above every y-sorted entity (1..2000) so bullets stay readable
 	body_entered.connect(_on_body_entered)
 
@@ -245,10 +251,13 @@ func _despawn() -> void:
 		queue_free()
 
 
-func _on_body_entered(_body: Node2D) -> void:
+func _on_body_entered(body: Node2D) -> void:
 	if _freed:
 		return
-	# Wall impact — brief impact flash then despawn.
+	# ADR-0020 — a pillar absorbs the bullet and wears down.
+	if body is CoverPillar:
+		(body as CoverPillar).take_hit(1)
+	# Wall / pillar impact — brief impact flash then despawn.
 	_spawn_impact_burst(_color)
 	_despawn()
 

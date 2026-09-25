@@ -298,12 +298,13 @@ func test_enemy_instance_collision_layer_is_enemy_layer() -> void:
 	enemy.free()
 
 
-func test_enemy_instance_collision_mask_is_walls_and_debris() -> void:
+func test_enemy_instance_collision_mask_is_walls_debris_and_pillars() -> void:
 	var enemy: EnemyInstance = _make_enemy()
 	add_child(enemy)
 
-	# 17 = walls (1) + debris (16) — player excluded; contact damage via HitArea (S9-09).
-	assert_int(enemy.collision_mask).is_equal(17)
+	# 49 = walls (1) + debris (16) + pillars (32, ADR-0020) — player excluded; contact
+	# damage via HitArea (S9-09).
+	assert_int(enemy.collision_mask).is_equal(49)
 
 	remove_child(enemy)
 	enemy.free()

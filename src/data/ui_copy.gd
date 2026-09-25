@@ -92,6 +92,17 @@ extends Resource
 ## Room-clear rank banner; %s is the rank letter.
 @export var room_rank_format: String = "RANK %s"
 
+@export_group("Floors (ADR-0020)")
+
+## Floor names, in floor order (floor 1 first). Shown in the HUD and the floor intro.
+@export var floor_names: Array[String] = ["Deep Scrap Yard", "Functional Corridors", "Cipher Core"]
+
+## HUD floor label: floor number, then floor name.
+@export var floor_label_format: String = "Floor %d · %s"
+
+## Banner shown when a floor starts: floor number, then floor name.
+@export var floor_intro_format: String = "FLOOR %d\n%s"
+
 ## Room-clear reward line; the first %d is HP healed, the second the Special head start.
 @export var room_rank_reward_format: String = "+%d HP   +%d Special next room"
 

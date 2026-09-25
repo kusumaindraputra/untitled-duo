@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="RoomTemplate" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://src/data/room_template.gd" id="1_script"]
+[ext_resource type="Script" path="res://src/data/hazard_spec.gd" id="2_hazard"]
+[ext_resource type="Resource" path="res://assets/data/obstacle_configs/obstacle_combat.tres" id="3_obstacle"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/turret_burst.tres" id="4_pat"]
+
+[sub_resource type="Resource" id="Hazard_0"]
+script = ExtResource("2_hazard")
+kind = 0
+random_position = true
+pattern = ExtResource("4_pat")
+damage = 7.0
+
+[sub_resource type="Resource" id="Hazard_1"]
+script = ExtResource("2_hazard")
+kind = 0
+random_position = true
+pattern = ExtResource("4_pat")
+damage = 7.0
+
+[resource]
+script = ExtResource("1_script")
+display_name = "The Watchtower"
+room_type = 0
+layout_style = 5
+tile_cells = Array[Vector2i]([])
+valid_zone_rects = Array[Rect2]([])
+spawn_positions = Array[Vector2]([])
+obstacle_config = ExtResource("3_obstacle")
+hazards = Array[ExtResource("2_hazard")]([SubResource("Hazard_0"), SubResource("Hazard_1")])

@@ -2,6 +2,8 @@
 ## A thin warning line tracks the owner for telegraph_sec, locks, then the beam is live
 ## for active_sec. Fayde is hit when her hurtbox touches the beam segment; standing
 ## just outside it grazes once. Dash i-frames pass through (CONTACT damage source).
+## ADR-0020: a CoverPillar in the beam's path cuts it short and takes LASER_HITS hits
+## when the beam fires, so hiding behind a pillar works against lasers too.
 class_name EnemyLaser
 extends Node2D
 
@@ -22,6 +24,8 @@ var _phase: Phase = Phase.TELEGRAPH
 var _timer: float = 0.0
 var _grazed: bool = false
 var _player: Node2D = null
+## Beam length after pillars cut it (ADR-0020). < 0 = not cast yet, use pattern.length.
+var _beam_length: float = -1.0
 
 
 func _ready() -> void:
@@ -46,9 +50,11 @@ func _physics_process(delta: float) -> void:
 				# final beam line is a promise the player can read and sidestep.
 				if is_instance_valid(_player) and _timer > _telegraph_sec() * 0.3:
 					angle = (_player.global_position - global_position).angle()
+			_update_beam_length(false)
 			if _timer <= 0.0:
 				_phase = Phase.ACTIVE
 				_timer = pattern.active_sec
+				_update_beam_length(true)
 		Phase.ACTIVE:
 			_check_player()
 			if _timer <= 0.0:
@@ -60,7 +66,7 @@ func _physics_process(delta: float) -> void:
 func _draw() -> void:
 	if pattern == null:
 		return
-	var end: Vector2 = Vector2.from_angle(angle) * pattern.length
+	var end: Vector2 = Vector2.from_angle(angle) * beam_length()
 	var c: Color = pattern.color
 	if _phase == Phase.TELEGRAPH:
 		var p: float = 1.0 - clampf(_timer / maxf(_telegraph_sec(), 0.01), 0.0, 1.0)
@@ -74,8 +80,15 @@ func _draw() -> void:
 ## Distance from [param point] (global) to the beam segment.
 func distance_to_beam(point: Vector2) -> float:
 	var a: Vector2 = global_position
-	var b: Vector2 = a + Vector2.from_angle(angle) * (pattern.length if pattern != null else 0.0)
+	var b: Vector2 = a + Vector2.from_angle(angle) * beam_length()
 	return point.distance_to(Geometry2D.get_closest_point_to_segment(point, a, b))
+
+
+## Current beam length: pattern.length, or shorter when a pillar blocks it (ADR-0020).
+func beam_length() -> float:
+	if pattern == null:
+		return 0.0
+	return _beam_length if _beam_length >= 0.0 else pattern.length
 
 
 ## Test hook — current phase.
@@ -102,3 +115,15 @@ func _check_player() -> void:
 ## Telegraph length after the difficulty curve.
 func _telegraph_sec() -> float:
 	return (pattern.telegraph_sec if pattern != null else 0.8) * maxf(telegraph_mult, 0.05)
+
+
+## Recasts the beam against pillars. [param firing] = the beam just went live, so the
+## blocking pillar takes CoverPillar.LASER_HITS hits.
+func _update_beam_length(firing: bool) -> void:
+	if pattern == null or not is_inside_tree():
+		return
+	var hit: Dictionary = CoverPillar.cast_beam(get_world_2d(), global_position, angle, pattern.length)
+	_beam_length = float(hit["length"])
+	var pillar: CoverPillar = hit["pillar"] as CoverPillar
+	if firing and is_instance_valid(pillar):
+		pillar.take_hit(CoverPillar.LASER_HITS)
