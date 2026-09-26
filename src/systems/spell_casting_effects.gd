@@ -357,6 +357,7 @@ func _ready() -> void:
 	_fayde_ref = get_tree().get_first_node_in_group(&"player")
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	GameStateManager.combat_started.connect(_on_combat_started)
+	GameStateManager.run_started.connect(reset_run_damage_mult)
 	CombinationResolution.combo_resolved.connect(_on_combo_resolved)
 	_audio = get_node_or_null("/root/AudioSystem")
 
@@ -1300,6 +1301,12 @@ func get_special_damage() -> float:
 ## (e.g. 1.20 = +20% damage). Stacks multiplicatively; persists for the run.
 func apply_damage_mult(factor: float) -> void:
 	_run_damage_mult *= factor
+
+
+## Clears the run-wide damage multiplier at run start. This node is an autoload, so
+## without it sigil and Core multipliers leaked into the next run (ADR-0033).
+func reset_run_damage_mult() -> void:
+	_run_damage_mult = 1.0
 
 
 ## Returns the current run-wide damage multiplier. Exposed for tests and sigil UI.
