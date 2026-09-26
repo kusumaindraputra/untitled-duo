@@ -87,9 +87,6 @@ var _in_death_sequence: bool = false
 ## Title-screen CanvasLayer shown at boot before the run starts. Freed on Begin.
 var _title_layer: CanvasLayer = null
 
-## First-prep coaching overlay. Shown once on Begin, auto-freed when combat starts.
-var _tutorial_layer: CanvasLayer = null
-
 ## Between-room reward system. Created in _ready(); offers a sigil after each
 ## combat/elite room clear.
 var _sigil_manager: SigilManager = null
@@ -214,6 +211,10 @@ func _ready() -> void:
 	_pace_director.room_ranked.connect(hud.show_room_rank)
 	_pace_director.room_ranked.connect(_log_room_rank)
 	_pace_director.perfect_dodge_triggered.connect(hud.show_perfect_dodge)
+	# ADR-0031 rumble for big moves (impacts rumble through camera trauma).
+	_pace_director.perfect_dodge_triggered.connect(Rumble.on_perfect_dodge)
+	if not SpellCastingEffects.special_fired.is_connected(Rumble.on_special_fired):
+		SpellCastingEffects.special_fired.connect(Rumble.on_special_fired)
 	# ADR-0026 behaviour sigils: effects hang off gameplay signals; SigilManager adds stacks.
 	_sigil_effects = SigilEffects.new()
 	_sigil_effects.name = "SigilEffects"
@@ -530,7 +531,6 @@ func _on_core_picked(type_id: int) -> void:
 	if _meta != null and _sigil_manager != null and _meta.run_heirloom() != &"":
 		_sigil_manager.apply_sigil(_meta.run_heirloom())
 	$CanvasLayer/CombatHUD.show_floor_intro(_current_floor)
-	_show_tutorial_overlay()
 	if _meta == null or not _meta.tutorial_done:
 		_start_coach()
 
@@ -548,7 +548,7 @@ func _start_core() -> void:
 		_meta.save_to(progress_path)
 
 
-## Spawns the in-combat tutorial checklist and wires it to the moves it teaches.
+## Spawns the tutorial hints (ADR-0031) and wires them to the moves they teach.
 ## No-op when one is already running.
 func _start_coach() -> void:
 	if is_instance_valid(_coach):
@@ -561,6 +561,7 @@ func _start_coach() -> void:
 	SpellCastingEffects.perfect_cast.connect(_coach.on_perfect_cast)
 	SpellCastingEffects.special_fired.connect(_coach.on_special_fired)
 	_pace_director.perfect_dodge_triggered.connect(_coach.on_perfect_dodge)
+	GameStateManager.combat_started.connect(_coach.on_combat_started)
 	_coach.completed.connect(_on_coach_completed)
 
 
@@ -581,72 +582,6 @@ func _replay_tutorial() -> void:
 		_coach = null
 	_start_coach()
 	GameStateManager.resume_game()
-
-
-## Builds a one-time coaching panel on the LEFT (the Prana grid sits on the right,
-## so it stays clear) explaining the core loop during the first Preparation phase.
-## Non-blocking — the player can arrange while reading. Auto-dismisses when the
-## first combat starts, or via the "Got it" button.
-func _show_tutorial_overlay() -> void:
-	_tutorial_layer = CanvasLayer.new()
-	_tutorial_layer.layer = 25
-
-	var panel := PanelContainer.new()
-	panel.anchor_top = 0.5
-	panel.offset_top = -150.0
-	panel.offset_left = 24.0
-	panel.add_theme_constant_override(&"margin_left", 18)
-	panel.add_theme_constant_override(&"margin_right", 18)
-	panel.add_theme_constant_override(&"margin_top", 14)
-	panel.add_theme_constant_override(&"margin_bottom", 14)
-	var pstyle := StyleBoxFlat.new()
-	pstyle.bg_color = Color(0.05, 0.04, 0.08, 0.92)
-	pstyle.border_color = Color(1.0, 0.85, 0.4, 0.7)
-	pstyle.set_border_width_all(2)
-	pstyle.set_corner_radius_all(6)
-	panel.add_theme_stylebox_override(&"panel", pstyle)
-	_tutorial_layer.add_child(panel)
-
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override(&"separation", 8)
-	panel.add_child(vbox)
-
-	var heading := Label.new()
-	heading.text = "HOW TO FIGHT"
-	heading.add_theme_font_size_override(&"font_size", 22)
-	heading.add_theme_color_override(&"font_color", Color(1.0, 0.85, 0.4))
-	vbox.add_child(heading)
-
-	var steps: Array[String] = [
-		"1.  Your CORE Prana sits centre — it's your primary element.",
-		"2.  Clear rooms to earn Prana, then add them to your grid.",
-		"3.  3+ of one type = a stronger spell Tier.",
-		InputPrompts.pick(_COPY.coach_confirm_step_kb % InputPrompts.key_label(&"cast", "Space"),
-			_COPY.coach_confirm_step_pad),
-	]
-	for line: String in steps:
-		var step := Label.new()
-		step.text = line
-		step.add_theme_font_size_override(&"font_size", 16)
-		step.add_theme_color_override(&"font_color", Color(0.82, 0.82, 0.88))
-		vbox.add_child(step)
-
-	var dismiss := Button.new()
-	dismiss.text = "Got it"
-	dismiss.add_theme_font_size_override(&"font_size", 16)
-	dismiss.pressed.connect(_dismiss_tutorial)
-	vbox.add_child(dismiss)
-
-	add_child(_tutorial_layer)
-	# Auto-dismiss the moment the player confirms their first loadout.
-	GameStateManager.combat_started.connect(_dismiss_tutorial, CONNECT_ONE_SHOT)
-
-
-## Frees the tutorial overlay if present. Safe to call multiple times.
-func _dismiss_tutorial(_is_boss: bool = false) -> void:
-	if _tutorial_layer != null:
-		_tutorial_layer.queue_free()
-		_tutorial_layer = null
 
 
 # ── Pause ───────────────────────────────────────────────────────────────────
