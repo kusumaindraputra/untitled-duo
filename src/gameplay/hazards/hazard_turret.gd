@@ -67,6 +67,8 @@ func _fire(angles: PackedFloat32Array, speed: float) -> void:
 		var b: Projectile = pool.acquire()
 		b.global_position = muzzle
 		b.launch_pattern(Vector2.from_angle(a), spec.damage, spec.pattern, speed)
+		b.cause = DeathRecap.cause(DeathRecap.hazard_attacker(spec.kind),
+			DeathRecap.attack_for_pattern(spec.pattern))
 	Sfx.play(&"sfx_bullet_fire")
 
 

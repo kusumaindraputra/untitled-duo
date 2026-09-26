@@ -575,6 +575,9 @@ func _build_pause_data() -> Dictionary:
 		data["grid"] = grid.get_slot_types()
 		data["spell_card"] = grid.build_spell_card()
 		data["colors"] = grid.get_type_colors()
+	var hud: CombatHUD = get_node_or_null(^"CanvasLayer/CombatHUD") as CombatHUD
+	if hud != null:
+		data["map"] = hud.get_floor_map_data()
 	return data
 
 
@@ -858,6 +861,7 @@ func _build_summary_data(win: bool, run_data: Dictionary, shards: int, hard_unlo
 		"hard_unlocked": hard_unlocked,
 		"assist": _assist_used,
 		"records": _new_records + _revealed_heirloom_lines(found),
+		"death": "" if win else DeathRecap.line(HealthAndDamage.last_player_hit, _COPY),
 	}
 
 

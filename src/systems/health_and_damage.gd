@@ -83,6 +83,11 @@ var first_run_active: bool = false
 ## GameSettings.assist_damage; applies to every source after first-run mercy.
 var player_damage_mult: float = 1.0
 
+## What last hurt Fayde this run: { "attacker": String, "attack": StringName } as
+## passed to apply_damage(), or {} when the hit carried no cause. The run summary's
+## death recap reads it (ADR-0032). Cleared on run_started.
+var last_player_hit: Dictionary = {}
+
 # ── Private state ─────────────────────────────────────────────────────────────
 
 ## Fayde's current HP. Clamped to [0, FAYDE_MAX_HP]. Set to 0 on death; reset on run_started.
@@ -183,11 +188,14 @@ func unregister_enemy(instance_id: int) -> void:
 ##
 ## [param target] must be in the "player" group for Fayde, or pre-registered for enemies.
 ## [param element] pass null for no elemental modifier (multiplier = 1.0).
+## [param cause] (optional) names what dealt the hit, see DeathRecap.cause(); a hit on
+## Fayde that deals damage stores it in [member last_player_hit].
 func apply_damage(
 	target: Node,
 	base_damage: float,
 	element: GameEnums.DamageClass,
-	source: GameEnums.DamageSource
+	source: GameEnums.DamageSource,
+	cause: Dictionary = {}
 ) -> void:
 	var is_player: bool = target.is_in_group(&"player")
 
@@ -250,6 +258,10 @@ func apply_damage(
 	if is_player and source == GameEnums.DamageSource.CONTACT and final_damage > 0:
 		_iframe_active = true
 		_iframe_timer = 0.0
+
+	# Step 6b — Remember what hurt Fayde, for the death recap (ADR-0032)
+	if is_player and final_damage > 0:
+		last_player_hit = cause
 
 	# Step 7 — Emit damage_taken (only when final_damage > 0)
 	if final_damage > 0:
@@ -420,6 +432,7 @@ func _on_run_started() -> void:
 	_fayde_dead = false
 	_iframe_active = false
 	_iframe_timer = 0.0
+	last_player_hit = {}
 	_enemy_registry.clear()
 	_current_zone = GameEnums.HPZone.FULL
 	player_hp_zone_changed.emit(GameEnums.HPZone.FULL)

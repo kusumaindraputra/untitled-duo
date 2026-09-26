@@ -9,6 +9,8 @@ const BLAST_FLASH_SEC: float = 0.18
 
 var pattern: BulletPattern = null
 var damage: float = 10.0
+## What the shell is, for the death recap (DeathRecap.cause()); splash bullets inherit it.
+var cause: Dictionary = {}
 ## ADR-0019 difficulty curve: multiplies pattern.telegraph_sec (set by the firing enemy).
 var telegraph_mult: float = 1.0
 
@@ -73,7 +75,7 @@ func explode() -> void:
 			if _player.has_method(&"register_perfect_dodge"):
 				_player.register_perfect_dodge(_player.global_position)  # ADR-0019
 			HealthAndDamage.apply_damage(
-				_player, damage, GameEnums.DamageClass.NONE, GameEnums.DamageSource.CONTACT)
+				_player, damage, GameEnums.DamageClass.NONE, GameEnums.DamageSource.CONTACT, cause)
 		elif d <= pattern.radius + Projectile.graze_radius_of(_player):
 			SpellCastingEffects.register_graze(_player.global_position, 1.0)
 	if pattern.splash_count > 0:
@@ -84,6 +86,7 @@ func explode() -> void:
 				var b: Projectile = pool.acquire()
 				b.global_position = global_position
 				b.launch_pattern(dir, damage * 0.5, pattern, pattern.speed)
+				b.cause = cause
 
 
 ## Test hook.

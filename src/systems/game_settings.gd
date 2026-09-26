@@ -3,7 +3,8 @@
 ## Stored in user://settings.cfg next to the audio volumes (AudioSystem owns the
 ## "audio" section; this class owns "game" and "keys" and keeps the others intact).
 ##   display  — fullscreen, window size, vsync
-##   comfort  — screen shake strength (0–100 %), reduced screen flashes
+##   comfort  — screen shake strength (0–100 %), reduced screen flashes, text size and
+##              high-contrast bullet outlines (ADR-0032)
 ##   controls — keyboard key per remappable action, gamepad button per combat action
 ##   feel     — gamepad rumble strength (0–100 %)
 ##
@@ -61,6 +62,8 @@ const ASSIST_DAMAGE_MIN: float = 0.5
 const ASSIST_SPEED_MIN: float = 0.7
 ## Screen flash strength when reduce_flashes is on.
 const REDUCED_FLASH_SCALE: float = 0.3
+## Text size choices (ADR-0032): multipliers on every UI font size, in menu order.
+const TEXT_SCALES: Array[float] = [1.0, 1.15, 1.3]
 
 ## The settings in effect. Loaded on first use of active().
 static var current: GameSettings = null
@@ -76,6 +79,10 @@ var screen_shake: float = 1.0
 var reduce_flashes: bool = false
 ## Skips screen fades and typewriter text and stills menu motion (U9).
 var reduce_motion: bool = false
+## Index into TEXT_SCALES (ADR-0032).
+var text_scale_idx: int = 0
+## Draws enemy bullets with a thick white-and-black outline (ADR-0032).
+var bullet_outline: bool = false
 ## Assist (F2) master switch. When off, the options below keep their values but
 ## have no effect.
 var assist_enabled: bool = false
@@ -137,6 +144,21 @@ static func base_time_scale() -> float:
 ## True when menus and screens should skip fades, typewriter text and idle motion.
 static func motion_reduced() -> bool:
 	return current != null and current.reduce_motion
+
+
+## Multiplier on UI font sizes (1.0 when no settings are loaded).
+static func text_scale() -> float:
+	return current.text_scale_value() if current != null else 1.0
+
+
+## This instance's text multiplier from text_scale_idx.
+func text_scale_value() -> float:
+	return TEXT_SCALES[clampi(text_scale_idx, 0, TEXT_SCALES.size() - 1)]
+
+
+## True when enemy bullets should draw their high-contrast outline.
+static func bullet_outline_on() -> bool:
+	return current != null and current.bullet_outline
 
 
 ## Multiplier for full-screen flash opacity (1.0, or REDUCED_FLASH_SCALE).
@@ -347,6 +369,8 @@ static func load_from(path: String = DEFAULT_PATH) -> GameSettings:
 	s.screen_shake = clampf(float(cfg.get_value(_SECTION, "screen_shake", 1.0)), 0.0, 1.0)
 	s.reduce_flashes = bool(cfg.get_value(_SECTION, "reduce_flashes", false))
 	s.reduce_motion = bool(cfg.get_value(_SECTION, "reduce_motion", false))
+	s.text_scale_idx = clampi(int(cfg.get_value(_SECTION, "text_scale_idx", 0)), 0, TEXT_SCALES.size() - 1)
+	s.bullet_outline = bool(cfg.get_value(_SECTION, "bullet_outline", false))
 	s.assist_enabled = bool(cfg.get_value(_SECTION, "assist_enabled", false))
 	s.assist_damage = clampf(float(cfg.get_value(_SECTION, "assist_damage", 1.0)), ASSIST_DAMAGE_MIN, 1.0)
 	s.assist_speed = clampf(float(cfg.get_value(_SECTION, "assist_speed", 1.0)), ASSIST_SPEED_MIN, 1.0)
@@ -401,6 +425,8 @@ func save_to(path: String = DEFAULT_PATH) -> Error:
 	cfg.set_value(_SECTION, "screen_shake", screen_shake)
 	cfg.set_value(_SECTION, "reduce_flashes", reduce_flashes)
 	cfg.set_value(_SECTION, "reduce_motion", reduce_motion)
+	cfg.set_value(_SECTION, "text_scale_idx", text_scale_idx)
+	cfg.set_value(_SECTION, "bullet_outline", bullet_outline)
 	cfg.set_value(_SECTION, "assist_enabled", assist_enabled)
 	cfg.set_value(_SECTION, "assist_damage", assist_damage)
 	cfg.set_value(_SECTION, "assist_speed", assist_speed)

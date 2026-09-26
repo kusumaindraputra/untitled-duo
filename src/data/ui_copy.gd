@@ -540,3 +540,51 @@ extends Resource
 @export var heirloom_hint_memories_format: String = "recover %d memories to unlock"
 ## Run summary line when recovered memories reveal an Heirloom.
 @export var heirloom_revealed_format: String = "New Heirloom available:  %s"
+
+@export_group("Readability and accessibility (ADR-0032)")
+
+## Run summary death recap: attacker, then attacker and attack.
+@export var death_by_format: String = "Killed by %s"
+@export var death_by_attack_format: String = "Killed by %s  ·  %s"
+@export var death_unknown: String = "Fayde fell."
+## Attack names by DeathRecap.ATTACK_* id.
+@export var death_attack_names: Dictionary = {
+	"contact": "up close",
+	"slam": "its ground slam",
+	"aimed": "an aimed shot",
+	"fan": "a fan of bullets",
+	"ring": "a bullet ring",
+	"spiral": "a bullet spiral",
+	"homing": "homing bullets",
+	"wave": "weaving bullets",
+	"laser": "its laser",
+	"mortar": "a mortar shell",
+	"vent": "a burning vent",
+	"closing_ring": "the closing ring",
+	"sweep": "a sweeping beam",
+}
+## Stage hazard names by DeathRecap.HAZARD_ATTACKERS id.
+@export var death_hazard_names: Dictionary = {
+	"hazard_turret": "a turret",
+	"hazard_sweep_laser": "a laser pylon",
+	"hazard_floor_zone": "a floor vent",
+	"hazard_closing_ring": "the room's edge",
+}
+
+## Pause floor map card: heading, then legend rows.
+@export var map_title: String = "FLOOR MAP"
+## Room type names by DungeonGraph room type (Combat, Elite, Rest, Boss).
+@export var map_room_names: Array[String] = ["Combat", "Elite", "Rest", "Boss"]
+## Room modifier names by RoomModifiers value (index 0 = none).
+@export var map_mod_names: Array[String] = ["", "Challenge", "Cursed"]
+@export var map_you_are_here: String = "You are here"
+@export var map_visited: String = "Visited  (dim = not yet)"
+@export var map_threats_title: String = "ENEMY ICONS"
+## Threat icon names by ThreatIcon.Kind.
+@export var threat_names: Array[String] = [
+	"Chases you", "Charges", "Swarm", "Shoots bullets", "Laser", "Mortar", "Splits on death", "Boss",
+]
+
+## Settings rows.
+@export var settings_text_size: String = "Text size"
+@export var settings_bullet_outline: String = "High-contrast bullets"

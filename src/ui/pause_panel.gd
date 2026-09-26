@@ -8,7 +8,9 @@
 ##
 ## Data keys: grid (Array of 9 type ids or null), spell_card (Dictionary from
 ## PranaGrid.build_spell_card()), colors (Array[Color]) and abbrevs (Array[String]) in
-## type_id order, sigils (Array of { "title": String, "desc": String }, one per pick).
+## type_id order, sigils (Array of { "title": String, "desc": String }, one per pick),
+## map (FloorMap.snapshot() of the HUD map; when set, a third column shows it larger
+## with a legend of room letters and enemy threat icons, ADR-0032).
 class_name PausePanel
 extends Control
 
@@ -28,8 +30,13 @@ const CARD_BORDER := Color(1.0, 1.0, 1.0, 0.12)
 const LABEL_COLOR := Color(0.62, 0.62, 0.68)
 const EMPTY_SLOT := Color(0.14, 0.14, 0.18)
 const BUTTON_SIZE := Vector2(240, 48)
-const CARD_WIDTH: float = 420.0
+const CARD_WIDTH: float = 360.0
 const CELL_SIZE: float = 30.0
+## Size of the pause floor map relative to the HUD one.
+const MAP_SCALE: float = 1.25
+## Legend swatch size and text size.
+const SWATCH_SIZE: float = 18.0
+const LEGEND_FONT_SIZE: int = 13
 
 ## Holds the title and both columns; hidden while the Settings panel is open.
 var menu_box: VBoxContainer = null
@@ -43,6 +50,10 @@ var settings_button: Button = null
 var spell_label: RichTextLabel = null
 ## The sigil list text, for tests.
 var sigil_label: Label = null
+## The large floor map (null without map data). For tests.
+var floor_map: FloorMap = null
+## Legend rows text, in order. For tests.
+var legend_texts: Array[String] = []
 
 
 ## Groups repeated picks: [{title, desc}, …] → one line per sigil in first-pick order,
@@ -112,19 +123,14 @@ func setup(data: Dictionary) -> void:
 	_button(buttons, _COPY.pause_quit, quit_pressed)
 
 	columns.add_child(_build_card(data))
+	var map: Dictionary = data.get("map", {})
+	if not map.is_empty():
+		columns.add_child(_build_map_card(map))
 
 
 func _build_card(data: Dictionary) -> Control:
-	var card := PanelContainer.new()
+	var card := _card_panel()
 	card.custom_minimum_size = Vector2(CARD_WIDTH, 0)
-	card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = CARD_BG
-	sb.border_color = CARD_BORDER
-	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(6)
-	sb.set_content_margin_all(16)
-	card.add_theme_stylebox_override(&"panel", sb)
 
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override(&"separation", 10)
@@ -157,6 +163,74 @@ func _build_card(data: Dictionary) -> Control:
 	sigil_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	sigil_label.custom_minimum_size = Vector2(CARD_WIDTH - 32.0, 0)
 	box.add_child(sigil_label)
+	return card
+
+
+## ADR-0032: the floor map at MAP_SCALE, then what its letters and rings mean, then
+## the enemy threat icons shown during preparation.
+func _build_map_card(map: Dictionary) -> Control:
+	var card := _card_panel()
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override(&"separation", 8)
+	card.add_child(box)
+	box.add_child(_label(_COPY.map_title, 14, LABEL_COLOR))
+	floor_map = FloorMap.from_snapshot(map, MAP_SCALE)
+	floor_map.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	box.add_child(floor_map)
+
+	var rooms := _legend_grid(box)
+	var type_colors: Array = map.get("type_colors", [])
+	var type_letters: Array = map.get("type_letters", [])
+	for i in _COPY.map_room_names.size():
+		var col: Color = type_colors[i] if i < type_colors.size() else Color.GRAY
+		var letter: String = str(type_letters[i]) if i < type_letters.size() else "?"
+		_legend_row(rooms, _COPY.map_room_names[i], _Swatch.room(col, letter, Color.TRANSPARENT))
+	var mod_colors: Array = map.get("mod_colors", [])
+	var mod_letters: Array = map.get("mod_letters", [])
+	for i in range(1, _COPY.map_mod_names.size()):
+		var ring: Color = mod_colors[i] if i < mod_colors.size() else Color.WHITE
+		var letter: String = str(mod_letters[i]) if i < mod_letters.size() else "?"
+		_legend_row(rooms, _COPY.map_mod_names[i], _Swatch.room(Color(0.35, 0.35, 0.4), letter, ring))
+	_legend_row(rooms, _COPY.map_you_are_here, _Swatch.room(Color(0.35, 0.35, 0.4), "", FloorMap.CURRENT_RING))
+	_legend_row(rooms, _COPY.map_visited, _Swatch.room(Color(0.35, 0.35, 0.4), "", FloorMap.EDGE_WALKED, true))
+
+	box.add_child(_label(_COPY.map_threats_title, 14, LABEL_COLOR))
+	var threats := _legend_grid(box)
+	for k in _COPY.threat_names.size():
+		_legend_row(threats, _COPY.threat_names[k], _Swatch.threat(k))
+	return card
+
+
+func _legend_grid(parent: Control) -> GridContainer:
+	var g := GridContainer.new()
+	g.columns = 2
+	g.add_theme_constant_override(&"h_separation", 14)
+	g.add_theme_constant_override(&"v_separation", 4)
+	parent.add_child(g)
+	return g
+
+
+func _legend_row(grid: GridContainer, text: String, swatch: Control) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override(&"separation", 6)
+	swatch.custom_minimum_size = Vector2(SWATCH_SIZE, SWATCH_SIZE)
+	swatch.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(swatch)
+	row.add_child(_label(text, LEGEND_FONT_SIZE, Color.WHITE))
+	grid.add_child(row)
+	legend_texts.append(text)
+
+
+func _card_panel() -> PanelContainer:
+	var card := PanelContainer.new()
+	card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = CARD_BG
+	sb.border_color = CARD_BORDER
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(6)
+	sb.set_content_margin_all(16)
+	card.add_theme_stylebox_override(&"panel", sb)
 	return card
 
 
@@ -205,3 +279,47 @@ func _label(text: String, font_size: int, color: Color) -> Label:
 	l.add_theme_font_size_override(&"font_size", font_size)
 	l.add_theme_color_override(&"font_color", color)
 	return l
+
+
+## One legend swatch: a room node (fill, letter, optional ring) or a threat icon.
+class _Swatch extends Control:
+	var fill: Color = Color.GRAY
+	var letter: String = ""
+	var ring: Color = Color.TRANSPARENT
+	var dim_pair: bool = false
+	var threat_kind: int = -1
+
+	static func room(f: Color, l: String, r: Color, pair: bool = false) -> _Swatch:
+		var s := _Swatch.new()
+		s.fill = f
+		s.letter = l
+		s.ring = r
+		s.dim_pair = pair
+		return s
+
+	static func threat(k: int) -> _Swatch:
+		var s := _Swatch.new()
+		s.threat_kind = k
+		return s
+
+	func _draw() -> void:
+		var c: Vector2 = size * 0.5
+		var r: float = minf(size.x, size.y) * 0.5 - 1.0
+		if threat_kind >= 0:
+			ThreatIcon.draw_icon(self, threat_kind as ThreatIcon.Kind, c, r, Color(0.7, 0.7, 0.75), false)
+			return
+		if dim_pair:
+			# A bright node joined to a dim one: visited vs. not yet.
+			draw_line(c + Vector2(-r, 0), c + Vector2(r, 0), ring, 2.0, true)
+			draw_circle(c + Vector2(-r * 0.55, 0), r * 0.5, Color(0.85, 0.85, 0.9))
+			draw_circle(c + Vector2(r * 0.55, 0), r * 0.5, Color(0.85, 0.85, 0.9, 0.4))
+			return
+		if ring.a > 0.0:
+			draw_circle(c, r, ring)
+		draw_circle(c, r - (2.5 if ring.a > 0.0 else 0.0), fill)
+		if not letter.is_empty():
+			var font: Font = get_theme_default_font()
+			var fs: int = 12
+			var w: float = font.get_string_size(letter, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			draw_string(font, c + Vector2(-w * 0.5, fs * 0.36), letter, HORIZONTAL_ALIGNMENT_LEFT, -1, fs,
+				FloorMap.GLYPH_COLOR)

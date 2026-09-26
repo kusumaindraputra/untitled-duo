@@ -13,6 +13,8 @@ const TUNING: BulletHellTuning = preload("res://assets/data/bullet_hell_tuning.t
 
 var pattern: BulletPattern = null
 var damage: float = 10.0
+## What the beam is, for the death recap (DeathRecap.cause()).
+var cause: Dictionary = {}
 ## ADR-0019 difficulty curve: multiplies pattern.telegraph_sec (set by the firing enemy).
 var telegraph_mult: float = 1.0
 ## Beam angle (radians). Locked when the telegraph ends.
@@ -107,7 +109,7 @@ func _check_player() -> void:
 		# CONTACT source: dash i-frames and post-hit grace both apply, so the beam
 		# cannot multi-hit through the grace window.
 		HealthAndDamage.apply_damage(
-			_player, damage, GameEnums.DamageClass.NONE, GameEnums.DamageSource.CONTACT)
+			_player, damage, GameEnums.DamageClass.NONE, GameEnums.DamageSource.CONTACT, cause)
 	elif not _grazed and d <= pattern.width + Projectile.graze_radius_of(_player):
 		_grazed = true
 		SpellCastingEffects.register_graze(_player.global_position, 1.0)
