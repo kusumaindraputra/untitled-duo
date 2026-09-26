@@ -1,0 +1,267 @@
+[gd_resource type="Resource" script_class="BossRoster" load_steps=45 format=3]
+
+[ext_resource type="Script" path="res://src/data/boss_roster.gd" id="1_roster"]
+[ext_resource type="Script" path="res://src/data/boss_profile.gd" id="2_profile"]
+[ext_resource type="Script" path="res://src/data/boss_phase_event.gd" id="3_event"]
+[ext_resource type="Script" path="res://src/data/boss_variant.gd" id="4_variant"]
+[ext_resource type="Script" path="res://src/data/hazard_spec.gd" id="5_hazard"]
+[ext_resource type="Script" path="res://src/data/bullet_pattern.gd" id="6_bp"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/turret_burst.tres" id="p_turret_burst"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/sentinel_bulwark_ring.tres" id="p_sentinel_bulwark_ring"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/sentinel_lockdown_laser.tres" id="p_sentinel_lockdown_laser"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/warden_mirror_weave.tres" id="p_warden_mirror_weave"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/warden_hunt_ring.tres" id="p_warden_hunt_ring"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/keeper_gilded_fan.tres" id="p_keeper_gilded_fan"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/keeper_fracture_laser.tres" id="p_keeper_fracture_laser"]
+
+[sub_resource type="Resource" id="H_s_turret_l"]
+script = ExtResource("5_hazard")
+kind = 0
+position = Vector2(-230, 0)
+damage = 8.0
+color = Color(0.55, 0.8, 1, 1)
+pattern = ExtResource("p_turret_burst")
+
+[sub_resource type="Resource" id="H_s_turret_r"]
+script = ExtResource("5_hazard")
+kind = 0
+position = Vector2(230, 0)
+damage = 8.0
+color = Color(0.55, 0.8, 1, 1)
+pattern = ExtResource("p_turret_burst")
+
+[sub_resource type="Resource" id="E_s_1"]
+script = ExtResource("3_event")
+phase = 1
+hazards = Array[ExtResource("5_hazard")]([SubResource("H_s_turret_l"), SubResource("H_s_turret_r")])
+
+[sub_resource type="Resource" id="E_s_2"]
+script = ExtResource("3_event")
+phase = 2
+clear_bullets = true
+
+[sub_resource type="Resource" id="V_bulwark"]
+script = ExtResource("4_variant")
+id = &"bulwark"
+extra_layers = Array[ExtResource("6_bp")]([ExtResource("p_sentinel_bulwark_ring")])
+hp_mult = 1.25
+bullet_speed_mult = 0.9
+tint = Color(0.85, 0.9, 1.1, 1)
+
+[sub_resource type="Resource" id="V_overclocked"]
+script = ExtResource("4_variant")
+id = &"overclocked"
+hp_mult = 0.9
+bullet_speed_mult = 1.12
+fire_rate_mult = 1.25
+move_speed_mult = 1.25
+tint = Color(1.2, 0.8, 0.75, 1)
+
+[sub_resource type="Resource" id="V_lockdown"]
+script = ExtResource("4_variant")
+id = &"lockdown"
+extra_layers = Array[ExtResource("6_bp")]([ExtResource("p_sentinel_lockdown_laser")])
+tint = Color(0.8, 1.1, 1.15, 1)
+
+[sub_resource type="Resource" id="B_sentinel"]
+script = ExtResource("2_profile")
+boss_type_id = 5
+events = Array[ExtResource("3_event")]([SubResource("E_s_1"), SubResource("E_s_2")])
+banner_copy_key = &"sentinel_phase_banners"
+banner_color = Color(0.55, 0.85, 1, 1)
+phase_trauma = 0.4
+variants = Array[ExtResource("4_variant")]([SubResource("V_bulwark"), SubResource("V_overclocked"), SubResource("V_lockdown")])
+
+[sub_resource type="Resource" id="H_w_vent1"]
+script = ExtResource("5_hazard")
+kind = 2
+position = Vector2(-170, -50)
+damage = 7.0
+color = Color(0.4, 1, 0.8, 1)
+zone_radius = 58.0
+off_sec = 2.0
+telegraph_sec = 0.9
+on_sec = 1.2
+phase_offset = 0.0
+
+[sub_resource type="Resource" id="H_w_vent2"]
+script = ExtResource("5_hazard")
+kind = 2
+position = Vector2(170, 50)
+damage = 7.0
+color = Color(0.4, 1, 0.8, 1)
+zone_radius = 58.0
+off_sec = 2.0
+telegraph_sec = 0.9
+on_sec = 1.2
+phase_offset = 1.05
+
+[sub_resource type="Resource" id="H_w_vent3"]
+script = ExtResource("5_hazard")
+kind = 2
+position = Vector2(0, 90)
+damage = 7.0
+color = Color(0.4, 1, 0.8, 1)
+zone_radius = 58.0
+off_sec = 2.0
+telegraph_sec = 0.9
+on_sec = 1.2
+phase_offset = 2.1
+
+[sub_resource type="Resource" id="E_w_1"]
+script = ExtResource("3_event")
+phase = 1
+hazards = Array[ExtResource("5_hazard")]([SubResource("H_w_vent1"), SubResource("H_w_vent2"), SubResource("H_w_vent3")])
+
+[sub_resource type="Resource" id="E_w_3"]
+script = ExtResource("3_event")
+phase = 3
+clear_bullets = true
+
+[sub_resource type="Resource" id="H_w_pylon"]
+script = ExtResource("5_hazard")
+kind = 1
+damage = 8.0
+color = Color(0.9, 0.5, 1, 1)
+arm_count = 2
+arm_length = 340.0
+rotation_deg_per_sec = -26.0
+arm_inner_radius = 40.0
+beam_width = 5.0
+warmup_sec = 1.5
+
+[sub_resource type="Resource" id="E_w_unstable"]
+script = ExtResource("3_event")
+phase = 2
+hazards = Array[ExtResource("5_hazard")]([SubResource("H_w_pylon")])
+
+[sub_resource type="Resource" id="V_mirrored"]
+script = ExtResource("4_variant")
+id = &"mirrored"
+extra_layers = Array[ExtResource("6_bp")]([ExtResource("p_warden_mirror_weave")])
+hp_mult = 0.95
+tint = Color(1.1, 0.85, 1.15, 1)
+
+[sub_resource type="Resource" id="V_hunting"]
+script = ExtResource("4_variant")
+id = &"hunting"
+extra_layers = Array[ExtResource("6_bp")]([ExtResource("p_warden_hunt_ring")])
+move_speed_mult = 1.2
+tint = Color(1.15, 1, 0.8, 1)
+
+[sub_resource type="Resource" id="V_unstable"]
+script = ExtResource("4_variant")
+id = &"unstable"
+extra_events = Array[ExtResource("3_event")]([SubResource("E_w_unstable")])
+hp_mult = 0.9
+fire_rate_mult = 1.1
+tint = Color(0.9, 0.8, 1.2, 1)
+
+[sub_resource type="Resource" id="B_warden"]
+script = ExtResource("2_profile")
+boss_type_id = 3
+events = Array[ExtResource("3_event")]([SubResource("E_w_1"), SubResource("E_w_3")])
+banner_copy_key = &"warden_phase_banners"
+banner_color = Color(0.45, 1, 0.85, 1)
+phase_trauma = 0.45
+variants = Array[ExtResource("4_variant")]([SubResource("V_mirrored"), SubResource("V_hunting"), SubResource("V_unstable")])
+
+[sub_resource type="Resource" id="H_k_sweep"]
+script = ExtResource("5_hazard")
+kind = 1
+damage = 10.0
+color = Color(0.75, 0.5, 1, 1)
+arm_count = 2
+arm_length = 380.0
+rotation_deg_per_sec = 30.0
+arm_inner_radius = 60.0
+beam_width = 5.0
+warmup_sec = 1.5
+
+[sub_resource type="Resource" id="H_k_ring"]
+script = ExtResource("5_hazard")
+kind = 3
+damage = 6.0
+color = Color(0.7, 0.4, 1, 1)
+ring_delay_sec = 1.0
+ring_close_sec = 16.0
+ring_start_scale = 0.95
+ring_min_scale = 0.5
+
+[sub_resource type="Resource" id="E_k_1"]
+script = ExtResource("3_event")
+phase = 1
+hazards = Array[ExtResource("5_hazard")]([SubResource("H_k_sweep")])
+
+[sub_resource type="Resource" id="E_k_2"]
+script = ExtResource("3_event")
+phase = 2
+hazards = Array[ExtResource("5_hazard")]([SubResource("H_k_ring")])
+
+[sub_resource type="Resource" id="E_k_3"]
+script = ExtResource("3_event")
+phase = 3
+clear_bullets = true
+
+[sub_resource type="Resource" id="H_k_vent1"]
+script = ExtResource("5_hazard")
+kind = 2
+position = Vector2(-150, 40)
+damage = 8.0
+color = Color(1, 0.8, 0.35, 1)
+zone_radius = 54.0
+off_sec = 1.6
+telegraph_sec = 0.8
+on_sec = 1.0
+phase_offset = 0.0
+
+[sub_resource type="Resource" id="H_k_vent2"]
+script = ExtResource("5_hazard")
+kind = 2
+position = Vector2(150, -40)
+damage = 8.0
+color = Color(1, 0.8, 0.35, 1)
+zone_radius = 54.0
+off_sec = 1.6
+telegraph_sec = 0.8
+on_sec = 1.0
+phase_offset = 1.3
+
+[sub_resource type="Resource" id="E_k_tempest"]
+script = ExtResource("3_event")
+phase = 3
+hazards = Array[ExtResource("5_hazard")]([SubResource("H_k_vent1"), SubResource("H_k_vent2")])
+
+[sub_resource type="Resource" id="V_gilded"]
+script = ExtResource("4_variant")
+id = &"gilded"
+extra_layers = Array[ExtResource("6_bp")]([ExtResource("p_keeper_gilded_fan")])
+hp_mult = 1.15
+tint = Color(1.15, 1.05, 0.8, 1)
+
+[sub_resource type="Resource" id="V_fractured"]
+script = ExtResource("4_variant")
+id = &"fractured"
+extra_layers = Array[ExtResource("6_bp")]([ExtResource("p_keeper_fracture_laser")])
+tint = Color(1.05, 0.85, 1.2, 1)
+
+[sub_resource type="Resource" id="V_tempest"]
+script = ExtResource("4_variant")
+id = &"tempest"
+extra_events = Array[ExtResource("3_event")]([SubResource("E_k_tempest")])
+bullet_speed_mult = 1.1
+fire_rate_mult = 1.15
+tint = Color(0.85, 1, 1.2, 1)
+
+[sub_resource type="Resource" id="B_keeper"]
+script = ExtResource("2_profile")
+boss_type_id = 11
+events = Array[ExtResource("3_event")]([SubResource("E_k_1"), SubResource("E_k_2"), SubResource("E_k_3")])
+banner_copy_key = &"keeper_phase_banners"
+banner_color = Color(0.85, 0.65, 1, 1)
+phase_trauma = 0.5
+variants = Array[ExtResource("4_variant")]([SubResource("V_gilded"), SubResource("V_fractured"), SubResource("V_tempest")])
+
+[resource]
+script = ExtResource("1_roster")
+profiles = Array[ExtResource("2_profile")]([SubResource("B_sentinel"), SubResource("B_warden"), SubResource("B_keeper")])

@@ -1,11 +1,12 @@
-[gd_resource type="Resource" script_class="EnemyType" load_steps=8 format=3]
+[gd_resource type="Resource" script_class="EnemyType" load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://src/data/enemy_type.gd" id="1_enemy_type"]
 [ext_resource type="PackedScene" path="res://src/gameplay/EnemyInstance.tscn" id="2_scene"]
 [ext_resource type="Script" path="res://src/data/bullet_pattern.gd" id="3_bp"]
-[ext_resource type="Resource" path="res://assets/data/bullet_patterns/boss_phase2_spiral.tres" id="p_boss_phase2_spiral"]
-[ext_resource type="Resource" path="res://assets/data/bullet_patterns/boss_phase3_mortar.tres" id="p_boss_phase3_mortar"]
-[ext_resource type="Resource" path="res://assets/data/bullet_patterns/boss_phase3_wall.tres" id="p_boss_phase3_wall"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/warden_weave.tres" id="p_warden_weave"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/warden_homing.tres" id="p_warden_homing"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/warden_mortar.tres" id="p_warden_mortar"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/warden_collapse.tres" id="p_warden_collapse"]
 [ext_resource type="Texture2D" path="res://assets/art/characters/warped_warden.png" id="sprite_sheet"]
 
 [resource]
@@ -22,6 +23,6 @@ debug_color = Color(0.1, 0.7, 0.65, 1)
 status = 1
 scene = ExtResource("2_scene")
 base_scale = 2.0
-pattern_layers = Array[ExtResource("3_bp")]([ExtResource("p_boss_phase2_spiral"), ExtResource("p_boss_phase3_mortar"), ExtResource("p_boss_phase3_wall")])
+pattern_layers = Array[ExtResource("3_bp")]([ExtResource("p_warden_weave"), ExtResource("p_warden_homing"), ExtResource("p_warden_mortar"), ExtResource("p_warden_collapse")])
 sprite_sheet = ExtResource("sprite_sheet")
 sprite_pixel_scale = 2.0

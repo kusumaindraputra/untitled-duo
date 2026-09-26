@@ -3,9 +3,9 @@
 [ext_resource type="Script" path="res://src/data/enemy_type.gd" id="1_enemy_type"]
 [ext_resource type="PackedScene" path="res://src/gameplay/EnemyInstance.tscn" id="2_scene"]
 [ext_resource type="Script" path="res://src/data/bullet_pattern.gd" id="3_bp"]
-[ext_resource type="Resource" path="res://assets/data/bullet_patterns/boss_phase2_spiral.tres" id="p_boss_phase2_spiral"]
-[ext_resource type="Resource" path="res://assets/data/bullet_patterns/boss_phase3_mortar.tres" id="p_boss_phase3_mortar"]
-[ext_resource type="Resource" path="res://assets/data/bullet_patterns/boss_phase3_wall.tres" id="p_boss_phase3_wall"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/sentinel_fan.tres" id="p_sentinel_fan"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/sentinel_ring.tres" id="p_sentinel_ring"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/sentinel_cross.tres" id="p_sentinel_cross"]
 [ext_resource type="Texture2D" path="res://assets/art/characters/vault_sentinel.png" id="sprite_sheet"]
 
 [resource]
@@ -24,6 +24,6 @@ debug_color = Color(0.4, 0.0, 0.8, 1)
 status = 1
 scene = ExtResource("2_scene")
 base_scale = 2.5
-pattern_layers = Array[ExtResource("3_bp")]([ExtResource("p_boss_phase2_spiral"), ExtResource("p_boss_phase3_mortar"), ExtResource("p_boss_phase3_wall")])
+pattern_layers = Array[ExtResource("3_bp")]([ExtResource("p_sentinel_fan"), ExtResource("p_sentinel_ring"), ExtResource("p_sentinel_cross")])
 sprite_sheet = ExtResource("sprite_sheet")
 sprite_pixel_scale = 2.0

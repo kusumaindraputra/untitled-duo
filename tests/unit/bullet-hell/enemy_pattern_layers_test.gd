@@ -178,6 +178,8 @@ func test_real_catalog_attackers_ship_with_pattern_layers() -> void:
 	for id: int in [4, 6, 7, 8, 9]:  # Rifter, Spinner, Sniper, Mortar, Weaver
 		assert_int(catalog.get_type(id).pattern_layers.size()).is_greater(0)
 	assert_object(catalog.get_type(10).death_pattern).is_not_null()  # Splitter
-	for boss_id: int in [3, 5]:
-		assert_int(catalog.get_type(boss_id).pattern_layers.size()).is_equal(3)
+	# ADR-0028 — each floor boss has its own layers: Sentinel 3, Warden 4, Keeper 5.
+	assert_int(catalog.get_type(5).pattern_layers.size()).is_equal(3)
+	assert_int(catalog.get_type(3).pattern_layers.size()).is_equal(4)
+	assert_int(catalog.get_type(11).pattern_layers.size()).is_equal(5)
 	catalog.free()

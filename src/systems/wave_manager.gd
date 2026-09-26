@@ -93,6 +93,10 @@ const PACE_TUNING: PaceTuning = preload("res://assets/data/pace_tuning.tres")
 ## If null, falls back to enemy_pool_config. Set by debug_game_loop in _ready().
 @export var boss_pool_config: EnemyPoolConfig = null
 
+## ADR-0028 — this run's boss variants, { boss type id: BossVariant }, from
+## BossRoster.pick_all(). Set by debug_game_loop once per run. Empty = no variants.
+var boss_variants: Dictionary = {}
+
 ## Current room type from DungeonGraph (COMBAT=0, ELITE=1, REST=2, BOSS=3).
 ## REST rooms skip enemy spawn and emit wave_cleared immediately.
 ## BOSS rooms use boss_pool_config if set.
@@ -537,6 +541,9 @@ func _spawn_entries(entries: Array, reinforcement: bool) -> int:
 		var elite: bool = bool(entry.get("elite", false))
 		var enemy: EnemyInstance = enemy_scene.instantiate() as EnemyInstance
 		var hp_mult: float = BULLET_HELL_TUNING.elite_hp_mult if elite else 1.0
+		var variant: BossVariant = boss_variants.get(int(entry["type_id"])) as BossVariant
+		if variant != null:
+			hp_mult *= variant.hp_mult
 		HealthAndDamage.register_enemy(enemy, entry["type_id"], hp_mult)  # ADR-0014: BEFORE add_child
 		add_child(enemy)
 		enemy.global_position = final_pos
@@ -549,6 +556,8 @@ func _spawn_entries(entries: Array, reinforcement: bool) -> int:
 			enemy.make_elite(BULLET_HELL_TUNING)
 		var cfg: EnemyPoolConfig = _get_pool_config()
 		enemy.apply_difficulty(cfg.bullet_speed_mult, cfg.fire_rate_mult, cfg.telegraph_mult)
+		if variant != null:
+			enemy.apply_boss_variant(variant)
 		if enemy.is_boss():
 			boss_spawned.emit(enemy)
 		# Spawn VFX: pop-in scale tween (0→final_scale, BACK ease for slight overshoot).

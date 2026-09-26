@@ -1,8 +1,11 @@
 # Final Boss: The Cipher Keeper
 
-> **Status**: Implemented (ADR-0026) · **Code**: `src/systems/final_boss_director.gd` ·
+> **Status**: Implemented (ADR-0026, ADR-0028) · **Code**: `src/systems/boss_director.gd` ·
 > **Data**: `assets/data/enemy_types/enemy_cipher_keeper.tres`,
-> `assets/data/final_boss/final_boss_config.tres`, `assets/data/bullet_patterns/keeper_*.tres`
+> `assets/data/bosses/boss_roster.tres` (Keeper profile), `assets/data/bullet_patterns/keeper_*.tres`
+>
+> Since ADR-0028 every floor boss is run by `BossDirector`, and the Keeper plays one of
+> three per-run variants (Gilded, Fractured, Tempest). See `floor-bosses.md`.
 
 ## Overview
 
@@ -48,7 +51,7 @@ EnemyInstance (pattern layers, `phase_changed`, `get_type_id`) · WaveManager
 ## Tuning Knobs
 
 HP (`base_hp` 900), each `keeper_*.tres` pattern, which phase gets which hazard and
-the hazard specs in `final_boss_config.tres`, `phase_trauma`, banner text in UICopy.
+the hazard specs in the Keeper profile of `boss_roster.tres`, `phase_trauma`, banner text in UICopy.
 
 ## Acceptance Criteria
 

@@ -889,8 +889,7 @@ func _on_boss_spawned(boss: Node) -> void:
 	_boss_bar.value = max_hp
 	_boss_bar.visible = true
 
-	var raw_name: String = boss.get_display_name() if boss.has_method(&"get_display_name") else "BOSS"
-	_boss_name_label.text = _humanize_name(raw_name)
+	_boss_name_label.text = boss_title(boss)
 	_boss_name_label.visible = true
 	# ADR-0018 — boss gains pattern layers per HP phase; call each one out.
 	if boss.has_signal(&"phase_changed") and not boss.is_connected(&"phase_changed", _on_boss_phase_changed):
@@ -910,13 +909,24 @@ func _on_boss_spawned(boss: Node) -> void:
 		player_controller.boss_reveal_zoom()
 
 
+## Boss name for the name card, with this run's variant title when it has one
+## (ADR-0028): "Vault Sentinel · Overclocked".
+func boss_title(boss: Node) -> String:
+	var raw_name: String = boss.get_display_name() if boss.has_method(&"get_display_name") else "BOSS"
+	var title: String = _humanize_name(raw_name)
+	var variant: BossVariant = boss.get_boss_variant() as BossVariant \
+		if boss.has_method(&"get_boss_variant") else null
+	if variant != null and _COPY.boss_variant_titles.has(String(variant.id)):
+		title = _COPY.boss_variant_format % [title, String(_COPY.boss_variant_titles[String(variant.id)]).to_upper()]
+	return title
+
+
 ## ADR-0018 — flashes "NAME — PHASE n" when the boss switches on a new pattern layer.
 ## [param phase] counts HP-gated layers (1 = first phase-up), so it reads as phase n+1.
 func _on_boss_phase_changed(phase: int) -> void:
 	if not is_instance_valid(_boss_ref) or not is_instance_valid(_boss_name_label):
 		return
-	var raw_name: String = _boss_ref.get_display_name() if _boss_ref.has_method(&"get_display_name") else "BOSS"
-	_boss_name_label.text = "%s — %s %d" % [_humanize_name(raw_name), _COPY.boss_phase_label, phase + 1]
+	_boss_name_label.text = "%s — %s %d" % [boss_title(_boss_ref), _COPY.boss_phase_label, phase + 1]
 	if _boss_intro_tween:
 		_boss_intro_tween.kill()
 	_boss_name_label.modulate = Color(1.6, 0.6, 0.6, 1.0)
