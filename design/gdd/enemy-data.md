@@ -80,8 +80,8 @@ Players do not engage with Enemy Data as a system. They engage with enemy types 
 | 1 | **Charger** | Rusher | Ice (Deepfrost) | 90 | 30.0 | 50 px/s (base) | Deepfrost (ID 3) | *0.40* | 2 | 12×20 px | active |
 | 2 | **Cluster** | Swarmer | Lightning (Stormgold) | 30 | 10.0 | 70 px/s | Stormgold (ID 2) | *0.60* | 1 | 24×24 px | active |
 | 4 | **Rifter** | Shooter | Nature (Verdant) | 32 | 12.0 | 35 px/s | Verdant (ID 4) | *0.40* | 2 | 14×14 px | active |
-| 3 | **Warped Warden** | Boss | null | 500 | 25.0 | 40 px/s | null | null | null | 48×48 px | vs_scope |
-| 5 | **Vault Sentinel** | Boss | null | 250 | 25.0 | 65 px/s | null | null | null | 48×48 px | vs_scope |
+| 3 | **Warped Warden** | Boss | null | 500 | 25.0 | 40 px/s | null | null | null | 96×96 px | vs_scope |
+| 5 | **Vault Sentinel** | Boss | null | 250 | 25.0 | 65 px/s | null | null | null | 96×96 px | vs_scope |
 | 6 | **Spinner** | Shooter | Fire (Ashfire) | 44 | 10.0 | 30 px/s | Ashfire (ID 0) | *0.40* | 2 | 16×16 px | active |
 | 7 | **Sniper** | Shooter | Ice (Deepfrost) | 28 | 14.0 | 40 px/s | Deepfrost (ID 3) | *0.40* | 2 | 16×16 px | active |
 | 8 | **Mortar** | Shooter | Shadow (Voidblue) | 40 | 14.0 | 25 px/s | Voidblue (ID 1) | *0.40* | 2 | 16×16 px | active |
@@ -298,7 +298,7 @@ Enemy Data is not directly rendered. UI requirements belong to consuming systems
 
 ### Sprite Size
 
-**AC-ED-14** — Each entry's `sprite_size` matches the art bible values: Drifter = 16×16, Charger = 12×20, Cluster = 24×24, Rifter = 14×14, Warped Warden = 48×48, Vault Sentinel = 48×48. Unit test verifies all.
+**AC-ED-14** — Each entry's `sprite_size` matches the art bible values: Drifter = 16×16, Charger = 12×20, Cluster = 24×24, Rifter = 14×14, Warped Warden = 96×96, Vault Sentinel = 96×96 (native resolution since ADR-0034). Unit test verifies all.
 
 ### Consumer Interface Contracts
 
