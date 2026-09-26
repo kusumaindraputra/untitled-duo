@@ -118,7 +118,7 @@ var _pause_layer: CanvasLayer = null
 var _rooms_entered: int = 1
 ## U5 run summary log: room ranks, sigil titles, floors cleared, memories at run start.
 var _run_ranks: Array[String] = []
-var _run_sigil_titles: Array[String] = []
+var _run_sigils: Array[Dictionary] = []
 var _floors_cleared: int = 0
 var _fragments_at_start: int = 0
 
@@ -567,7 +567,7 @@ func _toggle_pause() -> void:
 		GameStateManager.pause_game()
 
 
-## Builds the pause overlay in response to GameStateManager.game_paused.
+## Builds the pause overlay (PausePanel, U6) in response to GameStateManager.game_paused.
 ## PROCESS_MODE_ALWAYS keeps the buttons interactive while the tree is paused.
 func _on_game_paused() -> void:
 	if _pause_layer != null:
@@ -575,86 +575,35 @@ func _on_game_paused() -> void:
 	_pause_layer = CanvasLayer.new()
 	_pause_layer.layer = 28
 	_pause_layer.process_mode = Node.PROCESS_MODE_ALWAYS
-
-	var bg := ColorRect.new()
-	bg.color = Color(0.04, 0.03, 0.06, 0.85)
-	bg.anchor_right = 1.0
-	bg.anchor_bottom = 1.0
-	_pause_layer.add_child(bg)
-
-	var vbox := VBoxContainer.new()
-	vbox.anchor_right = 1.0
-	vbox.anchor_bottom = 1.0
-	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	vbox.add_theme_constant_override(&"separation", 18)
-	_pause_layer.add_child(vbox)
-
-	var title := Label.new()
-	title.text = "PAUSED"
-	title.add_theme_font_size_override(&"font_size", 56)
-	title.add_theme_color_override(&"font_color", Color(1.0, 0.85, 0.3))
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(title)
-
-	vbox.add_child(_make_spacer(8))
-
-	var resume := Button.new()
-	resume.text = "Resume  (Esc)"
-	resume.custom_minimum_size = Vector2(240, 52)
-	resume.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	resume.add_theme_font_size_override(&"font_size", 22)
-	resume.pressed.connect(GameStateManager.resume_game)
-	vbox.add_child(resume)
-
-	var restart := Button.new()
-	restart.text = "Restart Run  (R)"
-	restart.custom_minimum_size = Vector2(240, 52)
-	restart.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	restart.add_theme_font_size_override(&"font_size", 22)
-	restart.pressed.connect(_restart_from_pause)
-	vbox.add_child(restart)
-
+	var panel := PausePanel.new()
+	_pause_layer.add_child(panel)
+	panel.setup(_build_pause_data())
+	panel.resume_pressed.connect(GameStateManager.resume_game)
+	panel.restart_pressed.connect(_restart_from_pause)
+	panel.tutorial_pressed.connect(_replay_tutorial)
+	panel.main_menu_pressed.connect(_to_main_menu)
+	panel.quit_pressed.connect(_quit_game)
 	# ADR-0026: volume, display, comfort and keys live in the Settings panel.
-	var settings := Button.new()
-	settings.text = _COPY.settings_button.capitalize()
-	settings.custom_minimum_size = Vector2(240, 52)
-	settings.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	settings.add_theme_font_size_override(&"font_size", 22)
-	settings.pressed.connect(func() -> void:
-		vbox.visible = false
-		var panel := SettingsPanel.new()
-		panel.closed.connect(func() -> void:
-			vbox.visible = true
-			settings.grab_focus())
-		_pause_layer.add_child(panel))
-	vbox.add_child(settings)
-
-	var replay := Button.new()
-	replay.text = _COPY.coach_replay_button
-	replay.custom_minimum_size = Vector2(240, 52)
-	replay.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	replay.add_theme_font_size_override(&"font_size", 22)
-	replay.pressed.connect(_replay_tutorial)
-	vbox.add_child(replay)
-
-	var to_menu := Button.new()
-	to_menu.text = "Main Menu"
-	to_menu.custom_minimum_size = Vector2(240, 52)
-	to_menu.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	to_menu.add_theme_font_size_override(&"font_size", 22)
-	to_menu.pressed.connect(_to_main_menu)
-	vbox.add_child(to_menu)
-
-	var quit := Button.new()
-	quit.text = "Quit Game"
-	quit.custom_minimum_size = Vector2(240, 52)
-	quit.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	quit.add_theme_font_size_override(&"font_size", 22)
-	quit.pressed.connect(_quit_game)
-	vbox.add_child(quit)
-
+	panel.settings_pressed.connect(func() -> void:
+		panel.menu_box.visible = false
+		var settings := SettingsPanel.new()
+		settings.closed.connect(func() -> void:
+			panel.menu_box.visible = true
+			panel.settings_button.grab_focus())
+		_pause_layer.add_child(settings))
 	add_child(_pause_layer)
-	resume.grab_focus()
+	panel.resume_button.grab_focus()
+
+
+## Data for the pause build view: the live grid, its spell card and the sigils taken.
+func _build_pause_data() -> Dictionary:
+	var data: Dictionary = {"sigils": _run_sigils, "abbrevs": _COPY.type_abbrevs}
+	var grid: PranaGrid = get_tree().get_first_node_in_group(&"prana_grid") as PranaGrid
+	if grid != null:
+		data["grid"] = grid.get_slot_types()
+		data["spell_card"] = grid.build_spell_card()
+		data["colors"] = grid.get_type_colors()
+	return data
 
 
 ## Frees the pause overlay in response to GameStateManager.game_resumed.
@@ -912,7 +861,7 @@ func _build_summary_data(win: bool, run_data: Dictionary, shards: int, hard_unlo
 		"bosses": _floors_cleared + (1 if win else 0),
 		"ranks": _run_ranks,
 		"shards": shards,
-		"sigils": _run_sigil_titles,
+		"sigils": _run_sigils.map(func(x: Dictionary) -> String: return str(x["title"])),
 		"memories_new": maxi(found - _fragments_at_start, 0),
 		"memories_found": found,
 		"memories_total": StoryRules.total(),
@@ -931,7 +880,7 @@ func _log_sigil(sigil_id: StringName) -> void:
 		return
 	for sigil: Dictionary in _sigil_manager.get_catalog():
 		if sigil.get("id", &"") == sigil_id:
-			_run_sigil_titles.append(str(sigil.get("title", sigil_id)))
+			_run_sigils.append({"title": str(sigil.get("title", sigil_id)), "desc": str(sigil.get("desc", ""))})
 			return
 
 

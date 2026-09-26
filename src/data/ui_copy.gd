@@ -387,3 +387,19 @@ extends Resource
 ## Buttons.
 @export var summary_run_again: String = "Run Again  (R)"
 @export var summary_main_menu: String = "Main Menu"
+
+@export_group("Pause (build view)")
+
+## Pause overlay title and buttons.
+@export var pause_title: String = "PAUSED"
+@export var pause_resume: String = "Resume  (Esc)"
+@export var pause_restart: String = "Restart Run  (R)"
+@export var pause_main_menu: String = "Main Menu"
+@export var pause_quit: String = "Quit Game"
+## Build card: heading, sigil heading, and text when no sigil was taken yet.
+@export var pause_build_title: String = "YOUR BUILD"
+@export var pause_sigils_title: String = "SIGILS"
+@export var pause_no_sigils: String = "No sigils yet. Clear a room to earn one."
+## One sigil line: title, stack suffix, description. %s stack suffix is empty for one stack.
+@export var pause_sigil_format: String = "%s%s — %s"
+@export var pause_sigil_stack_format: String = " ×%d"

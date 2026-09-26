@@ -759,6 +759,16 @@ func build_spell_card() -> Dictionary:
 	return SpellPreview.build(summary, reactions, cascade, names, _COPY)
 
 
+## The current 9 slots as type ids (null = empty), copied. Read by the pause build view (U6).
+func get_slot_types() -> Array:
+	return _slots.duplicate()
+
+
+## Element colours in type_id order, for views outside the grid (pause build view, U6).
+func get_type_colors() -> Array:
+	return _type_colors()
+
+
 ## Element colours in type_id order (Art Bible palette via PranaTypeToken).
 func _type_colors() -> Array:
 	var colors: Array = []
