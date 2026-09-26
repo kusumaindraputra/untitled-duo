@@ -22,6 +22,9 @@ var _key_buttons: Dictionary[StringName, Button] = {}
 var _listening_action: StringName = &""
 var _resolution: OptionButton = null
 var _shake_value: Label = null
+var _text_size: OptionButton = null
+## The centred content, shrunk to fit the window at large text sizes (ADR-0032).
+var _root: VBoxContainer = null
 var _back: Button = null
 ## Assist option controls, greyed out while the Assist switch is off.
 var _assist_controls: Array[Control] = []
@@ -39,6 +42,19 @@ func _ready() -> void:
 		if child is CanvasItem:
 			UIFeel.fade_in(child as CanvasItem)
 	_back.grab_focus()
+	_fit_later()
+	_root.minimum_size_changed.connect(_fit_later)
+	get_viewport().size_changed.connect(_fit_later)
+
+
+## Re-centres the content after it changes size (text size), shrinking it to fit.
+func _fit_later() -> void:
+	_fit.call_deferred()
+
+
+func _fit() -> void:
+	if is_instance_valid(_root):
+		UIFeel.fit_to_viewport(_root)
 
 
 func _build() -> void:
@@ -49,11 +65,10 @@ func _build() -> void:
 	add_child(bg)
 
 	var root := VBoxContainer.new()
-	root.anchor_right = 1.0
-	root.anchor_bottom = 1.0
 	root.alignment = BoxContainer.ALIGNMENT_CENTER
 	root.add_theme_constant_override(&"separation", 14)
 	add_child(root)
+	_root = root
 
 	var title := _label(_COPY.settings_title, 40, Color(1.0, 0.85, 0.3))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -101,6 +116,18 @@ func _build() -> void:
 	var mo := _check(left, _COPY.settings_reduce_motion, settings.reduce_motion)
 	mo.toggled.connect(func(on: bool) -> void:
 		settings.reduce_motion = on
+		_save())
+	# ADR-0032: text size for every screen, and outlined bullets.
+	_text_size = OptionButton.new()
+	for f: float in GameSettings.TEXT_SCALES:
+		_text_size.add_item("%d%%" % roundi(f * 100.0))
+	_text_size.select(clampi(settings.text_scale_idx, 0, GameSettings.TEXT_SCALES.size() - 1))
+	_text_size.item_selected.connect(_on_text_size_selected)
+	left.add_child(_row(_COPY.settings_text_size, _text_size))
+	var bo := _check(left, _COPY.settings_bullet_outline, settings.bullet_outline)
+	bo.name = "BulletOutline"
+	bo.toggled.connect(func(on: bool) -> void:
+		settings.bullet_outline = on
 		_save())
 
 	var middle := _column(columns)
@@ -219,6 +246,14 @@ func _on_fullscreen_toggled(on: bool) -> void:
 func _on_resolution_selected(idx: int) -> void:
 	settings.resolution_idx = idx
 	_apply_and_save()
+
+
+## Saves the text size and rescales every open screen, this one included.
+func _on_text_size_selected(idx: int) -> void:
+	settings.text_scale_idx = idx
+	_save()
+	if is_inside_tree():
+		UIFeel.apply_text_scale_tree(get_tree().root, settings.text_scale_value())
 
 
 func _on_shake_changed(v: float) -> void:

@@ -33,6 +33,10 @@ var _records_label: Label = null
 var _controls_label: Label = null
 var _hard_toggle: CheckButton = null
 var _hard_locked_label: Label = null
+## The left column, centred vertically and shrunk to fit at large text sizes (ADR-0032).
+var _column: VBoxContainer = null
+## Space kept free under the column for the controls line, px.
+const CONTROLS_RESERVE: float = 30.0
 
 
 func _ready() -> void:
@@ -42,7 +46,15 @@ func _ready() -> void:
 	progress = MetaProgress.load_from(progress_path)
 	GameSettings.active().apply_display_once()
 	_build_ui()
+	_fit_column.call_deferred()
+	_column.minimum_size_changed.connect(func() -> void: _fit_column.call_deferred())
+	get_viewport().size_changed.connect(func() -> void: _fit_column.call_deferred())
 	UIFeel.fade_in(self, 0.35)
+
+
+func _fit_column() -> void:
+	if is_instance_valid(_column):
+		UIFeel.fit_to_viewport(_column, 8.0, COLUMN_LEFT, CONTROLS_RESERVE)
 
 
 ## Builds the menu (U7): the vault backdrop with Fayde on the right; on the left the
@@ -54,12 +66,10 @@ func _build_ui() -> void:
 	add_child(backdrop)
 
 	var column := VBoxContainer.new()
-	column.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
-	column.offset_left = COLUMN_LEFT
 	column.custom_minimum_size = Vector2(COLUMN_WIDTH, 0)
-	column.alignment = BoxContainer.ALIGNMENT_CENTER
 	column.add_theme_constant_override(&"separation", 8)
 	add_child(column)
+	_column = column
 
 	var title := _make_label(_COPY.menu_title, 50, Color(1.0, 0.85, 0.3))
 	column.add_child(title)
