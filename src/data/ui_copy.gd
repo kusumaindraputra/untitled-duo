@@ -395,6 +395,8 @@ extends Resource
 ## Buttons.
 @export var summary_run_again: String = "Run Again  (R)"
 @export var summary_main_menu: String = "Main Menu"
+## Shown under the title when the run used any Assist option (F2).
+@export var summary_assist_note: String = "Assist on"
 
 @export_group("Pause (build view)")
 
@@ -442,3 +444,73 @@ extends Resource
 ## Last How-to-Fight step: keyboard (%s = cast key) and pad.
 @export var coach_confirm_step_kb: String = "4.  Press ENTER to confirm, then %s to cast in battle."
 @export var coach_confirm_step_pad: String = "4.  Press Y to confirm, then A to cast in battle."
+
+@export_group("Spellbook (F1)")
+
+## Menu / pause button (%d found, %d total) and the panel heading.
+@export var spellbook_button_format: String = "SPELLBOOK  %d/%d"
+@export var spellbook_title: String = "SPELLBOOK"
+## Section tabs, in order: spells, reactions, sigils, enemies.
+@export var spellbook_sections: Array[String] = ["Spells", "Reactions", "Sigils", "Enemies"]
+## Locked entry title and body.
+@export var spellbook_locked: String = "? ? ?"
+@export var spellbook_locked_spell: String = "Put this Prana in the centre of your grid and fight to learn its spell."
+@export var spellbook_locked_reaction: String = "Place two Prana next to each other to find this reaction."
+@export var spellbook_locked_sigil: String = "Take this sigil after a room to learn it."
+@export var spellbook_locked_enemy: String = "Defeat this enemy to learn it."
+## Detail lines.
+@export var spellbook_spell_core: String = "As your core"
+@export var spellbook_spell_modifier: String = "Beside your core"
+@export var spellbook_reaction_pair_format: String = "%s + %s"
+@export var spellbook_enemy_hp_format: String = "HP %d"
+@export var spellbook_tabs_hint: String = "Q / E  switch section"
+@export var spellbook_tabs_hint_pad: String = "LB / RB  switch section"
+@export var spellbook_back: String = "Back  (Esc)"
+@export var spellbook_back_pad: String = "Back  (B)"
+## Enemy kinds by GameEnums.EnemyArchetype (Seeker, Rusher, Swarmer, Boss, Shooter).
+@export var spellbook_archetypes: Array[String] = ["Seeker", "Rusher", "Swarmer", "Boss", "Shooter"]
+## One line per enemy type id: how it fights.
+@export var spellbook_enemy_notes: Dictionary = {
+	0: "Drifts toward you and fires slow spreads.",
+	1: "Lines up, winds up, then charges in a straight line.",
+	2: "Comes in groups and swarms your position.",
+	3: "Floor 2 boss. Warps the arena between bullet waves.",
+	4: "Opens rifts that fire when you stand in line.",
+	5: "Floor 1 boss. Guards the vault with sweeping walls of bullets.",
+	6: "Spins in place, spraying a turning spiral.",
+	7: "Aims a laser, then fires along it. Step out of the line.",
+	8: "Lobs shells that land where you stood.",
+	9: "Weaves between others and fires crossing lines.",
+	10: "Splits into smaller copies when it dies.",
+	11: "Floor 3 boss. The keeper of the last cipher.",
+}
+
+@export_group("Assist (F2)")
+
+## Settings section heading and rows.
+@export var settings_assist_heading: String = "Assist"
+@export var settings_assist_enabled: String = "Assist on"
+@export var settings_assist_damage: String = "Damage taken"
+@export var settings_assist_speed: String = "Game speed"
+@export var settings_assist_auto_dash: String = "Auto-dash out of bullets"
+@export var settings_assist_note: String = "Runs with Assist on are marked on the summary."
+
+@export_group("Records (F3)")
+
+## Menu records line: best winning run, then one entry per boss, then memories.
+@export var records_best_run_format: String = "Best run  %s"
+@export var records_boss_format: String = "%s  %s"
+@export var records_memories_format: String = "Memories  %d/%d"
+@export var records_none: String = "—"
+## Summary lines when a record falls (assisted runs never set records).
+@export var record_new_run_format: String = "New record!  Run  %s"
+@export var record_new_boss_format: String = "New record!  %s  %s"
+
+@export_group("Heirlooms by memory (F4)")
+
+## Heirloom button while hidden behind memories: title, memories needed.
+@export var heirloom_memory_locked_format: String = "%s\n%d memories"
+## Description hint while hidden behind memories.
+@export var heirloom_hint_memories_format: String = "recover %d memories to unlock"
+## Run summary line when recovered memories reveal an Heirloom.
+@export var heirloom_revealed_format: String = "New Heirloom available:  %s"

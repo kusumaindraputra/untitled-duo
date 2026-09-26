@@ -37,6 +37,16 @@ var fragments_found: int = 0
 var ending_seen: bool = false
 ## True once the ending with every fragment has played.
 var true_ending_seen: bool = false
+## Spellbook discoveries (F1): core Prana types cast, reaction ids armed, sigil ids
+## taken, enemy type ids defeated. See Spellbook.
+var codex_spells: Array[int] = []
+var codex_reactions: Array[StringName] = []
+var codex_sigils: Array[StringName] = []
+var codex_enemies: Array[int] = []
+## Records (F3): fastest winning run and fastest kill per boss type id, in seconds.
+## 0 / missing = no record yet. Runs with Assist on do not set records.
+var best_win_sec: float = 0.0
+var boss_best_sec: Dictionary[int, float] = {}
 
 
 # ── Payout ────────────────────────────────────────────────────────────────────
@@ -85,10 +95,15 @@ func is_unlocked(id: StringName) -> bool:
 	return unlocked.has(id)
 
 
-## True when [param id] is an Heirloom that is still locked and affordable.
+## True once enough memories are recovered to buy [param id] (F4).
+func is_revealed(t: MetaTuning, id: StringName) -> bool:
+	return fragments_found >= t.memories_needed(id)
+
+
+## True when [param id] is an Heirloom that is still locked, revealed and affordable.
 func can_unlock(t: MetaTuning, id: StringName) -> bool:
 	var cost: int = t.cost_of(id)
-	return cost >= 0 and not is_unlocked(id) and shards >= cost
+	return cost >= 0 and not is_unlocked(id) and is_revealed(t, id) and shards >= cost
 
 
 ## Spends shards to unlock [param id] and equips it. Returns false when not allowed.
@@ -160,6 +175,63 @@ func record_ending(is_true: bool) -> void:
 		ending_seen = true
 
 
+# ── Spellbook (F1) ────────────────────────────────────────────────────────────
+
+## Marks core Prana [param type_id] as cast. Returns true when it is new.
+func discover_spell(type_id: int) -> bool:
+	return _add_int(codex_spells, type_id)
+
+
+## Marks reaction [param id] as armed. Returns true when it is new.
+func discover_reaction(id: StringName) -> bool:
+	return _add_name(codex_reactions, id)
+
+
+## Marks sigil [param id] as taken. Returns true when it is new.
+func discover_sigil(id: StringName) -> bool:
+	return _add_name(codex_sigils, id)
+
+
+## Marks enemy type [param type_id] as defeated. Returns true when it is new.
+func discover_enemy(type_id: int) -> bool:
+	return _add_int(codex_enemies, type_id)
+
+
+static func _add_int(list: Array[int], v: int) -> bool:
+	if v < 0 or list.has(v):
+		return false
+	list.append(v)
+	return true
+
+
+static func _add_name(list: Array[StringName], v: StringName) -> bool:
+	if v == &"" or list.has(v):
+		return false
+	list.append(v)
+	return true
+
+
+# ── Records (F3) ──────────────────────────────────────────────────────────────
+
+## Records a winning run of [param sec] seconds. Returns true when it is a new best.
+func record_win_time(sec: float) -> bool:
+	if sec <= 0.0 or (best_win_sec > 0.0 and sec >= best_win_sec):
+		return false
+	best_win_sec = sec
+	return true
+
+
+## Records a kill of boss [param boss_id] after [param sec] seconds. Returns true
+## when it is a new best for that boss.
+func record_boss_time(boss_id: int, sec: float) -> bool:
+	if boss_id < 0 or sec <= 0.0:
+		return false
+	if boss_best_sec.has(boss_id) and sec >= boss_best_sec[boss_id]:
+		return false
+	boss_best_sec[boss_id] = sec
+	return true
+
+
 # ── Persistence ───────────────────────────────────────────────────────────────
 
 ## Loads progress from [param path]. A missing or unreadable file gives fresh progress.
@@ -183,6 +255,19 @@ static func load_from(path: String = DEFAULT_PATH) -> MetaProgress:
 	p.fragments_found = maxi(int(cfg.get_value(_SECTION, "fragments_found", 0)), 0)
 	p.ending_seen = bool(cfg.get_value(_SECTION, "ending_seen", false))
 	p.true_ending_seen = bool(cfg.get_value(_SECTION, "true_ending_seen", false))
+	for v: Variant in cfg.get_value(_SECTION, "codex_spells", []):
+		p.discover_spell(int(v))
+	for v: Variant in cfg.get_value(_SECTION, "codex_reactions", []):
+		p.discover_reaction(StringName(str(v)))
+	for v: Variant in cfg.get_value(_SECTION, "codex_sigils", []):
+		p.discover_sigil(StringName(str(v)))
+	for v: Variant in cfg.get_value(_SECTION, "codex_enemies", []):
+		p.discover_enemy(int(v))
+	p.best_win_sec = maxf(float(cfg.get_value(_SECTION, "best_win_sec", 0.0)), 0.0)
+	var bosses: Variant = cfg.get_value(_SECTION, "boss_best_sec", {})
+	if bosses is Dictionary:
+		for k: Variant in bosses:
+			p.record_boss_time(int(k), float(bosses[k]))
 	return p
 
 
@@ -205,4 +290,13 @@ func save_to(path: String = DEFAULT_PATH) -> Error:
 	cfg.set_value(_SECTION, "fragments_found", fragments_found)
 	cfg.set_value(_SECTION, "ending_seen", ending_seen)
 	cfg.set_value(_SECTION, "true_ending_seen", true_ending_seen)
+	cfg.set_value(_SECTION, "codex_spells", codex_spells.duplicate())
+	cfg.set_value(_SECTION, "codex_reactions", codex_reactions.map(func(x: StringName) -> String: return String(x)))
+	cfg.set_value(_SECTION, "codex_sigils", codex_sigils.map(func(x: StringName) -> String: return String(x)))
+	cfg.set_value(_SECTION, "codex_enemies", codex_enemies.duplicate())
+	cfg.set_value(_SECTION, "best_win_sec", best_win_sec)
+	var bosses: Dictionary = {}
+	for k: int in boss_best_sec:
+		bosses[str(k)] = boss_best_sec[k]
+	cfg.set_value(_SECTION, "boss_best_sec", bosses)
 	return cfg.save(path)

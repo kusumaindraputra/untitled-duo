@@ -121,9 +121,15 @@ var _run_ranks: Array[String] = []
 var _run_sigils: Array[Dictionary] = []
 var _floors_cleared: int = 0
 var _fragments_at_start: int = 0
+## True once any Assist option was on during this run (F2); marks the summary.
+var _assist_used: bool = false
+## F3 records: game time since the current boss spawned, and records set this run.
+var _boss_elapsed: float = 0.0
+var _boss_timing: bool = false
+var _new_records: Array[String] = []
 
 func _ready() -> void:
-	Engine.time_scale = 1.0  # reset from any prior slow-mo (scene reload via R key)
+	_apply_assist()  # also resets Engine.time_scale from any prior slow-mo (reload via R)
 	_register_input_actions()
 	_meta = MetaProgress.load_from(progress_path)
 	_fragments_at_start = _meta.fragments_found
@@ -181,6 +187,9 @@ func _ready() -> void:
 	add_child(_boss_director)
 	$WaveManager.boss_spawned.connect(func(boss: Node) -> void:
 		_boss_director.attach(boss, SceneManager.get_current_scene() as Node2D))
+	$WaveManager.boss_spawned.connect(func(_boss: Node) -> void:
+		_boss_elapsed = 0.0
+		_boss_timing = true)
 	# Pause overlay: GameStateManager drives the paused/resumed transitions; we just
 	# build/free the overlay in response so ESC works from PREP and COMBAT alike.
 	GameStateManager.game_paused.connect(_on_game_paused)
@@ -206,6 +215,9 @@ func _ready() -> void:
 	add_child(_sigil_effects)
 	_sigil_manager.effects = _sigil_effects
 	_sigil_manager.sigil_applied.connect(_log_sigil)
+	# F1 Spellbook: the build cast each room and every enemy type defeated.
+	GameStateManager.combat_started.connect(_log_build_discoveries)
+	HealthAndDamage.enemy_killed.connect(_log_enemy_discovery)
 	_pace_director.perfect_dodge_triggered.connect(_sigil_effects.on_perfect_dodge)
 	# Transient reward bag: Prana picked from post-room rewards land here, then the
 	# prep grid places them. Found by SigilManager (writer) + PranaGrid (reader) via group.
@@ -238,7 +250,7 @@ func _input(event: InputEvent) -> void:
 		if event.keycode == KEY_ESCAPE:
 			_toggle_pause()
 		elif event.keycode == KEY_R:
-			Engine.time_scale = 1.0  # cancel slow-mo before reload
+			Engine.time_scale = GameSettings.base_time_scale()  # cancel slow-mo before reload
 			get_tree().reload_current_scene()
 		elif OS.is_debug_build() and event.keycode == KEY_F1:
 			# DEBUG QA: toggle god mode (blocks ALL incoming damage) for full-loop playtest.
@@ -336,12 +348,15 @@ func _show_title_screen() -> void:
 
 ## Quits the game. Web/exported builds honour this; in the editor it stops the run.
 func _quit_game() -> void:
+	_save_progress()
 	get_tree().quit()
 
 
 ## Returns to the main menu scene. Unpauses and resets time scale first so the menu
 ## (and any subsequent run) starts from a clean state.
 func _to_main_menu() -> void:
+	_save_progress()
+	HealthAndDamage.player_damage_mult = 1.0
 	get_tree().paused = false
 	Engine.time_scale = 1.0
 	get_tree().change_scene_to_file("res://src/scenes/MainMenu.tscn")
@@ -595,6 +610,14 @@ func _on_game_paused() -> void:
 	panel.resume_pressed.connect(GameStateManager.resume_game)
 	panel.restart_pressed.connect(_restart_from_pause)
 	panel.tutorial_pressed.connect(_replay_tutorial)
+	panel.spellbook_pressed.connect(func() -> void:
+		panel.menu_box.visible = false
+		var book := SpellbookPanel.new()
+		book.progress = _meta if _meta != null else MetaProgress.new()
+		book.closed.connect(func() -> void:
+			panel.menu_box.visible = true
+			panel.spellbook_button.grab_focus())
+		_pause_layer.add_child(book))
 	panel.main_menu_pressed.connect(_to_main_menu)
 	panel.quit_pressed.connect(_quit_game)
 	# ADR-0026: volume, display, comfort and keys live in the Settings panel.
@@ -625,12 +648,27 @@ func _on_game_resumed() -> void:
 	if _pause_layer != null:
 		_pause_layer.queue_free()
 		_pause_layer = null
+	_apply_assist()  # Settings may have changed while paused
+
+
+## Applies the Assist options (F2): damage share, game speed and auto-dash. Called at
+## run start and after pause, since Settings can change them mid-run.
+func _apply_assist() -> void:
+	var s: GameSettings = GameSettings.active()
+	_assist_used = _assist_used or s.assist_active()
+	HealthAndDamage.player_damage_mult = s.effective_damage()
+	var pc: Node = get_node_or_null(^"PlayerController")
+	if pc != null and &"auto_dash" in pc:
+		pc.set(&"auto_dash", s.effective_auto_dash())
+	if not _in_death_sequence:
+		Engine.time_scale = GameSettings.base_time_scale()
 
 
 ## Restart button: unpause, reset time scale, reload the scene for a fresh run.
 func _restart_from_pause() -> void:
+	_save_progress()
 	get_tree().paused = false
-	Engine.time_scale = 1.0
+	Engine.time_scale = GameSettings.base_time_scale()
 	get_tree().reload_current_scene()
 
 
@@ -828,7 +866,7 @@ func _on_run_ended(win: bool) -> void:
 		_in_death_sequence = true
 		Engine.time_scale = _DEATH_SLOW_SCALE
 		await get_tree().create_timer(_DEATH_SLOW_DURATION, true, false, true).timeout
-		Engine.time_scale = 1.0
+		Engine.time_scale = GameSettings.base_time_scale()
 
 	var audio: Node = get_node_or_null("/root/AudioSystem")
 	if audio != null and audio.has_method(&"has_event"):
@@ -846,6 +884,9 @@ func _on_run_ended(win: bool) -> void:
 		run_data["bonus_shards"] = _bonus_shards
 		shards_earned = _meta.record_run(_META, run_data, win)
 		hard_newly_unlocked = not was_unlocked and _meta.is_hard_mode_unlocked(_META)
+		var run_sec: float = float(run_data.get("run_time_sec", 0.0))
+		if win and not _assist_used and _meta.record_win_time(run_sec):
+			_new_records.push_front(Records.new_run_line(run_sec))
 		_meta.save_to(progress_path)
 		await _play_run_end_story(win, run_data)
 
@@ -880,6 +921,8 @@ func _build_summary_data(win: bool, run_data: Dictionary, shards: int, hard_unlo
 		"memories_found": found,
 		"memories_total": StoryRules.total(),
 		"hard_unlocked": hard_unlocked,
+		"assist": _assist_used,
+		"records": _new_records + _revealed_heirloom_lines(found),
 	}
 
 
@@ -892,10 +935,55 @@ func _log_room_rank(rank_letter: String, _heal: float, _meter_bonus: float) -> v
 func _log_sigil(sigil_id: StringName) -> void:
 	if String(sigil_id).begins_with("prana_"):
 		return
+	if _meta != null:
+		_meta.discover_sigil(sigil_id)
 	for sigil: Dictionary in _sigil_manager.get_catalog():
 		if sigil.get("id", &"") == sigil_id:
 			_run_sigils.append({"title": str(sigil.get("title", sigil_id)), "desc": str(sigil.get("desc", ""))})
 			return
+
+
+## F4: summary lines for Heirlooms that this run's memories made available.
+func _revealed_heirloom_lines(found: int) -> Array[String]:
+	var lines: Array[String] = []
+	for id: StringName in _META.heirlooms_revealed_between(_fragments_at_start, found):
+		lines.append(_COPY.heirloom_revealed_format % str(MetaProgress.heirloom_info(id).get("title", id)))
+	return lines
+
+
+## F1: records the confirmed grid's core spell and armed reactions in the Spellbook.
+func _log_build_discoveries(_is_boss: bool) -> void:
+	var grid: PranaGrid = get_tree().get_first_node_in_group(&"prana_grid") as PranaGrid
+	if _meta == null or grid == null:
+		return
+	var found: Dictionary = Spellbook.discoveries_from_grid(grid.get_slot_types())
+	_meta.discover_spell(int(found["core"]))
+	for id: StringName in found["reactions"]:
+		_meta.discover_reaction(id)
+
+
+## F1: records a defeated enemy type in the Spellbook. F3: a boss kill stops the boss
+## timer and may set a record (never with Assist on).
+func _log_enemy_discovery(_instance_id: int, type_id: int, _affiliation: GameEnums.DamageClass) -> void:
+	if _meta == null:
+		return
+	_meta.discover_enemy(type_id)
+	if not _boss_timing or not Records.boss_ids().has(type_id):
+		return
+	_boss_timing = false
+	if not _assist_used and _meta.record_boss_time(type_id, _boss_elapsed):
+		_new_records.append(Records.new_boss_line(type_id, _boss_elapsed))
+
+
+func _process(delta: float) -> void:
+	if _boss_timing:
+		_boss_elapsed += delta
+
+
+## Saves progress (Spellbook discoveries) when leaving a run early.
+func _save_progress() -> void:
+	if _meta != null:
+		_meta.save_to(progress_path)
 
 
 ## ADR-0027: recovers the next memory fragment for [param beat], saves progress and
@@ -1032,7 +1120,7 @@ func _on_heavy_hit(_target: Node, final_damage: int) -> void:
 	Engine.time_scale = _HIT_STOP_SCALE
 	await get_tree().create_timer(duration, true, false, true).timeout
 	if not _in_death_sequence:  # death slow-mo may have started while we awaited
-		Engine.time_scale = 1.0
+		Engine.time_scale = GameSettings.base_time_scale()
 
 
 func _ensure_joypad_motion_action(action: StringName, axis: JoyAxis, axis_value: float) -> void:
