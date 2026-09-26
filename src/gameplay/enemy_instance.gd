@@ -104,6 +104,8 @@ var _is_elite: bool = false
 var _active_layer_count: int = -1
 ## Short pre-fire flash; separate from _vfx_tween so looping telegraphs are untouched.
 var _windup_tween: Tween = null
+## Running knockback slide, killed when a new hit lands before it ends.
+var _knockback_tween: Tween = null
 
 ## ADR-0024 — true while this enemy has not noticed Fayde yet: it stands still and
 ## holds fire. Only WaveManager sets it (opening-wave spawns); default is awake.
@@ -509,14 +511,18 @@ func apply_speed_modifier(multiplier: float) -> void:
 ## Pushes this enemy away from [param direction] by [param distance] pixels over 0.1s.
 ## Called by SpellCastingEffects after each successful spell hit for combo game feel.
 ## Uses a position tween with EASE_OUT — the enemy slides back then continues its AI
-## movement on the next physics frame after the tween completes.
+## movement on the next physics frame after the tween completes. The offset is swept
+## against walls, debris and pillars first so the enemy never leaves the arena.
 func apply_knockback(direction: Vector2, distance: float) -> void:
 	if _state == EnemyState.DEAD:
 		return
-	var offset: Vector2 = direction.normalized() * distance
-	var target_pos: Vector2 = global_position + offset
-	var tw: Tween = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_property(self, "global_position", target_pos, 0.10)
+	var offset: Vector2 = KnockbackMotion.clamp_offset(self, direction.normalized() * distance, collision_mask)
+	# A second hit before the first slide ends restarts from here, so the two
+	# tweens never fight over global_position.
+	if _knockback_tween != null and _knockback_tween.is_valid():
+		_knockback_tween.kill()
+	_knockback_tween = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_knockback_tween.tween_property(self, "global_position", global_position + offset, 0.10)
 
 
 # ── Private helpers ───────────────────────────────────────────────────────────

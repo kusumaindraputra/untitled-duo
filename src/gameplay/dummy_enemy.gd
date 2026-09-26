@@ -67,11 +67,12 @@ func is_alive() -> bool:
 
 ## Pushes this dummy away from [param direction] by [param distance] pixels over 0.1s.
 ## Called by SpellCastingEffects after each successful spell hit for combo game feel.
-## StaticBody2D uses position tween — no move_and_slide needed.
+## StaticBody2D uses position tween — no move_and_slide needed. The offset is swept
+## against walls, debris and pillars first so the dummy stays inside the room.
 func apply_knockback(direction: Vector2, distance: float) -> void:
 	if _is_dead:
 		return
-	var offset: Vector2 = direction.normalized() * distance
+	var offset: Vector2 = KnockbackMotion.clamp_offset(self, direction.normalized() * distance)
 	var target_pos: Vector2 = global_position + offset
 	var tw: Tween = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_property(self, "global_position", target_pos, 0.10)
