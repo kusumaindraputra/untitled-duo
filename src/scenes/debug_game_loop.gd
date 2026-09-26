@@ -726,7 +726,16 @@ func _update_minimap() -> void:
 		types.append(int(room.get("type", DungeonGraph.ROOM_TYPE_COMBAT)))
 		states.append(int(room.get("state", DungeonGraph.ROOM_STATE_UNVISITED)))
 		mods.append(int(room.get(RoomModifiers.KEY, RoomModifiers.NONE)))
-	hud.set_minimap(types, states, rtm.get_current_room_idx(), mods)
+	var edges: Array = []
+	for i: int in _dungeon_graph.room_count():
+		for j: int in _dungeon_graph.get_outgoing(i):
+			edges.append(Vector2i(i, j))
+	hud.set_minimap(types, states, rtm.get_current_room_idx(), mods, edges,
+		_dungeon_graph.get_entry_room())
+	# The prep panel sits under the floor map on the right (parent wires siblings).
+	var grid: PranaGrid = get_tree().get_first_node_in_group(&"prana_grid") as PranaGrid
+	if grid != null:
+		grid.set_panel_top(hud.get_floor_map_bottom() + 8.0)
 
 
 ## Configures WaveManager for the room at [param room_idx]: sets room_type and is_final_room.

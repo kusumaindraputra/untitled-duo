@@ -29,8 +29,8 @@ const _PACE: PaceTuning = preload("res://assets/data/pace_tuning.tres")
 
 ## Preparation panel width and slot size in px (U2: smaller panel, room stays visible).
 const PANEL_WIDTH := 330.0
-const SLOT_SIZE := 60.0
-## Panel top in px, below the HUD's floor minimap row.
+const SLOT_SIZE := 54.0
+## Lowest panel top in px; the game loop pushes it below the HUD floor map (set_panel_top).
 const PANEL_TOP := 44.0
 ## Space kept below the panel's content, in px.
 const PANEL_BOTTOM_PAD := 12.0
@@ -765,6 +765,15 @@ func _type_colors() -> Array:
 	for id: int in PranaTypeToken.type_count():
 		colors.append(PranaTypeToken.type_color(id))
 	return colors
+
+
+## Moves the panel's top edge to [param y] (never above PANEL_TOP) so it clears the HUD
+## floor map. Called by the game loop, which owns both nodes.
+func set_panel_top(y: float) -> void:
+	if _grid_panel == null:
+		return
+	_grid_panel.position.y = maxf(PANEL_TOP, y)
+	_queue_fit_panel()
 
 
 ## Sizes the panel to its content on the next frame, after labels have re-measured (U2).

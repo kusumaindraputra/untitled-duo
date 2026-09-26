@@ -206,6 +206,8 @@ var _room_label: Label = null
 ## filled. Rebuilt each call to set_minimap(). null in headless tests.
 var _minimap_root: Control = null
 var _minimap_markers: Array[Panel] = []
+## U4 node map; replaces the marker strip when the floor's edges are known. Null until used.
+var _floor_map: FloorMap = null
 
 ## Marker dimensions and spacing (px) for the floor minimap.
 const _MINIMAP_MARKER_SIZE: float = 20.0
@@ -1217,7 +1219,7 @@ func set_room_progress(current: int, total: int) -> void:
 ## [param modifiers] (optional, parallel to room_types) marks Challenge "!" and Cursed
 ## "X" rooms with their own letter and border (ADR-0026).
 func set_minimap(room_types: Array, room_states: Array, current_idx: int,
-		modifiers: Array = []) -> void:
+		modifiers: Array = [], edges: Array = [], entry_idx: int = -1) -> void:
 	if _minimap_root == null:
 		return
 	for m: Panel in _minimap_markers:
@@ -1228,6 +1230,13 @@ func set_minimap(room_types: Array, room_states: Array, current_idx: int,
 	var count: int = room_types.size()
 	if count == 0:
 		return
+
+	# U4 — with the floor's edges, draw a node map that shows the branches.
+	if not edges.is_empty():
+		_show_floor_map(room_types, room_states, modifiers, edges, current_idx, entry_idx)
+		return
+	if _floor_map != null:
+		_floor_map.visible = false
 
 	for i: int in range(count):
 		var rtype: int = int(room_types[i])
@@ -1280,6 +1289,31 @@ func set_minimap(room_types: Array, room_states: Array, current_idx: int,
 	var total_w: float = count * _MINIMAP_MARKER_SIZE + maxf(0.0, count - 1) * _MINIMAP_MARKER_SEP
 	var vp_w: float = get_viewport_rect().size.x
 	_minimap_root.position = Vector2(vp_w - total_w - _MINIMAP_MARGIN, _MINIMAP_MARGIN)
+
+
+## U4 — draws the floor as a node map (FloorMap) pinned top-right.
+func _show_floor_map(types: Array, states: Array, mods: Array, edges: Array,
+		current_idx: int, entry_idx: int) -> void:
+	if _floor_map == null:
+		_floor_map = FloorMap.new()
+		_floor_map.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_floor_map.type_colors.assign(_MINIMAP_TYPE_COLORS)
+		_floor_map.type_letters.assign(_MINIMAP_TYPE_LETTERS)
+		_floor_map.mod_letters.assign(_MINIMAP_MOD_LETTERS)
+		_floor_map.mod_colors.assign(_MINIMAP_MOD_COLORS)
+		_minimap_root.add_child(_floor_map)
+	_floor_map.visible = true
+	_floor_map.set_floor(types, states, mods, edges, current_idx, entry_idx)
+	var vp_w: float = get_viewport_rect().size.x
+	_minimap_root.position = Vector2(vp_w - _floor_map.size.x - _MINIMAP_MARGIN * 0.5, _MINIMAP_MARGIN * 0.5)
+
+
+## Bottom edge of the top-right floor map in HUD px (0 when none is shown), so panels
+## on the right (the prep panel) can sit below it.
+func get_floor_map_bottom() -> float:
+	if _floor_map == null or not _floor_map.visible:
+		return 0.0
+	return _minimap_root.position.y + _floor_map.size.y
 
 
 ## Handles preparation_started from GameStateManager.
