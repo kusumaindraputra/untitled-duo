@@ -145,9 +145,9 @@ The zone occupies ≤288×86px anchored 8px from the top-left screen edges. Thre
 - `bar_fill = current_hp / FAYDE_MAX_HP`. Updated via tween on every `damage_taken` / `health_restored` signal from Health & Damage.
 - Drain tween: 0.15s TRANS_LINEAR. Fill tween: 0.20s TRANS_LINEAR. Mid-animation hit cancels active tween and starts a new one from the current mid-value — no snap back.
 - Zone color transitions — **instantaneous** (the abrupt shift is the alarm signal, not a gradient):
-  - FULL: warm white fill `#F5F0E8`, label white `#FFFFFF`
-  - CAREFUL: amber fill + label `#FFA500`
-  - DESPERATE: red fill + label `#FF3333` + looping scale pulse (1.0→1.03→1.0 over 0.8s; stops immediately on zone exit)
+  - FULL: health red fill `#E61A0D` (art bible §4.4), label white `#FFFFFF`
+  - CAREFUL: health red fill `#E61A0D`, amber label `#FFA500` (ADR-0035)
+  - DESPERATE: hot red fill + label `#FF3333` + looping scale pulse (1.0→1.03→1.0 over 0.8s; stops immediately on zone exit)
 - Heal tint: green modulate `Color(0.6, 1.0, 0.6, 1.0)` for 0.20s on `health_restored`, then reverts to current zone color — not to FULL zone color. Satisfies Health & Damage's `sfx_fayde_heal` audio silence contract (tween ≥0.15s + distinct color shift).
 - On `player_died`: bar frozen at 0/max. No further HP updates.
 - On `run_started`: immediate reset to `FAYDE_MAX_HP`, zone to FULL. No heal tint — run reset is not a heal event.
@@ -270,9 +270,9 @@ All HUD state changes are driven by `GameStateManager` and system signals. The H
 | `run_started` | HP bar resets to FAYDE_MAX_HP immediately (no tween). Zone → FULL. Chain dots hidden. All active damage labels freed. Wave Counter appears. Status effect icons clear. |
 | `preparation_started` | Type Selector, Confirm, Clear All appear. Grid resets to 100% opacity, all slots empty. Gamepad cursor resets to slot 0. Chain dots hidden. |
 | `grid_locked` + `combat_started` | Type Selector, Confirm, Clear All hide. Grid dims to 70% opacity (IP-09). Gamepad cursor hides. Chain dots become active (shown on first `chain_index_changed` received). |
-| `player_hp_zone_changed(CAREFUL)` | HP bar fill and numeric label → amber `#FFA500` (instantaneous transition). Pulse animation stops if active. |
+| `player_hp_zone_changed(CAREFUL)` | HP bar fill stays health red `#E61A0D`; numeric label → amber `#FFA500` (instantaneous transition, ADR-0035). Pulse animation stops if active. |
 | `player_hp_zone_changed(DESPERATE)` | HP bar fill and numeric label → red `#FF3333` (instantaneous). Looping scale pulse begins (1.0→1.03→1.0, 0.8s cycle). |
-| `player_hp_zone_changed(FULL)` | HP bar fill and numeric label → warm white `#F5F0E8` / white `#FFFFFF` (instantaneous). Pulse animation stops if active. |
+| `player_hp_zone_changed(FULL)` | HP bar fill → health red `#E61A0D`, numeric label → white `#FFFFFF` (instantaneous). Pulse animation stops if active. |
 | `damage_taken(target, amount, current_hp)` | HP bar drains (0.15s tween). Numeric readout snaps. Floating damage label spawns at target world position. |
 | `health_restored(target, amount, current_hp)` | HP bar fills (0.20s tween). Green tint `Color(0.6, 1.0, 0.6, 1.0)` for 0.20s then reverts to current zone color. Numeric readout snaps. |
 | `chain_index_changed(combo_index, attack_count)` | Chain dots redraw — active dot advances to `combo_index` in Prana type color; all others → grey `#888888`. |
@@ -361,7 +361,7 @@ THEN HP bar node is visible; bar fill fraction equals `FAYDE_MAX_HP / FAYDE_MAX_
 **AC-HUD-S02 [U]** — Zone CAREFUL: amber color fires at correct threshold (instantaneous)
 GIVEN Fayde at HP 45 (FULL zone)
 WHEN `damage_taken` reduces HP to 38 (crossing the 40% CAREFUL threshold)
-THEN HP bar fill color == `#FFA500` (amber) AND numeric label color == `#FFA500` in the same frame — no transition delay
+THEN HP bar fill color == `#E61A0D` (health red) AND numeric label color == `#FFA500` in the same frame — no transition delay
 
 **AC-HUD-S04 [U]** — Type Selector, Confirm, and Clear All are hidden after combat_started
 GIVEN Preparation Phase (Type Selector visible, Confirm + Clear All visible)

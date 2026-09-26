@@ -161,6 +161,7 @@ func _build_card(data: Dictionary) -> Control:
 	sigil_label = _label(_COPY.pause_no_sigils if lines.is_empty() else "\n".join(PackedStringArray(lines)),
 		13, Color.WHITE)
 	sigil_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	sigil_label.theme_type_variation = UIFeel.BODY_TEXT
 	sigil_label.custom_minimum_size = Vector2(CARD_WIDTH - 32.0, 0)
 	box.add_child(sigil_label)
 	return card

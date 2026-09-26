@@ -133,6 +133,7 @@ func setup(data: Dictionary) -> void:
 	var list := _label(_COPY.summary_no_sigils if sigils.is_empty() else "\n".join(PackedStringArray(sigils)),
 		17, VALUE_COLOR)
 	list.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	list.theme_type_variation = UIFeel.BODY_TEXT
 	right.add_child(list)
 	right.add_child(_spacer(6))
 	right.add_child(_label(_COPY.summary_memories_format % [int(data.get("memories_new", 0)),

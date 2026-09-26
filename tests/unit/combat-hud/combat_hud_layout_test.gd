@@ -5,7 +5,9 @@
 ##   U3-02: DashRing progress follows the recharge timer
 ##   U3-03: DashRing with a zero duration shows a full arc, never NaN
 ##   U3-04: set_state hides / shows the ring node
-##   U3-05: left card shrinks between rooms and grows in combat; floor line moves with it
+##   U3-05: left card shrinks between rooms and grows in combat; floor line only between rooms
+##   F7-01: at 130 % text size the left card rows never overlap and stay inside the card
+##   F7-02: the HP bar fill is the art bible's health red; a hit flashes it white
 ##   U3-06: Style badge, caption and bar show and hide together; badge shows the rank letter
 ##   U3-07: a hit flashes the HP bar, then it returns to the zone colour
 ##   U3-08: PlayerController recharge getters report the timer and sigil-scaled duration
@@ -70,14 +72,52 @@ func test_left_card_shrinks_between_rooms_and_grows_in_combat() -> void:
 	var hud: Node = _make_hud()
 
 	hud._on_preparation_started(0, 1)
-	var prep_height: float = hud._left_panel.size.y
-	var prep_floor_y: float = hud._floor_label.position.y
+	var prep_height: float = hud.get_left_card_height()
+	assert_bool(hud._floor_label.visible).is_true()
+	assert_bool(hud._room_label.visible).is_true()
+	assert_float(hud._room_label.position.y).is_greater(hud._floor_label.position.y)
 	hud._on_combat_started(false)
 
-	assert_float(hud._left_panel.size.y).is_equal(hud.LEFT_PANEL_HEIGHT)
-	assert_float(prep_height).is_less(hud.LEFT_PANEL_HEIGHT)
-	assert_float(hud._floor_label.position.y).is_greater(prep_floor_y)
-	assert_float(hud._room_label.position.y).is_greater(hud._floor_label.position.y)
+	assert_float(hud.get_left_card_height()).is_greater(prep_height)
+	assert_bool(hud._floor_label.visible).is_false()
+	assert_bool(hud._room_label.visible).is_false()
+	_teardown_hud(hud)
+
+
+# ── F7-01 (ADR-0035) ──────────────────────────────────────────────────────────
+
+## Bottom edge of [param c] in HUD px.
+func _bottom(c: Control) -> float:
+	return c.position.y + c.size.y
+
+
+func test_left_card_rows_do_not_overlap_at_largest_text_size() -> void:
+	var hud: Node = _make_hud()
+	var big: float = GameSettings.TEXT_SCALES[GameSettings.TEXT_SCALES.size() - 1]
+
+	UIFeel.apply_text_scale_tree(hud, big)
+	hud._on_combat_started(false)
+
+	assert_float(hud.hp_bar.size.y).is_greater_equal(hud.hp_label.get_combined_minimum_size().y)
+	assert_float(hud._special_bar.position.y).is_greater_equal(_bottom(hud.hp_bar))
+	assert_float(hud._dash_hint_label.position.y).is_greater_equal(_bottom(hud._special_bar))
+	assert_float(hud._style_badge.position.y).is_greater_equal(_bottom(hud._dash_hint_label))
+	assert_float(hud.get_left_card_height()).is_greater_equal(_bottom(hud._style_badge))
+
+	hud._on_preparation_started(0, 1)
+	assert_float(hud._floor_label.position.y).is_greater_equal(_bottom(hud.hp_bar))
+	assert_float(hud._room_label.position.y).is_greater_equal(_bottom(hud._floor_label))
+	assert_float(hud.get_left_card_height()).is_greater_equal(_bottom(hud._room_label))
+	_teardown_hud(hud)
+
+
+# ── F7-02 (ADR-0035) ──────────────────────────────────────────────────────────
+
+func test_hp_bar_uses_health_red_and_flash_is_white() -> void:
+	var hud: Node = _make_hud()
+
+	assert_object(hud.hp_bar.modulate).is_equal(Color("#E61A0D"))
+	assert_object(hud.HIT_FLASH_COLOR).is_equal(Color.WHITE)
 	_teardown_hud(hud)
 
 

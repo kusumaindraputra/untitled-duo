@@ -13,8 +13,14 @@
 ## tree has its font sizes multiplied by GameSettings.text_scale() one frame later (so
 ## overrides set right after add_child count). The unscaled sizes are kept in meta, so
 ## [method apply_text_scale_tree] can rescale open screens when the setting changes.
+##
+## Fonts (ADR-0035): the theme's default font is the DotGothic16 pixel font. Labels
+## that carry long prose set [code]theme_type_variation = UIFeel.BODY_TEXT[/code] to
+## use the easier-to-read body font instead; RichTextLabel uses it by default.
 extends Node
 
+## Theme type variation for long prose labels (body font, see assets/ui/game_theme.tres).
+const BODY_TEXT: StringName = &"BodyLabel"
 ## Audio events, registered in assets/data/audio_event_registry.tres.
 const EVENT_FOCUS: StringName = &"ui_focus"
 const EVENT_CONFIRM: StringName = &"ui_confirm"

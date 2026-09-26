@@ -195,6 +195,7 @@ func _build_ui() -> void:
 
 	var body := _make_label(_body, 21, Color(0.9, 0.9, 0.93))
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.theme_type_variation = UIFeel.BODY_TEXT
 	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	body.custom_minimum_size = Vector2(760.0, 0.0)
 	vbox.add_child(body)
@@ -208,6 +209,7 @@ func _build_ui() -> void:
 	if not _footnote.is_empty():
 		var foot := _make_label(_footnote, 16, Color(0.75, 0.7, 0.55))
 		foot.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		foot.theme_type_variation = UIFeel.BODY_TEXT
 		vbox.add_child(foot)
 
 	vbox.add_child(_make_label(_COPY.memory_continue_hint, 15, Color(0.5, 0.5, 0.56)))
