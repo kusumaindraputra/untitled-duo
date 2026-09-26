@@ -782,8 +782,10 @@ func _spawn_pixel_ghosts(pixel: PixelCharacter, dash_dir: Vector2) -> void:
 ## Adds [param amount] to the camera shake trauma accumulator (clamped to 1.0).
 ## Values: 0.2 = light (Cluster hit), 0.5 = medium (Charger charge), 0.85 = heavy (death).
 ## Trauma decays at TRAUMA_DECAY per second and is squared before offset application.
+## Also rumbles the gamepad (ADR-0031), scaled by the Rumble setting, not Screen shake.
 func add_camera_trauma(amount: float) -> void:
 	_trauma = minf(_trauma + amount * GameSettings.shake_multiplier(), 1.0)
+	Rumble.from_trauma(amount)
 
 
 ## Responds to heavy_hit (final_damage >= HEAVY_HIT_THRESHOLD) with camera trauma.

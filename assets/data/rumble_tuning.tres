@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RumbleTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/rumble_tuning.gd" id="1_rum"]
+
+[resource]
+script = ExtResource("1_rum")
+min_trauma = 0.15
+trauma_strong = 0.9
+trauma_weak = 0.5
+trauma_min_sec = 0.08
+trauma_max_sec = 0.35
+perfect_dodge_weak = 0.6
+perfect_dodge_strong = 0.0
+perfect_dodge_sec = 0.1
+special_weak = 0.4
+special_strong = 0.8
+special_sec = 0.25

@@ -1,9 +1,10 @@
-## SettingsPanel — display, comfort, audio and key-binding options (ADR-0026).
+## SettingsPanel — display, comfort, audio, key and gamepad options (ADR-0026, ADR-0031).
 ##
 ## Opened from the main menu and the pause menu. Every change is applied and saved
 ## at once (GameSettings → user://settings.cfg "game"/"keys", AudioSystem → "audio"),
 ## so there is no Apply button to forget. Fully keyboard / gamepad navigable; Esc
-## (or Back) closes it, and Esc while waiting for a key cancels the rebind.
+## (or Back) closes it, and Esc while waiting for a key cancels the rebind. Gamepad
+## rebinds wait for a pad button; Start or Esc cancels them.
 ## Works while the tree is paused (PROCESS_MODE_ALWAYS).
 class_name SettingsPanel
 extends CanvasLayer
@@ -20,6 +21,9 @@ var save_path: String = GameSettings.DEFAULT_PATH
 
 var _key_buttons: Dictionary[StringName, Button] = {}
 var _listening_action: StringName = &""
+var _pad_buttons: Dictionary[StringName, Button] = {}
+## Pad action waiting for a button (&"" when none).
+var _listening_pad: StringName = &""
 var _resolution: OptionButton = null
 var _shake_value: Label = null
 var _back: Button = null
@@ -103,6 +107,7 @@ func _build() -> void:
 		settings.reduce_motion = on
 		_save())
 
+
 	var middle := _column(columns)
 	middle.add_child(_label(_COPY.settings_audio_heading, 20, Color(0.75, 0.8, 1.0)))
 	_volume(middle, _COPY.settings_master, AudioSystem.get_master_volume(), AudioSystem.set_master_volume)
@@ -128,21 +133,50 @@ func _build() -> void:
 	_refresh_assist()
 	middle.add_child(_label(_COPY.settings_assist_note, 14, Color(0.55, 0.55, 0.62)))
 
+	# Keyboard key and gamepad button side by side (ADR-0031). Movement stays on
+	# the left stick, so only dash / cast / special get a pad button.
 	var right := _column(columns)
 	right.add_child(_label(_COPY.settings_controls_heading, 20, Color(0.75, 0.8, 1.0)))
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override(&"separation", 10)
+	header.add_child(_sized(_label("", 14, Color.WHITE), 104))
+	header.add_child(_sized(_label(_COPY.settings_keyboard_column, 14, Color(0.6, 0.6, 0.68)), 120))
+	header.add_child(_sized(_label(_COPY.settings_gamepad_heading, 14, Color(0.6, 0.6, 0.68)), 90))
+	right.add_child(header)
 	for i: int in GameSettings.REMAPPABLE.size():
 		var action: StringName = GameSettings.REMAPPABLE[i]
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(150, 34)
-		b.pressed.connect(_start_listening.bind(action))
-		_key_buttons[action] = b
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override(&"separation", 10)
 		var name_text: String = _COPY.settings_action_names[i] \
 			if i < _COPY.settings_action_names.size() else String(action)
-		right.add_child(_row(name_text, b))
+		row.add_child(_sized(_label(name_text, 16, Color(0.82, 0.82, 0.88)), 104))
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(120, 32)
+		b.pressed.connect(_start_listening.bind(action))
+		_key_buttons[action] = b
+		row.add_child(b)
+		if GameSettings.PAD_REMAPPABLE.has(action):
+			var pb := Button.new()
+			pb.custom_minimum_size = Vector2(90, 32)
+			pb.pressed.connect(_start_listening_pad.bind(action))
+			_pad_buttons[action] = pb
+			row.add_child(pb)
+		else:
+			row.add_child(_sized(_label(_COPY.settings_pad_stick, 14, Color(0.5, 0.5, 0.58)), 90))
+		right.add_child(row)
+	var resets := HBoxContainer.new()
+	resets.add_theme_constant_override(&"separation", 10)
 	var reset := Button.new()
 	reset.text = _COPY.settings_reset_keys
 	reset.pressed.connect(_on_reset_keys)
-	right.add_child(reset)
+	resets.add_child(reset)
+	var reset_pad := Button.new()
+	reset_pad.text = _COPY.settings_reset_pad
+	reset_pad.pressed.connect(_on_reset_pad)
+	resets.add_child(reset_pad)
+	right.add_child(resets)
+	_percent_slider(right, _COPY.settings_rumble, 0.0, settings.rumble,
+		func(v: float) -> void: settings.rumble = v)
 	right.add_child(_label(_COPY.settings_gamepad_note, 14, Color(0.55, 0.55, 0.62)))
 
 	_refresh_keys()
@@ -163,6 +197,9 @@ func close() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if _listening_pad != &"":
+		_listen_pad_input(event)
+		return
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo:
 		return
@@ -192,6 +229,55 @@ func rebind_with_swap(action: StringName, code: Key) -> void:
 	_save()
 
 
+## While a pad action waits: a bindable button binds it (swapping on conflict),
+## Start or Esc cancels, anything else is swallowed so menus do not move.
+func _listen_pad_input(event: InputEvent) -> void:
+	var joy := event as InputEventJoypadButton
+	var key := event as InputEventKey
+	if joy != null and joy.pressed:
+		get_viewport().set_input_as_handled()
+		if joy.button_index != JOY_BUTTON_START:
+			if not rebind_pad_with_swap(_listening_pad, joy.button_index):
+				return  # not a bindable button: keep waiting
+		_listening_pad = &""
+		_refresh_keys()
+	elif key != null and key.pressed and not key.echo:
+		get_viewport().set_input_as_handled()
+		if key.keycode == KEY_ESCAPE:
+			_listening_pad = &""
+			_refresh_keys()
+	elif event is InputEventJoypadButton or event is InputEventJoypadMotion or event is InputEventKey:
+		get_viewport().set_input_as_handled()
+
+
+## Binds pad [param action] to [param button]. If another pad action already uses it,
+## that one takes [param action]'s old button. Returns false for a button that is not
+## in GameSettings.PAD_BINDABLE.
+func rebind_pad_with_swap(action: StringName, button: JoyButton) -> bool:
+	if not GameSettings.PAD_BINDABLE.has(button):
+		return false
+	var other: StringName = GameSettings.action_using_pad(button)
+	if other == action:
+		return true
+	var old_button: JoyButton = GameSettings.pad_button(action)
+	settings.rebind_pad(action, button)
+	if other != &"" and old_button != JOY_BUTTON_INVALID:
+		settings.rebind_pad(other, old_button)
+	_save()
+	return true
+
+
+func _start_listening_pad(action: StringName) -> void:
+	_listening_pad = action
+	_refresh_keys()
+
+
+func _on_reset_pad() -> void:
+	settings.reset_pad()
+	_save()
+	_refresh_keys()
+
+
 func _start_listening(action: StringName) -> void:
 	_listening_action = action
 	_refresh_keys()
@@ -202,6 +288,9 @@ func _refresh_keys() -> void:
 		var b: Button = _key_buttons[action]
 		b.text = _COPY.settings_press_key if action == _listening_action \
 			else GameSettings.key_label(action)
+	for action: StringName in _pad_buttons:
+		_pad_buttons[action].text = _COPY.settings_press_button if action == _listening_pad \
+			else InputPrompts.pad_label(action, "—")
 
 
 func _on_reset_keys() -> void:
@@ -286,6 +375,14 @@ func _row(text: String, control: Control) -> HBoxContainer:
 	row.add_child(l)
 	row.add_child(control)
 	return row
+
+
+## [param control] with a fixed minimum width, for column alignment.
+func _sized(control: Control, width: float) -> Control:
+	control.custom_minimum_size.x = width
+	if control is Label:
+		(control as Label).vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	return control
 
 
 func _check(parent: Node, text: String, on: bool) -> CheckButton:
