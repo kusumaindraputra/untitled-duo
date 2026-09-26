@@ -1,8 +1,7 @@
 [gd_resource type="Resource" script_class="PranaType" load_steps=4 format=3]
 
 [ext_resource type="Script" uid="uid://ck4rpqu6u0n07" path="res://src/data/prana_type.gd" id="1_fire"]
-
-[sub_resource type="ImageTexture" id="ImageTexture_fire"]
+[ext_resource type="Texture2D" path="res://assets/art/ui/prana_icons/prana_ashfire.png" id="2_icon"]
 
 [sub_resource type="AudioStreamWAV" id="AudioStreamWAV_fire"]
 
@@ -13,7 +12,7 @@ name = "Ashfire"
 element = "flame"
 semantic_identity = "The raw heat of living fire, always hungry, never still."
 color = Color(0.94902, 0.29804, 0.11373, 1)
-icon = SubResource("ImageTexture_fire")
+icon = ExtResource("2_icon")
 vfx_burst_shape = 0
 audio_signature = SubResource("AudioStreamWAV_fire")
 cast_animation = 0
