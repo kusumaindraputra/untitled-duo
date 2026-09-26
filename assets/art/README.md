@@ -1,45 +1,61 @@
-# Art Assets — Drop-in Convention
+# Art Assets
 
-The previous art (the "Lords Of Pain" demo isometric pack, the unused Knight
-sprite-sheets, and the derived `characters/` sets) was removed during the move to
-a **CC0 / owned** art base (target: [Kenney.nl](https://kenney.nl) CC0 packs).
+Character art is pixel art generated in code, so it can be re-made after any
+design change. The environment floor, walls and backdrop are procedural
+(ADR-0021) and have no image files here. The full visual rules are in
+`design/art/art-bible.md` (§4 colour, §5 characters, §8.6 sprite specs).
 
-Until new art is dropped in, the game runs on its built-in placeholders:
+## Characters — `characters/`
 
-- **Characters** render as `DebugCircle` nodes. `IsoCharacter` is present in the
-  player/enemy scenes but `visible = false`, so missing sprites are harmless.
-- **Floor** renders as a runtime procedural diamond tile
-  (`IsometricRoom._make_placeholder_floor_texture()`), so the arena is never a
-  black void.
-
-Both loaders prefer real art the moment it exists at the paths below — no code
-change needed to "switch on" the new pack.
-
-## Where files go
-
-| Asset | Expected path | Loaded by |
-|-------|---------------|-----------|
-| Floor tile | `res://assets/art/tiles/iso_floor_stone2.png` (64×32) | `isometric_room.gd` → `_get_floor_texture()` |
-| Player sprites | `res://assets/art/characters/fayde/` | `IsoCharacter` (set `base_path` + `visible=true` in `PlayerController.tscn`) |
-| Enemy sprites | `res://assets/art/characters/skeleton/` | `IsoCharacter` (set `base_path` + `visible=true` in `EnemyInstance.tscn`) |
-
-> Note: `base_path` was cleared from the scenes during the wipe. Re-add it when
-> real character art lands, and flip `visible` to `true` (and hide/remove the
-> `DebugCircle` child) to switch from placeholder to art.
-
-## IsoCharacter layout (current loader)
-
-`IsoCharacter` (`src/characters/iso_character.gd`) scans, per logical animation:
+One PNG sheet per character, written by
+`tools/art-gen/generate_character_sprites.gd` (ADR-0022, ADR-0034):
 
 ```
-{base_path}/{anim_folder}/{DIR}/*.png      # frames sorted alphabetically
+godot --headless --path . -s tools/art-gen/generate_character_sprites.gd
 ```
 
-- `{DIR}` is one of the **8 compass folders**: `E NE N NW W SW S SE`
-- `configure({"idle": "fayde_idle", "walk": "fayde_walk", ...})` maps logical
-  names → `{anim_folder}`
-- Missing direction folders are skipped silently (no crash)
+Every sheet is **4 columns × 3 rows**, one sheet pixel = one world pixel:
 
-Kenney isometric character packs do **not** ship this 8-folder layout. Adapting
-the loader to the chosen Kenney format is tracked separately — see the art
-migration discussion. Do not assume the 8-folder convention survives that work.
+| Row | Fayde | Enemies | Played |
+|-----|-------|---------|--------|
+| 0 | idle | idle | loops at 6 fps |
+| 1 | move | move | loops at 6 fps while the parent moves |
+| 2 | cast (wind-up, release, hold, recover) | attack wind-up | once, over the cast / telegraph |
+
+Sheets face right; the game mirrors them for left. Feet sit on the bottom
+centre of each frame.
+
+| Sheet | Frame | Used by |
+|-------|-------|---------|
+| `fayde.png` + `fayde_glow.png` | 20×32 | `PlayerController.tscn`, `MenuBackdrop` (glow is white, tinted with the active Prana) |
+| `drifter`, `charger`, `cluster`, `weaver`, `mortar`, `rifter`, `sniper`, `spinner`, `splitter` | 14–26 px a side | `assets/data/enemy_types/enemy_*.tres` → `sprite_sheet` |
+| `vault_sentinel.png` | 96×96 | Floor 1 boss |
+| `warped_warden.png` | 96×96 | Floor 2 boss |
+| `cipher_keeper.png` | 144×144 | Floor 3 final boss |
+
+`PixelCharacter` (`src/visual/pixel_character.gd`) plays the sheet. Enemies set
+`sprite_pixel_scale = 1` in their `EnemyType`; the node counter-scales for
+`base_scale`, so bosses keep Fayde's pixel size however large their hitbox is.
+
+### Changing a character
+
+- Edit the design in the generator (Fayde is an ASCII map; enemies and bosses are
+  shape code using `pixel_painter.gd`) and re-run it, then run
+  `godot --headless --import` so the new PNGs are imported.
+- Or paint over a PNG in Aseprite. Keep the 4×3 layout, the frame size, a 1 px
+  `#17121A` outline and the palette in art bible §4. Re-running the generator
+  overwrites hand edits.
+- Colours: body neutrals ≤ 40 % saturation, Prana markers 50–60 %, and each boss
+  has one reserved colour (§4.3): Sentinel teal, Warden violet, Keeper rose.
+
+### Effects
+
+Hit flash (solid white), the cast flash and the death dissolve are not in the
+sheets. They run in `assets/shaders/pixel_character.gdshader`; timings are in
+`assets/data/character_fx_tuning.tres` (ADR-0034).
+
+## Other art
+
+- Spell and bullet VFX are procedural (`PixelVFX`, ADR-0023).
+- `assets/art/vfx/spell_cast/` is read by `PlayerController` if present; it is
+  optional.

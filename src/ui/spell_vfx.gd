@@ -53,6 +53,9 @@ const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
 ## Perfect window timings for the combo ring's sweet-spot marker.
 const _ATTACK_TUNING: AttackTuning = preload("res://assets/data/attack_tuning.tres")
 
+## ADR-0034 — sprite hit flash, cast pose and cast flash timings.
+const _FX_TUNING: CharacterFxTuning = preload("res://assets/data/character_fx_tuning.tres")
+
 ## Minimum real-time gap (usec) between two floating callouts of the same reaction name.
 const REACTION_LABEL_COOLDOWN_US: int = 600_000
 
@@ -204,10 +207,10 @@ func _exit_tree() -> void:
 
 # ── Signal handlers ────────────────────────────────────────────────────────────
 
-## Brief modulate pulse on Fayde when a cast begins.
-## Uses a color tween (not alpha) so PlayerController._physics_process alpha-reset
-## (guards the i-frame blink system) does not kill the pulse mid-flight.
-## Pulse color is brightened from the primary Prana type's canonical color.
+## Plays Fayde's cast pose and a brief flash in the primary Prana type's colour when
+## a cast begins (ADR-0034). Without a sprite, falls back to an overbright modulate
+## pulse; that uses a color tween (not alpha) so PlayerController's i-frame alpha
+## reset does not kill it mid-flight.
 func _on_cast_started(spell_effect: SpellEffect) -> void:
 	if get_tree() == null:
 		return
@@ -220,11 +223,17 @@ func _on_cast_started(spell_effect: SpellEffect) -> void:
 		var type_data: PranaType = PranaCatalog.get_type(spell_effect.primary_type)
 		if type_data != null:
 			# Overbrighten the type color for a visible flash without losing hue identity.
-			pulse_color = type_data.color * 2.2
-			pulse_color.a = 1.0
-	var tween: Tween = create_tween()
-	tween.tween_property(player as CanvasItem, "modulate", pulse_color, 0.05)
-	tween.tween_property(player as CanvasItem, "modulate", Color.WHITE, 0.12)
+			pulse_color = type_data.color
+	var pc: PixelCharacter = player.get_node_or_null(^"PixelCharacter") as PixelCharacter
+	if pc != null:
+		pc.play_cast(_FX_TUNING.fayde_cast_sec)
+		pc.flash(pulse_color, _FX_TUNING.cast_flash_sec, _FX_TUNING.cast_flash_strength)
+	else:
+		var overbright: Color = pulse_color * 2.2
+		overbright.a = 1.0
+		var tween: Tween = create_tween()
+		tween.tween_property(player as CanvasItem, "modulate", overbright, 0.05)
+		tween.tween_property(player as CanvasItem, "modulate", Color.WHITE, 0.12)
 	_audio_play(&"sfx_spell_cast")
 	_show_range_cone(spell_effect)
 
@@ -428,9 +437,12 @@ func _on_damage_taken(target: Node, _final_damage: int, _current_hp: int) -> voi
 		return
 	var ci: CanvasItem = target as CanvasItem
 	if target.is_in_group(&"player"):
-		var tw: Tween = create_tween()
-		tw.tween_property(ci, "modulate", Color(2.0, 0.25, 0.25, 1.0), 0.0)
-		tw.tween_property(ci, "modulate", Color.WHITE, 0.18)
+		# ADR-0034 — a solid white sprite flash, not a whole-body red tint.
+		var pc: PixelCharacter = target.get_node_or_null(^"PixelCharacter") as PixelCharacter
+		if pc != null:
+			pc.flash(_FX_TUNING.hit_flash_color, _FX_TUNING.fayde_flash_sec)
+		else:
+			_flash_enemy_white(ci)
 		_audio_play(&"sfx_fayde_hit")
 	else:
 		if target.has_method(&"request_hit_flash"):

@@ -1,4 +1,4 @@
-## pixel_character_test.gd — pixel-art character sprites and their wiring (ADR-0022).
+## pixel_character_test.gd — pixel-art character sprites and their wiring (ADR-0022, ADR-0034).
 extends GdUnitTestSuite
 
 const ENEMY_DIR: String = "res://assets/data/enemy_types/"
@@ -20,14 +20,14 @@ func _all_enemy_types() -> Array[EnemyType]:
 func test_idle_frames_cycle_through_row_zero() -> void:
 	var fps: float = 6.0
 	for i: int in PixelCharacter.FRAMES * 2:
-		var f: int = PixelCharacter.frame_for((i + 0.5) / fps, false, fps)
+		var f: int = PixelCharacter.frame_for((i + 0.5) / fps, PixelCharacter.ROW_IDLE, fps)
 		assert_int(f).is_equal(i % PixelCharacter.FRAMES)
 
 
 func test_moving_frames_use_row_one() -> void:
-	var f: int = PixelCharacter.frame_for(0.0, true, 6.0)
+	var f: int = PixelCharacter.frame_for(0.0, PixelCharacter.ROW_MOVE, 6.0)
 	assert_int(f).is_equal(PixelCharacter.FRAMES)
-	f = PixelCharacter.frame_for(3.5 / 6.0, true, 6.0)
+	f = PixelCharacter.frame_for(3.5 / 6.0, PixelCharacter.ROW_MOVE, 6.0)
 	assert_int(f).is_equal(PixelCharacter.FRAMES + 3)
 
 
@@ -37,7 +37,7 @@ func test_every_enemy_type_has_a_sheet_with_the_standard_layout() -> void:
 	for et: EnemyType in _all_enemy_types():
 		assert_object(et.sprite_sheet).override_failure_message("%s has no sprite_sheet" % et.name).is_not_null()
 		assert_int(et.sprite_sheet.get_width() % PixelCharacter.FRAMES).is_equal(0)
-		assert_int(et.sprite_sheet.get_height() % 2).is_equal(0)
+		assert_int(et.sprite_sheet.get_height() % PixelCharacter.ROWS).is_equal(0)
 
 
 func test_sprite_pixel_scale_is_a_whole_number() -> void:

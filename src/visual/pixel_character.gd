@@ -1,19 +1,32 @@
-## PixelCharacter — plays a pixel-art sprite sheet for Fayde or an enemy (ADR-0022).
+## PixelCharacter — plays a pixel-art sprite sheet for Fayde or an enemy (ADR-0022, ADR-0034).
 ##
 ## Sheets come from tools/art-gen/generate_character_sprites.gd: FRAMES columns ×
-## 2 rows (row 0 idle, row 1 moving). The feet sit on the node origin, like the
-## DebugCircle placeholder it replaces. The node reads its parent's velocity (and
-## get_facing_direction() when present) to pick the row and flip left/right, so
-## PlayerController and EnemyInstance need no extra wiring.
+## ROWS rows (row 0 idle, row 1 moving, row 2 cast / attack wind-up). The feet sit on
+## the node origin, like the DebugCircle placeholder it replaces. The node reads its
+## parent's velocity (and get_facing_direction() when present) to pick the row and
+## flip left/right, so PlayerController and EnemyInstance need no extra wiring.
 ##
 ## An optional glow sheet (white where the character emits Prana light) is drawn
 ## on top and tinted with glow_color.
+##
+## ADR-0034 effects, all driven from _process and the pixel_character shader:
+## flash() turns every opaque pixel one colour for a moment (hit flash), play_cast()
+## plays the cast row once, and dissolve() breaks the sprite apart in 2×2 clusters.
 class_name PixelCharacter
 extends Node2D
 
+## Emitted once when a dissolve() finishes (the sprite is fully gone).
+signal dissolved
+
 const FRAMES: int = 4
+const ROWS: int = 3
+const ROW_IDLE: int = 0
+const ROW_MOVE: int = 1
+const ROW_CAST: int = 2
 ## Parent speed (px/s) above which the moving row plays.
 const MOVE_THRESHOLD: float = 12.0
+const FX_TUNING: CharacterFxTuning = preload("res://assets/data/character_fx_tuning.tres")
+const FX_SHADER: Shader = preload("res://assets/shaders/pixel_character.gdshader")
 
 @export var sheet: Texture2D = null:
 	set(value):
@@ -29,19 +42,28 @@ const MOVE_THRESHOLD: float = 12.0
 		glow_color = value
 		if _glow != null:
 			_glow.modulate = glow_color
-## Integer pixel scale after the parent's own scale (bosses are scaled 2–2.5×).
+## Pixel scale after the parent's own scale. Enemies set it to 1 / base_scale so one
+## sheet pixel is one world pixel, the same as Fayde.
 @export var pixel_scale: float = 1.0:
 	set(value):
 		pixel_scale = value
 		_apply_sheet()
-## Frames per second of both rows.
+## Frames per second of the idle and moving rows.
 @export var fps: float = 6.0
 
 var _body: Sprite2D = null
 var _glow: Sprite2D = null
+var _material: ShaderMaterial = null
 var _time: float = 0.0
 var _moving: bool = false
 var _facing_left: bool = false
+var _flash_strength: float = 0.0
+var _flash_sec: float = 0.0
+var _flash_elapsed: float = 0.0
+var _cast_sec: float = 0.0
+var _cast_elapsed: float = 0.0
+var _dissolve_sec: float = 0.0
+var _dissolve_elapsed: float = 0.0
 
 
 func _init() -> void:
@@ -63,6 +85,7 @@ func _process(delta: float) -> void:
 			face_x = (parent.call(&"get_facing_direction") as Vector2).x
 		if absf(face_x) > 0.05:
 			set_facing_left(face_x < 0.0)
+	advance_fx(delta)
 	_update_frame()
 
 
@@ -84,6 +107,73 @@ func get_frame() -> int:
 	return _body.frame
 
 
+## Flashes every opaque pixel [param color] for [param duration] seconds: full
+## [param strength] for the tuning's flash_hold share, then fading out. A new flash
+## replaces one in progress.
+func flash(color: Color, duration: float, strength: float = 1.0) -> void:
+	if duration <= 0.0 or strength <= 0.0:
+		return
+	_flash_strength = clampf(strength, 0.0, 1.0)
+	_flash_sec = duration
+	_flash_elapsed = 0.0
+	_ensure_material()
+	_material.set_shader_parameter(&"flash_color", color)
+	_push_fx()
+
+
+## Plays the cast row once over [param duration] seconds (wind-up, release, hold,
+## recover). Idle and moving rows resume afterwards.
+func play_cast(duration: float) -> void:
+	if duration <= 0.0:
+		return
+	_cast_sec = duration
+	_cast_elapsed = 0.0
+	_update_frame()
+
+
+## True while the cast row is playing.
+func is_casting() -> bool:
+	return _cast_elapsed < _cast_sec
+
+
+## Breaks the sprite apart over [param duration] seconds, with a [param rim] colour
+## at the dissolve front. Emits [signal dissolved] when it is gone.
+func dissolve(duration: float, rim: Color) -> void:
+	_dissolve_sec = maxf(duration, 0.01)
+	_dissolve_elapsed = 0.0
+	_ensure_material()
+	_material.set_shader_parameter(&"dissolve_color", rim)
+	_push_fx()
+
+
+## Current dissolve progress, 0 (whole) to 1 (gone); 0 when no dissolve has started.
+func get_dissolve() -> float:
+	if _dissolve_sec <= 0.0:
+		return 0.0
+	return clampf(_dissolve_elapsed / _dissolve_sec, 0.0, 1.0)
+
+
+## Current hit-flash strength, 0 to 1.
+func get_flash_amount() -> float:
+	return flash_amount_at(_flash_elapsed, _flash_sec, FX_TUNING.flash_hold) * _flash_strength
+
+
+## Advances the flash, cast and dissolve timers by [param delta] seconds and pushes
+## the result to the shader. Called from _process; public so tests can step it.
+func advance_fx(delta: float) -> void:
+	if _cast_elapsed < _cast_sec:
+		_cast_elapsed += delta
+	if _flash_elapsed < _flash_sec:
+		_flash_elapsed += delta
+	var was_dissolving: bool = _dissolve_sec > 0.0 and _dissolve_elapsed < _dissolve_sec
+	if was_dissolving:
+		_dissolve_elapsed += delta
+	if _material != null:
+		_push_fx()
+	if was_dissolving and _dissolve_elapsed >= _dissolve_sec:
+		dissolved.emit()
+
+
 ## Returns a standalone Sprite2D showing the current frame (dash afterimages).
 ## The caller owns it and places it with global_position.
 func make_ghost() -> Sprite2D:
@@ -100,22 +190,61 @@ func make_ghost() -> Sprite2D:
 func get_frame_size() -> Vector2i:
 	if sheet == null:
 		return Vector2i.ZERO
-	return Vector2i(sheet.get_width() / FRAMES, sheet.get_height() / 2)
+	return Vector2i(sheet.get_width() / FRAMES, sheet.get_height() / ROWS)
 
 
-## Returns the frame index for elapsed [param time] on the given row. Pure.
-static func frame_for(time: float, moving: bool, frames_per_sec: float) -> int:
+## Returns the frame index for elapsed [param time] on a looping [param row]. Pure.
+static func frame_for(time: float, row: int, frames_per_sec: float) -> int:
 	var col: int = int(floor(time * frames_per_sec)) % FRAMES
-	return (FRAMES if moving else 0) + col
+	return row * FRAMES + col
+
+
+## Returns the cast-row frame [param elapsed] seconds into a cast of [param duration]
+## seconds: the four columns are spread evenly and the last one holds. Pure.
+static func cast_frame_for(elapsed: float, duration: float) -> int:
+	var t: float = clampf(elapsed / maxf(duration, 0.001), 0.0, 0.999)
+	return ROW_CAST * FRAMES + int(floor(t * FRAMES))
+
+
+## Flash strength [param elapsed] seconds into a flash of [param duration] seconds:
+## 1 for the first [param hold] share, then a linear fade to 0. Pure.
+static func flash_amount_at(elapsed: float, duration: float, hold: float) -> float:
+	if duration <= 0.0 or elapsed >= duration:
+		return 0.0
+	var t: float = elapsed / duration
+	if t <= hold:
+		return 1.0
+	return clampf(1.0 - (t - hold) / maxf(1.0 - hold, 0.001), 0.0, 1.0)
 
 
 func _update_frame() -> void:
 	if sheet == null:
 		return
-	var f: int = frame_for(_time, _moving, fps)
+	var f: int
+	if is_casting():
+		f = cast_frame_for(_cast_elapsed, _cast_sec)
+	else:
+		f = frame_for(_time, ROW_MOVE if _moving else ROW_IDLE, fps)
 	_body.frame = f
 	if _glow.visible:
 		_glow.frame = f
+
+
+func _ensure_material() -> void:
+	if _material != null:
+		return
+	_material = ShaderMaterial.new()
+	_material.shader = FX_SHADER
+	_material.set_shader_parameter(&"sheet_rows", float(ROWS))
+	_material.set_shader_parameter(&"dissolve_edge", FX_TUNING.dissolve_edge)
+	_material.set_shader_parameter(&"dissolve_rise", FX_TUNING.dissolve_rise)
+	_body.material = _material
+	_glow.material = _material
+
+
+func _push_fx() -> void:
+	_material.set_shader_parameter(&"flash_amount", get_flash_amount())
+	_material.set_shader_parameter(&"dissolve", get_dissolve())
 
 
 func _apply_sheet() -> void:
@@ -123,7 +252,7 @@ func _apply_sheet() -> void:
 		return
 	for s: Sprite2D in [_body, _glow]:
 		s.hframes = FRAMES
-		s.vframes = 2
+		s.vframes = ROWS
 		s.scale = Vector2(pixel_scale, pixel_scale)
 	_body.texture = sheet
 	_glow.texture = glow_sheet
@@ -140,5 +269,5 @@ static func _make_sprite() -> Sprite2D:
 	s.centered = false
 	s.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	s.hframes = FRAMES
-	s.vframes = 2
+	s.vframes = ROWS
 	return s
