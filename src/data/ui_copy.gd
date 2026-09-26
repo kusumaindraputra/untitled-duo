@@ -363,3 +363,27 @@ extends Resource
 
 ## Cascade line: damage multiplier of the burst after the combo.
 @export var spell_preview_cascade_format: String = "Cascade: burst after the combo, %.1f× damage"
+
+@export_group("Run Summary (end of run)")
+
+## End-screen titles for a win and a death.
+@export var summary_win_title: String = "RUN COMPLETE"
+@export var summary_loss_title: String = "YOU DIED"
+## Under the title: floor reached, rooms cleared.
+@export var summary_subtitle_format: String = "Floor %d  ·  %d rooms cleared"
+## Stat row labels.
+@export var summary_time: String = "Time"
+@export var summary_enemies: String = "Enemies slain"
+@export var summary_best_combo: String = "Best combo"
+@export var summary_bosses: String = "Bosses beaten"
+@export var summary_ranks: String = "Room ranks"
+## Shown in the ranks row when no room was ranked.
+@export var summary_no_ranks: String = "—"
+## Heading of the sigil list, and the text when none were taken.
+@export var summary_sigils_title: String = "SIGILS THIS RUN"
+@export var summary_no_sigils: String = "None this run"
+## Memories line: recovered this run, found in total, total.
+@export var summary_memories_format: String = "Memories recovered  +%d   (%d / %d)"
+## Buttons.
+@export var summary_run_again: String = "Run Again  (R)"
+@export var summary_main_menu: String = "Main Menu"
