@@ -10,7 +10,7 @@
 ## best_combo (int), bosses (int), ranks (Array[String]), shards (int),
 ## sigils (Array[String] titles), memories_new (int), memories_found (int),
 ## memories_total (int), hard_unlocked (bool), assist (bool), records (Array[String]
-## lines for records set this run).
+## lines for records set this run), death (String: the DeathRecap line; shown on a loss).
 class_name RunSummaryPanel
 extends Control
 
@@ -26,9 +26,12 @@ const LOSS_COLOR := Color(0.9, 0.25, 0.25)
 const LABEL_COLOR := Color(0.62, 0.62, 0.68)
 const VALUE_COLOR := Color(1.0, 0.92, 0.7)
 const CARD_BG := Color(0.05, 0.05, 0.07, 0.9)
+const DEATH_COLOR := Color(1.0, 0.62, 0.55)
 
 ## The Run Again button (focused on open so Enter / A replays). Null until setup().
 var run_again_button: Button = null
+## The death recap line (null on a win or without one). For tests.
+var death_label: Label = null
 
 
 ## Formats seconds as M:SS.
@@ -96,6 +99,13 @@ func setup(data: Dictionary) -> void:
 		22, Color(0.85, 0.85, 0.85))
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(sub)
+
+	# ADR-0032: what killed Fayde, so a loss teaches something.
+	var death: String = str(data.get("death", ""))
+	if not win and not death.is_empty():
+		death_label = _label(death, 20, DEATH_COLOR)
+		death_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		root.add_child(death_label)
 
 	var cards := HBoxContainer.new()
 	cards.alignment = BoxContainer.ALIGNMENT_CENTER

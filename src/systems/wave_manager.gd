@@ -73,7 +73,8 @@ const REST_HEAL_VISUAL_DELAY: float = 0.5
 
 ## Elite multipliers, reinforcement warning time and bullet-cancel radii (ADR-0018).
 const BULLET_HELL_TUNING: BulletHellTuning = preload("res://assets/data/bullet_hell_tuning.tres")
-const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
+## Height of a preview threat icon above its enemy, px before the enemy's scale (ADR-0032).
+const ICON_OFFSET_Y: float = 26.0
 ## Bullet-cancel meter gain (ADR-0019).
 const PACE_TUNING: PaceTuning = preload("res://assets/data/pace_tuning.tres")
 
@@ -650,6 +651,8 @@ func _show_wave_preview() -> void:
 	var marker_idx: int = 0
 	var swarmer_base_pos: Vector2 = Vector2.ZERO
 	var swarmer_local_count: int = 0
+	var swarm_counts: Dictionary = threat_swarm_counts(_wave_composition)
+	var swarm_icon_done: Dictionary = {}
 	for entry: Dictionary in _wave_composition:
 		var enemy_scene: PackedScene = entry["scene"] as PackedScene
 		if enemy_scene == null:
@@ -692,18 +695,39 @@ func _show_wave_preview() -> void:
 		if int(entry.get("group", 0)) > 0:
 			enemy.modulate.a = 0.22
 		enemy.global_position = final_pos
-		# Name label above the enemy so the player knows which type is spawning where.
-		var et: EnemyType = EnemyCatalog.get_type(entry["type_id"])
-		if et != null:
-			var lbl := Label.new()
-			lbl.text = (_COPY.elite_prefix + et.name) if bool(entry.get("elite", false)) else et.name
-			lbl.add_theme_font_size_override("font_size", 14)
-			lbl.position = Vector2(-30.0, -26.0)
-			lbl.size = Vector2(60.0, 18.0)
-			lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			lbl.modulate = Color(et.debug_color.r, et.debug_color.g, et.debug_color.b, 1.0)
-			enemy.add_child(lbl)
 		_preview_nodes.append(enemy)
+		# ADR-0032: a threat icon above the enemy (name labels overlapped). A swarm
+		# shows one icon with a count; reinforcements get none (they arrive later).
+		var type_id: int = int(entry["type_id"])
+		if int(entry.get("group", 0)) > 0 or (is_swarmer and swarm_icon_done.has(type_id)):
+			continue
+		var et: EnemyType = EnemyCatalog.get_type(type_id)
+		if et == null:
+			continue
+		var icon := ThreatIcon.new()
+		icon.kind = ThreatIcon.kind_for(et)
+		icon.ring_color = Color(et.debug_color, 1.0)
+		icon.elite = bool(entry.get("elite", false))
+		if is_swarmer:
+			swarm_icon_done[type_id] = true
+			icon.count = int(swarm_counts.get(type_id, 1))
+		add_child(icon)
+		icon.global_position = final_pos + Vector2(0.0, -ICON_OFFSET_Y * preview_scale)
+		_preview_nodes.append(icon)
+
+
+## Swarmer type id → how many of it spawn now (group 0), so the preview can show one
+## threat icon per swarm with a count. [param composition] is a wave composition.
+static func threat_swarm_counts(composition: Array) -> Dictionary:
+	var counts: Dictionary = {}
+	for entry: Dictionary in composition:
+		if int(entry.get("archetype", -1)) != GameEnums.EnemyArchetype.SWARMER:
+			continue
+		if int(entry.get("group", 0)) > 0:
+			continue
+		var id: int = int(entry.get("type_id", -1))
+		counts[id] = int(counts.get(id, 0)) + 1
+	return counts
 
 
 ## Frees all preview nodes created by _show_wave_preview().

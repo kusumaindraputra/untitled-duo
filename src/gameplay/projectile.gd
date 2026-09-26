@@ -29,6 +29,13 @@ const COLLISION_MASK_WALLS: int = 1
 const COLLISION_MASK_FULL_COVER: int = 32
 
 const TUNING: BulletHellTuning = preload("res://assets/data/bullet_hell_tuning.tres")
+## High-contrast outline widths past the bullet radius, px (ADR-0032).
+const OUTLINE_WHITE: float = 4.0
+const OUTLINE_BLACK: float = 2.0
+
+## Who fired this bullet with which attack, for the death recap (DeathRecap.cause()).
+## Set by the shooter after launch; cleared on reuse.
+var cause: Dictionary = {}
 
 var _direction: Vector2 = Vector2.RIGHT
 var _base_damage: float = 1.5
@@ -99,6 +106,11 @@ func _draw() -> void:
 	draw_line(-_direction * trail_len, Vector2.ZERO, Color(c.r * 0.4, c.g * 0.5, c.b, 0.5 * fade), 3.0, true)
 	# Outer glow, dark rim (readable on any floor), bright core.
 	draw_circle(Vector2.ZERO, _radius * 2.5, Color(c.r, c.g, c.b, 0.15 * fade))
+	# ADR-0032 high-contrast option: a thick white ring around a black one, so the
+	# bullet's edge reads on any floor and against any other effect.
+	if GameSettings.bullet_outline_on():
+		draw_circle(Vector2.ZERO, _radius + OUTLINE_WHITE, Color(1.0, 1.0, 1.0, fade))
+		draw_circle(Vector2.ZERO, _radius + OUTLINE_BLACK, Color(0.0, 0.0, 0.0, fade))
 	draw_circle(Vector2.ZERO, _radius + 1.5, Color(0.05, 0.02, 0.1, 0.8 * fade))
 	draw_circle(Vector2.ZERO, _radius, Color(c.r, c.g, c.b, 0.95 * fade))
 	draw_circle(Vector2.ZERO, _radius * 0.45, Color(1.0, 1.0, 1.0, 0.9 * fade))
@@ -157,6 +169,7 @@ func reset_for_reuse() -> void:
 	_radius = DEFAULT_RADIUS
 	_color = DEFAULT_COLOR
 	_motion = BulletPattern.Motion.STRAIGHT
+	cause = {}
 	visible = true
 	process_mode = PROCESS_MODE_PAUSABLE
 
@@ -219,7 +232,7 @@ func _check_player() -> void:
 			_auto_dodged = true
 			return
 		HealthAndDamage.apply_damage(
-			_player, _base_damage, GameEnums.DamageClass.NONE, GameEnums.DamageSource.CONTACT)
+			_player, _base_damage, GameEnums.DamageClass.NONE, GameEnums.DamageSource.CONTACT, cause)
 		_despawn()
 		return
 	if dist <= _radius + graze_radius_of(_player):

@@ -1311,6 +1311,14 @@ func _show_floor_map(types: Array, states: Array, mods: Array, edges: Array,
 	_minimap_root.position = Vector2(vp_w - _floor_map.size.x - _MINIMAP_MARGIN * 0.5, _MINIMAP_MARGIN * 0.5)
 
 
+## The floor map's current contents (FloorMap.snapshot()), or {} when none is shown.
+## The pause screen draws a larger copy with a legend (ADR-0032).
+func get_floor_map_data() -> Dictionary:
+	if _floor_map == null or not _floor_map.visible:
+		return {}
+	return _floor_map.snapshot()
+
+
 ## Bottom edge of the top-right floor map in HUD px (0 when none is shown), so panels
 ## on the right (the prep panel) can sit below it.
 func get_floor_map_bottom() -> float:
