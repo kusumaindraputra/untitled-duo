@@ -5,7 +5,7 @@
 ##   MM-02: pressing a locked, affordable Heirloom unlocks it, saves and signals the menu
 ##   MM-03: pressing an unlocked Heirloom equips it; pressing again unequips it
 ##   MM-04: description hint says "not enough shards" when the player cannot afford it
-##   MM-05: menu buttons run Play / Heirlooms / Memories / Settings / Quit in order
+##   MM-05: menu buttons run Play / Heirlooms / Spellbook / Memories / Settings / Quit in order
 ##   MM-06: backdrop motes wrap inside the area and hold still without animation
 ##
 ## Framework: GdUnit4 | Godot 4.6
@@ -110,7 +110,9 @@ func test_main_menu_buttons_in_order() -> void:
 		if b is Button and not b is CheckButton:
 			texts.append((b as Button).text)
 
+	var book: Vector2i = Spellbook.progress(menu.progress)
 	assert_array(texts).contains_exactly([COPY.menu_play, COPY.menu_heirlooms,
+		COPY.spellbook_button_format % [book.x, book.y],
 		COPY.memories_button_format % [0, StoryRules.total()], COPY.settings_button, COPY.menu_quit])
 	remove_child(menu)
 	menu.free()

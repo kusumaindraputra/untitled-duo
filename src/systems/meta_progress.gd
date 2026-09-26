@@ -37,6 +37,12 @@ var fragments_found: int = 0
 var ending_seen: bool = false
 ## True once the ending with every fragment has played.
 var true_ending_seen: bool = false
+## Spellbook discoveries (F1): core Prana types cast, reaction ids armed, sigil ids
+## taken, enemy type ids defeated. See Spellbook.
+var codex_spells: Array[int] = []
+var codex_reactions: Array[StringName] = []
+var codex_sigils: Array[StringName] = []
+var codex_enemies: Array[int] = []
 
 
 # ── Payout ────────────────────────────────────────────────────────────────────
@@ -160,6 +166,42 @@ func record_ending(is_true: bool) -> void:
 		ending_seen = true
 
 
+# ── Spellbook (F1) ────────────────────────────────────────────────────────────
+
+## Marks core Prana [param type_id] as cast. Returns true when it is new.
+func discover_spell(type_id: int) -> bool:
+	return _add_int(codex_spells, type_id)
+
+
+## Marks reaction [param id] as armed. Returns true when it is new.
+func discover_reaction(id: StringName) -> bool:
+	return _add_name(codex_reactions, id)
+
+
+## Marks sigil [param id] as taken. Returns true when it is new.
+func discover_sigil(id: StringName) -> bool:
+	return _add_name(codex_sigils, id)
+
+
+## Marks enemy type [param type_id] as defeated. Returns true when it is new.
+func discover_enemy(type_id: int) -> bool:
+	return _add_int(codex_enemies, type_id)
+
+
+static func _add_int(list: Array[int], v: int) -> bool:
+	if v < 0 or list.has(v):
+		return false
+	list.append(v)
+	return true
+
+
+static func _add_name(list: Array[StringName], v: StringName) -> bool:
+	if v == &"" or list.has(v):
+		return false
+	list.append(v)
+	return true
+
+
 # ── Persistence ───────────────────────────────────────────────────────────────
 
 ## Loads progress from [param path]. A missing or unreadable file gives fresh progress.
@@ -183,6 +225,14 @@ static func load_from(path: String = DEFAULT_PATH) -> MetaProgress:
 	p.fragments_found = maxi(int(cfg.get_value(_SECTION, "fragments_found", 0)), 0)
 	p.ending_seen = bool(cfg.get_value(_SECTION, "ending_seen", false))
 	p.true_ending_seen = bool(cfg.get_value(_SECTION, "true_ending_seen", false))
+	for v: Variant in cfg.get_value(_SECTION, "codex_spells", []):
+		p.discover_spell(int(v))
+	for v: Variant in cfg.get_value(_SECTION, "codex_reactions", []):
+		p.discover_reaction(StringName(str(v)))
+	for v: Variant in cfg.get_value(_SECTION, "codex_sigils", []):
+		p.discover_sigil(StringName(str(v)))
+	for v: Variant in cfg.get_value(_SECTION, "codex_enemies", []):
+		p.discover_enemy(int(v))
 	return p
 
 
@@ -205,4 +255,8 @@ func save_to(path: String = DEFAULT_PATH) -> Error:
 	cfg.set_value(_SECTION, "fragments_found", fragments_found)
 	cfg.set_value(_SECTION, "ending_seen", ending_seen)
 	cfg.set_value(_SECTION, "true_ending_seen", true_ending_seen)
+	cfg.set_value(_SECTION, "codex_spells", codex_spells.duplicate())
+	cfg.set_value(_SECTION, "codex_reactions", codex_reactions.map(func(x: StringName) -> String: return String(x)))
+	cfg.set_value(_SECTION, "codex_sigils", codex_sigils.map(func(x: StringName) -> String: return String(x)))
+	cfg.set_value(_SECTION, "codex_enemies", codex_enemies.duplicate())
 	return cfg.save(path)

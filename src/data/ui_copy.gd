@@ -442,3 +442,43 @@ extends Resource
 ## Last How-to-Fight step: keyboard (%s = cast key) and pad.
 @export var coach_confirm_step_kb: String = "4.  Press ENTER to confirm, then %s to cast in battle."
 @export var coach_confirm_step_pad: String = "4.  Press Y to confirm, then A to cast in battle."
+
+@export_group("Spellbook (F1)")
+
+## Menu / pause button (%d found, %d total) and the panel heading.
+@export var spellbook_button_format: String = "SPELLBOOK  %d/%d"
+@export var spellbook_title: String = "SPELLBOOK"
+## Section tabs, in order: spells, reactions, sigils, enemies.
+@export var spellbook_sections: Array[String] = ["Spells", "Reactions", "Sigils", "Enemies"]
+## Locked entry title and body.
+@export var spellbook_locked: String = "? ? ?"
+@export var spellbook_locked_spell: String = "Put this Prana in the centre of your grid and fight to learn its spell."
+@export var spellbook_locked_reaction: String = "Place two Prana next to each other to find this reaction."
+@export var spellbook_locked_sigil: String = "Take this sigil after a room to learn it."
+@export var spellbook_locked_enemy: String = "Defeat this enemy to learn it."
+## Detail lines.
+@export var spellbook_spell_core: String = "As your core"
+@export var spellbook_spell_modifier: String = "Beside your core"
+@export var spellbook_reaction_pair_format: String = "%s + %s"
+@export var spellbook_enemy_hp_format: String = "HP %d"
+@export var spellbook_tabs_hint: String = "Q / E  switch section"
+@export var spellbook_tabs_hint_pad: String = "LB / RB  switch section"
+@export var spellbook_back: String = "Back  (Esc)"
+@export var spellbook_back_pad: String = "Back  (B)"
+## Enemy kinds by GameEnums.EnemyArchetype (Seeker, Rusher, Swarmer, Boss, Shooter).
+@export var spellbook_archetypes: Array[String] = ["Seeker", "Rusher", "Swarmer", "Boss", "Shooter"]
+## One line per enemy type id: how it fights.
+@export var spellbook_enemy_notes: Dictionary = {
+	0: "Drifts toward you and fires slow spreads.",
+	1: "Lines up, winds up, then charges in a straight line.",
+	2: "Comes in groups and swarms your position.",
+	3: "Floor 2 boss. Warps the arena between bullet waves.",
+	4: "Opens rifts that fire when you stand in line.",
+	5: "Floor 1 boss. Guards the vault with sweeping walls of bullets.",
+	6: "Spins in place, spraying a turning spiral.",
+	7: "Aims a laser, then fires along it. Step out of the line.",
+	8: "Lobs shells that land where you stood.",
+	9: "Weaves between others and fires crossing lines.",
+	10: "Splits into smaller copies when it dies.",
+	11: "Floor 3 boss. The keeper of the last cipher.",
+}

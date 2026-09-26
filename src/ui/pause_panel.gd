@@ -15,6 +15,7 @@ extends Control
 signal resume_pressed
 signal restart_pressed
 signal settings_pressed
+signal spellbook_pressed
 signal tutorial_pressed
 signal main_menu_pressed
 signal quit_pressed
@@ -34,6 +35,8 @@ const CELL_SIZE: float = 30.0
 var menu_box: VBoxContainer = null
 ## Focused on open so Enter / A resumes.
 var resume_button: Button = null
+## Focus returns here when the Spellbook closes.
+var spellbook_button: Button = null
 ## Focus returns here when Settings closes.
 var settings_button: Button = null
 ## The spell card text, for tests.
@@ -102,6 +105,7 @@ func setup(data: Dictionary) -> void:
 	columns.add_child(buttons)
 	resume_button = _button(buttons, InputPrompts.pick(_COPY.pause_resume, _COPY.pause_resume_pad), resume_pressed)
 	_button(buttons, InputPrompts.pick(_COPY.pause_restart, _COPY.pause_restart_pad), restart_pressed)
+	spellbook_button = _button(buttons, _COPY.spellbook_title.capitalize(), spellbook_pressed)
 	settings_button = _button(buttons, _COPY.settings_button.capitalize(), settings_pressed)
 	_button(buttons, _COPY.coach_replay_button, tutorial_pressed)
 	_button(buttons, _COPY.pause_main_menu, main_menu_pressed)

@@ -1,7 +1,7 @@
 ## main_menu.gd — Front-end main menu for The Last Cipher (demo entry point).
 ##
 ## The game boots here (project.godot main_scene). Offers Play (loads the three-floor
-## run), Memories, Settings and Quit. Built entirely in code to
+## run), Heirlooms, Spellbook, Memories, Settings and Quit. Built entirely in code to
 ## match the project's programmatic-UI convention (see debug_game_loop / combat_hud).
 ##
 ## Display-only front-end: it never mutates gameplay state — it only swaps scenes and
@@ -71,6 +71,9 @@ func _build_ui() -> void:
 	_play_button.pressed.connect(_on_play_pressed)
 	var heirlooms := _menu_button(column, _COPY.menu_heirlooms, 22)
 	heirlooms.pressed.connect(_on_heirlooms_pressed.bind(heirlooms))
+	var book: Vector2i = Spellbook.progress(progress)
+	var spellbook := _menu_button(column, _COPY.spellbook_button_format % [book.x, book.y], 22)
+	spellbook.pressed.connect(_on_spellbook_pressed.bind(spellbook))
 	# ADR-0027: archive of recovered memory fragments and seen endings.
 	var memories := _menu_button(column, _COPY.memories_button_format % [
 		mini(progress.fragments_found, StoryRules.total()), StoryRules.total()], 22)
@@ -143,6 +146,14 @@ func _on_settings_pressed(from: Button) -> void:
 ## Opens the Memories archive; focus returns to [param from] when it closes.
 func _on_memories_pressed(from: Button) -> void:
 	var panel := MemoriesPanel.new()
+	panel.progress = progress
+	panel.closed.connect(from.grab_focus)
+	add_child(panel)
+
+
+## Opens the Spellbook; focus returns to [param from] when it closes.
+func _on_spellbook_pressed(from: Button) -> void:
+	var panel := SpellbookPanel.new()
 	panel.progress = progress
 	panel.closed.connect(from.grab_focus)
 	add_child(panel)

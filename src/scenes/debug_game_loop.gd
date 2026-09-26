@@ -206,6 +206,9 @@ func _ready() -> void:
 	add_child(_sigil_effects)
 	_sigil_manager.effects = _sigil_effects
 	_sigil_manager.sigil_applied.connect(_log_sigil)
+	# F1 Spellbook: the build cast each room and every enemy type defeated.
+	GameStateManager.combat_started.connect(_log_build_discoveries)
+	HealthAndDamage.enemy_killed.connect(_log_enemy_discovery)
 	_pace_director.perfect_dodge_triggered.connect(_sigil_effects.on_perfect_dodge)
 	# Transient reward bag: Prana picked from post-room rewards land here, then the
 	# prep grid places them. Found by SigilManager (writer) + PranaGrid (reader) via group.
@@ -336,12 +339,14 @@ func _show_title_screen() -> void:
 
 ## Quits the game. Web/exported builds honour this; in the editor it stops the run.
 func _quit_game() -> void:
+	_save_progress()
 	get_tree().quit()
 
 
 ## Returns to the main menu scene. Unpauses and resets time scale first so the menu
 ## (and any subsequent run) starts from a clean state.
 func _to_main_menu() -> void:
+	_save_progress()
 	get_tree().paused = false
 	Engine.time_scale = 1.0
 	get_tree().change_scene_to_file("res://src/scenes/MainMenu.tscn")
@@ -595,6 +600,14 @@ func _on_game_paused() -> void:
 	panel.resume_pressed.connect(GameStateManager.resume_game)
 	panel.restart_pressed.connect(_restart_from_pause)
 	panel.tutorial_pressed.connect(_replay_tutorial)
+	panel.spellbook_pressed.connect(func() -> void:
+		panel.menu_box.visible = false
+		var book := SpellbookPanel.new()
+		book.progress = _meta if _meta != null else MetaProgress.new()
+		book.closed.connect(func() -> void:
+			panel.menu_box.visible = true
+			panel.spellbook_button.grab_focus())
+		_pause_layer.add_child(book))
 	panel.main_menu_pressed.connect(_to_main_menu)
 	panel.quit_pressed.connect(_quit_game)
 	# ADR-0026: volume, display, comfort and keys live in the Settings panel.
@@ -629,6 +642,7 @@ func _on_game_resumed() -> void:
 
 ## Restart button: unpause, reset time scale, reload the scene for a fresh run.
 func _restart_from_pause() -> void:
+	_save_progress()
 	get_tree().paused = false
 	Engine.time_scale = 1.0
 	get_tree().reload_current_scene()
@@ -892,10 +906,35 @@ func _log_room_rank(rank_letter: String, _heal: float, _meter_bonus: float) -> v
 func _log_sigil(sigil_id: StringName) -> void:
 	if String(sigil_id).begins_with("prana_"):
 		return
+	if _meta != null:
+		_meta.discover_sigil(sigil_id)
 	for sigil: Dictionary in _sigil_manager.get_catalog():
 		if sigil.get("id", &"") == sigil_id:
 			_run_sigils.append({"title": str(sigil.get("title", sigil_id)), "desc": str(sigil.get("desc", ""))})
 			return
+
+
+## F1: records the confirmed grid's core spell and armed reactions in the Spellbook.
+func _log_build_discoveries(_is_boss: bool) -> void:
+	var grid: PranaGrid = get_tree().get_first_node_in_group(&"prana_grid") as PranaGrid
+	if _meta == null or grid == null:
+		return
+	var found: Dictionary = Spellbook.discoveries_from_grid(grid.get_slot_types())
+	_meta.discover_spell(int(found["core"]))
+	for id: StringName in found["reactions"]:
+		_meta.discover_reaction(id)
+
+
+## F1: records a defeated enemy type in the Spellbook.
+func _log_enemy_discovery(_instance_id: int, type_id: int, _affiliation: GameEnums.DamageClass) -> void:
+	if _meta != null:
+		_meta.discover_enemy(type_id)
+
+
+## Saves progress (Spellbook discoveries) when leaving a run early.
+func _save_progress() -> void:
+	if _meta != null:
+		_meta.save_to(progress_path)
 
 
 ## ADR-0027: recovers the next memory fragment for [param beat], saves progress and
