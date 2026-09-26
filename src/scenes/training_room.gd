@@ -123,6 +123,8 @@ func _register_input_actions() -> void:
 	_ensure_joypad_action(&"prana_confirm",    JOY_BUTTON_Y)
 	_ensure_key_action(&"prana_confirm",       KEY_ENTER)
 	_ensure_joypad_action(&"prana_type_cycle", JOY_BUTTON_RIGHT_SHOULDER)
+	# ADR-0026 / ADR-0031: player key and gamepad bindings replace the defaults.
+	GameSettings.active().apply_keys()
 
 
 func _ensure_key_action(action: StringName, keycode: Key) -> void:

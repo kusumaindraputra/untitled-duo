@@ -5,6 +5,7 @@
 ##   shake_multiplier / flash_multiplier follow `current`
 ##   rebind replaces the keyboard key and keeps gamepad events; reset restores defaults
 ##   SettingsPanel swaps keys so no key is bound to two actions
+##   ADR-0031: gamepad rebinds, rumble, and the settings file version + migration
 ##
 ## Framework: GdUnit4 | Godot 4.6
 extends GdUnitTestSuite
@@ -150,3 +151,129 @@ func test_settings_panel_rebind_swaps_conflicting_key() -> void:
 	assert_int(_key_of(ACTION_B)).is_equal(KEY_SHIFT)
 	assert_str(GameSettings.action_using_key(KEY_SPACE)).is_equal(String(ACTION_A))
 	panel.free()
+
+
+# ── ADR-0031: gamepad bindings and rumble ─────────────────────────────────────
+
+func _pad_count(action: StringName) -> int:
+	var n: int = 0
+	for ev: InputEvent in InputMap.action_get_events(action):
+		if ev is InputEventJoypadButton:
+			n += 1
+	return n
+
+
+func test_game_settings_rebind_pad_keeps_key_and_reset_restores() -> void:
+	var s := GameSettings.new()
+	assert_bool(s.rebind_pad(ACTION_A, JOY_BUTTON_RIGHT_SHOULDER)).is_true()
+	assert_int(GameSettings.pad_button(ACTION_A)).is_equal(JOY_BUTTON_RIGHT_SHOULDER)
+	assert_int(_pad_count(ACTION_A)).is_equal(1)
+	assert_int(_key_of(ACTION_A)).is_equal(KEY_SHIFT)
+	s.reset_pad()
+	assert_int(GameSettings.pad_button(ACTION_A)).is_equal(GameSettings.DEFAULT_PAD[ACTION_A])
+	assert_bool(s.pad_overrides.is_empty()).is_true()
+
+
+func test_game_settings_rebind_pad_rejects_start_and_other_actions() -> void:
+	var s := GameSettings.new()
+	assert_bool(s.rebind_pad(ACTION_A, JOY_BUTTON_START)).is_false()
+	assert_bool(s.rebind_pad(ACTION_A, JOY_BUTTON_DPAD_UP)).is_false()
+	assert_bool(s.rebind_pad(&"prana_place", JOY_BUTTON_B)).is_false()
+	assert_bool(s.pad_overrides.is_empty()).is_true()
+
+
+func test_settings_panel_pad_rebind_swaps_conflicting_button() -> void:
+	GameSettings.set_action_pad(ACTION_B, JOY_BUTTON_A)
+	var panel := SettingsPanel.new()
+	panel.settings = GameSettings.new()
+	panel.save_path = TEST_PATH
+	assert_bool(panel.rebind_pad_with_swap(ACTION_A, JOY_BUTTON_A)).is_true()
+	assert_int(GameSettings.pad_button(ACTION_A)).is_equal(JOY_BUTTON_A)
+	assert_int(GameSettings.pad_button(ACTION_B)).is_equal(JOY_BUTTON_X)
+	assert_bool(panel.rebind_pad_with_swap(ACTION_A, JOY_BUTTON_GUIDE)).is_false()
+	panel.free()
+
+
+func test_game_settings_pad_and_rumble_round_trip() -> void:
+	var s := GameSettings.new()
+	s.pad_overrides[ACTION_A] = JOY_BUTTON_LEFT_SHOULDER
+	s.rumble = 0.3
+	s.save_to(TEST_PATH)
+	var back := GameSettings.load_from(TEST_PATH)
+	assert_int(back.pad_overrides[ACTION_A]).is_equal(JOY_BUTTON_LEFT_SHOULDER)
+	assert_float(back.rumble).is_equal_approx(0.3, 0.001)
+	back.apply_keys()
+	assert_int(GameSettings.pad_button(ACTION_A)).is_equal(JOY_BUTTON_LEFT_SHOULDER)
+
+
+func test_game_settings_load_drops_bad_pad_values() -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value("game", "rumble", 5.0)
+	cfg.set_value("pad", "dash", JOY_BUTTON_START)
+	cfg.set_value("pad", "move_up", JOY_BUTTON_A)
+	cfg.save(TEST_PATH)
+	var s := GameSettings.load_from(TEST_PATH)
+	assert_float(s.rumble).is_equal(1.0)
+	assert_bool(s.pad_overrides.is_empty()).is_true()
+
+
+func test_game_settings_rumble_multiplier_follows_current() -> void:
+	GameSettings.current = null
+	assert_float(GameSettings.rumble_multiplier()).is_equal(1.0)
+	var s := GameSettings.new()
+	s.rumble = 0.0
+	GameSettings.current = s
+	assert_float(GameSettings.rumble_multiplier()).is_equal(0.0)
+
+
+# ── ADR-0031: settings file version ───────────────────────────────────────────
+
+func test_game_settings_save_writes_current_version() -> void:
+	GameSettings.new().save_to(TEST_PATH)
+	var cfg := ConfigFile.new()
+	cfg.load(TEST_PATH)
+	assert_int(GameSettings.file_version(cfg)).is_equal(GameSettings.SETTINGS_VERSION)
+
+
+func test_game_settings_v1_file_keeps_everything_after_upgrade() -> void:
+	# A file written before versioning: no version key, keys and audio only.
+	var cfg := ConfigFile.new()
+	cfg.set_value("audio", "music_db", -12.0)
+	cfg.set_value("game", "screen_shake", 0.2)
+	cfg.set_value("game", "reduce_motion", true)
+	cfg.set_value("keys", "dash", KEY_J)
+	cfg.save(TEST_PATH)
+	assert_int(GameSettings.file_version(cfg)).is_equal(1)
+	var s := GameSettings.load_from(TEST_PATH)
+	assert_float(s.screen_shake).is_equal_approx(0.2, 0.001)
+	assert_bool(s.reduce_motion).is_true()
+	assert_int(s.key_overrides[ACTION_A]).is_equal(KEY_J)
+	assert_float(s.rumble).is_equal(1.0)
+	s.save_to(TEST_PATH)
+	var again := ConfigFile.new()
+	again.load(TEST_PATH)
+	assert_int(GameSettings.file_version(again)).is_equal(GameSettings.SETTINGS_VERSION)
+	assert_float(float(again.get_value("audio", "music_db"))).is_equal(-12.0)
+	assert_int(int(again.get_value("keys", "dash"))).is_equal(KEY_J)
+
+
+func test_game_settings_migrate_steps_up_to_current() -> void:
+	var cfg := ConfigFile.new()
+	assert_int(GameSettings.migrate(cfg, 1)).is_equal(GameSettings.SETTINGS_VERSION)
+	assert_int(GameSettings.file_version(cfg)).is_equal(GameSettings.SETTINGS_VERSION)
+
+
+func test_game_settings_never_downgrades_a_newer_file() -> void:
+	var future: int = GameSettings.SETTINGS_VERSION + 5
+	var cfg := ConfigFile.new()
+	cfg.set_value("game", "version", future)
+	cfg.set_value("game", "screen_shake", 0.5)
+	cfg.set_value("game", "some_future_option", 3)
+	cfg.save(TEST_PATH)
+	var s := GameSettings.load_from(TEST_PATH)
+	assert_float(s.screen_shake).is_equal_approx(0.5, 0.001)
+	s.save_to(TEST_PATH)
+	var again := ConfigFile.new()
+	again.load(TEST_PATH)
+	assert_int(GameSettings.file_version(again)).is_equal(future)
+	assert_int(int(again.get_value("game", "some_future_option"))).is_equal(3)

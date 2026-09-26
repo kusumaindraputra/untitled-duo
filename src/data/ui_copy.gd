@@ -61,7 +61,8 @@ extends Resource
 
 ## First-combat dash hint (AC-DH-03).
 @export var dash_hint_format: String = "%s — Dash"
-@export var dash_hint_pad: String = "X — Dash"
+## Pad variant (%s = bound pad button, ADR-0031).
+@export var dash_hint_pad: String = "%s — Dash"
 
 ## Banner word shown when a Cascade fires this wave (ADR-0016 recognition layer).
 ## Rendered as "✦ {cascade_label} ×{mult}" by the Combat HUD callout.
@@ -76,7 +77,7 @@ extends Resource
 
 ## Label beside the Special meter when it is full (names the keyboard + pad bindings).
 @export var special_ready_format: String = "SPECIAL READY — %s / RMB"
-@export var special_ready_pad: String = "SPECIAL READY — Y"
+@export var special_ready_pad: String = "SPECIAL READY — %s"
 
 @export_group("Bullet Hell (ADR-0018)")
 
@@ -237,14 +238,24 @@ extends Resource
 @export var settings_master: String = "Master"
 @export var settings_music: String = "Music"
 @export var settings_sfx: String = "SFX"
-@export var settings_controls_heading: String = "Keyboard"
+@export var settings_controls_heading: String = "Controls"
+## Column headings over the key and pad buttons.
+@export var settings_keyboard_column: String = "Keyboard"
+@export var settings_gamepad_heading: String = "Gamepad"
+## Pad column for movement, which stays on the stick.
+@export var settings_pad_stick: String = "Left stick"
+@export var settings_press_button: String = "Press…"
+@export var settings_reset_pad: String = "Reset buttons"
+## Rumble strength slider (0 % turns it off).
+@export var settings_rumble: String = "Rumble"
 ## Names of GameSettings.REMAPPABLE actions, same order.
 @export var settings_action_names: Array[String] = [
 	"Move up", "Move down", "Move left", "Move right", "Dash", "Cast", "Special",
 ]
 @export var settings_press_key: String = "Press a key…"
 @export var settings_reset_keys: String = "Reset keys"
-@export var settings_gamepad_note: String = "Gamepad buttons are fixed for now."
+## Under the gamepad bindings: how to cancel, and what stays fixed.
+@export var settings_gamepad_note: String = "Start or Esc cancels a rebind."
 @export var settings_back: String = "Back  (Esc)"
 
 @export_group("Release")
@@ -254,22 +265,34 @@ extends Resource
 
 @export_group("Combat Tutorial")
 
-## Heading of the in-combat coach panel.
-@export var coach_heading: String = "LEARN TO FIGHT"
+## Small counter above each tutorial hint (%d = hint number, %d = total).
+@export var coach_heading: String = "TIP %d / %d"
 
-## Coach steps, in display order. Each line is shown with a checkbox and ticks when
-## the player actually does it. Order matches TutorialCoach.STEPS.
-@export var coach_steps: Array[String] = [
-	"Move  —  WASD / left stick",
-	"Cast  —  SPACE / A  (your grid picks the spell)",
-	"Dash  —  SHIFT / X  (you can't be hit mid-dash)",
-	"Perfect Dodge  —  dash THROUGH a bullet",
-	"Perfect Cast  —  press again as the ring closes",
-	"Special  —  F / right mouse / Y when the meter is full",
+## Tutorial hints (ADR-0031), one shown at a time when it matters. Order matches
+## TutorialCoach.STEPS. %s, when present, is the bound key or button for the step.
+@export var coach_steps_kb: Array[String] = [
+	"Arrange your Prana, then press %s to fight.",
+	"Move with %s.",
+	"Press %s to cast. Your grid picks the spell.",
+	"Press %s to dash. You can't be hit mid-dash.",
+	"3+ Prana of one type make a stronger spell.",
+	"Perfect Dodge: dash (%s) right through a bullet.",
+	"Perfect Cast: press %s again as the ring closes.",
+	"Meter full? Press %s for your Special.",
+]
+@export var coach_steps_pad: Array[String] = [
+	"Arrange your Prana, then press %s to fight.",
+	"Move with the left stick.",
+	"Press %s to cast. Your grid picks the spell.",
+	"Press %s to dash. You can't be hit mid-dash.",
+	"3+ Prana of one type make a stronger spell.",
+	"Perfect Dodge: dash (%s) right through a bullet.",
+	"Perfect Cast: press %s again as the ring closes.",
+	"Meter full? Press %s for your Special.",
 ]
 
-## Shown when every step is ticked.
-@export var coach_done: String = "Nice. You know everything — go get them."
+## Shown when every hint is done.
+@export var coach_done: String = "Nice. You know everything. Go get them."
 
 ## Pause-menu button that turns the coach back on.
 @export var coach_replay_button: String = "Replay Tutorial"
@@ -432,7 +455,8 @@ extends Resource
 
 ## Control summary on the main menu and the title card: move keys, dash, cast, special.
 @export var controls_format: String = "%s  Move      %s  Dash      %s  Cast      %s  Special      Enter  Confirm"
-@export var controls_pad: String = "Stick  Move      X  Dash      A  Cast      Y  Special      Y  Confirm"
+## Pad variant: dash, cast and special buttons (rebindable, ADR-0031).
+@export var controls_pad: String = "Stick  Move      %s  Dash      %s  Cast      %s  Special      Y  Confirm"
 ## Grid controls line on the title card.
 @export var grid_controls_kb: String = "Arrows select a grid slot · E places · Q clears · C cycles Prana"
 @export var grid_controls_pad: String = "D-pad selects a grid slot · A places · B clears · RB cycles Prana"
@@ -441,9 +465,11 @@ extends Resource
 @export var pause_restart_pad: String = "Restart Run"
 @export var summary_run_again_pad: String = "Run Again"
 @export var heirloom_back_pad: String = "Back  (B)"
-## Last How-to-Fight step: keyboard (%s = cast key) and pad.
-@export var coach_confirm_step_kb: String = "4.  Press ENTER to confirm, then %s to cast in battle."
-@export var coach_confirm_step_pad: String = "4.  Press Y to confirm, then A to cast in battle."
+## Names of gamepad buttons, indexed by JoyButton (A, B, X, Y, Back, Guide, Start,
+## L3, R3, LB, RB). Xbox layout, matching the other pad prompts.
+@export var pad_button_names: Array[String] = [
+	"A", "B", "X", "Y", "Back", "Guide", "Start", "L3", "R3", "LB", "RB",
+]
 
 @export_group("Spellbook (F1)")
 
