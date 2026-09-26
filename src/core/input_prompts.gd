@@ -19,6 +19,8 @@ const MOUSE_MIN_MOVE: float = 4.0
 
 ## True while the last input came from a gamepad.
 var using_pad: bool = false
+## Device id of the gamepad used last (rumble goes to it).
+var pad_device: int = 0
 
 
 func _ready() -> void:
@@ -43,6 +45,8 @@ func observe(event: InputEvent) -> bool:
 		kbm = (event as InputEventMouseButton).pressed
 	elif event is InputEventMouseMotion:
 		kbm = (event as InputEventMouseMotion).relative.length() >= MOUSE_MIN_MOVE
+	if pad:
+		pad_device = event.device
 	if pad and not using_pad:
 		using_pad = true
 	elif kbm and using_pad:
@@ -73,6 +77,30 @@ static func key_label(action: StringName, fallback: String = "?") -> String:
 	return fallback
 
 
+## Name of the first gamepad button bound to [param action] (e.g. "X"), or
+## [param fallback] when the action has no button (ADR-0031 rebinding).
+static func pad_label(action: StringName, fallback: String = "?") -> String:
+	if not InputMap.has_action(action):
+		return fallback
+	for ev: InputEvent in InputMap.action_get_events(action):
+		var joy := ev as InputEventJoypadButton
+		if joy != null:
+			return button_name(joy.button_index)
+	return fallback
+
+
+## Display name of gamepad [param button] from UICopy.pad_button_names.
+static func button_name(button: JoyButton) -> String:
+	var names: Array[String] = _COPY.pad_button_names
+	var i: int = int(button)
+	return names[i] if i >= 0 and i < names.size() else "#%d" % i
+
+
+## Key or button for [param action] on the last-used device.
+func action_label(action: StringName, key_fallback: String, pad_fallback: String) -> String:
+	return pick(key_label(action, key_fallback), pad_label(action, pad_fallback))
+
+
 ## The four movement keys joined, e.g. "WASD".
 static func move_keys_label() -> String:
 	return key_label(&"move_up", "W") + key_label(&"move_left", "A") \
@@ -81,12 +109,14 @@ static func move_keys_label() -> String:
 
 ## Dash prompt under the HUD's dash icon.
 func dash_hint() -> String:
-	return pick(_COPY.dash_hint_format % key_label(&"dash", "Shift"), _COPY.dash_hint_pad)
+	return pick(_COPY.dash_hint_format % key_label(&"dash", "Shift"),
+		_COPY.dash_hint_pad % pad_label(&"dash", "X"))
 
 
 ## Special meter label when full.
 func special_ready() -> String:
-	return pick(_COPY.special_ready_format % key_label(&"special", "F"), _COPY.special_ready_pad)
+	return pick(_COPY.special_ready_format % key_label(&"special", "F"),
+		_COPY.special_ready_pad % pad_label(&"special", "Y"))
 
 
 ## Second line of the preparation panel's hint.
@@ -98,4 +128,5 @@ func prep_controls() -> String:
 ## One-line control summary for the main menu and title card.
 func controls_line() -> String:
 	return pick(_COPY.controls_format % [move_keys_label(), key_label(&"dash", "Shift"),
-		key_label(&"cast", "Space"), key_label(&"special", "F")], _COPY.controls_pad)
+		key_label(&"cast", "Space"), key_label(&"special", "F")],
+		_COPY.controls_pad % [pad_label(&"dash", "X"), pad_label(&"cast", "A"), pad_label(&"special", "Y")])

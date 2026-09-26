@@ -5,7 +5,11 @@
 ##   display  — fullscreen, window size, vsync
 ##   comfort  — screen shake strength (0–100 %), reduced screen flashes, text size and
 ##              high-contrast bullet outlines (ADR-0032)
-##   controls — keyboard key per remappable action
+##   controls — keyboard key per remappable action, gamepad button per combat action
+##   feel     — gamepad rumble strength (0–100 %)
+##
+## The "game" section carries a `version` (ADR-0031). load_from() upgrades older
+## files step by step through migrate(), so a tester's settings survive updates.
 ##
 ## Plain RefCounted like MetaProgress. `current` is the loaded instance the game
 ## reads through the static helpers (shake_multiplier, flash_multiplier); tests pass
@@ -16,6 +20,12 @@ extends RefCounted
 const DEFAULT_PATH: String = "user://settings.cfg"
 const _SECTION: String = "game"
 const _KEYS_SECTION: String = "keys"
+const _PAD_SECTION: String = "pad"
+
+## Settings file format. v1 = files written before ADR-0031 (no version key).
+## v2 adds the "pad" section and rumble. Bump this and add a step to migrate()
+## whenever a key is renamed, moved or reinterpreted.
+const SETTINGS_VERSION: int = 2
 
 ## Window sizes offered in windowed mode (16:9; the game renders at 1152×648 and
 ## scales, so every size shows the same view).
@@ -33,6 +43,20 @@ const DEFAULT_KEYS: Dictionary[StringName, Key] = {
 	&"move_up": KEY_W, &"move_down": KEY_S, &"move_left": KEY_A, &"move_right": KEY_D,
 	&"dash": KEY_SHIFT,
 }
+## Actions the player can rebind on the gamepad, in menu order. Movement stays on
+## the left stick; the grid keeps its own buttons (it only runs between fights).
+const PAD_REMAPPABLE: Array[StringName] = [&"dash", &"cast", &"special"]
+## Default gamepad button per PAD_REMAPPABLE action (Xbox layout names).
+const DEFAULT_PAD: Dictionary[StringName, JoyButton] = {
+	&"dash": JOY_BUTTON_X, &"cast": JOY_BUTTON_A, &"special": JOY_BUTTON_Y,
+}
+## Buttons a combat action may use. Start pauses, Back/Guide belong to the system
+## and the D-pad drives menus, so those are never offered.
+const PAD_BINDABLE: Array[JoyButton] = [
+	JOY_BUTTON_A, JOY_BUTTON_B, JOY_BUTTON_X, JOY_BUTTON_Y,
+	JOY_BUTTON_LEFT_SHOULDER, JOY_BUTTON_RIGHT_SHOULDER,
+	JOY_BUTTON_LEFT_STICK, JOY_BUTTON_RIGHT_STICK,
+]
 ## Assist ranges (F2, beta plan): damage taken 50–100 %, game speed 70–100 %.
 const ASSIST_DAMAGE_MIN: float = 0.5
 const ASSIST_SPEED_MIN: float = 0.7
@@ -68,6 +92,10 @@ var assist_speed: float = 1.0
 var assist_auto_dash: bool = false
 ## Action → keycode for rebound actions only; unbound actions keep their defaults.
 var key_overrides: Dictionary[StringName, int] = {}
+## Action → gamepad button for rebound PAD_REMAPPABLE actions only.
+var pad_overrides: Dictionary[StringName, int] = {}
+## Gamepad rumble strength, 0.0 (off) to 1.0 (full).
+var rumble: float = 1.0
 
 
 ## The settings in effect, loading them from disk the first time.
@@ -80,6 +108,11 @@ static func active() -> GameSettings:
 ## Multiplier for camera shake / trauma (1.0 when no settings are loaded).
 static func shake_multiplier() -> float:
 	return clampf(current.screen_shake, 0.0, 1.0) if current != null else 1.0
+
+
+## Multiplier for gamepad rumble (1.0 when no settings are loaded).
+static func rumble_multiplier() -> float:
+	return clampf(current.rumble, 0.0, 1.0) if current != null else 1.0
 
 
 ## True when Assist is switched on and any option differs from the default.
@@ -180,8 +213,9 @@ func rebind(action: StringName, keycode: Key) -> bool:
 	return true
 
 
-## Creates any missing remappable action with its DEFAULT_KEYS key. Existing
-## actions are left untouched.
+## Creates any missing remappable action with its DEFAULT_KEYS key, and gives every
+## PAD_REMAPPABLE action without a gamepad button its DEFAULT_PAD one. Existing
+## bindings are left untouched.
 static func ensure_actions() -> void:
 	for action: StringName in DEFAULT_KEYS:
 		if InputMap.has_action(action):
@@ -190,6 +224,13 @@ static func ensure_actions() -> void:
 		var k := InputEventKey.new()
 		k.keycode = DEFAULT_KEYS[action]
 		InputMap.action_add_event(action, k)
+	for action: StringName in DEFAULT_PAD:
+		if not InputMap.has_action(action):
+			InputMap.add_action(action, 0.2)
+		if pad_button(action) == JOY_BUTTON_INVALID:
+			var joy := InputEventJoypadButton.new()
+			joy.button_index = DEFAULT_PAD[action]
+			InputMap.action_add_event(action, joy)
 
 
 ## Forgets every override and puts the default keys back.
@@ -215,12 +256,16 @@ static func capture_default_keys() -> void:
 				break
 
 
-## Applies every saved override to the InputMap. Call after actions are registered.
+## Applies every saved key and gamepad override to the InputMap. Call after actions
+## are registered.
 func apply_keys() -> void:
 	capture_default_keys()
 	for action: StringName in key_overrides:
 		if InputMap.has_action(action):
 			set_action_key(action, key_overrides[action] as Key)
+	for action: StringName in pad_overrides:
+		if InputMap.has_action(action):
+			set_action_pad(action, pad_overrides[action] as JoyButton)
 
 
 ## Replaces the keyboard events of [param action] with one [param keycode] key.
@@ -258,6 +303,57 @@ static func action_using_key(keycode: Key) -> StringName:
 	return &""
 
 
+# ── Gamepad ───────────────────────────────────────────────────────────────────
+
+## Rebinds [param action]'s gamepad button to [param button], keeping its keyboard,
+## mouse and stick events. Records the override. Returns false for an action that is
+## not pad-remappable or missing, or a button outside PAD_BINDABLE.
+func rebind_pad(action: StringName, button: JoyButton) -> bool:
+	if not PAD_REMAPPABLE.has(action) or not InputMap.has_action(action) \
+			or not PAD_BINDABLE.has(button):
+		return false
+	pad_overrides[action] = button
+	set_action_pad(action, button)
+	return true
+
+
+## Forgets every gamepad override and puts DEFAULT_PAD back.
+func reset_pad() -> void:
+	pad_overrides.clear()
+	for action: StringName in DEFAULT_PAD:
+		if InputMap.has_action(action):
+			set_action_pad(action, DEFAULT_PAD[action])
+
+
+## Replaces the gamepad button events of [param action] with one [param button].
+static func set_action_pad(action: StringName, button: JoyButton) -> void:
+	for ev: InputEvent in InputMap.action_get_events(action):
+		if ev is InputEventJoypadButton:
+			InputMap.action_erase_event(action, ev)
+	var joy := InputEventJoypadButton.new()
+	joy.button_index = button
+	InputMap.action_add_event(action, joy)
+
+
+## First gamepad button bound to [param action], or JOY_BUTTON_INVALID.
+static func pad_button(action: StringName) -> JoyButton:
+	if not InputMap.has_action(action):
+		return JOY_BUTTON_INVALID
+	for ev: InputEvent in InputMap.action_get_events(action):
+		var joy := ev as InputEventJoypadButton
+		if joy != null:
+			return joy.button_index
+	return JOY_BUTTON_INVALID
+
+
+## Pad-remappable action already using [param button], or &"" when free.
+static func action_using_pad(button: JoyButton) -> StringName:
+	for action: StringName in PAD_REMAPPABLE:
+		if pad_button(action) == button:
+			return action
+	return &""
+
+
 # ── Persistence ───────────────────────────────────────────────────────────────
 
 ## Loads settings from [param path]. Missing or bad values keep their defaults.
@@ -266,6 +362,7 @@ static func load_from(path: String = DEFAULT_PATH) -> GameSettings:
 	var cfg := ConfigFile.new()
 	if cfg.load(path) != OK:
 		return s
+	migrate(cfg, file_version(cfg))
 	s.fullscreen = bool(cfg.get_value(_SECTION, "fullscreen", false))
 	s.resolution_idx = clampi(int(cfg.get_value(_SECTION, "resolution_idx", 0)), 0, RESOLUTIONS.size() - 1)
 	s.vsync = bool(cfg.get_value(_SECTION, "vsync", true))
@@ -284,13 +381,44 @@ static func load_from(path: String = DEFAULT_PATH) -> GameSettings:
 			var code: int = int(cfg.get_value(_KEYS_SECTION, key, 0))
 			if REMAPPABLE.has(action) and code > 0:
 				s.key_overrides[action] = code
+	s.rumble = clampf(float(cfg.get_value(_SECTION, "rumble", 1.0)), 0.0, 1.0)
+	if cfg.has_section(_PAD_SECTION):
+		for key: String in cfg.get_section_keys(_PAD_SECTION):
+			var action := StringName(key)
+			var button: int = int(cfg.get_value(_PAD_SECTION, key, -1))
+			if PAD_REMAPPABLE.has(action) and PAD_BINDABLE.has(button as JoyButton):
+				s.pad_overrides[action] = button
 	return s
+
+
+## Format version of a loaded settings file. Files without one are v1.
+static func file_version(cfg: ConfigFile) -> int:
+	return maxi(int(cfg.get_value(_SECTION, "version", 1)), 1)
+
+
+## Upgrades [param cfg] in place from [param from_version] to SETTINGS_VERSION, one
+## step at a time. Returns the version the data is at afterwards. Files from a newer
+## build are left as they are; load_from() reads the keys it knows.
+static func migrate(cfg: ConfigFile, from_version: int) -> int:
+	var v: int = from_version
+	while v < SETTINGS_VERSION:
+		match v:
+			1:
+				# v1 → v2: nothing moved. The pad section and rumble are new and start
+				# at their defaults; keys, audio and every "game" value carry over.
+				pass
+		v += 1
+	if v > from_version:
+		cfg.set_value(_SECTION, "version", v)
+	return v
 
 
 ## Writes settings to [param path], keeping other sections (audio). Returns the error.
 func save_to(path: String = DEFAULT_PATH) -> Error:
 	var cfg := ConfigFile.new()
 	cfg.load(path)  # keep the audio section; a missing file is fine
+	# Never stamp a lower version over a file a newer build wrote.
+	cfg.set_value(_SECTION, "version", maxi(SETTINGS_VERSION, file_version(cfg)))
 	cfg.set_value(_SECTION, "fullscreen", fullscreen)
 	cfg.set_value(_SECTION, "resolution_idx", resolution_idx)
 	cfg.set_value(_SECTION, "vsync", vsync)
@@ -307,4 +435,9 @@ func save_to(path: String = DEFAULT_PATH) -> Error:
 		cfg.erase_section(_KEYS_SECTION)
 	for action: StringName in key_overrides:
 		cfg.set_value(_KEYS_SECTION, String(action), key_overrides[action])
+	cfg.set_value(_SECTION, "rumble", rumble)
+	if cfg.has_section(_PAD_SECTION):
+		cfg.erase_section(_PAD_SECTION)
+	for action: StringName in pad_overrides:
+		cfg.set_value(_PAD_SECTION, String(action), pad_overrides[action])
 	return cfg.save(path)
