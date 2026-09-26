@@ -27,6 +27,14 @@ const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
 ## Quick-continue toggle (ADR-0019).
 const _PACE: PaceTuning = preload("res://assets/data/pace_tuning.tres")
 
+## Preparation panel width and slot size in px (U2: smaller panel, room stays visible).
+const PANEL_WIDTH := 330.0
+const SLOT_SIZE := 60.0
+## Panel top in px, below the HUD's floor minimap row.
+const PANEL_TOP := 44.0
+## Space kept below the panel's content, in px.
+const PANEL_BOTTOM_PAD := 12.0
+
 ## Duration in seconds for the centre-slot error flash indicator (AC-PG-05).
 const ERROR_FLASH_DURATION := 0.4
 
@@ -81,6 +89,10 @@ var _quick_hint: Label = null
 
 ## Full-size grid panel reference. Null in headless tests. Hidden during LOCKED state.
 var _grid_panel: Control = null
+## The panel's VBox; its minimum height sizes the panel to its content (U2). Null headless.
+var _panel_layout: VBoxContainer = null
+## Gamepad strip ("PAD: …"); shown only while the slot cursor is in use (U2). Null headless.
+var _gp_strip: HBoxContainer = null
 
 ## Compact 3×3 indicator shown in LOCKED state instead of the full grid panel.
 ## Null in headless tests. mouse_filter = MOUSE_FILTER_IGNORE (AC-CG-07).
@@ -149,19 +161,13 @@ func _exit_tree() -> void:
 ## Forbidden: grab_focus() must NEVER be called from any branch of this handler.
 func _input(event: InputEvent) -> void:
 	if event is InputEventJoypadButton or event is InputEventJoypadMotion:
-		_cursor_visible = true
-		if _gamepad_cursor != null:
-			_gamepad_cursor.visible = true
+		_set_cursor_visible(true)
 	elif event is InputEventMouseButton or event is InputEventMouseMotion:
-		_cursor_visible = false
-		if _gamepad_cursor != null:
-			_gamepad_cursor.visible = false
+		_set_cursor_visible(false)
 	elif event is InputEventKey and not event.echo and event.pressed and _is_grid_nav_key(event):
 		# Keyboard players drive the same slot cursor as the gamepad. Only grid-relevant
 		# keys flip the cursor on, so ordinary typing/shortcuts don't reveal it.
-		_cursor_visible = true
-		if _gamepad_cursor != null:
-			_gamepad_cursor.visible = true
+		_set_cursor_visible(true)
 	# Motion events have no "just pressed" state — skip all action checks.
 	if event is InputEventMouseMotion or event is InputEventJoypadMotion:
 		return
@@ -192,6 +198,18 @@ func _input(event: InputEvent) -> void:
 		_gamepad_clear()
 	elif Input.is_action_just_pressed(&"prana_confirm"):
 		_on_confirm_pressed()
+
+
+## Shows or hides the slot cursor and the gamepad strip together. The strip only means
+## something while the cursor drives placement, so mouse players never see it (U2).
+func _set_cursor_visible(on: bool) -> void:
+	var changed: bool = on != _cursor_visible
+	_cursor_visible = on
+	if _gamepad_cursor != null:
+		_gamepad_cursor.visible = on
+	if _gp_strip != null and changed:
+		_gp_strip.visible = on
+		_queue_fit_panel()
 
 
 ## True when [param event] matches a grid keyboard control (arrow navigation or the
@@ -377,8 +395,10 @@ func _refresh_bag_tray() -> void:
 	var bag: Node = _get_bag()
 	var items: Array = bag.get_items() if bag != null and bag.has_method(&"get_items") else []
 	if _bag_label != null:
-		_bag_label.text = "─── YOUR PRANA (%d) ───" % items.size() if not items.is_empty() \
-			else "─── YOUR PRANA — empty ───"
+		_bag_label.text = "─── YOUR PRANA (%d) ───" % items.size()
+		# An empty bag says nothing useful; hide the tray so the room stays visible (U2).
+		_bag_label.visible = not items.is_empty()
+	_bag_container.visible = not items.is_empty()
 	# Drop a stale selection whose type is no longer in the bag.
 	if _selected_bag_type != -1 and not items.has(_selected_bag_type):
 		_selected_bag_type = -1
@@ -391,6 +411,7 @@ func _refresh_bag_tray() -> void:
 	_highlight_selected_bag_token()
 	_update_type_indicator()
 	_update_full_grid_hint()
+	_queue_fit_panel()
 
 
 ## Dims bag tokens whose type isn't the current selection so the selected fragment
@@ -510,15 +531,19 @@ func _create_ui_nodes() -> void:
 	# until the layout pass runs, causing the panel to land off-screen).
 	var vp_width := get_viewport_rect().size.x
 	var panel := Panel.new()
-	panel.position = Vector2(vp_width - 380.0, 20.0)
-	panel.size = Vector2(360.0, 540.0)
+	panel.position = Vector2(vp_width - PANEL_WIDTH - 16.0, PANEL_TOP)
+	panel.size = Vector2(PANEL_WIDTH, 420.0)
 	add_child(panel)
 	_grid_panel = panel
 
 	var layout := VBoxContainer.new()
 	layout.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	layout.add_theme_constant_override(&"separation", 8)
+	layout.add_theme_constant_override(&"separation", 6)
+	layout.offset_left = 10.0
+	layout.offset_right = -10.0
+	layout.offset_top = 8.0
 	panel.add_child(layout)
+	_panel_layout = layout
 
 	# Header
 	var header := Label.new()
@@ -530,6 +555,8 @@ func _create_ui_nodes() -> void:
 	hint.text = _COPY.prep_hint
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.add_theme_font_size_override(&"font_size", 13)
+	hint.add_theme_color_override(&"font_color", SpellPreview.HINT_COLOR)
 	layout.add_child(hint)
 
 	# 3×3 slot grid
@@ -544,21 +571,23 @@ func _create_ui_nodes() -> void:
 		var slot := PranaGridSlot.new()
 		slot.slot_index = i
 		slot._prana_grid = self
-		slot.custom_minimum_size = Vector2(72.0, 72.0)
+		slot.custom_minimum_size = Vector2(SLOT_SIZE, SLOT_SIZE)
 		slot.mouse_filter = Control.MOUSE_FILTER_STOP
 		slot.focus_mode = Control.FOCUS_ALL
 		grid.add_child(slot)
 		_slot_nodes.append(slot)
 
-	# Build readout — shows what the current arrangement resolves to (Stage 3).
-	# Updated on every slot mutation via _update_build_readout().
+	# Spell preview (U1) — the spell this arrangement casts: element, tier, what it does,
+	# the next tier, modifiers, reactions and cascade. Updated on every slot mutation
+	# via _update_build_readout().
 	_build_readout_label = RichTextLabel.new()
 	_build_readout_label.bbcode_enabled = true
 	_build_readout_label.scroll_active = false
 	_build_readout_label.fit_content = true
 	_build_readout_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_build_readout_label.custom_minimum_size = Vector2(0, 44)
-	_build_readout_label.add_theme_font_size_override(&"normal_font_size", 15)
+	_build_readout_label.custom_minimum_size = Vector2(0, 36)
+	_build_readout_label.add_theme_font_size_override(&"normal_font_size", 14)
+	_build_readout_label.add_theme_font_size_override(&"bold_font_size", 15)
 	_build_readout_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layout.add_child(_build_readout_label)
 
@@ -628,7 +657,9 @@ func _create_ui_nodes() -> void:
 	var gp_strip := HBoxContainer.new()
 	gp_strip.add_theme_constant_override(&"separation", 8)
 	gp_strip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	gp_strip.visible = false
 	layout.add_child(gp_strip)
+	_gp_strip = gp_strip
 
 	var gp_hint := Label.new()
 	gp_hint.text = _COPY.pad_prefix
@@ -697,30 +728,59 @@ func _update_confirm_button() -> void:
 func _update_build_readout() -> void:
 	if _build_readout_label == null:
 		return
+	_build_readout_label.text = SpellPreview.to_bbcode(build_spell_card(), _type_colors(), _COPY.type_abbrevs)
+	_queue_fit_panel()
+
+
+## The spell card for the current arrangement (U1), using the same CombinationResolution
+## rules combat uses, so the preview matches what is cast. See SpellPreview.build().
+func build_spell_card() -> Dictionary:
 	var ids: Array = []
 	ids.resize(GRID_SIZE)
+	var fragments: Array = []
+	fragments.resize(GRID_SIZE)
 	for i in GRID_SIZE:
 		ids[i] = _slots[i]
-	var build: Dictionary = CombinationResolution.preview_build(ids)
-	var primary: int = build["primary_type"]
-	if primary < 0:
-		_build_readout_label.text = "[color=#888888]Place a core Prana in the centre to begin your build.[/color]"
+		if _slots[i] != null:
+			var f := PranaFragment.new()
+			f.type_id = _slots[i]
+			fragments[i] = f
+	var summary: Dictionary = CombinationResolution.preview_build(ids)
+	var reactions: Array = []
+	var cascade: CascadeEffect = null
+	if summary["primary_type"] >= 0:
+		var recognition: Dictionary = CombinationResolution.compute_recognition(fragments)
+		reactions = recognition["reactions"]
+		cascade = recognition["cascade"]
+	var names: Array = []
+	for id: int in PranaTypeToken.type_count():
+		var pt: PranaType = PranaCatalog.get_type(id)
+		names.append(pt.name if pt != null else PranaTypeToken.type_abbrev(id))
+	return SpellPreview.build(summary, reactions, cascade, names, _COPY)
+
+
+## Element colours in type_id order (Art Bible palette via PranaTypeToken).
+func _type_colors() -> Array:
+	var colors: Array = []
+	for id: int in PranaTypeToken.type_count():
+		colors.append(PranaTypeToken.type_color(id))
+	return colors
+
+
+## Sizes the panel to its content on the next frame, after labels have re-measured (U2).
+func _queue_fit_panel() -> void:
+	if _grid_panel == null or _panel_layout == null:
 		return
-	var parts: PackedStringArray = PackedStringArray()
-	parts.append("[b]%s[/b]  Tier %d" % [_colored_name(primary), build["primary_tier"]])
-	var nonprimary: Array = build["nonprimary"]
-	for np: Dictionary in nonprimary:
-		parts.append("+%s T%d" % [_colored_name(np["type"]), np["tier"]])
-	_build_readout_label.text = "  ".join(parts)
+	_fit_panel.call_deferred()
 
 
-## Returns a bbcode-coloured element name for [param type_id] using the Art Bible palette.
-func _colored_name(type_id: int) -> String:
-	var nm: String = PranaTypeToken.type_abbrev(type_id)
-	var col: Color = Color.WHITE
-	if type_id >= 0 and type_id < PranaTypeToken.type_count():
-		col = PranaTypeToken.type_color(type_id)
-	return "[color=#%s]%s[/color]" % [col.to_html(false), nm]
+## Sets the panel height to its content's minimum height, capped to the viewport.
+func _fit_panel() -> void:
+	if _grid_panel == null or _panel_layout == null:
+		return
+	var want: float = _panel_layout.get_combined_minimum_size().y + _panel_layout.offset_top + PANEL_BOTTOM_PAD
+	var cap: float = get_viewport_rect().size.y - _grid_panel.position.y - 8.0
+	_grid_panel.size.y = minf(want, cap)
 
 
 ## True when every slot holds a fragment (no empty slot remains).

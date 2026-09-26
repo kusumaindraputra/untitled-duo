@@ -28,7 +28,7 @@ extends Resource
 @export var prep_header: String = "PREPARATION PHASE"
 
 ## Instructional hint under the preparation header.
-@export var prep_hint: String = "Drag a Prana into a slot, or use Arrows + E (place) / Q (discard) / C (cycle)  •  Then Confirm"
+@export var prep_hint: String = "Drag Prana into the grid\nArrows move · E place · Q discard · C cycle"
 
 ## Divider label above the player's Prana bag tray.
 @export var bag_label: String = "─── YOUR PRANA ───"
@@ -308,3 +308,58 @@ extends Resource
 
 ## Archive close button.
 @export var memories_back: String = "Back  (Esc)"
+
+@export_group("Spell Preview (prep panel)")
+
+## Preview text before the centre slot holds a Prana.
+@export var spell_preview_empty: String = "Place a Prana in the centre. It decides your spell."
+
+## Preview title: element name, tier, max tier, hits per cast.
+@export var spell_preview_title_format: String = "%s   Tier %d of %d   ·   %d-hit combo"
+
+## What each element does as the core spell, in type_id order (0–4).
+@export var prana_cast_summaries: Array[String] = [
+	"Close range, high damage. Sets enemies on fire.",
+	"Mid range. Blinds enemies so their shots miss.",
+	"Long range. Stuns enemies.",
+	"Mid range, low damage. Slows, then freezes.",
+	"Close range, low damage. Heals you over time.",
+]
+
+## Next-tier hint: how many more of the core element, its name, the tier reached.
+@export var spell_preview_next_tier_format: String = "Add %d more %s for Tier %d"
+
+## Shown when the core is at the highest tier.
+@export var spell_preview_max_tier: String = "Highest tier reached"
+
+## What each element adds when placed around the core, in type_id order (0–4).
+@export var prana_modifier_summaries: Array[String] = [
+	"Special sets enemies on fire",
+	"Special blinds enemies",
+	"Special arcs and stuns, longer combo window",
+	"Casts chill, Special freezes",
+	"Special heals you",
+]
+
+## Suffix on a modifier line when that element is at modifier tier 2.
+@export var spell_preview_modifier_strong: String = "  (strong)"
+
+## Short player-facing text per Prana Reaction id (see assets/data/reactions/).
+@export var reaction_summaries: Dictionary = {
+	&"REACT_THERMAL_SHOCK": "First hit on each enemy cracks for extra damage",
+	&"REACT_WILDFIRE": "Burn spreads to the nearest enemy",
+	&"REACT_WITCHFIRE": "Burning enemies are also blinded",
+	&"REACT_DETONATE": "The first kill explodes",
+	&"REACT_PERMAFROST": "You heal faster while an enemy is frozen",
+	&"REACT_SHORT_CIRCUIT": "The first stun also stuns a second enemy",
+	&"REACT_SIPHON": "Hits on blinded enemies heal you",
+	&"REACT_SUPERCONDUCT": "Hits on slowed enemies arc to one more",
+	&"REACT_SURGE": "Longer combo window, chain hits heal you",
+	&"REACT_WHITEOUT": "Blinded and slowed enemies miss far more",
+}
+
+## Label in front of an active reaction line.
+@export var spell_preview_reaction_label: String = "Reaction"
+
+## Cascade line: damage multiplier of the burst after the combo.
+@export var spell_preview_cascade_format: String = "Cascade: burst after the combo, %.1f× damage"
