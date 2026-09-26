@@ -611,15 +611,16 @@ Two permanent zones, one conditional zone:
 
 No decorative fonts. The UI is Fayde's practical interface with an ancient dungeon.
 
-- **Font type:** Pixel-art bitmap font, 8px base unit. No anti-aliasing, no sub-pixel rendering.
-- **Scale:** 8px or 16px (2× scale) only. No odd intermediate scaling — pixel alignment must be maintained.
+- **Font type (ADR-0035):** two OFL TTFs in `assets/ui/fonts/`. **DotGothic16** (subset) is the pixel-style face for titles, HUD labels and counters. **Atkinson Hyperlegible** is for long text (tooltips, memory fragments, settings descriptions). Both render with anti-aliasing on.
+- **Why not a bitmap font at 8/16 px:** the Text size setting (100 / 115 / 130 %) makes fixed 8 px and 16 px sizes impossible to keep, and without anti-aliasing the scaled glyphs break ("Floor" reads as "Ploor"). Keep sizes whole-pixel, but any size the text scale produces is allowed.
 - **Color:** `#D4C9B8` warm off-white for all static labels. Prana colors for value highlights only (damage numbers).
-- **Damage numbers:** Float up 8–12 px from sprite center, fade over 0.5s. Color = casting Prana type. 1.5× scale on critical. Same bitmap font — no decorative numerals.
+- **Damage numbers:** Float up 8–12 px from sprite center, fade over 0.5s. Color = casting Prana type. 1.5× scale on critical. Same pixel-style face as the HUD — no decorative numerals.
 
 **Three-level hierarchy only:**
-1. **Screen titles / critical alerts** — 16px: wave clear banner, defeat screen label
-2. **HUD labels / tooltip headers** — 8px at 2× display: Prana type names in grid selector
-3. **Small counters / durations** — 8px: wave number, status duration ticks
+1. **Screen titles / critical alerts** — largest DotGothic16 size: wave clear banner, defeat screen label
+2. **HUD labels / tooltip headers** — DotGothic16: Prana type names in grid selector
+3. **Small counters / durations** — smallest DotGothic16 size: wave number, status duration ticks
+(Body copy in Atkinson Hyperlegible sits outside this hierarchy.)
 
 ### 7.4 Iconography Style
 
@@ -674,7 +675,7 @@ Transitions are measured, not flashy. Dungeon instruments move with purpose.
 | Music | DAW project | OGG Vorbis (quality 6–7) | Godot's native streaming format |
 | SFX (short ≤2s) | DAW project | WAV (16-bit mono) | Mono for positional audio candidates |
 | SFX (long >2s) | DAW project | OGG Vorbis (quality 6) | Per above |
-| Pixel art fonts | ASEPRITE / BMFont | `.tres` BitmapFont resource | No TTF — pixel art only |
+| UI fonts | OFL TTF (DotGothic16 subset, Atkinson Hyperlegible) | `.ttf` in `assets/ui/fonts/` | Anti-aliasing on; see §7.3 and ADR-0035 |
 
 ### 8.2 Naming Conventions
 
