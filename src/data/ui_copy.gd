@@ -159,6 +159,28 @@ extends Resource
 ## Line on the core-pick screen naming the equipped Heirloom (%s = sigil title).
 @export var heirloom_active_format: String = "Heirloom: %s"
 
+@export_group("Cipher Cores (ADR-0033)")
+
+## Core-pick screen: heading, section labels and the hint under the Prana row.
+@export var core_pick_heading: String = "CHOOSE YOUR CORE"
+@export var core_pick_core_label: String = "CIPHER CORE — a passive for the whole run"
+@export var core_pick_prana_label: String = "CORE PRANA — anchors the centre slot. Pick one to begin."
+## Core names and passives by CoreFrame id (assets/data/cores/core_roster.tres).
+@export var core_titles: Dictionary = {
+	"steady": "Steady Core",
+	"glass": "Glass Core",
+	"gale": "Gale Core",
+	"echo": "Echo Core",
+}
+@export var core_descs: Dictionary = {
+	"steady": "No passive. Nothing to lose.",
+	"glass": "+30% spell damage, but you take +25% damage.",
+	"gale": "+1 dash charge and +10% move speed, but -15% spell damage.",
+	"echo": "Sigil offers show 4 cards and one free reroll, but -10% spell damage.",
+}
+## Pause build view line naming this run's Core (%s = Core name).
+@export var core_active_format: String = "Core: %s"
+
 @export_group("Room Variety (ADR-0026)")
 
 ## Door labels for modified destinations (Rest rooms are always Wayshrines).
@@ -177,6 +199,10 @@ extends Resource
 
 ## Sigil overlay suffix when more than one pick is owed (%d of %d).
 @export var sigil_pick_format: String = "  (%d of %d)"
+## Sigil overlay reroll button (ADR-0033): priced in HP (%d), free, or refused.
+@export var sigil_reroll_format: String = "Reroll  (-%d HP)"
+@export var sigil_reroll_free: String = "Reroll  (free)"
+@export var sigil_reroll_too_weak: String = "Reroll  (too weak)"
 
 ## Wayshrine panel (Rest rooms).
 @export var wayshrine_heading: String = "WAYSHRINE"

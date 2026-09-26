@@ -1,7 +1,7 @@
 ## SigilManager — between-room reward system for the demo run.
 ##
 ## After clearing a combat/elite room, offer_sigils() presents a choice of three
-## random reward cards drawn from a mixed pool: persistent stat sigils AND Prana
+## (or the Core's offer_cards) random reward cards drawn from a mixed pool: persistent stat sigils AND Prana
 ## sigils. A stat sigil applies a run modifier through its owning system
 ## (PlayerController speed/dash, SpellCastingEffects damage, HealthAndDamage heal);
 ## a Prana sigil drops one fragment into the PranaBag for placement in the next
@@ -11,7 +11,10 @@
 ## "Sigil" is the project's umbrella term for the between-room reward (replacing the
 ## genre-generic "boon"): an inscribed mark Fayde takes to grow his recovered power.
 ##
-## Logic (catalog / roll_choices / apply_sigil) is separated from presentation
+## ADR-0033: each reward screen has a Reroll button. It costs HP (rising with each
+## reroll bought this run, never below 1 HP left); an Echo Core adds a free one.
+##
+## Logic (catalog / roll_choices / apply_sigil / reroll price) is separated from presentation
 ## (offer_sigils builds the overlay) so the selection math is unit-testable headlessly.
 ##
 ## Created programmatically by debug_game_loop so both main.tscn and demo.tscn get
@@ -58,6 +61,28 @@ signal offer_finished
 ## Runtime for behaviour sigils (ADR-0026). Set by debug_game_loop; when null a
 ## behaviour sigil is ignored with a warning.
 var effects: SigilEffects = null
+
+## Emitted after a reroll replaced the cards, carrying the HP paid (0 when free).
+signal rerolled(hp_paid: int)
+
+## Cards shown per offer (ADR-0033). The chosen Core may raise it for the run.
+var offer_cards: int = CONFIG.offer_cards
+## Free rerolls on each reward screen (ADR-0033, Echo Core). Bought rerolls cost HP.
+var free_rerolls_per_offer: int = 0
+
+## Rerolls bought with HP this run; each one raises the next price.
+var _rerolls_bought: int = 0
+## Free rerolls still unused on the open reward screen.
+var _free_rerolls_left: int = 0
+## The card row and reroll button of the open overlay, rebuilt on reroll.
+var _card_row: HBoxContainer = null
+var _reroll_button: Button = null
+
+## Reads Fayde's HP and pays the reroll price. Overridable via set_hp_seams().
+var _hp_provider: Callable = func() -> int:
+	return HealthAndDamage.get_fayde_hp()
+var _hp_payer: Callable = func(amount: int) -> bool:
+	return HealthAndDamage.pay_fayde_hp(amount)
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
@@ -175,6 +200,50 @@ func set_bag_provider(provider: Callable) -> void:
 	_bag_provider = provider
 
 
+## Test seam: overrides how Fayde's HP is read ([param provider] () -> int) and how
+## the reroll price is paid ([param payer] (amount: int) -> bool).
+func set_hp_seams(provider: Callable, payer: Callable) -> void:
+	_hp_provider = provider
+	_hp_payer = payer
+
+
+# ── Reroll (ADR-0033) ────────────────────────────────────────────────────────
+
+## HP price of the next reroll: 0 while a free reroll is left on this screen,
+## otherwise the base price plus one step per reroll already bought this run.
+func reroll_cost() -> int:
+	if _free_rerolls_left > 0:
+		return 0
+	return maxi(CONFIG.reroll_hp_cost + CONFIG.reroll_hp_step * _rerolls_bought, 1)
+
+
+## True when Fayde at [param hp] can reroll: a free reroll is left, or paying the
+## price still leaves at least 1 HP (the same rule as the Wayshrine).
+func can_reroll(hp: int) -> bool:
+	var cost: int = reroll_cost()
+	return cost == 0 or hp - cost >= 1
+
+
+## Spends a free reroll or pays its HP price. Returns false (and changes nothing)
+## when Fayde cannot pay. Does not touch the overlay; see _on_reroll_pressed().
+func try_reroll() -> bool:
+	var cost: int = reroll_cost()
+	if cost == 0:
+		_free_rerolls_left -= 1
+		rerolled.emit(0)
+		return true
+	if not can_reroll(int(_hp_provider.call())) or not bool(_hp_payer.call(cost)):
+		return false
+	_rerolls_bought += 1
+	rerolled.emit(cost)
+	return true
+
+
+## Starts a fresh reward screen: refills its free rerolls.
+func begin_screen() -> void:
+	_free_rerolls_left = maxi(free_rerolls_per_offer, 0)
+
+
 ## Builds the modal choice overlay with three sigils and pauses the tree until the
 ## player picks one. [param picks] > 1 re-opens the overlay with fresh choices after
 ## each pick. No-op if an overlay is already open.
@@ -192,7 +261,7 @@ func picks_left() -> int:
 
 
 func _open_overlay() -> void:
-	var choices: Array[Dictionary] = roll_choices(3)
+	begin_screen()
 	get_tree().paused = true
 
 	_overlay = CanvasLayer.new()
@@ -221,15 +290,64 @@ func _open_overlay() -> void:
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(heading)
 
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override(&"separation", 20)
-	vbox.add_child(row)
+	_card_row = HBoxContainer.new()
+	_card_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_card_row.add_theme_constant_override(&"separation", 20)
+	vbox.add_child(_card_row)
 
-	for sigil: Dictionary in choices:
-		row.add_child(_make_sigil_card(sigil))
+	_reroll_button = Button.new()
+	_reroll_button.custom_minimum_size = Vector2(220, 44)
+	_reroll_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_reroll_button.add_theme_font_size_override(&"font_size", 18)
+	_reroll_button.pressed.connect(_on_reroll_pressed)
+	vbox.add_child(_reroll_button)
 
 	add_child(_overlay)
+	_fill_cards()
+	_refresh_reroll_button()
+	var first: Button = _card_row.get_child(0) as Button if _card_row.get_child_count() > 0 else null
+	if first != null:
+		first.grab_focus()
+
+
+## Rolls a fresh set of cards into the open overlay's card row.
+func _fill_cards() -> void:
+	if _card_row == null:
+		return
+	for old: Node in _card_row.get_children():
+		_card_row.remove_child(old)
+		old.queue_free()
+	for sigil: Dictionary in roll_choices(maxi(offer_cards, 1)):
+		_card_row.add_child(_make_sigil_card(sigil))
+
+
+## Updates the reroll button's price text and whether it can be pressed.
+func _refresh_reroll_button() -> void:
+	if _reroll_button == null:
+		return
+	var cost: int = reroll_cost()
+	var can: bool = can_reroll(int(_hp_provider.call()))
+	_reroll_button.disabled = not can
+	if cost == 0:
+		_reroll_button.text = _COPY.sigil_reroll_free
+	elif can:
+		_reroll_button.text = _COPY.sigil_reroll_format % cost
+	else:
+		_reroll_button.text = _COPY.sigil_reroll_too_weak
+
+
+## Reroll button: pays, replaces the cards, and keeps focus on the button while it
+## can still be pressed (so a gamepad can reroll again), else on the first card.
+func _on_reroll_pressed() -> void:
+	if not try_reroll():
+		_refresh_reroll_button()
+		return
+	_fill_cards()
+	_refresh_reroll_button()
+	if not _reroll_button.disabled:
+		_reroll_button.grab_focus()
+	elif _card_row.get_child_count() > 0:
+		(_card_row.get_child(0) as Button).grab_focus()
 
 
 # ── Private ───────────────────────────────────────────────────────────────────
@@ -263,6 +381,8 @@ func _on_sigil_chosen(sigil_id: StringName) -> void:
 	if _overlay != null:
 		_overlay.queue_free()
 		_overlay = null
+		_card_row = null
+		_reroll_button = null
 	_picks_left = maxi(_picks_left - 1, 0)
 	if _picks_left > 0:
 		_open_overlay()
