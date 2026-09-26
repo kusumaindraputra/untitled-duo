@@ -196,9 +196,9 @@ func _exit_tree() -> void:
 	if GameStateManager.preparation_started.is_connected(_on_preparation_started):
 		GameStateManager.preparation_started.disconnect(_on_preparation_started)
 	if _in_hitstop:
-		Engine.time_scale = 1.0
+		Engine.time_scale = GameSettings.base_time_scale()
 	if _dying:
-		Engine.time_scale = 1.0
+		Engine.time_scale = GameSettings.base_time_scale()
 		_dying = false
 
 
@@ -629,7 +629,7 @@ func _tick_death() -> void:
 		_death_vignette.color.a = DEATH_VIGNETTE_ALPHA * pulse
 	_death_timer -= get_process_delta_time()
 	if _death_timer <= 0.0:
-		Engine.time_scale = 1.0
+		Engine.time_scale = GameSettings.base_time_scale()
 		_dying = false
 		# Fade out and free the vignette.
 		if _death_vignette != null:

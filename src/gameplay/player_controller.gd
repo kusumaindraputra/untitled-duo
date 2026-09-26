@@ -78,6 +78,8 @@ const SHAKE_MAX_OFFSET: float = 10.0
 
 var _controller_state: ControllerState = ControllerState.DISABLED
 var _is_invincible: bool = false
+## Assist (F2): dash automatically when a bullet is about to hit. Set by the run scene.
+var auto_dash: bool = false
 var _last_facing_dir: Vector2 = Vector2.RIGHT
 var _dash_duration_timer: float = 0.0  # countdown; > 0.0 means currently dashing
 var _dash_cooldown_timer: float = 0.0  # countdown to the next recharged charge; > 0.0 = recharging
@@ -262,25 +264,7 @@ func _physics_process(delta: float) -> void:
 				if velocity.length() < VELOCITY_SNAP_THRESHOLD:
 					velocity = Vector2.ZERO
 			if Input.is_action_just_pressed(&"dash") and _dash_charges > 0:
-				var dash_dir: Vector2 = _snap_to_8dir(input_dir) if input_dir != Vector2.ZERO \
-					else _last_facing_dir
-				_last_facing_dir = dash_dir
-				velocity = dash_dir * DASH_SPEED
-				_controller_state = ControllerState.DASHING
-				_dash_duration_timer = DASH_DURATION
-				_perfect_dodged_this_dash = false
-				_is_invincible = true
-				collision_mask = COLLISION_MASK_DASHING
-				_cast_lock_timer = 0.0  # dash cancels cast lock (GDD Rule 6)
-				_knockback_timer = 0.0   # dash cancels knockback
-				if audio_system != null:
-					audio_system.play_event(&"sfx_fayde_dash")
-				_dash_charges -= 1
-				dash_charges_changed.emit(_dash_charges, _max_dash_charges())
-				if _dash_charges == 0:
-					dash_cooldown_changed.emit(false)
-				_spawn_dash_dust()
-				_spawn_dash_ghosts(dash_dir)
+				_start_dash(input_dir)
 		# Cast lock: dampen velocity to CAST_LOCK_SPEED_FACTOR during post-hit recovery.
 		# Knockback overrides cast lock dampening — the push-away should feel unhindered.
 		if _cast_lock_timer > 0.0 and _knockback_timer <= 0.0:
@@ -353,6 +337,41 @@ func _physics_process(delta: float) -> void:
 ## Returns the current controller state (DISABLED, ENABLED, or DASHING).
 func get_controller_state() -> ControllerState:
 	return _controller_state
+
+
+## Starts a dash toward [param input_dir] (or the facing direction when zero), spending
+## one charge. Callers check that a charge is available.
+func _start_dash(input_dir: Vector2) -> void:
+	var dash_dir: Vector2 = _snap_to_8dir(input_dir) if input_dir != Vector2.ZERO \
+		else _last_facing_dir
+	_last_facing_dir = dash_dir
+	velocity = dash_dir * DASH_SPEED
+	_controller_state = ControllerState.DASHING
+	_dash_duration_timer = DASH_DURATION
+	_perfect_dodged_this_dash = false
+	_is_invincible = true
+	collision_mask = COLLISION_MASK_DASHING
+	_cast_lock_timer = 0.0  # dash cancels cast lock (GDD Rule 6)
+	_knockback_timer = 0.0   # dash cancels knockback
+	if audio_system != null:
+		audio_system.play_event(&"sfx_fayde_dash")
+	_dash_charges -= 1
+	dash_charges_changed.emit(_dash_charges, _max_dash_charges())
+	if _dash_charges == 0:
+		dash_cooldown_changed.emit(false)
+	_spawn_dash_dust()
+	_spawn_dash_ghosts(dash_dir)
+
+
+## Assist (F2): when [member auto_dash] is on and a charge is ready, dashes to dodge a
+## bullet that is about to hit. Returns true when it dashed (the bullet then passes).
+func try_auto_dash() -> bool:
+	if not auto_dash or _controller_state != ControllerState.ENABLED or _dash_charges <= 0:
+		return false
+	var dir: Vector2 = Input.get_vector(&"move_left", &"move_right", &"move_up", &"move_down") \
+		if InputMap.has_action(&"move_left") else Vector2.ZERO
+	_start_dash(dir)
+	return true
 
 
 ## Returns true when the player is currently invincible (e.g. during a dash).

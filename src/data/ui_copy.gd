@@ -395,6 +395,8 @@ extends Resource
 ## Buttons.
 @export var summary_run_again: String = "Run Again  (R)"
 @export var summary_main_menu: String = "Main Menu"
+## Shown under the title when the run used any Assist option (F2).
+@export var summary_assist_note: String = "Assist on"
 
 @export_group("Pause (build view)")
 
@@ -482,3 +484,12 @@ extends Resource
 	10: "Splits into smaller copies when it dies.",
 	11: "Floor 3 boss. The keeper of the last cipher.",
 }
+
+@export_group("Assist (F2)")
+
+## Settings section heading and rows.
+@export var settings_assist_heading: String = "Assist"
+@export var settings_assist_damage: String = "Damage taken"
+@export var settings_assist_speed: String = "Game speed"
+@export var settings_assist_auto_dash: String = "Auto-dash out of bullets"
+@export var settings_assist_note: String = "Runs with Assist on are marked on the summary."

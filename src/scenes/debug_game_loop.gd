@@ -121,9 +121,11 @@ var _run_ranks: Array[String] = []
 var _run_sigils: Array[Dictionary] = []
 var _floors_cleared: int = 0
 var _fragments_at_start: int = 0
+## True once any Assist option was on during this run (F2); marks the summary.
+var _assist_used: bool = false
 
 func _ready() -> void:
-	Engine.time_scale = 1.0  # reset from any prior slow-mo (scene reload via R key)
+	_apply_assist()  # also resets Engine.time_scale from any prior slow-mo (reload via R)
 	_register_input_actions()
 	_meta = MetaProgress.load_from(progress_path)
 	_fragments_at_start = _meta.fragments_found
@@ -241,7 +243,7 @@ func _input(event: InputEvent) -> void:
 		if event.keycode == KEY_ESCAPE:
 			_toggle_pause()
 		elif event.keycode == KEY_R:
-			Engine.time_scale = 1.0  # cancel slow-mo before reload
+			Engine.time_scale = GameSettings.base_time_scale()  # cancel slow-mo before reload
 			get_tree().reload_current_scene()
 		elif OS.is_debug_build() and event.keycode == KEY_F1:
 			# DEBUG QA: toggle god mode (blocks ALL incoming damage) for full-loop playtest.
@@ -347,6 +349,7 @@ func _quit_game() -> void:
 ## (and any subsequent run) starts from a clean state.
 func _to_main_menu() -> void:
 	_save_progress()
+	HealthAndDamage.player_damage_mult = 1.0
 	get_tree().paused = false
 	Engine.time_scale = 1.0
 	get_tree().change_scene_to_file("res://src/scenes/MainMenu.tscn")
@@ -638,13 +641,27 @@ func _on_game_resumed() -> void:
 	if _pause_layer != null:
 		_pause_layer.queue_free()
 		_pause_layer = null
+	_apply_assist()  # Settings may have changed while paused
+
+
+## Applies the Assist options (F2): damage share, game speed and auto-dash. Called at
+## run start and after pause, since Settings can change them mid-run.
+func _apply_assist() -> void:
+	var s: GameSettings = GameSettings.active()
+	_assist_used = _assist_used or s.assist_active()
+	HealthAndDamage.player_damage_mult = clampf(s.assist_damage, GameSettings.ASSIST_DAMAGE_MIN, 1.0)
+	var pc: Node = get_node_or_null(^"PlayerController")
+	if pc != null and &"auto_dash" in pc:
+		pc.set(&"auto_dash", s.assist_auto_dash)
+	if not _in_death_sequence:
+		Engine.time_scale = GameSettings.base_time_scale()
 
 
 ## Restart button: unpause, reset time scale, reload the scene for a fresh run.
 func _restart_from_pause() -> void:
 	_save_progress()
 	get_tree().paused = false
-	Engine.time_scale = 1.0
+	Engine.time_scale = GameSettings.base_time_scale()
 	get_tree().reload_current_scene()
 
 
@@ -842,7 +859,7 @@ func _on_run_ended(win: bool) -> void:
 		_in_death_sequence = true
 		Engine.time_scale = _DEATH_SLOW_SCALE
 		await get_tree().create_timer(_DEATH_SLOW_DURATION, true, false, true).timeout
-		Engine.time_scale = 1.0
+		Engine.time_scale = GameSettings.base_time_scale()
 
 	var audio: Node = get_node_or_null("/root/AudioSystem")
 	if audio != null and audio.has_method(&"has_event"):
@@ -894,6 +911,7 @@ func _build_summary_data(win: bool, run_data: Dictionary, shards: int, hard_unlo
 		"memories_found": found,
 		"memories_total": StoryRules.total(),
 		"hard_unlocked": hard_unlocked,
+		"assist": _assist_used,
 	}
 
 
@@ -1071,7 +1089,7 @@ func _on_heavy_hit(_target: Node, final_damage: int) -> void:
 	Engine.time_scale = _HIT_STOP_SCALE
 	await get_tree().create_timer(duration, true, false, true).timeout
 	if not _in_death_sequence:  # death slow-mo may have started while we awaited
-		Engine.time_scale = 1.0
+		Engine.time_scale = GameSettings.base_time_scale()
 
 
 func _ensure_joypad_motion_action(action: StringName, axis: JoyAxis, axis_value: float) -> void:

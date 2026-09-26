@@ -50,6 +50,8 @@ var _homing_duration: float = 0.0
 var _line_pos: Vector2 = Vector2.ZERO
 ## Each bullet grazes at most once.
 var _grazed: bool = false
+## True once an Assist auto-dash (F2) dodged this bullet.
+var _auto_dodged: bool = false
 var _player: Node2D = null
 var _shape: CircleShape2D = null
 ## Pool that owns this bullet; null for bullets created with Projectile.new() directly.
@@ -147,6 +149,7 @@ func is_live() -> bool:
 func reset_for_reuse() -> void:
 	_freed = false
 	_grazed = false
+	_auto_dodged = false
 	_alive_time = 0.0
 	_distance_traveled = 0.0
 	_speed = PROJECTILE_SPEED
@@ -205,9 +208,15 @@ func _check_player() -> void:
 	if dist <= _radius + TUNING.player_hurt_radius:
 		if dashing:
 			# ADR-0019 — a dash through a bullet that would have hit is a Perfect Dodge.
+			# An Assist auto-dash (F2) lets the bullet pass but earns no Perfect Dodge.
+			if _auto_dodged:
+				return
 			if _player.has_method(&"register_perfect_dodge"):
 				_player.register_perfect_dodge(global_position)
 			_graze(TUNING.dash_graze_mult)
+			return
+		if _player.has_method(&"try_auto_dash") and _player.try_auto_dash():
+			_auto_dodged = true
 			return
 		HealthAndDamage.apply_damage(
 			_player, _base_damage, GameEnums.DamageClass.NONE, GameEnums.DamageSource.CONTACT)

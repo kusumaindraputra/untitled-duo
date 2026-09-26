@@ -79,6 +79,10 @@ signal player_hp_zone_changed(zone: GameEnums.HPZone)
 ## Tutorial/Onboarding owns the flag lifecycle; H&D trusts the caller.
 var first_run_active: bool = false
 
+## Assist (F2): share of damage Fayde takes, 0.5–1.0. Set by the run scene from
+## GameSettings.assist_damage; applies to every source after first-run mercy.
+var player_damage_mult: float = 1.0
+
 # ── Private state ─────────────────────────────────────────────────────────────
 
 ## Fayde's current HP. Clamped to [0, FAYDE_MAX_HP]. Set to 0 on death; reset on run_started.
@@ -230,6 +234,10 @@ func apply_damage(
 	# Step 5 — First-run mercy (Fayde + CONTACT + first_run_active flag)
 	if is_player and source == GameEnums.DamageSource.CONTACT and first_run_active:
 		final_damage = clampi(roundi(float(final_damage) * FIRST_RUN_DAMAGE_MULTIPLIER), 0, target_max_hp)
+
+	# Step 5b — Assist damage share (Fayde only, F2)
+	if is_player and player_damage_mult < 1.0:
+		final_damage = clampi(roundi(float(final_damage) * player_damage_mult), 0, target_max_hp)
 
 	# Step 6 — Apply HP delta
 	if is_player:

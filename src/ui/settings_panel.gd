@@ -59,7 +59,7 @@ func _build() -> void:
 
 	var columns := HBoxContainer.new()
 	columns.alignment = BoxContainer.ALIGNMENT_CENTER
-	columns.add_theme_constant_override(&"separation", 48)
+	columns.add_theme_constant_override(&"separation", 32)
 	root.add_child(columns)
 
 	var left := _column(columns)
@@ -101,10 +101,23 @@ func _build() -> void:
 		settings.reduce_motion = on
 		_save())
 
-	left.add_child(_label(_COPY.settings_audio_heading, 20, Color(0.75, 0.8, 1.0)))
-	_volume(left, _COPY.settings_master, AudioSystem.get_master_volume(), AudioSystem.set_master_volume)
-	_volume(left, _COPY.settings_music, AudioSystem.get_music_volume(), AudioSystem.set_music_volume)
-	_volume(left, _COPY.settings_sfx, AudioSystem.get_sfx_volume(), AudioSystem.set_sfx_volume)
+	var middle := _column(columns)
+	middle.add_child(_label(_COPY.settings_audio_heading, 20, Color(0.75, 0.8, 1.0)))
+	_volume(middle, _COPY.settings_master, AudioSystem.get_master_volume(), AudioSystem.set_master_volume)
+	_volume(middle, _COPY.settings_music, AudioSystem.get_music_volume(), AudioSystem.set_music_volume)
+	_volume(middle, _COPY.settings_sfx, AudioSystem.get_sfx_volume(), AudioSystem.set_sfx_volume)
+
+	# F2 Assist: damage taken, game speed, auto-dash.
+	middle.add_child(_label(_COPY.settings_assist_heading, 20, Color(0.75, 0.8, 1.0)))
+	_percent_slider(middle, _COPY.settings_assist_damage, GameSettings.ASSIST_DAMAGE_MIN,
+		settings.assist_damage, func(v: float) -> void: settings.assist_damage = v)
+	_percent_slider(middle, _COPY.settings_assist_speed, GameSettings.ASSIST_SPEED_MIN,
+		settings.assist_speed, func(v: float) -> void: settings.assist_speed = v)
+	var ad := _check(middle, _COPY.settings_assist_auto_dash, settings.assist_auto_dash)
+	ad.toggled.connect(func(on: bool) -> void:
+		settings.assist_auto_dash = on
+		_save())
+	middle.add_child(_label(_COPY.settings_assist_note, 14, Color(0.55, 0.55, 0.62)))
 
 	var right := _column(columns)
 	right.add_child(_label(_COPY.settings_controls_heading, 20, Color(0.75, 0.8, 1.0)))
@@ -122,6 +135,7 @@ func _build() -> void:
 	reset.pressed.connect(_on_reset_keys)
 	right.add_child(reset)
 	right.add_child(_label(_COPY.settings_gamepad_note, 14, Color(0.55, 0.55, 0.62)))
+
 	_refresh_keys()
 
 	_back = Button.new()
@@ -248,12 +262,33 @@ func _check(parent: Node, text: String, on: bool) -> CheckButton:
 	return c
 
 
+## A 10 %-step slider from [param min_value] to 100 % with a value label; calls
+## [param setter] with the new fraction and saves.
+func _percent_slider(parent: Node, text: String, min_value: float, current: float, setter: Callable) -> void:
+	var slider := HSlider.new()
+	slider.min_value = min_value * 100.0
+	slider.max_value = 100.0
+	slider.step = 10.0
+	slider.value = clampf(current, min_value, 1.0) * 100.0
+	slider.custom_minimum_size = Vector2(120, 0)
+	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var value := _label("%d%%" % roundi(slider.value), 16, Color(0.8, 0.8, 0.86))
+	slider.value_changed.connect(func(v: float) -> void:
+		value.text = "%d%%" % roundi(v)
+		setter.call(v / 100.0)
+		_save())
+	var box := HBoxContainer.new()
+	box.add_child(slider)
+	box.add_child(value)
+	parent.add_child(_row(text, box))
+
+
 func _volume(parent: Node, text: String, current_db: float, setter: Callable) -> void:
 	var slider := HSlider.new()
 	slider.min_value = 0.0
 	slider.max_value = 100.0
 	slider.step = 1.0
-	slider.custom_minimum_size = Vector2(200, 0)
+	slider.custom_minimum_size = Vector2(150, 0)
 	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	slider.value = clampf((current_db + 80.0) / 80.0 * 100.0, 0.0, 100.0)
 	slider.value_changed.connect(func(v: float) -> void:

@@ -9,7 +9,7 @@
 ## Data keys: win (bool), floor (int), rooms (int), time_sec (float), enemies (int),
 ## best_combo (int), bosses (int), ranks (Array[String]), shards (int),
 ## sigils (Array[String] titles), memories_new (int), memories_found (int),
-## memories_total (int), hard_unlocked (bool).
+## memories_total (int), hard_unlocked (bool), assist (bool).
 class_name RunSummaryPanel
 extends Control
 
@@ -127,6 +127,11 @@ func setup(data: Dictionary) -> void:
 	right.add_child(_label(_COPY.summary_memories_format % [int(data.get("memories_new", 0)),
 		int(data.get("memories_found", 0)), int(data.get("memories_total", 0))], 15, Color(0.8, 0.75, 0.55)))
 	cards.add_child(_card(right, 280.0))
+
+	if data.get("assist", false):
+		var assist := _label(_COPY.summary_assist_note, 15, Color(0.55, 0.8, 0.95))
+		assist.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		root.add_child(assist)
 
 	if data.get("hard_unlocked", false):
 		var unlock := _label(_COPY.hard_mode_unlocked_banner, 18, Color(0.78, 0.45, 1.0))
