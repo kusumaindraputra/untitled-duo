@@ -114,7 +114,8 @@ func _hit_player(dodgeable: bool) -> void:
 	if dodgeable and _player.has_method(&"register_perfect_dodge"):
 		_player.register_perfect_dodge(_player.global_position)
 	HealthAndDamage.apply_damage(
-		_player, spec.damage, GameEnums.DamageClass.NONE, GameEnums.DamageSource.CONTACT)
+		_player, spec.damage, GameEnums.DamageClass.NONE, GameEnums.DamageSource.CONTACT,
+		DeathRecap.cause(DeathRecap.hazard_attacker(spec.kind), DeathRecap.attack_for_hazard(spec.kind)))
 
 
 func _on_combat_started(_is_boss: bool = false) -> void:

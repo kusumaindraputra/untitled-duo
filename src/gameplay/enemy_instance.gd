@@ -333,7 +333,8 @@ func _physics_process(delta: float) -> void:
 		if _contact_timer <= 0.0:
 			HealthAndDamage.apply_damage(
 				_fayde_ref, _base_damage,
-				GameEnums.DamageClass.NONE, GameEnums.DamageSource.CONTACT)
+				GameEnums.DamageClass.NONE, GameEnums.DamageSource.CONTACT,
+				DeathRecap.cause(_enemy_name, DeathRecap.ATTACK_CONTACT))
 			if _fayde_ref != null and _fayde_ref.has_method(&"request_knockback"):
 				_fayde_ref.request_knockback(global_position, ENEMY_KNOCKBACK_STRENGTH)
 			# += preserves sub-frame overshoot per ADR-0004 decrement pattern.
@@ -752,12 +753,14 @@ func _fire_pattern_volley(pattern: BulletPattern, angles: PackedFloat32Array, sp
 	if parent_node == null:
 		return
 	var damage: float = _base_damage * pattern.damage_mult
+	var hit_cause: Dictionary = DeathRecap.cause(_enemy_name, DeathRecap.attack_for_pattern(pattern))
 	match pattern.kind:
 		BulletPattern.Kind.LASER:
 			for a: float in angles:
 				var laser := EnemyLaser.new()
 				laser.pattern = pattern
 				laser.damage = damage
+				laser.cause = hit_cause
 				laser.telegraph_mult = _telegraph_mult
 				laser.angle = a
 				laser.anchor = self
@@ -770,6 +773,7 @@ func _fire_pattern_volley(pattern: BulletPattern, angles: PackedFloat32Array, sp
 			var shell := MortarShell.new()
 			shell.pattern = pattern
 			shell.damage = damage
+			shell.cause = hit_cause
 			shell.telegraph_mult = _telegraph_mult
 			parent_node.add_child(shell)
 			shell.global_position = target
@@ -782,6 +786,7 @@ func _fire_pattern_volley(pattern: BulletPattern, angles: PackedFloat32Array, sp
 				var b: Projectile = pool.acquire()
 				b.global_position = global_position
 				b.launch_pattern(Vector2.from_angle(a), damage, pattern, speed * _bullet_speed_mult)
+				b.cause = hit_cause
 			Sfx.play(&"sfx_bullet_fire")
 
 
@@ -979,7 +984,8 @@ func _on_hitarea_body_entered(body: Node2D) -> void:
 	if _archetype != GameEnums.EnemyArchetype.SHOOTER:
 		_start_contact_vfx()
 	HealthAndDamage.apply_damage(
-		body, _base_damage, GameEnums.DamageClass.NONE, GameEnums.DamageSource.CONTACT)
+		body, _base_damage, GameEnums.DamageClass.NONE, GameEnums.DamageSource.CONTACT,
+		DeathRecap.cause(_enemy_name, DeathRecap.ATTACK_CONTACT))
 	if body.has_method(&"request_knockback"):
 		body.request_knockback(global_position, ENEMY_KNOCKBACK_STRENGTH)
 	_contact_timer = ENEMY_MIN_CONTACT_INTERVAL
@@ -1161,7 +1167,8 @@ func _slam_aoe() -> void:
 	if global_position.distance_to(_fayde_ref.global_position) <= BOSS_SLAM_RADIUS:
 		HealthAndDamage.apply_damage(
 			_fayde_ref, _base_damage,
-			GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
+			GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT,
+			DeathRecap.cause(_enemy_name, DeathRecap.ATTACK_SLAM))
 		if _fayde_ref.has_method(&"request_knockback"):
 			_fayde_ref.request_knockback(global_position, 350.0)
 
