@@ -79,8 +79,9 @@ signal player_hp_zone_changed(zone: GameEnums.HPZone)
 ## Tutorial/Onboarding owns the flag lifecycle; H&D trusts the caller.
 var first_run_active: bool = false
 
-## Assist (F2): share of damage Fayde takes, 0.5–1.0. Set by the run scene from
-## GameSettings.assist_damage; applies to every source after first-run mercy.
+## Share of damage Fayde takes. Set by the run scene from the Assist share (F2,
+## 0.5–1.0) times the Cipher Core's damage_taken_mult (ADR-0033); applies to every
+## source after first-run mercy.
 var player_damage_mult: float = 1.0
 
 ## What last hurt Fayde this run: { "attacker": String, "attack": StringName } as
@@ -243,8 +244,8 @@ func apply_damage(
 	if is_player and source == GameEnums.DamageSource.CONTACT and first_run_active:
 		final_damage = clampi(roundi(float(final_damage) * FIRST_RUN_DAMAGE_MULTIPLIER), 0, target_max_hp)
 
-	# Step 5b — Assist damage share (Fayde only, F2)
-	if is_player and player_damage_mult < 1.0:
+	# Step 5b — damage share (Fayde only): Assist (F2) lowers it, a Glass Core (ADR-0033) raises it
+	if is_player and not is_equal_approx(player_damage_mult, 1.0):
 		final_damage = clampi(roundi(float(final_damage) * player_damage_mult), 0, target_max_hp)
 
 	# Step 6 — Apply HP delta

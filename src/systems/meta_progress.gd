@@ -31,6 +31,8 @@ var equipped: StringName = &""
 var hard_mode: bool = false
 ## True once the in-combat tutorial coach has been completed.
 var tutorial_done: bool = false
+## Cipher Core picked for the last run (ADR-0033); the pick screen starts on it.
+var last_core: StringName = &""
 ## Memory fragments recovered so far, in story order (ADR-0027).
 var fragments_found: int = 0
 ## True once the ending with fragments missing has played.
@@ -252,6 +254,7 @@ static func load_from(path: String = DEFAULT_PATH) -> MetaProgress:
 	p.equipped = StringName(str(cfg.get_value(_SECTION, "equipped", "")))
 	p.hard_mode = bool(cfg.get_value(_SECTION, "hard_mode", false))
 	p.tutorial_done = bool(cfg.get_value(_SECTION, "tutorial_done", false))
+	p.last_core = StringName(str(cfg.get_value(_SECTION, "last_core", "")))
 	p.fragments_found = maxi(int(cfg.get_value(_SECTION, "fragments_found", 0)), 0)
 	p.ending_seen = bool(cfg.get_value(_SECTION, "ending_seen", false))
 	p.true_ending_seen = bool(cfg.get_value(_SECTION, "true_ending_seen", false))
@@ -287,6 +290,7 @@ func save_to(path: String = DEFAULT_PATH) -> Error:
 	cfg.set_value(_SECTION, "equipped", String(equipped))
 	cfg.set_value(_SECTION, "hard_mode", hard_mode)
 	cfg.set_value(_SECTION, "tutorial_done", tutorial_done)
+	cfg.set_value(_SECTION, "last_core", String(last_core))
 	cfg.set_value(_SECTION, "fragments_found", fragments_found)
 	cfg.set_value(_SECTION, "ending_seen", ending_seen)
 	cfg.set_value(_SECTION, "true_ending_seen", true_ending_seen)

@@ -42,6 +42,15 @@ extends Resource
 ## ADR-0019 — radius (px) of enemy bullets a dash cuts with the "dash_cut" sigil.
 @export var dash_cut_radius: float = 26.0
 
+@export_group("Offer and Reroll (ADR-0033)")
+
+## Reward cards shown per offer. A Core (ADR-0033) may raise it for the run.
+@export var offer_cards: int = 3
+## HP price of the first bought reroll in a run.
+@export var reroll_hp_cost: int = 6
+## Added to the reroll price after each bought reroll, so rerolling stays a real cost.
+@export var reroll_hp_step: int = 4
+
 @export_group("Behaviour Sigils")
 
 ## Ember Wake: a burning patch is dropped every this many px of dash travel.
