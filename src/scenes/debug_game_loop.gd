@@ -656,10 +656,10 @@ func _on_game_resumed() -> void:
 func _apply_assist() -> void:
 	var s: GameSettings = GameSettings.active()
 	_assist_used = _assist_used or s.assist_active()
-	HealthAndDamage.player_damage_mult = clampf(s.assist_damage, GameSettings.ASSIST_DAMAGE_MIN, 1.0)
+	HealthAndDamage.player_damage_mult = s.effective_damage()
 	var pc: Node = get_node_or_null(^"PlayerController")
 	if pc != null and &"auto_dash" in pc:
-		pc.set(&"auto_dash", s.assist_auto_dash)
+		pc.set(&"auto_dash", s.effective_auto_dash())
 	if not _in_death_sequence:
 		Engine.time_scale = GameSettings.base_time_scale()
 

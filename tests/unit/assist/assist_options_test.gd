@@ -7,6 +7,8 @@
 ##   AS-04: the damage share scales Fayde's damage and never enemies'
 ##   AS-05: auto-dash only fires when on, enabled and a charge is ready; it spends a charge
 ##   AS-06: the run summary shows the Assist note only for assisted runs
+##   AS-07: with the Assist switch off, every option falls back to normal and the
+##          Settings panel locks the option controls
 ##
 ## Framework: GdUnit4 | Godot 4.6
 extends GdUnitTestSuite
@@ -32,6 +34,7 @@ func after_test() -> void:
 
 func _settings(damage: float, speed: float, auto: bool) -> GameSettings:
 	var s := GameSettings.new()
+	s.assist_enabled = true
 	s.assist_damage = damage
 	s.assist_speed = speed
 	s.assist_auto_dash = auto
@@ -46,6 +49,7 @@ func test_assist_round_trip_and_clamp() -> void:
 	assert_float(back.assist_damage).is_equal_approx(0.6, 0.001)
 	assert_float(back.assist_speed).is_equal_approx(0.8, 0.001)
 	assert_bool(back.assist_auto_dash).is_true()
+	assert_bool(back.assist_enabled).is_true()
 
 	_settings(0.1, 0.2, false).save_to(PATH)
 	var clamped := GameSettings.load_from(PATH)
@@ -131,3 +135,44 @@ func _has_text(root: Node, text: String) -> bool:
 		if (n as Label).text == text:
 			return true
 	return false
+
+
+# ── AS-07 ─────────────────────────────────────────────────────────────────────
+
+func test_assist_switch_off_restores_normal_play() -> void:
+	var s := _settings(0.5, 0.7, true)
+	s.assist_enabled = false
+	GameSettings.current = s
+
+	assert_bool(s.assist_active()).is_false()
+	assert_float(s.effective_damage()).is_equal(1.0)
+	assert_bool(s.effective_auto_dash()).is_false()
+	assert_float(GameSettings.base_time_scale()).is_equal(1.0)
+	s.assist_enabled = true
+	assert_float(s.effective_damage()).is_equal_approx(0.5, 0.001)
+	assert_bool(s.effective_auto_dash()).is_true()
+	assert_float(GameSettings.base_time_scale()).is_equal_approx(0.7, 0.001)
+
+
+func test_assist_switch_off_by_default_after_load() -> void:
+	assert_bool(GameSettings.load_from("user://does_not_exist_assist.cfg").assist_enabled).is_false()
+
+
+func test_assist_settings_panel_switch_locks_options() -> void:
+	var s := _settings(0.8, 1.0, false)
+	s.assist_enabled = false
+	GameSettings.current = s
+	var panel := SettingsPanel.new()
+	panel.settings = s
+	panel.save_path = PATH
+	add_child(panel)
+
+	assert_bool(panel.assist_controls_enabled()).is_false()
+	var switch := panel.find_child("AssistEnabled", true, false) as CheckButton
+	assert_object(switch).is_not_null()
+	switch.button_pressed = true
+	assert_bool(s.assist_enabled).is_true()
+	assert_bool(panel.assist_controls_enabled()).is_true()
+	assert_bool(GameSettings.load_from(PATH).assist_enabled).is_true()
+	remove_child(panel)
+	panel.free()

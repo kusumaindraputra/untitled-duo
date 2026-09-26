@@ -23,6 +23,8 @@ var _listening_action: StringName = &""
 var _resolution: OptionButton = null
 var _shake_value: Label = null
 var _back: Button = null
+## Assist option controls, greyed out while the Assist switch is off.
+var _assist_controls: Array[Control] = []
 
 
 func _ready() -> void:
@@ -107,16 +109,23 @@ func _build() -> void:
 	_volume(middle, _COPY.settings_music, AudioSystem.get_music_volume(), AudioSystem.set_music_volume)
 	_volume(middle, _COPY.settings_sfx, AudioSystem.get_sfx_volume(), AudioSystem.set_sfx_volume)
 
-	# F2 Assist: damage taken, game speed, auto-dash.
+	# F2 Assist: a master switch, then damage taken, game speed and auto-dash.
 	middle.add_child(_label(_COPY.settings_assist_heading, 20, Color(0.75, 0.8, 1.0)))
-	_percent_slider(middle, _COPY.settings_assist_damage, GameSettings.ASSIST_DAMAGE_MIN,
-		settings.assist_damage, func(v: float) -> void: settings.assist_damage = v)
-	_percent_slider(middle, _COPY.settings_assist_speed, GameSettings.ASSIST_SPEED_MIN,
-		settings.assist_speed, func(v: float) -> void: settings.assist_speed = v)
+	var on_switch := _check(middle, _COPY.settings_assist_enabled, settings.assist_enabled)
+	on_switch.name = "AssistEnabled"
+	on_switch.toggled.connect(_on_assist_toggled)
+	_assist_controls.append(_percent_slider(middle, _COPY.settings_assist_damage,
+		GameSettings.ASSIST_DAMAGE_MIN, settings.assist_damage,
+		func(v: float) -> void: settings.assist_damage = v))
+	_assist_controls.append(_percent_slider(middle, _COPY.settings_assist_speed,
+		GameSettings.ASSIST_SPEED_MIN, settings.assist_speed,
+		func(v: float) -> void: settings.assist_speed = v))
 	var ad := _check(middle, _COPY.settings_assist_auto_dash, settings.assist_auto_dash)
 	ad.toggled.connect(func(on: bool) -> void:
 		settings.assist_auto_dash = on
 		_save())
+	_assist_controls.append(ad)
+	_refresh_assist()
 	middle.add_child(_label(_COPY.settings_assist_note, 14, Color(0.55, 0.55, 0.62)))
 
 	var right := _column(columns)
@@ -218,6 +227,31 @@ func _on_shake_changed(v: float) -> void:
 	_save()
 
 
+func _on_assist_toggled(on: bool) -> void:
+	settings.assist_enabled = on
+	_refresh_assist()
+	_save()
+
+
+## Greys out and locks the Assist options while the switch is off.
+func _refresh_assist() -> void:
+	for c: Control in _assist_controls:
+		var slider := c as Range
+		if slider != null:
+			slider.editable = settings.assist_enabled
+			slider.focus_mode = Control.FOCUS_ALL if settings.assist_enabled else Control.FOCUS_NONE
+		var button := c as BaseButton
+		if button != null:
+			button.disabled = not settings.assist_enabled
+		var shown: CanvasItem = c.get_parent() as CanvasItem if slider != null else c
+		shown.modulate.a = 1.0 if settings.assist_enabled else 0.45
+
+
+## True when the Assist options can be changed. Test seam.
+func assist_controls_enabled() -> bool:
+	return not _assist_controls.is_empty() and (_assist_controls[0] as Range).editable
+
+
 func _apply_and_save() -> void:
 	settings.apply_display()
 	_save()
@@ -263,8 +297,8 @@ func _check(parent: Node, text: String, on: bool) -> CheckButton:
 
 
 ## A 10 %-step slider from [param min_value] to 100 % with a value label; calls
-## [param setter] with the new fraction and saves.
-func _percent_slider(parent: Node, text: String, min_value: float, current: float, setter: Callable) -> void:
+## [param setter] with the new fraction and saves. Returns the slider.
+func _percent_slider(parent: Node, text: String, min_value: float, current: float, setter: Callable) -> HSlider:
 	var slider := HSlider.new()
 	slider.min_value = min_value * 100.0
 	slider.max_value = 100.0
@@ -281,6 +315,7 @@ func _percent_slider(parent: Node, text: String, min_value: float, current: floa
 	box.add_child(slider)
 	box.add_child(value)
 	parent.add_child(_row(text, box))
+	return slider
 
 
 func _volume(parent: Node, text: String, current_db: float, setter: Callable) -> void:

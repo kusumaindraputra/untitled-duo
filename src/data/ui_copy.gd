@@ -489,6 +489,7 @@ extends Resource
 
 ## Settings section heading and rows.
 @export var settings_assist_heading: String = "Assist"
+@export var settings_assist_enabled: String = "Assist on"
 @export var settings_assist_damage: String = "Damage taken"
 @export var settings_assist_speed: String = "Game speed"
 @export var settings_assist_auto_dash: String = "Auto-dash out of bullets"

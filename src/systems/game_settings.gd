@@ -52,6 +52,9 @@ var screen_shake: float = 1.0
 var reduce_flashes: bool = false
 ## Skips screen fades and typewriter text and stills menu motion (U9).
 var reduce_motion: bool = false
+## Assist (F2) master switch. When off, the options below keep their values but
+## have no effect.
+var assist_enabled: bool = false
 ## Assist (F2): share of damage Fayde takes, game speed during runs, and auto-dash.
 var assist_damage: float = 1.0
 var assist_speed: float = 1.0
@@ -72,15 +75,30 @@ static func shake_multiplier() -> float:
 	return clampf(current.screen_shake, 0.0, 1.0) if current != null else 1.0
 
 
-## True when any assist option differs from the default.
+## True when Assist is switched on and any option differs from the default.
 func assist_active() -> bool:
-	return assist_damage < 1.0 or assist_speed < 1.0 or assist_auto_dash
+	return assist_enabled and (assist_damage < 1.0 or assist_speed < 1.0 or assist_auto_dash)
+
+
+## Damage share in effect: the assist value when Assist is on, else 1.0.
+func effective_damage() -> float:
+	return clampf(assist_damage, ASSIST_DAMAGE_MIN, 1.0) if assist_enabled else 1.0
+
+
+## Game speed in effect: the assist value when Assist is on, else 1.0.
+func effective_speed() -> float:
+	return clampf(assist_speed, ASSIST_SPEED_MIN, 1.0) if assist_enabled else 1.0
+
+
+## Auto-dash in effect: only when Assist is on.
+func effective_auto_dash() -> bool:
+	return assist_enabled and assist_auto_dash
 
 
 ## Engine.time_scale for normal play in a run: the assist game speed, else 1.0.
 ## Slow-mo effects scale from it and restore to it.
 static func base_time_scale() -> float:
-	return clampf(current.assist_speed, ASSIST_SPEED_MIN, 1.0) if current != null else 1.0
+	return current.effective_speed() if current != null else 1.0
 
 
 ## True when menus and screens should skip fades, typewriter text and idle motion.
@@ -232,6 +250,7 @@ static func load_from(path: String = DEFAULT_PATH) -> GameSettings:
 	s.screen_shake = clampf(float(cfg.get_value(_SECTION, "screen_shake", 1.0)), 0.0, 1.0)
 	s.reduce_flashes = bool(cfg.get_value(_SECTION, "reduce_flashes", false))
 	s.reduce_motion = bool(cfg.get_value(_SECTION, "reduce_motion", false))
+	s.assist_enabled = bool(cfg.get_value(_SECTION, "assist_enabled", false))
 	s.assist_damage = clampf(float(cfg.get_value(_SECTION, "assist_damage", 1.0)), ASSIST_DAMAGE_MIN, 1.0)
 	s.assist_speed = clampf(float(cfg.get_value(_SECTION, "assist_speed", 1.0)), ASSIST_SPEED_MIN, 1.0)
 	s.assist_auto_dash = bool(cfg.get_value(_SECTION, "assist_auto_dash", false))
@@ -254,6 +273,7 @@ func save_to(path: String = DEFAULT_PATH) -> Error:
 	cfg.set_value(_SECTION, "screen_shake", screen_shake)
 	cfg.set_value(_SECTION, "reduce_flashes", reduce_flashes)
 	cfg.set_value(_SECTION, "reduce_motion", reduce_motion)
+	cfg.set_value(_SECTION, "assist_enabled", assist_enabled)
 	cfg.set_value(_SECTION, "assist_damage", assist_damage)
 	cfg.set_value(_SECTION, "assist_speed", assist_speed)
 	cfg.set_value(_SECTION, "assist_auto_dash", assist_auto_dash)

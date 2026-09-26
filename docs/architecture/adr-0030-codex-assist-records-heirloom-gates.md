@@ -21,11 +21,14 @@ adding new ones.
    lists: `codex_spells`, `codex_reactions`, `codex_sigils` and `codex_enemies`.
    `Spellbook` (`src/ui/spellbook.gd`) builds the entries from those lists and the
    existing catalogs. `SpellbookPanel` shows them from the main menu and the pause menu.
-2. **Assist (F2)**: `GameSettings` (`user://settings.cfg`) holds `assist_damage`
+2. **Assist (F2)**: `GameSettings` (`user://settings.cfg`) holds a master switch,
+   `assist_enabled` (off by default), plus `assist_damage`
    (50–100 %), `assist_speed` (70–100 %) and `assist_auto_dash`. Every place that
    used to restore `Engine.time_scale` to 1.0 now restores it to
    `GameSettings.base_time_scale()`. Damage taken is scaled in
-   `HealthAndDamage` through `player_damage_mult`.
+   `HealthAndDamage` through `player_damage_mult`. The game reads the
+   `effective_*()` getters, which return normal values while the switch is off, so
+   the chosen values are kept for the next time Assist is turned on.
 3. **Records (F3)**: `MetaProgress` keeps `best_win_sec` and `boss_best_sec`
    (boss enemy id → seconds). Runs with any Assist on set no records.
 4. **Heirlooms (F4)**: `MetaTuning.heirloom_memory_gates` runs parallel to
