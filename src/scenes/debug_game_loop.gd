@@ -123,6 +123,10 @@ var _floors_cleared: int = 0
 var _fragments_at_start: int = 0
 ## True once any Assist option was on during this run (F2); marks the summary.
 var _assist_used: bool = false
+## F3 records: game time since the current boss spawned, and records set this run.
+var _boss_elapsed: float = 0.0
+var _boss_timing: bool = false
+var _new_records: Array[String] = []
 
 func _ready() -> void:
 	_apply_assist()  # also resets Engine.time_scale from any prior slow-mo (reload via R)
@@ -183,6 +187,9 @@ func _ready() -> void:
 	add_child(_boss_director)
 	$WaveManager.boss_spawned.connect(func(boss: Node) -> void:
 		_boss_director.attach(boss, SceneManager.get_current_scene() as Node2D))
+	$WaveManager.boss_spawned.connect(func(_boss: Node) -> void:
+		_boss_elapsed = 0.0
+		_boss_timing = true)
 	# Pause overlay: GameStateManager drives the paused/resumed transitions; we just
 	# build/free the overlay in response so ESC works from PREP and COMBAT alike.
 	GameStateManager.game_paused.connect(_on_game_paused)
@@ -877,6 +884,9 @@ func _on_run_ended(win: bool) -> void:
 		run_data["bonus_shards"] = _bonus_shards
 		shards_earned = _meta.record_run(_META, run_data, win)
 		hard_newly_unlocked = not was_unlocked and _meta.is_hard_mode_unlocked(_META)
+		var run_sec: float = float(run_data.get("run_time_sec", 0.0))
+		if win and not _assist_used and _meta.record_win_time(run_sec):
+			_new_records.push_front(Records.new_run_line(run_sec))
 		_meta.save_to(progress_path)
 		await _play_run_end_story(win, run_data)
 
@@ -912,6 +922,7 @@ func _build_summary_data(win: bool, run_data: Dictionary, shards: int, hard_unlo
 		"memories_total": StoryRules.total(),
 		"hard_unlocked": hard_unlocked,
 		"assist": _assist_used,
+		"records": _new_records,
 	}
 
 
@@ -943,10 +954,22 @@ func _log_build_discoveries(_is_boss: bool) -> void:
 		_meta.discover_reaction(id)
 
 
-## F1: records a defeated enemy type in the Spellbook.
+## F1: records a defeated enemy type in the Spellbook. F3: a boss kill stops the boss
+## timer and may set a record (never with Assist on).
 func _log_enemy_discovery(_instance_id: int, type_id: int, _affiliation: GameEnums.DamageClass) -> void:
-	if _meta != null:
-		_meta.discover_enemy(type_id)
+	if _meta == null:
+		return
+	_meta.discover_enemy(type_id)
+	if not _boss_timing or not Records.boss_ids().has(type_id):
+		return
+	_boss_timing = false
+	if not _assist_used and _meta.record_boss_time(type_id, _boss_elapsed):
+		_new_records.append(Records.new_boss_line(type_id, _boss_elapsed))
+
+
+func _process(delta: float) -> void:
+	if _boss_timing:
+		_boss_elapsed += delta
 
 
 ## Saves progress (Spellbook discoveries) when leaving a run early.

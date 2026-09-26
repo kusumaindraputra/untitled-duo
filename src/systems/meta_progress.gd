@@ -43,6 +43,10 @@ var codex_spells: Array[int] = []
 var codex_reactions: Array[StringName] = []
 var codex_sigils: Array[StringName] = []
 var codex_enemies: Array[int] = []
+## Records (F3): fastest winning run and fastest kill per boss type id, in seconds.
+## 0 / missing = no record yet. Runs with Assist on do not set records.
+var best_win_sec: float = 0.0
+var boss_best_sec: Dictionary[int, float] = {}
 
 
 # ── Payout ────────────────────────────────────────────────────────────────────
@@ -202,6 +206,27 @@ static func _add_name(list: Array[StringName], v: StringName) -> bool:
 	return true
 
 
+# ── Records (F3) ──────────────────────────────────────────────────────────────
+
+## Records a winning run of [param sec] seconds. Returns true when it is a new best.
+func record_win_time(sec: float) -> bool:
+	if sec <= 0.0 or (best_win_sec > 0.0 and sec >= best_win_sec):
+		return false
+	best_win_sec = sec
+	return true
+
+
+## Records a kill of boss [param boss_id] after [param sec] seconds. Returns true
+## when it is a new best for that boss.
+func record_boss_time(boss_id: int, sec: float) -> bool:
+	if boss_id < 0 or sec <= 0.0:
+		return false
+	if boss_best_sec.has(boss_id) and sec >= boss_best_sec[boss_id]:
+		return false
+	boss_best_sec[boss_id] = sec
+	return true
+
+
 # ── Persistence ───────────────────────────────────────────────────────────────
 
 ## Loads progress from [param path]. A missing or unreadable file gives fresh progress.
@@ -233,6 +258,11 @@ static func load_from(path: String = DEFAULT_PATH) -> MetaProgress:
 		p.discover_sigil(StringName(str(v)))
 	for v: Variant in cfg.get_value(_SECTION, "codex_enemies", []):
 		p.discover_enemy(int(v))
+	p.best_win_sec = maxf(float(cfg.get_value(_SECTION, "best_win_sec", 0.0)), 0.0)
+	var bosses: Variant = cfg.get_value(_SECTION, "boss_best_sec", {})
+	if bosses is Dictionary:
+		for k: Variant in bosses:
+			p.record_boss_time(int(k), float(bosses[k]))
 	return p
 
 
@@ -259,4 +289,9 @@ func save_to(path: String = DEFAULT_PATH) -> Error:
 	cfg.set_value(_SECTION, "codex_reactions", codex_reactions.map(func(x: StringName) -> String: return String(x)))
 	cfg.set_value(_SECTION, "codex_sigils", codex_sigils.map(func(x: StringName) -> String: return String(x)))
 	cfg.set_value(_SECTION, "codex_enemies", codex_enemies.duplicate())
+	cfg.set_value(_SECTION, "best_win_sec", best_win_sec)
+	var bosses: Dictionary = {}
+	for k: int in boss_best_sec:
+		bosses[str(k)] = boss_best_sec[k]
+	cfg.set_value(_SECTION, "boss_best_sec", bosses)
 	return cfg.save(path)

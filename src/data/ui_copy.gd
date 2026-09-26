@@ -493,3 +493,14 @@ extends Resource
 @export var settings_assist_speed: String = "Game speed"
 @export var settings_assist_auto_dash: String = "Auto-dash out of bullets"
 @export var settings_assist_note: String = "Runs with Assist on are marked on the summary."
+
+@export_group("Records (F3)")
+
+## Menu records line: best winning run, then one entry per boss, then memories.
+@export var records_best_run_format: String = "Best run  %s"
+@export var records_boss_format: String = "%s  %s"
+@export var records_memories_format: String = "Memories  %d/%d"
+@export var records_none: String = "—"
+## Summary lines when a record falls (assisted runs never set records).
+@export var record_new_run_format: String = "New record!  Run  %s"
+@export var record_new_boss_format: String = "New record!  %s  %s"
