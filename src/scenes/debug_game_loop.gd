@@ -52,6 +52,8 @@ const _BOSS_POOL_PATHS: Array[String] = [
 ]
 
 const _META: MetaTuning = preload("res://assets/data/meta_tuning.tres")
+## ADR-0033 — the Cipher Cores offered on the core-pick screen.
+const _CORES: CoreRoster = preload("res://assets/data/cores/core_roster.tres")
 const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
 
 ## Where between-run progress is read and written (ADR-0025).
@@ -109,6 +111,10 @@ var _prana_loadout: PranaLoadout = null
 
 ## Core-pick CanvasLayer shown after Begin, before the run starts. Freed on pick.
 var _core_pick_layer: CanvasLayer = null
+## ADR-0033 — the Cipher Core highlighted on the pick screen, and the one this run uses
+## (null until the run starts).
+var _selected_core: CoreFrame = null
+var _core: CoreFrame = null
 
 ## Pause overlay CanvasLayer. Built on game_paused (ESC during play), freed on
 ## game_resumed. PROCESS_MODE_ALWAYS so its buttons stay live while the tree is paused.
@@ -391,8 +397,9 @@ func _begin_run() -> void:
 	_show_core_pick()
 
 
-## Builds the "choose your core Prana" overlay (5 element cards). Tree remains paused
-## (PROCESS_MODE_ALWAYS overlay) until a card is picked.
+## Builds the core-pick overlay: a Cipher Core row (ADR-0033, a run-long passive) above
+## the 5 core Prana cards. Picking a Prana starts the run with the highlighted Core.
+## Tree remains paused (PROCESS_MODE_ALWAYS overlay) until a Prana is picked.
 func _show_core_pick() -> void:
 	_core_pick_layer = CanvasLayer.new()
 	_core_pick_layer.layer = 30
@@ -408,22 +415,15 @@ func _show_core_pick() -> void:
 	vbox.anchor_right = 1.0
 	vbox.anchor_bottom = 1.0
 	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	vbox.add_theme_constant_override(&"separation", 18)
+	vbox.add_theme_constant_override(&"separation", 14)
 	_core_pick_layer.add_child(vbox)
 
 	var title := Label.new()
-	title.text = "CHOOSE YOUR CORE PRANA"
+	title.text = _COPY.core_pick_heading
 	title.add_theme_font_size_override(&"font_size", 38)
 	title.add_theme_color_override(&"font_color", Color(1.0, 0.85, 0.4))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title)
-
-	var sub := Label.new()
-	sub.text = "It anchors the centre slot. Build the rest from room rewards."
-	sub.add_theme_font_size_override(&"font_size", 18)
-	sub.add_theme_color_override(&"font_color", Color(0.7, 0.7, 0.78))
-	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(sub)
 
 	var heirloom: StringName = _meta.run_heirloom() if _meta != null else &""
 	if heirloom != &"":
@@ -434,6 +434,44 @@ func _show_core_pick() -> void:
 		hl.add_theme_color_override(&"font_color", Color(1.0, 0.85, 0.4))
 		hl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		vbox.add_child(hl)
+
+	vbox.add_child(_make_pick_label(_COPY.core_pick_core_label))
+	var core_row := HBoxContainer.new()
+	core_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	core_row.add_theme_constant_override(&"separation", 12)
+	vbox.add_child(core_row)
+	var core_desc := Label.new()
+	core_desc.add_theme_font_size_override(&"font_size", 18)
+	core_desc.add_theme_color_override(&"font_color", Color(0.85, 0.85, 0.9))
+	core_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	core_desc.custom_minimum_size = Vector2(0, 28)
+	vbox.add_child(core_desc)
+
+	var last_id: StringName = _meta.last_core if _meta != null else &""
+	_selected_core = _CORES.get_core(last_id)
+	var group := ButtonGroup.new()
+	for v: Variant in _CORES.cores:  # a const-preloaded typed array iterates as Variant
+		var core: CoreFrame = v as CoreFrame
+		var btn := Button.new()
+		btn.toggle_mode = true
+		btn.button_group = group
+		btn.custom_minimum_size = Vector2(170, 52)
+		btn.add_theme_font_size_override(&"font_size", 20)
+		btn.text = _core_title(core)
+		btn.add_theme_color_override(&"font_color", core.accent)
+		btn.add_theme_color_override(&"font_pressed_color", Color(1.0, 0.95, 0.7))
+		btn.button_pressed = core == _selected_core
+		var captured: CoreFrame = core
+		btn.pressed.connect(func() -> void:
+			_selected_core = captured
+			core_desc.text = _core_desc(captured))
+		btn.focus_entered.connect(func() -> void: core_desc.text = _core_desc(captured))
+		btn.focus_exited.connect(func() -> void: core_desc.text = _core_desc(_selected_core))
+		core_row.add_child(btn)
+	core_desc.text = _core_desc(_selected_core)
+
+	vbox.add_child(_make_spacer(6))
+	vbox.add_child(_make_pick_label(_COPY.core_pick_prana_label))
 
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -458,7 +496,27 @@ func _show_core_pick() -> void:
 		first_button.grab_focus()
 
 
-## Seeds the loadout with the chosen core, dismisses the picker, and starts the run.
+## A centred section label on the core-pick screen.
+func _make_pick_label(text: String) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_size_override(&"font_size", 18)
+	label.add_theme_color_override(&"font_color", Color(0.7, 0.7, 0.78))
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	return label
+
+
+## Player-facing name and passive of [param core] (UICopy, by id).
+func _core_title(core: CoreFrame) -> String:
+	return str(_COPY.core_titles.get(String(core.id), core.id)) if core != null else ""
+
+
+func _core_desc(core: CoreFrame) -> String:
+	return str(_COPY.core_descs.get(String(core.id), "")) if core != null else ""
+
+
+## Seeds the loadout with the chosen core, dismisses the picker, and starts the run
+## with the highlighted Cipher Core (ADR-0033; the default Core when none was shown).
 func _on_core_picked(type_id: int) -> void:
 	if _prana_loadout != null:
 		_prana_loadout.seed_core(type_id)
@@ -467,6 +525,7 @@ func _on_core_picked(type_id: int) -> void:
 		_core_pick_layer = null
 	get_tree().paused = false
 	GameStateManager.start_run()
+	_start_core()
 	# ADR-0025: the equipped Heirloom is a stat sigil granted before the first room.
 	if _meta != null and _sigil_manager != null and _meta.run_heirloom() != &"":
 		_sigil_manager.apply_sigil(_meta.run_heirloom())
@@ -474,6 +533,19 @@ func _on_core_picked(type_id: int) -> void:
 	_show_tutorial_overlay()
 	if _meta == null or not _meta.tutorial_done:
 		_start_coach()
+
+
+## ADR-0033: applies the run's Cipher Core after run_started reset the run state, and
+## remembers the pick for the next run.
+func _start_core() -> void:
+	_core = _selected_core if _selected_core != null else _CORES.default_core()
+	if _core == null:
+		return
+	_core.apply($PlayerController, SpellCastingEffects, _sigil_manager)
+	_apply_assist()
+	if _meta != null and _meta.last_core != _core.id:
+		_meta.last_core = _core.id
+		_meta.save_to(progress_path)
 
 
 ## Spawns the in-combat tutorial checklist and wires it to the moves it teaches.
@@ -634,7 +706,11 @@ func _on_game_paused() -> void:
 
 ## Data for the pause build view: the live grid, its spell card and the sigils taken.
 func _build_pause_data() -> Dictionary:
-	var data: Dictionary = {"sigils": _run_sigils, "abbrevs": _COPY.type_abbrevs}
+	var sigils: Array[Dictionary] = []
+	if _core != null:  # ADR-0033: the run's Core heads the build list.
+		sigils.append({"title": _COPY.core_active_format % _core_title(_core), "desc": _core_desc(_core)})
+	sigils.append_array(_run_sigils)
+	var data: Dictionary = {"sigils": sigils, "abbrevs": _COPY.type_abbrevs}
 	var grid: PranaGrid = get_tree().get_first_node_in_group(&"prana_grid") as PranaGrid
 	if grid != null:
 		data["grid"] = grid.get_slot_types()
@@ -656,7 +732,9 @@ func _on_game_resumed() -> void:
 func _apply_assist() -> void:
 	var s: GameSettings = GameSettings.active()
 	_assist_used = _assist_used or s.assist_active()
-	HealthAndDamage.player_damage_mult = s.effective_damage()
+	# ADR-0033: the Core's damage-taken share stacks with the Assist share.
+	var core_share: float = _core.damage_taken_mult if _core != null else 1.0
+	HealthAndDamage.player_damage_mult = s.effective_damage() * core_share
 	var pc: Node = get_node_or_null(^"PlayerController")
 	if pc != null and &"auto_dash" in pc:
 		pc.set(&"auto_dash", s.effective_auto_dash())
