@@ -403,3 +403,17 @@ extends Resource
 ## One sigil line: title, stack suffix, description. %s stack suffix is empty for one stack.
 @export var pause_sigil_format: String = "%s%s — %s"
 @export var pause_sigil_stack_format: String = " ×%d"
+
+@export_group("Main Menu (layout)")
+
+## Title, tagline and the main buttons, top to bottom (Memories and Settings use
+## memories_button_format and settings_button).
+@export var menu_title: String = "THE LAST CIPHER"
+@export var menu_subtitle: String = "Arrange Prana. Cast. Defeat the floor boss."
+@export var menu_play: String = "PLAY"
+@export var menu_heirlooms: String = "HEIRLOOMS"
+@export var menu_quit: String = "QUIT"
+## Heirloom screen heading, shard line and back button.
+@export var heirloom_screen_title: String = "HEIRLOOMS"
+@export var heirloom_shards_format: String = "Cipher Shards  %d"
+@export var heirloom_back: String = "Back  (Esc)"
