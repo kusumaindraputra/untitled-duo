@@ -66,6 +66,8 @@ static func button_text(p: MetaProgress, id: StringName) -> String:
 		return _COPY.heirloom_equipped_format % title
 	if p.is_unlocked(id):
 		return _COPY.heirloom_unlocked_format % title
+	if not p.is_revealed(_META, id):
+		return _COPY.heirloom_memory_locked_format % [title, _META.memories_needed(id)]
 	return _COPY.heirloom_locked_format % [title, _META.cost_of(id)]
 
 
@@ -74,6 +76,8 @@ static func desc_text(p: MetaProgress, id: StringName) -> String:
 	var hint: String = _COPY.heirloom_hint_buy
 	if p.is_unlocked(id):
 		hint = _COPY.heirloom_hint_unequip if p.equipped == id else _COPY.heirloom_hint_equip
+	elif not p.is_revealed(_META, id):
+		hint = _COPY.heirloom_hint_memories_format % _META.memories_needed(id)
 	elif not p.can_unlock(_META, id):
 		hint = _COPY.heirloom_hint_poor
 	return _COPY.heirloom_desc_format % [str(MetaProgress.heirloom_info(id).get("desc", "")), hint]
@@ -137,7 +141,7 @@ func _build() -> void:
 	root.add_child(_shards_label)
 
 	var grid := GridContainer.new()
-	grid.columns = 3
+	grid.columns = 5
 	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	grid.add_theme_constant_override(&"h_separation", 10)
 	grid.add_theme_constant_override(&"v_separation", 10)
@@ -145,7 +149,7 @@ func _build() -> void:
 	for id: StringName in _META.heirloom_ids:
 		var b := Button.new()
 		b.name = "Heirloom_%s" % id
-		b.custom_minimum_size = Vector2(200, 58)
+		b.custom_minimum_size = Vector2(190, 58)
 		b.add_theme_font_size_override(&"font_size", 16)
 		var captured: StringName = id
 		b.pressed.connect(func() -> void: press(captured))

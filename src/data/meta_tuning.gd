@@ -23,11 +23,15 @@ extends Resource
 
 @export_group("Heirlooms")
 
-## Stat sigils that can be unlocked as Heirlooms, in menu order. Titles and
+## Sigils (stat or behaviour) that can be unlocked as Heirlooms, in menu order. Titles and
 ## descriptions come from SigilConfig.stat_sigils, so they are not duplicated here.
-@export var heirloom_ids: Array[StringName] = [&"move_speed", &"damage", &"graze_ring", &"dash_charge", &"dash_cut"]
+@export var heirloom_ids: Array[StringName] = [&"move_speed", &"damage", &"graze_ring", &"dash_charge", &"dash_cut",
+	&"dash_cd", &"ember_wake", &"static_halo", &"siphon", &"riposte"]
 ## Shard cost of each Heirloom, parallel to heirloom_ids.
-@export var heirloom_costs: Array[int] = [30, 45, 50, 70, 90]
+@export var heirloom_costs: Array[int] = [30, 45, 50, 70, 90, 60, 80, 90, 110, 130]
+## Memory fragments needed before each Heirloom can be bought, parallel to heirloom_ids
+## (F4: a new pair every 3 memories). 0 = available from the start.
+@export var heirloom_memory_gates: Array[int] = [0, 0, 0, 0, 0, 3, 3, 6, 6, 9]
 
 @export_group("Hard Mode")
 
@@ -42,6 +46,23 @@ extends Resource
 @export var hard_extra_enemies: int = 2
 ## Chance added to each pool's elite_chance.
 @export var hard_elite_chance_bonus: float = 0.1
+
+
+## Memories needed before [param id] can be bought (0 when ungated or unknown).
+func memories_needed(id: StringName) -> int:
+	var i: int = heirloom_ids.find(id)
+	return heirloom_memory_gates[i] if i >= 0 and i < heirloom_memory_gates.size() else 0
+
+
+## Heirlooms whose memory gate lies in (from, to]: the ones revealed by recovering
+## memories from [param from] up to [param to].
+func heirlooms_revealed_between(from: int, to: int) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for id: StringName in heirloom_ids:
+		var gate: int = memories_needed(id)
+		if gate > from and gate <= to:
+			out.append(id)
+	return out
 
 
 ## Cost of [param id], or -1 when it is not an Heirloom.

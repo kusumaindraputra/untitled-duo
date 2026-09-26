@@ -504,3 +504,12 @@ extends Resource
 ## Summary lines when a record falls (assisted runs never set records).
 @export var record_new_run_format: String = "New record!  Run  %s"
 @export var record_new_boss_format: String = "New record!  %s  %s"
+
+@export_group("Heirlooms by memory (F4)")
+
+## Heirloom button while hidden behind memories: title, memories needed.
+@export var heirloom_memory_locked_format: String = "%s\n%d memories"
+## Description hint while hidden behind memories.
+@export var heirloom_hint_memories_format: String = "recover %d memories to unlock"
+## Run summary line when recovered memories reveal an Heirloom.
+@export var heirloom_revealed_format: String = "New Heirloom available:  %s"

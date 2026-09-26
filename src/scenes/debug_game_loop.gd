@@ -922,7 +922,7 @@ func _build_summary_data(win: bool, run_data: Dictionary, shards: int, hard_unlo
 		"memories_total": StoryRules.total(),
 		"hard_unlocked": hard_unlocked,
 		"assist": _assist_used,
-		"records": _new_records,
+		"records": _new_records + _revealed_heirloom_lines(found),
 	}
 
 
@@ -941,6 +941,14 @@ func _log_sigil(sigil_id: StringName) -> void:
 		if sigil.get("id", &"") == sigil_id:
 			_run_sigils.append({"title": str(sigil.get("title", sigil_id)), "desc": str(sigil.get("desc", ""))})
 			return
+
+
+## F4: summary lines for Heirlooms that this run's memories made available.
+func _revealed_heirloom_lines(found: int) -> Array[String]:
+	var lines: Array[String] = []
+	for id: StringName in _META.heirlooms_revealed_between(_fragments_at_start, found):
+		lines.append(_COPY.heirloom_revealed_format % str(MetaProgress.heirloom_info(id).get("title", id)))
+	return lines
 
 
 ## F1: records the confirmed grid's core spell and armed reactions in the Spellbook.

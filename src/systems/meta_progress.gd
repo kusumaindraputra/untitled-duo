@@ -95,10 +95,15 @@ func is_unlocked(id: StringName) -> bool:
 	return unlocked.has(id)
 
 
-## True when [param id] is an Heirloom that is still locked and affordable.
+## True once enough memories are recovered to buy [param id] (F4).
+func is_revealed(t: MetaTuning, id: StringName) -> bool:
+	return fragments_found >= t.memories_needed(id)
+
+
+## True when [param id] is an Heirloom that is still locked, revealed and affordable.
 func can_unlock(t: MetaTuning, id: StringName) -> bool:
 	var cost: int = t.cost_of(id)
-	return cost >= 0 and not is_unlocked(id) and shards >= cost
+	return cost >= 0 and not is_unlocked(id) and is_revealed(t, id) and shards >= cost
 
 
 ## Spends shards to unlock [param id] and equips it. Returns false when not allowed.
