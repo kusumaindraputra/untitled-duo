@@ -116,11 +116,17 @@ var _pause_layer: CanvasLayer = null
 
 ## Rooms entered on the current floor (1-based) — drives the HUD "Room X / Y" breadcrumb.
 var _rooms_entered: int = 1
+## U5 run summary log: room ranks, sigil titles, floors cleared, memories at run start.
+var _run_ranks: Array[String] = []
+var _run_sigils: Array[Dictionary] = []
+var _floors_cleared: int = 0
+var _fragments_at_start: int = 0
 
 func _ready() -> void:
 	Engine.time_scale = 1.0  # reset from any prior slow-mo (scene reload via R key)
 	_register_input_actions()
 	_meta = MetaProgress.load_from(progress_path)
+	_fragments_at_start = _meta.fragments_found
 	GameSettings.active().apply_display_once()
 	_load_pool_configs()
 	HealthAndDamage.heavy_hit.connect(_on_heavy_hit)
@@ -191,6 +197,7 @@ func _ready() -> void:
 	_pace_director.set_player($PlayerController)
 	_pace_director.style_changed.connect(hud.set_style)
 	_pace_director.room_ranked.connect(hud.show_room_rank)
+	_pace_director.room_ranked.connect(_log_room_rank)
 	_pace_director.perfect_dodge_triggered.connect(hud.show_perfect_dodge)
 	# ADR-0026 behaviour sigils: effects hang off gameplay signals; SigilManager adds stacks.
 	_sigil_effects = SigilEffects.new()
@@ -198,6 +205,7 @@ func _ready() -> void:
 	_sigil_effects.player = $PlayerController
 	add_child(_sigil_effects)
 	_sigil_manager.effects = _sigil_effects
+	_sigil_manager.sigil_applied.connect(_log_sigil)
 	_pace_director.perfect_dodge_triggered.connect(_sigil_effects.on_perfect_dodge)
 	# Transient reward bag: Prana picked from post-room rewards land here, then the
 	# prep grid places them. Found by SigilManager (writer) + PranaGrid (reader) via group.
@@ -221,6 +229,11 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# U8: Start pauses / resumes on a gamepad, like Esc on the keyboard.
+	var joy := event as InputEventJoypadButton
+	if joy != null and joy.pressed and joy.button_index == JOY_BUTTON_START:
+		_toggle_pause()
+		return
 	if event is InputEventKey and not event.echo and event.pressed:
 		if event.keycode == KEY_ESCAPE:
 			_toggle_pause()
@@ -287,7 +300,10 @@ func _show_title_screen() -> void:
 	vbox.add_child(_make_spacer(40))
 
 	var controls := Label.new()
-	controls.text = "WASD / Stick  Move      Shift / X  Dash      Space / A  Cast      Enter / Y  Confirm\nGamepad: D-pad selects a grid slot · A places · B clears · RB cycles Prana"
+	controls.text = _title_controls_text()
+	InputPrompts.device_changed.connect(func(_pad: bool) -> void:
+		if is_instance_valid(controls):
+			controls.text = _title_controls_text())
 	controls.add_theme_font_size_override(&"font_size", 18)
 	controls.add_theme_color_override(&"font_color", Color(0.6, 0.6, 0.66))
 	controls.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -339,30 +355,6 @@ func _make_subtitle_text() -> String:
 	var words: Array[String] = ["one", "two", "three", "four", "five"]
 	var count_word: String = words[total_floors - 1] if total_floors <= words.size() else str(total_floors)
 	return "Arrange Prana. Cast. Survive %s floors." % count_word
-
-
-## Adds a label|value row to the end-screen stat [param grid].
-## Label is dim grey and left-aligned; value is bright and right-aligned.
-func _add_stat_row(grid: GridContainer, label_text: String, value_text: String) -> void:
-	var name_label := Label.new()
-	name_label.text = label_text
-	name_label.add_theme_font_size_override(&"font_size", 22)
-	name_label.add_theme_color_override(&"font_color", Color(0.62, 0.62, 0.68))
-	grid.add_child(name_label)
-
-	var value_label := Label.new()
-	value_label.text = value_text
-	value_label.add_theme_font_size_override(&"font_size", 22)
-	value_label.add_theme_color_override(&"font_color", Color(1.0, 0.92, 0.7))
-	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_child(value_label)
-
-
-## Formats [param seconds] as "M:SS" (e.g. 252.0 → "4:12").
-func _format_run_time(seconds: float) -> String:
-	var total: int = int(seconds)
-	return "%d:%02d" % [total / 60, total % 60]
 
 
 ## Returns a fixed-height invisible spacer Control for VBox layout.
@@ -542,7 +534,8 @@ func _show_tutorial_overlay() -> void:
 		"1.  Your CORE Prana sits centre — it's your primary element.",
 		"2.  Clear rooms to earn Prana, then add them to your grid.",
 		"3.  3+ of one type = a stronger spell Tier.",
-		"4.  Press ENTER to confirm, then SPACE to cast in battle.",
+		InputPrompts.pick(_COPY.coach_confirm_step_kb % InputPrompts.key_label(&"cast", "Space"),
+			_COPY.coach_confirm_step_pad),
 	]
 	for line: String in steps:
 		var step := Label.new()
@@ -583,7 +576,12 @@ func _toggle_pause() -> void:
 		GameStateManager.pause_game()
 
 
-## Builds the pause overlay in response to GameStateManager.game_paused.
+## Title-card controls for the last-used device (U8): moves and actions, then the grid.
+func _title_controls_text() -> String:
+	return InputPrompts.controls_line() + "\n" + InputPrompts.pick(_COPY.grid_controls_kb, _COPY.grid_controls_pad)
+
+
+## Builds the pause overlay (PausePanel, U6) in response to GameStateManager.game_paused.
 ## PROCESS_MODE_ALWAYS keeps the buttons interactive while the tree is paused.
 func _on_game_paused() -> void:
 	if _pause_layer != null:
@@ -591,86 +589,35 @@ func _on_game_paused() -> void:
 	_pause_layer = CanvasLayer.new()
 	_pause_layer.layer = 28
 	_pause_layer.process_mode = Node.PROCESS_MODE_ALWAYS
-
-	var bg := ColorRect.new()
-	bg.color = Color(0.04, 0.03, 0.06, 0.85)
-	bg.anchor_right = 1.0
-	bg.anchor_bottom = 1.0
-	_pause_layer.add_child(bg)
-
-	var vbox := VBoxContainer.new()
-	vbox.anchor_right = 1.0
-	vbox.anchor_bottom = 1.0
-	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	vbox.add_theme_constant_override(&"separation", 18)
-	_pause_layer.add_child(vbox)
-
-	var title := Label.new()
-	title.text = "PAUSED"
-	title.add_theme_font_size_override(&"font_size", 56)
-	title.add_theme_color_override(&"font_color", Color(1.0, 0.85, 0.3))
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(title)
-
-	vbox.add_child(_make_spacer(8))
-
-	var resume := Button.new()
-	resume.text = "Resume  (Esc)"
-	resume.custom_minimum_size = Vector2(240, 52)
-	resume.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	resume.add_theme_font_size_override(&"font_size", 22)
-	resume.pressed.connect(GameStateManager.resume_game)
-	vbox.add_child(resume)
-
-	var restart := Button.new()
-	restart.text = "Restart Run  (R)"
-	restart.custom_minimum_size = Vector2(240, 52)
-	restart.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	restart.add_theme_font_size_override(&"font_size", 22)
-	restart.pressed.connect(_restart_from_pause)
-	vbox.add_child(restart)
-
+	var panel := PausePanel.new()
+	_pause_layer.add_child(panel)
+	panel.setup(_build_pause_data())
+	panel.resume_pressed.connect(GameStateManager.resume_game)
+	panel.restart_pressed.connect(_restart_from_pause)
+	panel.tutorial_pressed.connect(_replay_tutorial)
+	panel.main_menu_pressed.connect(_to_main_menu)
+	panel.quit_pressed.connect(_quit_game)
 	# ADR-0026: volume, display, comfort and keys live in the Settings panel.
-	var settings := Button.new()
-	settings.text = _COPY.settings_button.capitalize()
-	settings.custom_minimum_size = Vector2(240, 52)
-	settings.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	settings.add_theme_font_size_override(&"font_size", 22)
-	settings.pressed.connect(func() -> void:
-		vbox.visible = false
-		var panel := SettingsPanel.new()
-		panel.closed.connect(func() -> void:
-			vbox.visible = true
-			settings.grab_focus())
-		_pause_layer.add_child(panel))
-	vbox.add_child(settings)
-
-	var replay := Button.new()
-	replay.text = _COPY.coach_replay_button
-	replay.custom_minimum_size = Vector2(240, 52)
-	replay.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	replay.add_theme_font_size_override(&"font_size", 22)
-	replay.pressed.connect(_replay_tutorial)
-	vbox.add_child(replay)
-
-	var to_menu := Button.new()
-	to_menu.text = "Main Menu"
-	to_menu.custom_minimum_size = Vector2(240, 52)
-	to_menu.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	to_menu.add_theme_font_size_override(&"font_size", 22)
-	to_menu.pressed.connect(_to_main_menu)
-	vbox.add_child(to_menu)
-
-	var quit := Button.new()
-	quit.text = "Quit Game"
-	quit.custom_minimum_size = Vector2(240, 52)
-	quit.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	quit.add_theme_font_size_override(&"font_size", 22)
-	quit.pressed.connect(_quit_game)
-	vbox.add_child(quit)
-
+	panel.settings_pressed.connect(func() -> void:
+		panel.menu_box.visible = false
+		var settings := SettingsPanel.new()
+		settings.closed.connect(func() -> void:
+			panel.menu_box.visible = true
+			panel.settings_button.grab_focus())
+		_pause_layer.add_child(settings))
 	add_child(_pause_layer)
-	resume.grab_focus()
+	panel.resume_button.grab_focus()
+
+
+## Data for the pause build view: the live grid, its spell card and the sigils taken.
+func _build_pause_data() -> Dictionary:
+	var data: Dictionary = {"sigils": _run_sigils, "abbrevs": _COPY.type_abbrevs}
+	var grid: PranaGrid = get_tree().get_first_node_in_group(&"prana_grid") as PranaGrid
+	if grid != null:
+		data["grid"] = grid.get_slot_types()
+		data["spell_card"] = grid.build_spell_card()
+		data["colors"] = grid.get_type_colors()
+	return data
 
 
 ## Frees the pause overlay in response to GameStateManager.game_resumed.
@@ -726,7 +673,16 @@ func _update_minimap() -> void:
 		types.append(int(room.get("type", DungeonGraph.ROOM_TYPE_COMBAT)))
 		states.append(int(room.get("state", DungeonGraph.ROOM_STATE_UNVISITED)))
 		mods.append(int(room.get(RoomModifiers.KEY, RoomModifiers.NONE)))
-	hud.set_minimap(types, states, rtm.get_current_room_idx(), mods)
+	var edges: Array = []
+	for i: int in _dungeon_graph.room_count():
+		for j: int in _dungeon_graph.get_outgoing(i):
+			edges.append(Vector2i(i, j))
+	hud.set_minimap(types, states, rtm.get_current_room_idx(), mods, edges,
+		_dungeon_graph.get_entry_room())
+	# The prep panel sits under the floor map on the right (parent wires siblings).
+	var grid: PranaGrid = get_tree().get_first_node_in_group(&"prana_grid") as PranaGrid
+	if grid != null:
+		grid.set_panel_top(hud.get_floor_map_bottom() + 8.0)
 
 
 ## Configures WaveManager for the room at [param room_idx]: sets room_type and is_final_room.
@@ -812,6 +768,7 @@ func _on_floor_completed() -> void:
 	var card: MemoryFragmentModal = _recover_memory(StoryRules.Beat.FLOOR_CLEAR, 0)
 	if card != null:
 		await card.closed
+	_floors_cleared += 1
 	_current_floor += 1
 	# Reset to 0 so the entry-room transition of the new floor increments it back to 1.
 	_rooms_entered = 0
@@ -891,103 +848,54 @@ func _on_run_ended(win: bool) -> void:
 		hard_newly_unlocked = not was_unlocked and _meta.is_hard_mode_unlocked(_META)
 		_meta.save_to(progress_path)
 		await _play_run_end_story(win, run_data)
-	var floor_reached: int = run_data.get("current_floor", 1)
-	var rooms_cleared: int = run_data.get("rooms_cleared", 0)
-	var enemies_killed: int = run_data.get("enemies_killed", 0)
-	var best_combo: int = run_data.get("best_combo", 0)
-	var run_time_sec: float = run_data.get("run_time_sec", 0.0)
 
+	# U5 — run summary screen, built from plain data (RunSummaryPanel owns no state).
 	var overlay := CanvasLayer.new()
 	overlay.layer = 20
-
-	var bg := ColorRect.new()
-	bg.color = Color(0.08, 0.05, 0.02, 0.88) if win else Color(0.12, 0.02, 0.02, 0.88)
-	bg.anchor_right = 1.0
-	bg.anchor_bottom = 1.0
-	overlay.add_child(bg)
-
-	var vbox := VBoxContainer.new()
-	vbox.anchor_right = 1.0
-	vbox.anchor_bottom = 1.0
-	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	overlay.add_child(vbox)
-
-	var title := Label.new()
-	title.text = "RUN COMPLETE" if win else "YOU DIED"
-	title.add_theme_font_size_override(&"font_size", 64)
-	title.add_theme_color_override(&"font_color", Color(1.0, 0.85, 0.3) if win else Color(0.9, 0.25, 0.25))
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(title)
-
-	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, 16)
-	vbox.add_child(spacer)
-
-	var subtitle := Label.new()
-	subtitle.text = "Floor %d  ·  %d Room%s Cleared" % [floor_reached, rooms_cleared, "" if rooms_cleared == 1 else "s"]
-	subtitle.add_theme_font_size_override(&"font_size", 26)
-	subtitle.add_theme_color_override(&"font_color", Color(0.85, 0.85, 0.85))
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(subtitle)
-
-	var stat_spacer := Control.new()
-	stat_spacer.custom_minimum_size = Vector2(0, 22)
-	vbox.add_child(stat_spacer)
-
-	# Stat breakdown — a centered 2-column grid (label | value) for replay appeal.
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	grid.add_theme_constant_override(&"h_separation", 36)
-	grid.add_theme_constant_override(&"v_separation", 8)
-	vbox.add_child(grid)
-	_add_stat_row(grid, "Enemies Slain", str(enemies_killed))
-	_add_stat_row(grid, "Best Combo", "x%d" % best_combo)
-	_add_stat_row(grid, "Time", _format_run_time(run_time_sec))
-	_add_stat_row(grid, _COPY.shards_earned_label, "+%d" % shards_earned)
-
-	if hard_newly_unlocked:
-		var unlock_label := Label.new()
-		unlock_label.text = _COPY.hard_mode_unlocked_banner
-		unlock_label.add_theme_font_size_override(&"font_size", 20)
-		unlock_label.add_theme_color_override(&"font_color", Color(0.78, 0.45, 1.0))
-		unlock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		vbox.add_child(unlock_label)
-
-	var spacer2 := Control.new()
-	spacer2.custom_minimum_size = Vector2(0, 40)
-	vbox.add_child(spacer2)
-
-	var hint := Label.new()
-	hint.text = "Press R to play again"
-	hint.add_theme_font_size_override(&"font_size", 20)
-	hint.add_theme_color_override(&"font_color", Color(0.55, 0.55, 0.55))
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(hint)
-
-	vbox.add_child(_make_spacer(16))
-
-	var button_row := HBoxContainer.new()
-	button_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	button_row.add_theme_constant_override(&"separation", 16)
-	vbox.add_child(button_row)
-
-	var again := Button.new()
-	again.text = "Play Again  (R)"
-	again.custom_minimum_size = Vector2(200, 48)
-	again.add_theme_font_size_override(&"font_size", 20)
-	again.pressed.connect(_restart_from_pause)
-	button_row.add_child(again)
-
-	var to_menu := Button.new()
-	to_menu.text = "Main Menu"
-	to_menu.custom_minimum_size = Vector2(200, 48)
-	to_menu.add_theme_font_size_override(&"font_size", 20)
-	to_menu.pressed.connect(_to_main_menu)
-	button_row.add_child(to_menu)
-
+	var panel := RunSummaryPanel.new()
+	overlay.add_child(panel)
 	add_child(overlay)
-	again.grab_focus()
+	panel.setup(_build_summary_data(win, run_data, shards_earned, hard_newly_unlocked))
+	panel.run_again_pressed.connect(_restart_from_pause)
+	panel.main_menu_pressed.connect(_to_main_menu)
+	panel.run_again_button.grab_focus()
+
+
+## U5 — the run summary's data: RunManager stats plus what this loop logged during the
+## run (room ranks, sigils, floors cleared) and memories recovered since the run began.
+func _build_summary_data(win: bool, run_data: Dictionary, shards: int, hard_unlocked: bool) -> Dictionary:
+	var found: int = _meta.fragments_found if _meta != null else 0
+	return {
+		"win": win,
+		"floor": int(run_data.get("current_floor", 1)),
+		"rooms": int(run_data.get("rooms_cleared", 0)),
+		"time_sec": float(run_data.get("run_time_sec", 0.0)),
+		"enemies": int(run_data.get("enemies_killed", 0)),
+		"best_combo": int(run_data.get("best_combo", 0)),
+		"bosses": _floors_cleared + (1 if win else 0),
+		"ranks": _run_ranks,
+		"shards": shards,
+		"sigils": _run_sigils.map(func(x: Dictionary) -> String: return str(x["title"])),
+		"memories_new": maxi(found - _fragments_at_start, 0),
+		"memories_found": found,
+		"memories_total": StoryRules.total(),
+		"hard_unlocked": hard_unlocked,
+	}
+
+
+## U5 — logs a room's clear rank for the run summary.
+func _log_room_rank(rank_letter: String, _heal: float, _meter_bonus: float) -> void:
+	_run_ranks.append(rank_letter)
+
+
+## U5 — logs a taken sigil's title for the run summary (Prana rewards are not sigils).
+func _log_sigil(sigil_id: StringName) -> void:
+	if String(sigil_id).begins_with("prana_"):
+		return
+	for sigil: Dictionary in _sigil_manager.get_catalog():
+		if sigil.get("id", &"") == sigil_id:
+			_run_sigils.append({"title": str(sigil.get("title", sigil_id)), "desc": str(sigil.get("desc", ""))})
+			return
 
 
 ## ADR-0027: recovers the next memory fragment for [param beat], saves progress and

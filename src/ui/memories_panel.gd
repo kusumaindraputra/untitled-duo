@@ -32,6 +32,9 @@ func _ready() -> void:
 	if progress == null:
 		progress = MetaProgress.new()
 	_build()
+	for child: Node in get_children():
+		if child is CanvasItem:
+			UIFeel.fade_in(child as CanvasItem)
 	if not _entries.is_empty():
 		_entries[0].grab_focus()
 		_show_entry(0)

@@ -54,7 +54,8 @@ func test_ui_copy_resource_fields_are_non_empty() -> void:
 	assert_str(copy.prep_header).is_not_empty()
 	assert_str(copy.prep_hint).is_not_empty()
 	assert_str(copy.confirm_button).is_not_empty()
-	assert_str(copy.dash_hint).is_not_empty()
+	assert_str(copy.dash_hint_format).is_not_empty()
+	assert_str(copy.dash_hint_pad).is_not_empty()
 	assert_int(copy.type_abbrevs.size()).is_equal(PranaCatalog.type_count())
 
 

@@ -462,6 +462,16 @@ func _dash_recharge_duration() -> float:
 	return BULLET_HELL_TUNING.dash_recharge_sec * _dash_cooldown_mult
 
 
+## Seconds to recharge one dash charge, including sigils (read by the HUD dash ring).
+func get_dash_recharge_duration() -> float:
+	return _dash_recharge_duration()
+
+
+## Seconds left on the charge currently recharging; 0 when every charge is full.
+func get_dash_recharge_remaining() -> float:
+	return maxf(_dash_cooldown_timer, 0.0)
+
+
 ## Applies a brief velocity push away from [param from_pos].
 ## Called by EnemyInstance on contact damage to give Fayde a small knockback.
 ## Knockback is suppressed during dash (player is invincible) and when disabled.

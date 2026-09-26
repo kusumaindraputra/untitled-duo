@@ -38,7 +38,7 @@ func test_meter_change_fills_bar_with_charging_label() -> void:
 func test_full_meter_shows_ready_prompt() -> void:
 	var hud := _make_hud()
 	hud._on_special_meter_changed(100.0, 100.0)
-	assert_str(hud._special_label.text).is_equal(COPY.special_ready_label)
+	assert_str(hud._special_label.text).is_equal(InputPrompts.special_ready())
 	_teardown_hud(hud)
 
 

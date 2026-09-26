@@ -28,7 +28,10 @@ extends Resource
 @export var prep_header: String = "PREPARATION PHASE"
 
 ## Instructional hint under the preparation header.
-@export var prep_hint: String = "Drag a Prana into a slot, or use Arrows + E (place) / Q (discard) / C (cycle)  •  Then Confirm"
+@export var prep_hint: String = "Drag Prana into the grid"
+## Second prep-hint line by device (U8): keyboard (place / discard / cycle keys) and pad.
+@export var prep_controls_format: String = "Arrows move · %s place · %s discard · %s cycle"
+@export var prep_controls_pad: String = "D-pad move · A place · B discard · RB cycle"
 
 ## Divider label above the player's Prana bag tray.
 @export var bag_label: String = "─── YOUR PRANA ───"
@@ -57,7 +60,8 @@ extends Resource
 @export_group("Combat HUD")
 
 ## First-combat dash hint (AC-DH-03).
-@export var dash_hint: String = "Shift / LT — Dash"
+@export var dash_hint_format: String = "%s — Dash"
+@export var dash_hint_pad: String = "X — Dash"
 
 ## Banner word shown when a Cascade fires this wave (ADR-0016 recognition layer).
 ## Rendered as "✦ {cascade_label} ×{mult}" by the Combat HUD callout.
@@ -71,7 +75,8 @@ extends Resource
 @export var special_label: String = "SPECIAL"
 
 ## Label beside the Special meter when it is full (names the keyboard + pad bindings).
-@export var special_ready_label: String = "SPECIAL READY — F / RMB / Y"
+@export var special_ready_format: String = "SPECIAL READY — %s / RMB"
+@export var special_ready_pad: String = "SPECIAL READY — Y"
 
 @export_group("Bullet Hell (ADR-0018)")
 
@@ -111,6 +116,7 @@ extends Resource
 
 ## Hint shown in the preparation panel when quick continue is available.
 @export var quick_continue_hint: String = "No new Prana — press Space or Enter to continue"
+@export var quick_continue_hint_pad: String = "No new Prana — press Y to continue"
 
 @export_group("Meta Progression (ADR-0025)")
 
@@ -225,6 +231,8 @@ extends Resource
 @export var settings_comfort_heading: String = "Comfort"
 @export var settings_screen_shake: String = "Screen shake"
 @export var settings_reduce_flashes: String = "Reduce screen flashes"
+## Comfort toggle: no fades or typewriter text, still menu backdrop (U9).
+@export var settings_reduce_motion: String = "Reduce motion"
 @export var settings_audio_heading: String = "Audio"
 @export var settings_master: String = "Master"
 @export var settings_music: String = "Music"
@@ -308,3 +316,129 @@ extends Resource
 
 ## Archive close button.
 @export var memories_back: String = "Back  (Esc)"
+
+@export_group("Spell Preview (prep panel)")
+
+## Preview text before the centre slot holds a Prana.
+@export var spell_preview_empty: String = "Place a Prana in the centre. It decides your spell."
+
+## Preview title: element name, tier, max tier, hits per cast.
+@export var spell_preview_title_format: String = "%s   Tier %d of %d   ·   %d-hit combo"
+
+## What each element does as the core spell, in type_id order (0–4).
+@export var prana_cast_summaries: Array[String] = [
+	"Close range, high damage. Sets enemies on fire.",
+	"Mid range. Blinds enemies so their shots miss.",
+	"Long range. Stuns enemies.",
+	"Mid range, low damage. Slows, then freezes.",
+	"Close range, low damage. Heals you over time.",
+]
+
+## Next-tier hint: how many more of the core element, its name, the tier reached.
+@export var spell_preview_next_tier_format: String = "Add %d more %s for Tier %d"
+
+## Shown when the core is at the highest tier.
+@export var spell_preview_max_tier: String = "Highest tier reached"
+
+## What each element adds when placed around the core, in type_id order (0–4).
+@export var prana_modifier_summaries: Array[String] = [
+	"Special sets enemies on fire",
+	"Special blinds enemies",
+	"Special arcs and stuns, longer combo window",
+	"Casts chill, Special freezes",
+	"Special heals you",
+]
+
+## Suffix on a modifier line when that element is at modifier tier 2.
+@export var spell_preview_modifier_strong: String = "  (strong)"
+
+## Short player-facing text per Prana Reaction id (see assets/data/reactions/).
+@export var reaction_summaries: Dictionary = {
+	&"REACT_THERMAL_SHOCK": "First hit on each enemy cracks for extra damage",
+	&"REACT_WILDFIRE": "Burn spreads to the nearest enemy",
+	&"REACT_WITCHFIRE": "Burning enemies are also blinded",
+	&"REACT_DETONATE": "The first kill explodes",
+	&"REACT_PERMAFROST": "You heal faster while an enemy is frozen",
+	&"REACT_SHORT_CIRCUIT": "The first stun also stuns a second enemy",
+	&"REACT_SIPHON": "Hits on blinded enemies heal you",
+	&"REACT_SUPERCONDUCT": "Hits on slowed enemies arc to one more",
+	&"REACT_SURGE": "Longer combo window, chain hits heal you",
+	&"REACT_WHITEOUT": "Blinded and slowed enemies miss far more",
+}
+
+## Label in front of an active reaction line.
+@export var spell_preview_reaction_label: String = "Reaction"
+
+## Cascade line: damage multiplier of the burst after the combo.
+@export var spell_preview_cascade_format: String = "Cascade: burst after the combo, %.1f× damage"
+
+@export_group("Run Summary (end of run)")
+
+## End-screen titles for a win and a death.
+@export var summary_win_title: String = "RUN COMPLETE"
+@export var summary_loss_title: String = "YOU DIED"
+## Under the title: floor reached, rooms cleared.
+@export var summary_subtitle_format: String = "Floor %d  ·  %d rooms cleared"
+## Stat row labels.
+@export var summary_time: String = "Time"
+@export var summary_enemies: String = "Enemies slain"
+@export var summary_best_combo: String = "Best combo"
+@export var summary_bosses: String = "Bosses beaten"
+@export var summary_ranks: String = "Room ranks"
+## Shown in the ranks row when no room was ranked.
+@export var summary_no_ranks: String = "—"
+## Heading of the sigil list, and the text when none were taken.
+@export var summary_sigils_title: String = "SIGILS THIS RUN"
+@export var summary_no_sigils: String = "None this run"
+## Memories line: recovered this run, found in total, total.
+@export var summary_memories_format: String = "Memories recovered  +%d   (%d / %d)"
+## Buttons.
+@export var summary_run_again: String = "Run Again  (R)"
+@export var summary_main_menu: String = "Main Menu"
+
+@export_group("Pause (build view)")
+
+## Pause overlay title and buttons.
+@export var pause_title: String = "PAUSED"
+@export var pause_resume: String = "Resume  (Esc)"
+@export var pause_restart: String = "Restart Run  (R)"
+@export var pause_main_menu: String = "Main Menu"
+@export var pause_quit: String = "Quit Game"
+## Build card: heading, sigil heading, and text when no sigil was taken yet.
+@export var pause_build_title: String = "YOUR BUILD"
+@export var pause_sigils_title: String = "SIGILS"
+@export var pause_no_sigils: String = "No sigils yet. Clear a room to earn one."
+## One sigil line: title, stack suffix, description. %s stack suffix is empty for one stack.
+@export var pause_sigil_format: String = "%s%s — %s"
+@export var pause_sigil_stack_format: String = " ×%d"
+
+@export_group("Main Menu (layout)")
+
+## Title, tagline and the main buttons, top to bottom (Memories and Settings use
+## memories_button_format and settings_button).
+@export var menu_title: String = "THE LAST CIPHER"
+@export var menu_subtitle: String = "Arrange Prana. Cast. Defeat the floor boss."
+@export var menu_play: String = "PLAY"
+@export var menu_heirlooms: String = "HEIRLOOMS"
+@export var menu_quit: String = "QUIT"
+## Heirloom screen heading, shard line and back button.
+@export var heirloom_screen_title: String = "HEIRLOOMS"
+@export var heirloom_shards_format: String = "Cipher Shards  %d"
+@export var heirloom_back: String = "Back  (Esc)"
+
+@export_group("Button prompts (U8)")
+
+## Control summary on the main menu and the title card: move keys, dash, cast, special.
+@export var controls_format: String = "%s  Move      %s  Dash      %s  Cast      %s  Special      Enter  Confirm"
+@export var controls_pad: String = "Stick  Move      X  Dash      A  Cast      Y  Special      Y  Confirm"
+## Grid controls line on the title card.
+@export var grid_controls_kb: String = "Arrows select a grid slot · E places · Q clears · C cycles Prana"
+@export var grid_controls_pad: String = "D-pad selects a grid slot · A places · B clears · RB cycles Prana"
+## Pad variants of buttons whose keyboard text names a key.
+@export var pause_resume_pad: String = "Resume  (Start)"
+@export var pause_restart_pad: String = "Restart Run"
+@export var summary_run_again_pad: String = "Run Again"
+@export var heirloom_back_pad: String = "Back  (B)"
+## Last How-to-Fight step: keyboard (%s = cast key) and pad.
+@export var coach_confirm_step_kb: String = "4.  Press ENTER to confirm, then %s to cast in battle."
+@export var coach_confirm_step_pad: String = "4.  Press Y to confirm, then A to cast in battle."
