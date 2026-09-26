@@ -250,7 +250,26 @@ var _rank_tween: Tween = null
 ## Last live rank letter shown (pops the label when it changes).
 var _style_letter: String = ""
 ## Top-left column width: the boss UI is kept clear of it (ADR-0019 HUD fix).
-const LEFT_COLUMN_WIDTH: float = 216.0
+const LEFT_COLUMN_WIDTH: float = 232.0
+## U3 left HUD card: height and colours.
+const LEFT_PANEL_HEIGHT: float = 162.0
+const LEFT_PANEL_BG: Color = Color(0.04, 0.04, 0.06, 0.62)
+const LEFT_PANEL_BORDER: Color = Color(1.0, 1.0, 1.0, 0.08)
+## Style rank badge edge length in px.
+const STYLE_BADGE_SIZE: float = 34.0
+## U3 — card behind the left column. Null in headless tests.
+var _left_panel: Panel = null
+## Style rank badge (frame tinted by rank; _style_label is its child). Null headless.
+var _style_badge: Panel = null
+## "STYLE" caption beside the badge. Null headless.
+var _style_caption: Label = null
+## U3 — dash charges / recharge ring under Fayde. Null in headless tests.
+var _dash_ring: DashRing = null
+## HP bar flash on a hit (U3).
+const HIT_FLASH_COLOR: Color = Color(1.0, 0.55, 0.55, 1.0)
+const HIT_FLASH_DURATION: float = 0.12
+## Ring centre offset below Fayde's origin, in screen px.
+const DASH_RING_DROP: float = 10.0
 const STYLE_RANK_COLORS: Dictionary = {
 	"S": Color(1.0, 0.82, 0.25), "A": Color(1.0, 0.55, 0.3), "B": Color(0.55, 0.85, 1.0),
 	"C": Color(0.75, 0.75, 0.8), "D": Color(0.5, 0.5, 0.55),
@@ -321,6 +340,23 @@ func _process(delta: float) -> void:
 		var dot_y: float = maxf(screen_pos.y - lift, 0.0)
 		chain_dots_container.position = Vector2(dot_x, dot_y)
 
+	_update_dash_ring()
+
+
+## U3 — keeps the dash ring under Fayde during combat, fed from the PlayerController.
+func _update_dash_ring() -> void:
+	if _dash_ring == null:
+		return
+	var in_combat: bool = _dash_hint_label != null and _dash_hint_label.visible
+	if not in_combat or not is_instance_valid(player_controller) or not is_instance_valid(fayde_node):
+		_dash_ring.visible = false
+		return
+	_dash_ring.set_state(player_controller.get_dash_charges(), player_controller.get_max_dash_charges(),
+		player_controller.get_dash_recharge_remaining(), player_controller.get_dash_recharge_duration())
+	if _dash_ring.visible:
+		var screen_pos: Vector2 = get_viewport().get_canvas_transform() * fayde_node.global_position
+		_dash_ring.position = screen_pos + Vector2(0.0, DASH_RING_DROP) - _dash_ring.size * 0.5
+
 
 func _exit_tree() -> void:
 	if HealthAndDamage.damage_taken.is_connected(_on_damage_taken):
@@ -360,20 +396,53 @@ func _exit_tree() -> void:
 ## Called once from _ready(). Kept separate so tests can inspect node state
 ## after construction without needing a full scene instantiation.
 func _create_ui_nodes() -> void:
+	# U3 — one framed card behind the left column so HP, Special, dash, floor and Style
+	# read as a single HUD block instead of loose labels over the room.
+	_left_panel = Panel.new()
+	var card := StyleBoxFlat.new()
+	card.bg_color = LEFT_PANEL_BG
+	card.border_color = LEFT_PANEL_BORDER
+	card.set_border_width_all(1)
+	card.set_corner_radius_all(6)
+	_left_panel.add_theme_stylebox_override(&"panel", card)
+	_left_panel.position = Vector2(4, 4)
+	_left_panel.size = Vector2(LEFT_COLUMN_WIDTH, LEFT_PANEL_HEIGHT)
+	_left_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_left_panel)
+
 	hp_bar = ProgressBar.new()
 	hp_bar.max_value = FAYDE_MAX_HP
 	hp_bar.value = FAYDE_MAX_HP
 	hp_bar.step = 0.01  # fractional values required during animation
+	hp_bar.show_percentage = false
+	var hp_bg := StyleBoxFlat.new()
+	hp_bg.bg_color = Color(0.16, 0.16, 0.19, 1.0)
+	hp_bg.border_color = Color(1.0, 1.0, 1.0, 0.14)
+	hp_bg.set_border_width_all(1)
+	hp_bg.set_corner_radius_all(3)
+	hp_bar.add_theme_stylebox_override(&"background", hp_bg)
+	var hp_fill := StyleBoxFlat.new()
+	hp_fill.bg_color = Color.WHITE  # tinted by modulate (zone colour)
+	hp_fill.set_corner_radius_all(3)
+	hp_bar.add_theme_stylebox_override(&"fill", hp_fill)
 	hp_bar.modulate = HP_COLOR_FULL
-	hp_bar.position = Vector2(8, 8)
-	hp_bar.size = Vector2(200, 20)
+	hp_bar.position = Vector2(12, 12)
+	hp_bar.size = Vector2(208, 22)
+	hp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hp_bar)
 
+	# HP number sits inside the bar, right-aligned, outlined so it reads on any fill.
 	hp_label = Label.new()
 	hp_label.text = "%d / %d" % [FAYDE_MAX_HP, FAYDE_MAX_HP]
 	hp_label.add_theme_color_override(&"font_color", HP_COLOR_LABEL_FULL)
-	hp_label.position = Vector2(8, 32)
-	hp_label.size = Vector2(200, 20)
+	hp_label.add_theme_color_override(&"font_outline_color", Color.BLACK)
+	hp_label.add_theme_constant_override(&"outline_size", 5)
+	hp_label.add_theme_font_size_override(&"font_size", 13)
+	hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	hp_label.position = Vector2(12, 12)
+	hp_label.size = Vector2(202, 22)
+	hp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hp_label)
 
 	chain_dots_container = HBoxContainer.new()
@@ -383,15 +452,17 @@ func _create_ui_nodes() -> void:
 
 	_dash_hint_label = Label.new()
 	_dash_hint_label.text = _COPY.dash_hint
-	_dash_hint_label.position = Vector2(8, 80)
-	_dash_hint_label.size = Vector2(200, 20)
+	_dash_hint_label.add_theme_font_size_override(&"font_size", 12)
+	_dash_hint_label.add_theme_color_override(&"font_color", Color(0.8, 0.8, 0.86))
+	_dash_hint_label.position = Vector2(30, 58)
+	_dash_hint_label.size = Vector2(190, 18)
 	_dash_hint_label.visible = false
 	add_child(_dash_hint_label)
 
 	_dash_cooldown_icon = ColorRect.new()
-	_dash_cooldown_icon.custom_minimum_size = Vector2(16, 16)
-	_dash_cooldown_icon.size = Vector2(16, 16)
-	_dash_cooldown_icon.position = Vector2(8, 104)
+	_dash_cooldown_icon.custom_minimum_size = Vector2(12, 12)
+	_dash_cooldown_icon.size = Vector2(12, 12)
+	_dash_cooldown_icon.position = Vector2(12, 61)
 	_dash_cooldown_icon.color = Color("#FFFFFF")
 	_dash_cooldown_icon.color.a = 1.0
 	_dash_cooldown_icon.visible = false
@@ -402,13 +473,18 @@ func _create_ui_nodes() -> void:
 	_special_bar.value = 0.0
 	_special_bar.show_percentage = false
 	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0.08, 0.08, 0.10, 0.85)
+	bg.bg_color = Color(0.16, 0.16, 0.19, 1.0)
+	bg.border_color = Color(1.0, 1.0, 1.0, 0.14)
+	bg.set_border_width_all(1)
+	bg.set_corner_radius_all(3)
 	_special_bar.add_theme_stylebox_override(&"background", bg)
 	var fill := StyleBoxFlat.new()
 	fill.bg_color = Color.WHITE  # tinted via modulate: grey while charging, core colour when full
+	fill.set_corner_radius_all(3)
 	_special_bar.add_theme_stylebox_override(&"fill", fill)
-	_special_bar.position = Vector2(32, 104)
-	_special_bar.size = Vector2(176, 16)
+	_special_bar.position = Vector2(12, 38)
+	_special_bar.size = Vector2(208, 16)
+	_special_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_special_bar.modulate = Color(0.75, 0.75, 0.75)
 	_special_bar.visible = false
 	add_child(_special_bar)
@@ -418,14 +494,14 @@ func _create_ui_nodes() -> void:
 	_special_label.add_theme_font_size_override(&"font_size", 11)
 	_special_label.add_theme_color_override(&"font_outline_color", Color.BLACK)
 	_special_label.add_theme_constant_override(&"outline_size", 4)
-	_special_label.position = Vector2(36, 104)
+	_special_label.position = Vector2(16, 38)
 	_special_label.visible = false
 	add_child(_special_label)
 
 	_combo_counter_label = Label.new()
 	_combo_counter_label.visible = false
 	_combo_counter_label.add_theme_font_size_override(&"font_size", 18)
-	_combo_counter_label.position = Vector2(8, 128)
+	_combo_counter_label.position = Vector2(8, LEFT_PANEL_HEIGHT + 12.0)
 	add_child(_combo_counter_label)
 
 	# Recognition callout — full-width top-centre banner for Cascades / Reactions
@@ -444,17 +520,21 @@ func _create_ui_nodes() -> void:
 	_floor_label = Label.new()
 	_floor_label.text = floor_label_text(1)
 	_floor_label.add_theme_font_size_override(&"font_size", 14)
-	_floor_label.position = Vector2(8, 152)
-	_floor_label.size = Vector2(260, 20)
+	_floor_label.position = Vector2(12, 80)
+	_floor_label.size = Vector2(208, 20)
 	add_child(_floor_label)
 
 	_room_label = Label.new()
 	_room_label.text = "Room 1 / 7"
 	_room_label.add_theme_font_size_override(&"font_size", 12)
 	_room_label.add_theme_color_override(&"font_color", Color(0.7, 0.7, 0.78))
-	_room_label.position = Vector2(8, 170)
+	_room_label.position = Vector2(12, 98)
 	_room_label.size = Vector2(120, 18)
 	add_child(_room_label)
+
+	_dash_ring = DashRing.new()
+	_dash_ring.visible = false
+	add_child(_dash_ring)
 
 	# Floor minimap — top-right room-path strip. Empty until set_minimap() runs;
 	# markers are built/positioned there (viewport width is known by then).
@@ -505,16 +585,39 @@ func _create_ui_nodes() -> void:
 	add_child(_boss_name_label)
 	_layout_boss_ui()
 
-	# ADR-0019 style meter — under the room breadcrumb in the left column.
+	# ADR-0019 style meter — U3: a rank badge (letter in a frame tinted by rank) with a
+	# small caption and the meter bar beside it, at the bottom of the left card.
+	_style_badge = Panel.new()
+	var badge := StyleBoxFlat.new()
+	badge.bg_color = Color(0.06, 0.06, 0.08, 0.9)
+	badge.set_border_width_all(2)
+	badge.border_color = Color.WHITE
+	badge.set_corner_radius_all(4)
+	_style_badge.add_theme_stylebox_override(&"panel", badge)
+	_style_badge.position = Vector2(12, 122)
+	_style_badge.size = Vector2(STYLE_BADGE_SIZE, STYLE_BADGE_SIZE)
+	_style_badge.pivot_offset = Vector2(STYLE_BADGE_SIZE, STYLE_BADGE_SIZE) * 0.5
+	_style_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_style_badge.visible = false
+	add_child(_style_badge)
+
 	_style_label = Label.new()
-	_style_label.add_theme_font_size_override(&"font_size", 15)
+	_style_label.add_theme_font_size_override(&"font_size", 20)
 	_style_label.add_theme_color_override(&"font_outline_color", Color.BLACK)
 	_style_label.add_theme_constant_override(&"outline_size", 4)
-	_style_label.position = Vector2(8, 192)
-	_style_label.size = Vector2(200, 20)
-	_style_label.pivot_offset = Vector2(0, 10)
+	_style_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_style_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_style_label.size = Vector2(STYLE_BADGE_SIZE, STYLE_BADGE_SIZE)
 	_style_label.visible = false
-	add_child(_style_label)
+	_style_badge.add_child(_style_label)
+
+	_style_caption = Label.new()
+	_style_caption.text = _COPY.style_label
+	_style_caption.add_theme_font_size_override(&"font_size", 11)
+	_style_caption.add_theme_color_override(&"font_color", Color(0.7, 0.7, 0.78))
+	_style_caption.position = Vector2(20 + STYLE_BADGE_SIZE, 122)
+	_style_caption.visible = false
+	add_child(_style_caption)
 
 	_style_bar = ProgressBar.new()
 	_style_bar.show_percentage = false
@@ -525,8 +628,8 @@ func _create_ui_nodes() -> void:
 	sfill.bg_color = Color.WHITE
 	_style_bar.add_theme_stylebox_override(&"background", sbg)
 	_style_bar.add_theme_stylebox_override(&"fill", sfill)
-	_style_bar.position = Vector2(8, 214)
-	_style_bar.size = Vector2(120, 6)
+	_style_bar.position = Vector2(20 + STYLE_BADGE_SIZE, 144)
+	_style_bar.size = Vector2(200 - STYLE_BADGE_SIZE, 8)
 	_style_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_style_bar.visible = false
 	add_child(_style_bar)
@@ -580,6 +683,28 @@ func get_boss_bar_rect() -> Rect2:
 	return Rect2(_boss_bar.position, _boss_bar.size) if _boss_bar != null else Rect2()
 
 
+## U3 — lays out the left card. In combat it holds HP, Special, dash, floor and Style;
+## between rooms (Special, dash and Style hidden) floor and room move up under HP and
+## the card shrinks, so no empty rows show.
+func _layout_left_column(combat: bool) -> void:
+	if _left_panel == null:
+		return
+	var floor_y: float = 80.0 if combat else 40.0
+	_floor_label.position.y = floor_y
+	_room_label.position.y = floor_y + 18.0
+	_left_panel.size.y = LEFT_PANEL_HEIGHT if combat else floor_y + 42.0
+
+
+## Shows or hides every part of the Style meter together (badge, letter, caption, bar).
+func _set_style_visible(on: bool) -> void:
+	_style_label.visible = on
+	_style_bar.visible = on
+	if _style_badge != null:
+		_style_badge.visible = on
+	if _style_caption != null:
+		_style_caption.visible = on
+
+
 ## ADR-0019 — live style meter from PaceDirector.style_changed.
 func set_style(value: float, max_value: float, rank_letter: String) -> void:
 	if _style_label == null:
@@ -588,13 +713,17 @@ func set_style(value: float, max_value: float, rank_letter: String) -> void:
 	_style_bar.value = value
 	var c: Color = STYLE_RANK_COLORS.get(rank_letter, Color.WHITE)
 	_style_bar.modulate = c
-	_style_label.text = "%s  %s" % [_COPY.style_label, rank_letter]
+	_style_label.text = rank_letter
 	_style_label.add_theme_color_override(&"font_color", c)
+	if _style_badge != null:
+		var sb := _style_badge.get_theme_stylebox(&"panel") as StyleBoxFlat
+		if sb != null:
+			sb.border_color = c
 	if rank_letter != _style_letter:
 		_style_letter = rank_letter
-		if _style_label.is_inside_tree():
-			_style_label.scale = Vector2(1.3, 1.3)
-			create_tween().tween_property(_style_label, "scale", Vector2.ONE, 0.18)
+		if _style_badge != null and _style_badge.is_inside_tree():
+			_style_badge.scale = Vector2(1.3, 1.3)
+			create_tween().tween_property(_style_badge, "scale", Vector2.ONE, 0.18)
 
 
 ## ADR-0019 — room-clear rank banner from PaceDirector.room_ranked.
@@ -606,8 +735,7 @@ func show_room_rank(rank_letter: String, heal: float, meter_bonus: float) -> voi
 		if heal > 0.0 or meter_bonus > 0.0 else ""
 	# The room is over: the live meter gives way to the room's rank.
 	if _style_label != null:
-		_style_label.visible = false
-		_style_bar.visible = false
+		_set_style_visible(false)
 	_rank_banner.add_theme_color_override(&"font_color", STYLE_RANK_COLORS.get(rank_letter, Color.WHITE))
 	_rank_banner.visible = true
 	if not _rank_banner.is_inside_tree():
@@ -876,6 +1004,9 @@ func _on_damage_taken(target: Node, final_damage: int, current_hp: int) -> void:
 	_start_hp_animation(float(current_hp), HP_BAR_DRAIN_DURATION)
 	if final_damage > 0:
 		_spawn_damage_label(target, final_damage, Color("#AAAAAA"))
+		# U3 — brief flash on the bar so a hit registers where the player's eye goes.
+		hp_bar.modulate = HIT_FLASH_COLOR
+		_tint_timer = HIT_FLASH_DURATION
 
 
 ## Boss-intro handler: connected to WaveManager.boss_spawned by the game loop.
@@ -1039,6 +1170,7 @@ func _on_hp_zone_changed(zone: GameEnums.HPZone) -> void:
 ## chain dots hidden, all floating damage labels freed.
 func _on_run_started() -> void:
 	_dead = false
+	_layout_left_column(false)
 	_hp_timer = 0.0
 	_tint_timer = 0.0
 	_stop_pulse()
@@ -1154,6 +1286,7 @@ func set_minimap(room_types: Array, room_states: Array, current_idx: int,
 ## Hides the chain-dot container between waves; updates floor number label.
 func _on_preparation_started(_idx: int, _rem: int) -> void:
 	_hide_boss_ui()
+	_layout_left_column(false)
 	for tw in _dot_tweens:
 		if is_instance_valid(tw):
 			tw.kill()
@@ -1172,8 +1305,7 @@ func _on_preparation_started(_idx: int, _rem: int) -> void:
 		_special_bar.visible = false
 		_special_label.visible = false
 	if _style_label != null:
-		_style_label.visible = false
-		_style_bar.visible = false
+		_set_style_visible(false)
 	if _floor_label != null:
 		var floor_num: int = RunManager.get_run_data().get("current_floor", 1)
 		_floor_label.text = floor_label_text(floor_num)
@@ -1181,6 +1313,7 @@ func _on_preparation_started(_idx: int, _rem: int) -> void:
 
 ## Handles combat_started from GameStateManager.
 func _on_combat_started(_is_boss: bool = false) -> void:
+	_layout_left_column(true)
 	if _dash_hint_label != null:
 		_dash_hint_label.visible = true
 	if _dash_cooldown_icon != null:
@@ -1189,8 +1322,7 @@ func _on_combat_started(_is_boss: bool = false) -> void:
 		_special_bar.visible = true
 		_special_label.visible = true
 	if _style_label != null:
-		_style_label.visible = true
-		_style_bar.visible = true
+		_set_style_visible(true)
 	# Show the chain dots immediately so the cast-flash is visible on the first cast.
 	# _rebuild_dots with 1 gray dot = "ready to cast" baseline indicator.
 	if chain_dots_container.get_child_count() == 0:
