@@ -3,7 +3,7 @@
 ## Two CanvasLayers so both stay fixed to the screen while the camera moves:
 ## a backdrop under the world (gradient, pooled glow, drifting dust) and a
 ## vignette over the world but under the HUD (CanvasLayer 10). Colours come
-## from the floor's RoomLook.
+## from the floor's RoomLook; its motif adds far silhouettes (ADR-0038).
 class_name RoomBackdrop
 extends Node
 
@@ -31,6 +31,8 @@ func setup(look: RoomLook) -> void:
 	bm.set_shader_parameter(&"bottom_color", look.backdrop_bottom)
 	bm.set_shader_parameter(&"glow_color", look.backdrop_glow)
 	bm.set_shader_parameter(&"dust_color", look.dust)
+	bm.set_shader_parameter(&"motif", int(look.motif))
+	bm.set_shader_parameter(&"silhouette_color", look.silhouette)
 	back.add_child(_back_rect)
 
 	var front := CanvasLayer.new()

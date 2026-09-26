@@ -8,6 +8,36 @@
 class_name RoomLook
 extends Resource
 
+## Floor identity motif (ADR-0038): picks the tile detail, the prop set, the hanging
+## slab-face props and the backdrop silhouettes. STONE is the plain art bible default.
+enum Motif { STONE, SCRAP, CONDUIT, CRYSTAL }
+
+## Small non-gameplay details, one per room (art bible Principle 3, ADR-0038).
+enum Whimsy { MOSS_BREATH, SCRAP_CRITTER, KETTLE_SPROUT, STEAM_VENT, LAMP_MOTH, CRYSTAL_CHIME, SPORE_PUFF }
+
+@export_group("Floor Identity")
+## The floor's motif (ADR-0038).
+@export var motif: Motif = Motif.STONE
+## Share of worn tiles that also carry the motif detail (rivets, grate, vein).
+@export_range(0.0, 1.0) var motif_chance: float = 0.45
+## Pool of whimsy details this floor draws from; each room shows exactly one.
+@export var whimsy_kinds: Array[int] = [Whimsy.MOSS_BREATH]
+
+@export_group("Props")
+## Outline and shadow side of props.
+@export var prop_dark: Color = Color("#231E1A")
+## Main body of props.
+@export var prop_mid: Color = Color("#5C5040")
+## Light-catching top of props.
+@export var prop_light: Color = Color("#7E6E58")
+## Muted glow on props and whimsy details (art bible E7; never a full jewel tone).
+@export var prop_glow: Color = Color("#8E7358")
+## Background props along the far rim of a combat room (art bible §6.4: arena 3–5).
+@export_range(0, 12) var rim_props_min: int = 3
+@export_range(0, 12) var rim_props_max: int = 5
+## Props hanging off the slab face under the near edges.
+@export_range(0, 8) var face_props: int = 2
+
 @export_group("Floor Tiles")
 ## Dominant floor colour (art bible E4 Ancient Floor).
 @export var floor_base: Color = Color("#4A4038")
@@ -45,5 +75,7 @@ extends Resource
 @export var backdrop_glow: Color = Color("#3A2E26")
 ## Drifting dust motes.
 @export var dust: Color = Color("#8E7358")
+## Far silhouettes drawn in the void for the motif (scrap heaps, pipes, shards).
+@export var silhouette: Color = Color("#15131A")
 ## Screen-edge darkening, 0 = none.
 @export_range(0.0, 1.0) var vignette: float = 0.45

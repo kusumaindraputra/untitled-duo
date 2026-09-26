@@ -80,6 +80,19 @@ variants (plain, worn, cracked, a rare etched glyph), a slab face under the room
 lower edge so the room reads as a solid platform, and a screen-space backdrop (void
 gradient, pooled glow, fog, drifting dust) with a vignette.
 
+Each floor also has its own set (ADR-0038), picked by `RoomLook.motif`:
+
+| Floor | Motif | Tile detail | Backdrop | Props (ledge / slab face) | Whimsy pool |
+|-------|-------|-------------|----------|---------------------------|-------------|
+| 1 | SCRAP | riveted rust plate | junk heaps, leaning girders | scrap heap, half-buried gear, bent girder, rust barrel / hanging chain | tin critter, sprouting kettle, breathing moss |
+| 2 | CONDUIT | conduit groove | pipe runs and risers | pipe stack, valve wheel, vent box, cable coil / dripping pipe | steam vent, lamp with a moth |
+| 3 | CRYSTAL | glowing crystal vein | rising and hanging shards | crystal cluster, crystal spire, shard rock / hanging crystals | chiming crystal, spore mushroom |
+
+Props stand on a raised stone ledge one tile outside the far edges, or hang off the
+slab face under the near edges. They are never on the walkable floor and own no
+collision. Combat rooms get `rim_props_min`–`rim_props_max` props (3–5); boss rooms get
+one broken column. Every room shows exactly one whimsy detail from the floor's pool.
+
 ## 4. Formulas
 
 ```
@@ -140,6 +153,7 @@ iso circle hit     = length(dx, 2·dy) ≤ radius
 | `FloorTheme` (`assets/data/floor_themes/*.tres`) | `room_count` (min 5, even branch paths when `room_count` is even) | 12 on every floor |
 | | pools and weights, `look`, `floor_tint`, `pillar_color`, `debris_tint` | per floor |
 | `RoomLook` (`assets/data/room_looks/*.tres`) | floor colours, `worn/crack/glyph_chance`, `edge_depth`, backdrop colours, `vignette` | art bible E1–E7; floors 2–3 cool and mauve |
+| | `motif`, `motif_chance`, `whimsy_kinds`, prop palette, `rim_props_min/max`, `face_props`, `silhouette` (ADR-0038) | SCRAP / CONDUIT / CRYSTAL; 0.45; 3–5 rim props, 2 face props |
 | `UICopy` | `floor_names`, `floor_label_format`, `floor_intro_format` | |
 
 ## 8. Acceptance Criteria
@@ -158,3 +172,4 @@ iso circle hit     = length(dx, 2·dy) ≤ radius
 | AC-SL-10 | The Ring has an empty core; the Cross keeps its hub and cuts its corners | `stage_layout_test` |
 | AC-SL-11 | The generator only assigns templates from the applied floor theme | `stage_layout_test::test_generator_uses_theme_pools` |
 | AC-SL-12 | Every floor theme sets a `room_count` of at least 5 that builds a graph of that size; a 12-room floor has two equal 4-room paths and the HUD counts 8 rooms | `stage_layout_test`, `path_builder_test::test_rooms_per_run_12_rooms_walks_8` |
+| AC-SL-13 | Each floor has its own motif and whimsy pool; every room gets props and exactly one whimsy detail, all off the walkable floor with no collision, and the decor seed never changes the layout | `floor_identity_test` |
