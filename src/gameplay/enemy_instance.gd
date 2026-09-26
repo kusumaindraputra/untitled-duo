@@ -17,6 +17,8 @@ signal phase_changed(phase: int)
 const BULLET_HELL_TUNING: BulletHellTuning = preload("res://assets/data/bullet_hell_tuning.tres")
 ## Aggro / alert knobs (ADR-0024).
 const AWARENESS_TUNING: EnemyAwarenessTuning = preload("res://assets/data/enemy_awareness_tuning.tres")
+## ADR-0034 — sprite hit flash, wind-up pose and death dissolve timings.
+const FX_TUNING: CharacterFxTuning = preload("res://assets/data/character_fx_tuning.tres")
 
 ## Emitted once when a dormant enemy notices Fayde (ADR-0024).
 signal alerted()
@@ -104,6 +106,8 @@ var _is_elite: bool = false
 var _active_layer_count: int = -1
 ## Short pre-fire flash; separate from _vfx_tween so looping telegraphs are untouched.
 var _windup_tween: Tween = null
+## Running knockback slide, killed when a new hit lands before it ends.
+var _knockback_tween: Tween = null
 
 ## ADR-0024 — true while this enemy has not noticed Fayde yet: it stands still and
 ## holds fire. Only WaveManager sets it (opening-wave spawns); default is awake.
@@ -509,14 +513,18 @@ func apply_speed_modifier(multiplier: float) -> void:
 ## Pushes this enemy away from [param direction] by [param distance] pixels over 0.1s.
 ## Called by SpellCastingEffects after each successful spell hit for combo game feel.
 ## Uses a position tween with EASE_OUT — the enemy slides back then continues its AI
-## movement on the next physics frame after the tween completes.
+## movement on the next physics frame after the tween completes. The offset is swept
+## against walls, debris and pillars first so the enemy never leaves the arena.
 func apply_knockback(direction: Vector2, distance: float) -> void:
 	if _state == EnemyState.DEAD:
 		return
-	var offset: Vector2 = direction.normalized() * distance
-	var target_pos: Vector2 = global_position + offset
-	var tw: Tween = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_property(self, "global_position", target_pos, 0.10)
+	var offset: Vector2 = KnockbackMotion.clamp_offset(self, direction.normalized() * distance, collision_mask)
+	# A second hit before the first slide ends restarts from here, so the two
+	# tweens never fight over global_position.
+	if _knockback_tween != null and _knockback_tween.is_valid():
+		_knockback_tween.kill()
+	_knockback_tween = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_knockback_tween.tween_property(self, "global_position", global_position + offset, 0.10)
 
 
 # ── Private helpers ───────────────────────────────────────────────────────────
@@ -585,13 +593,19 @@ func _stop_attack_vfx() -> void:
 	modulate = Color.WHITE
 
 
-## Overbright-white flash on successful spell hit.
+## Solid white flash on successful spell hit (ADR-0034: the sprite turns white
+## through the pixel_character shader; placeholder bodies fall back to overbright).
 ## Kills _vfx_tween so the looping contact/telegraph pulse does not immediately
 ## override the flash — called via duck-typing from SpellVFX._on_damage_taken.
 func request_hit_flash() -> void:
 	if _vfx_tween:
 		_vfx_tween.kill()
 		_vfx_tween = null
+	var pc: PixelCharacter = get_node_or_null(^"PixelCharacter") as PixelCharacter
+	if pc != null and pc.visible:
+		modulate = Color.WHITE
+		pc.flash(FX_TUNING.hit_flash_color, FX_TUNING.enemy_flash_sec)
+		return
 	modulate = Color(3.0, 3.0, 3.0, 1.0)
 	var tw: Tween = create_tween()
 	tw.tween_property(self, "modulate", Color.WHITE, 0.10)
@@ -800,6 +814,10 @@ func _start_windup_flash(pattern: BulletPattern) -> void:
 		_windup_tween.kill()
 	var c: Color = BulletPattern.rim_color()
 	modulate = Color(1.0 + c.r, 1.0 + c.g, 1.0 + c.b, 1.0)
+	# ADR-0034 — the sprite plays its wind-up row across the telegraph.
+	var pc: PixelCharacter = get_node_or_null(^"PixelCharacter") as PixelCharacter
+	if pc != null:
+		pc.play_cast(pattern.windup_sec + FX_TUNING.enemy_cast_tail_sec)
 	_windup_tween = create_tween()
 	_windup_tween.tween_property(self, "modulate", Color.WHITE, pattern.windup_sec)
 
@@ -933,6 +951,7 @@ func _on_enemy_killed(instance_id: int, _type_id: int, prana_affiliation: GameEn
 	# Spawn death burst VFX — color bloom outward per Art Bible principle.
 	# PranaType.color mapped from prana_affiliation; neutral enemies burst white.
 	_spawn_death_burst(prana_affiliation)
+	_dissolve_sprite(prana_affiliation)
 	# ADR-0018 — Splitter-style death volley.
 	if _death_pattern != null:
 		_fire_pattern_volley(_death_pattern,
@@ -1222,6 +1241,21 @@ func _spawn_death_burst(prana_affiliation: GameEnums.DamageClass) -> void:
 	if parent_node == null:
 		return
 	parent_node.add_child(burst)
+
+
+## ADR-0034 — breaks the sprite apart while the body waits to be freed. The rim
+## takes the enemy's Prana colour, like the death burst; neutral enemies and
+## bosses use the tuning's neutral colour.
+func _dissolve_sprite(affiliation: GameEnums.DamageClass) -> void:
+	var pc: PixelCharacter = get_node_or_null(^"PixelCharacter") as PixelCharacter
+	if pc == null or not pc.visible:
+		return
+	var rim: Color = FX_TUNING.dissolve_neutral_color
+	if affiliation >= 0:
+		var type_data: PranaType = PranaCatalog.get_type(affiliation)
+		if type_data != null:
+			rim = type_data.color
+	pc.dissolve(FX_TUNING.dissolve_sec, rim)
 
 
 ## Shows [param et]'s pixel-art sheet (ADR-0022), creating the PixelCharacter child

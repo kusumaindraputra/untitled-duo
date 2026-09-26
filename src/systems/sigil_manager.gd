@@ -37,6 +37,8 @@ const CONFIG: SigilConfig = preload("res://assets/data/sigil_config.tres")
 ## Id prefix marking a Prana reward card. apply_sigil() detects this prefix and
 ## routes the card to the PranaBag instead of the sigil dispatch table.
 const _PRANA_ID_PREFIX: String = "prana_"
+## Whole-number scale for the Prana shape icon on a Prana sigil card (24 px, ADR-0036).
+const SIGIL_ICON_SCALE: int = 2
 
 const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
 
@@ -367,6 +369,7 @@ func _make_sigil_card(sigil: Dictionary) -> Button:
 		var type_id: int = sigil["prana_type"]
 		if type_id >= 0 and type_id < PranaCatalog.type_count():
 			card.add_theme_color_override(&"font_color", PranaCatalog.get_type_color(type_id))
+			PranaIcon.apply_to_button(card, type_id, SIGIL_ICON_SCALE)
 	elif sigil.get("behaviour", false):
 		card.add_theme_color_override(&"font_color", CONFIG.behaviour_card_color)
 	var id: StringName = sigil["id"]

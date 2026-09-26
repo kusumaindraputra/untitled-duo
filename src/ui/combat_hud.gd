@@ -40,17 +40,23 @@ const HP_BAR_FILL_DURATION: float = 0.20
 ## Duration in seconds the green heal tint persists before reverting to zone color (AC-HUD-08).
 const HEAL_TINT_DURATION: float = 0.20
 
-## HP bar modulate for the FULL zone — warm white.
-const HP_COLOR_FULL: Color = Color("#F5F0E8")
+## HP bar modulate for the FULL zone — the art bible's dedicated health red (§4.4, ADR-0035).
+const HP_COLOR_FULL: Color = Color("#E61A0D")
 
-## HP bar modulate for the CAREFUL zone — amber.
-const HP_COLOR_CAREFUL: Color = Color("#FFA500")
+## HP bar modulate for the CAREFUL zone — same health red; the numeric label turns amber.
+const HP_COLOR_CAREFUL: Color = Color("#E61A0D")
 
-## HP bar modulate for the DESPERATE zone — danger red.
+## HP bar modulate for the DESPERATE zone — hotter red, paired with the scale pulse.
 const HP_COLOR_DESPERATE: Color = Color("#FF3333")
 
 ## HP label font color for normal (FULL) zone.
 const HP_COLOR_LABEL_FULL: Color = Color("#FFFFFF")
+
+## HP label font color for the CAREFUL zone — amber, so the zone still reads at a glance.
+const HP_COLOR_LABEL_CAREFUL: Color = Color("#FFA500")
+
+## HP label font color for the DESPERATE zone.
+const HP_COLOR_LABEL_DESPERATE: Color = Color("#FF3333")
 
 ## Heal tint color applied to hp_bar.modulate immediately on health_restored.
 const HEAL_TINT_COLOR: Color = Color(0.6, 1.0, 0.6, 1.0)
@@ -255,10 +261,19 @@ var _rank_tween: Tween = null
 var _style_letter: String = ""
 ## Top-left column width: the boss UI is kept clear of it (ADR-0019 HUD fix).
 const LEFT_COLUMN_WIDTH: float = 232.0
-## U3 left HUD card: height and colours.
-const LEFT_PANEL_HEIGHT: float = 162.0
+## U3 left HUD card colours. Its height follows the rows it shows (ADR-0035).
 const LEFT_PANEL_BG: Color = Color(0.04, 0.04, 0.06, 0.62)
 const LEFT_PANEL_BORDER: Color = Color(1.0, 1.0, 1.0, 0.08)
+## ADR-0035 left card metrics: inner padding, gap between rows, bar width and the
+## minimum bar heights (bars grow to fit their label at larger text sizes).
+const LEFT_PAD: float = 12.0
+const LEFT_ROW_GAP: float = 6.0
+const LEFT_INNER_WIDTH: float = 208.0
+const HP_BAR_MIN_HEIGHT: float = 22.0
+const SPECIAL_BAR_MIN_HEIGHT: float = 16.0
+## Whether the left card is laid out for combat (re-used when text size changes).
+var _left_combat: bool = false
+var _left_layout_queued: bool = false
 ## Style rank badge edge length in px.
 const STYLE_BADGE_SIZE: float = 34.0
 ## U3 — card behind the left column. Null in headless tests.
@@ -269,8 +284,8 @@ var _style_badge: Panel = null
 var _style_caption: Label = null
 ## U3 — dash charges / recharge ring under Fayde. Null in headless tests.
 var _dash_ring: DashRing = null
-## HP bar flash on a hit (U3).
-const HIT_FLASH_COLOR: Color = Color(1.0, 0.55, 0.55, 1.0)
+## HP bar flash on a hit (U3): the white fill shows through untinted.
+const HIT_FLASH_COLOR: Color = Color(1.0, 1.0, 1.0, 1.0)
 const HIT_FLASH_DURATION: float = 0.12
 ## Ring centre offset below Fayde's origin, in screen px.
 const DASH_RING_DROP: float = 10.0
@@ -411,7 +426,7 @@ func _create_ui_nodes() -> void:
 	card.set_corner_radius_all(6)
 	_left_panel.add_theme_stylebox_override(&"panel", card)
 	_left_panel.position = Vector2(4, 4)
-	_left_panel.size = Vector2(LEFT_COLUMN_WIDTH, LEFT_PANEL_HEIGHT)
+	_left_panel.size = Vector2(LEFT_COLUMN_WIDTH, HP_BAR_MIN_HEIGHT + LEFT_PAD * 2.0)  # re-stacked below
 	_left_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_left_panel)
 
@@ -431,8 +446,8 @@ func _create_ui_nodes() -> void:
 	hp_fill.set_corner_radius_all(3)
 	hp_bar.add_theme_stylebox_override(&"fill", hp_fill)
 	hp_bar.modulate = HP_COLOR_FULL
-	hp_bar.position = Vector2(12, 12)
-	hp_bar.size = Vector2(208, 22)
+	hp_bar.position = Vector2(LEFT_PAD, LEFT_PAD)
+	hp_bar.size = Vector2(LEFT_INNER_WIDTH, HP_BAR_MIN_HEIGHT)
 	hp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hp_bar)
 
@@ -442,11 +457,11 @@ func _create_ui_nodes() -> void:
 	hp_label.add_theme_color_override(&"font_color", HP_COLOR_LABEL_FULL)
 	hp_label.add_theme_color_override(&"font_outline_color", Color.BLACK)
 	hp_label.add_theme_constant_override(&"outline_size", 5)
-	hp_label.add_theme_font_size_override(&"font_size", 13)
+	hp_label.add_theme_font_size_override(&"font_size", 14)
 	hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	hp_label.position = Vector2(12, 12)
-	hp_label.size = Vector2(202, 22)
+	hp_label.position = Vector2(LEFT_PAD, LEFT_PAD)
+	hp_label.size = Vector2(LEFT_INNER_WIDTH - 6.0, HP_BAR_MIN_HEIGHT)
 	hp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hp_label)
 
@@ -457,7 +472,7 @@ func _create_ui_nodes() -> void:
 
 	_dash_hint_label = Label.new()
 	_dash_hint_label.text = InputPrompts.dash_hint()
-	_dash_hint_label.add_theme_font_size_override(&"font_size", 12)
+	_dash_hint_label.add_theme_font_size_override(&"font_size", 13)
 	_dash_hint_label.add_theme_color_override(&"font_color", Color(0.8, 0.8, 0.86))
 	_dash_hint_label.position = Vector2(30, 58)
 	_dash_hint_label.size = Vector2(190, 18)
@@ -496,7 +511,8 @@ func _create_ui_nodes() -> void:
 
 	_special_label = Label.new()
 	_special_label.text = _COPY.special_label
-	_special_label.add_theme_font_size_override(&"font_size", 11)
+	_special_label.add_theme_font_size_override(&"font_size", 12)
+	_special_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_special_label.add_theme_color_override(&"font_outline_color", Color.BLACK)
 	_special_label.add_theme_constant_override(&"outline_size", 4)
 	_special_label.position = Vector2(16, 38)
@@ -506,7 +522,7 @@ func _create_ui_nodes() -> void:
 	_combo_counter_label = Label.new()
 	_combo_counter_label.visible = false
 	_combo_counter_label.add_theme_font_size_override(&"font_size", 18)
-	_combo_counter_label.position = Vector2(8, LEFT_PANEL_HEIGHT + 12.0)
+	_combo_counter_label.position = Vector2(8, 0.0)  # y set by _layout_left_column
 	add_child(_combo_counter_label)
 
 	# Recognition callout — full-width top-centre banner for Cascades / Reactions
@@ -531,7 +547,7 @@ func _create_ui_nodes() -> void:
 
 	_room_label = Label.new()
 	_room_label.text = "Room 1 / 7"
-	_room_label.add_theme_font_size_override(&"font_size", 12)
+	_room_label.add_theme_font_size_override(&"font_size", 13)
 	_room_label.add_theme_color_override(&"font_color", Color(0.7, 0.7, 0.78))
 	_room_label.position = Vector2(12, 98)
 	_room_label.size = Vector2(120, 18)
@@ -618,7 +634,7 @@ func _create_ui_nodes() -> void:
 
 	_style_caption = Label.new()
 	_style_caption.text = _COPY.style_label
-	_style_caption.add_theme_font_size_override(&"font_size", 11)
+	_style_caption.add_theme_font_size_override(&"font_size", 12)
 	_style_caption.add_theme_color_override(&"font_color", Color(0.7, 0.7, 0.78))
 	_style_caption.position = Vector2(20 + STYLE_BADGE_SIZE, 122)
 	_style_caption.visible = false
@@ -665,6 +681,12 @@ func _create_ui_nodes() -> void:
 	_rank_reward_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_rank_banner.add_child(_rank_reward_label)
 
+	# ADR-0035: rows are stacked from their measured heights, so re-stack whenever a
+	# text size changes (the Text size setting is applied a frame after creation).
+	for l: Label in [hp_label, _special_label, _dash_hint_label, _floor_label, _room_label, _style_caption]:
+		l.minimum_size_changed.connect(_queue_left_layout)
+	_layout_left_column(false)
+
 
 ## ADR-0019 — places the boss bar and name card top-centre in absolute pixels, never
 ## over the top-left column (HP, dash, Special, floor). Re-run on viewport resize.
@@ -688,16 +710,74 @@ func get_boss_bar_rect() -> Rect2:
 	return Rect2(_boss_bar.position, _boss_bar.size) if _boss_bar != null else Rect2()
 
 
-## U3 — lays out the left card. In combat it holds HP, Special, dash, floor and Style;
-## between rooms (Special, dash and Style hidden) floor and room move up under HP and
-## the card shrinks, so no empty rows show.
+## U3 / ADR-0035 — lays out the left card. In combat it holds HP, Special, dash and
+## Style; the floor and room line shows only between rooms (the floor intro banner and
+## the pause map carry it during a fight), so the corner stays light. Each row is
+## placed from its measured height, so the card grows with the Text size setting
+## instead of rows overlapping.
 func _layout_left_column(combat: bool) -> void:
+	_left_combat = combat
 	if _left_panel == null:
 		return
-	var floor_y: float = 80.0 if combat else 40.0
-	_floor_label.position.y = floor_y
-	_room_label.position.y = floor_y + 18.0
-	_left_panel.size.y = LEFT_PANEL_HEIGHT if combat else floor_y + 42.0
+	var y: float = LEFT_PAD
+	var hp_h: float = maxf(HP_BAR_MIN_HEIGHT, hp_label.get_combined_minimum_size().y + 2.0)
+	hp_bar.position = Vector2(LEFT_PAD, y)
+	hp_bar.size = Vector2(LEFT_INNER_WIDTH, hp_h)
+	hp_bar.pivot_offset = hp_bar.size / 2.0
+	hp_label.position = Vector2(LEFT_PAD, y)
+	hp_label.size = Vector2(LEFT_INNER_WIDTH - 6.0, hp_h)
+	y += hp_h + LEFT_ROW_GAP
+	_floor_label.visible = not combat
+	_room_label.visible = not combat
+	if combat:
+		var sp_h: float = maxf(SPECIAL_BAR_MIN_HEIGHT, _special_label.get_combined_minimum_size().y)
+		_special_bar.position = Vector2(LEFT_PAD, y)
+		_special_bar.size = Vector2(LEFT_INNER_WIDTH, sp_h)
+		_special_label.position = Vector2(LEFT_PAD + 6.0, y)
+		_special_label.size = Vector2(LEFT_INNER_WIDTH - 12.0, sp_h)
+		y += sp_h + LEFT_ROW_GAP
+		var dash_h: float = maxf(_dash_cooldown_icon.size.y, _dash_hint_label.get_combined_minimum_size().y)
+		_dash_cooldown_icon.position = Vector2(LEFT_PAD, y + (dash_h - _dash_cooldown_icon.size.y) * 0.5)
+		_dash_hint_label.position = Vector2(LEFT_PAD + _dash_cooldown_icon.size.x + 6.0, y)
+		_dash_hint_label.size = Vector2(LEFT_INNER_WIDTH - _dash_cooldown_icon.size.x - 6.0, dash_h)
+		y += dash_h + LEFT_ROW_GAP
+		var cap_h: float = _style_caption.get_combined_minimum_size().y
+		var badge: float = maxf(STYLE_BADGE_SIZE, cap_h + 12.0)
+		_style_badge.position = Vector2(LEFT_PAD, y)
+		_style_badge.size = Vector2(badge, badge)
+		_style_badge.pivot_offset = _style_badge.size * 0.5
+		_style_label.size = _style_badge.size
+		var right_x: float = LEFT_PAD + badge + 8.0
+		_style_caption.position = Vector2(right_x, y)
+		_style_bar.position = Vector2(right_x, y + badge - 10.0)
+		_style_bar.size = Vector2(LEFT_PAD + LEFT_INNER_WIDTH - right_x, 8.0)
+		y += badge + LEFT_PAD
+	else:
+		var floor_h: float = _floor_label.get_combined_minimum_size().y
+		_floor_label.position = Vector2(LEFT_PAD, y - 2.0)
+		_floor_label.size = Vector2(LEFT_INNER_WIDTH, floor_h)
+		y += floor_h - 2.0
+		var room_h: float = _room_label.get_combined_minimum_size().y
+		_room_label.position = Vector2(LEFT_PAD, y)
+		_room_label.size = Vector2(LEFT_INNER_WIDTH, room_h)
+		y += room_h + LEFT_PAD * 0.5
+	_left_panel.size = Vector2(LEFT_COLUMN_WIDTH, y)
+	_combo_counter_label.position.y = _left_panel.position.y + y + 8.0
+
+
+## Re-stacks the left card once at the end of the frame (text size changed).
+func _queue_left_layout() -> void:
+	if _left_layout_queued:
+		return
+	_left_layout_queued = true
+	(func() -> void:
+		_left_layout_queued = false
+		_layout_left_column(_left_combat)).call_deferred()
+
+
+## Height of the left card in HUD px (test / QA hook).
+func get_left_card_height() -> float:
+	return _left_panel.size.y if _left_panel != null else 0.0
 
 
 ## Shows or hides every part of the Style meter together (badge, letter, caption, bar).
@@ -1160,11 +1240,11 @@ func _on_hp_zone_changed(zone: GameEnums.HPZone) -> void:
 			_stop_pulse()
 		GameEnums.HPZone.CAREFUL:
 			hp_bar.modulate = HP_COLOR_CAREFUL
-			hp_label.add_theme_color_override(&"font_color", HP_COLOR_CAREFUL)
+			hp_label.add_theme_color_override(&"font_color", HP_COLOR_LABEL_CAREFUL)
 			_stop_pulse()
 		GameEnums.HPZone.DESPERATE:
 			hp_bar.modulate = HP_COLOR_DESPERATE
-			hp_label.add_theme_color_override(&"font_color", HP_COLOR_DESPERATE)
+			hp_label.add_theme_color_override(&"font_color", HP_COLOR_LABEL_DESPERATE)
 			_start_pulse()
 		_:
 			push_warning("CombatHUD: unhandled HPZone value %d — zone color not updated" % zone)

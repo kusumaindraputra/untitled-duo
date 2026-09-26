@@ -31,6 +31,9 @@ const _DEATH_SLOW_SCALE: float = 0.15
 ## Real-time duration of the slow-mo before the death overlay appears.
 const _DEATH_SLOW_DURATION: float = 0.75
 
+## Whole-number scale for the Prana shape icon on a core-pick card (48 px, ADR-0036).
+const CORE_PICK_ICON_SCALE: int = 4
+
 ## Paths to per-floor enemy pool configs. Index 0 = floor 1, etc.
 const _FLOOR_POOL_PATHS: Array[String] = [
 	"res://assets/data/enemy_pool_configs/enemy_pool_floor1.tres",
@@ -486,6 +489,10 @@ func _show_core_pick() -> void:
 		card.add_theme_font_size_override(&"font_size", 22)
 		card.text = PranaTypeToken.type_abbrev(type_id)
 		card.add_theme_color_override(&"font_color", PranaTypeToken.type_color(type_id))
+		# Shape icon above the name so the pick reads without colour (ADR-0036).
+		PranaIcon.apply_to_button(card, type_id, CORE_PICK_ICON_SCALE)
+		card.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		card.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 		var captured_id: int = type_id
 		card.pressed.connect(func() -> void: _on_core_picked(captured_id))
 		row.add_child(card)

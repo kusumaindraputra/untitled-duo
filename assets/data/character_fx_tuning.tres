@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CharacterFxTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/character_fx_tuning.gd" id="1_fx"]
+
+[resource]
+script = ExtResource("1_fx")
+enemy_flash_sec = 0.1
+fayde_flash_sec = 0.14
+hit_flash_color = Color(1, 1, 1, 1)
+flash_hold = 0.4
+cast_flash_strength = 0.45
+cast_flash_sec = 0.12
+fayde_cast_sec = 0.32
+enemy_cast_tail_sec = 0.12
+dissolve_sec = 0.55
+dissolve_edge = 0.14
+dissolve_rise = 0.45
+dissolve_neutral_color = Color(1, 0.95, 0.85, 1)
