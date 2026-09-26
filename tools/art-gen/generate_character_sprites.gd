@@ -1,19 +1,25 @@
-## generate_character_sprites.gd — builds every character sprite sheet (ADR-0022).
+## generate_character_sprites.gd — builds every character sprite sheet (ADR-0022, ADR-0034).
 ##
 ## Run from the project root:
 ##   godot --headless --path . -s tools/art-gen/generate_character_sprites.gd
 ##
-## Each sheet is FRAMES columns × 2 rows: row 0 idle, row 1 moving. Designs follow
-## the art bible (§3.2 silhouettes, §4 palette, §5 character direction): warm or
-## cool neutral bodies, a desaturated Prana "transformation marker" on enemies,
-## and Fayde's hand/lens glow drawn on a separate white glow sheet so the game can
-## tint it with the active Prana. Output goes to assets/art/characters/.
+## Each sheet is FRAMES columns × ROWS rows: row 0 idle, row 1 moving, row 2 cast
+## (Fayde) or attack wind-up (enemies). Every sheet pixel is one world pixel, bosses
+## included, so all characters share Fayde's pixel size. Designs follow the art bible
+## (§3.2 silhouettes, §4 palette, §5 character direction): warm or cool neutral bodies,
+## a desaturated Prana "transformation marker" on enemies, one reserved colour per
+## boss, and Fayde's hand/lens glow drawn on a separate white glow sheet so the game
+## can tint it with the active Prana. Output goes to assets/art/characters/.
 extends SceneTree
 
 const PixelPainter = preload("res://tools/art-gen/pixel_painter.gd")
 
 const OUT_DIR: String = "res://assets/art/characters/"
 const FRAMES: int = 4
+const ROWS: int = 3
+const IDLE: int = 0
+const MOVE: int = 1
+const CAST: int = 2
 
 # Art bible palette.
 const OUTLINE := Color("#17121A")
@@ -31,6 +37,12 @@ const METAL_WARM := Color("#8C8274")
 const STONE := Color("#6E6660")
 const B1_VIOLET := Color("#9B2ED4")
 const B2_TEAL := Color("#23B39A")
+const B3_ROSE := Color("#D42E5E")
+# Cipher Keeper body neutrals (≤ 40 % saturation, art bible §5.2).
+const KEEPER_ROBE := Color("#4E4152")
+const KEEPER_BRONZE := Color("#8A7A5E")
+const KEEPER_TRIM := Color("#AE9A70")
+const KEEPER_VOID := Color("#1B1620")
 
 # Prana colours (assets/data/prana_types).
 const ASHFIRE := Color(0.949, 0.298, 0.114)
@@ -39,10 +51,17 @@ const STORMGOLD := Color(1.0, 0.8, 0.0)
 const DEEPFROST := Color(0.239, 0.851, 0.941)
 const VERDANT := Color(0.102, 0.788, 0.325)
 
+## Standard-enemy wind-up row, per column: upper-body lean (px, + = forward), and how
+## much the Prana marker brightens (the "agitated" read in art bible §5.3).
+const _WINDUP_LEAN: Array[int] = [-1, 1, 1, 0]
+const _WINDUP_GLOW: Array[float] = [0.2, 0.55, 0.45, 0.25]
+## Pixels at or above this HSV saturation count as the Prana marker.
+const _MARKER_SAT: float = 0.42
+
 
 func _init() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
-	_sheet("fayde", 20, 32, _fayde, _fayde_glow)
+	_sheet("fayde", 20, 32, _fayde, _fayde_glow, true)
 	_sheet("drifter", 22, 18, _drifter)
 	_sheet("charger", 14, 26, _charger)
 	_sheet("cluster", 26, 24, _cluster)
@@ -52,33 +71,61 @@ func _init() -> void:
 	_sheet("sniper", 16, 28, _sniper)
 	_sheet("spinner", 22, 18, _spinner)
 	_sheet("splitter", 18, 18, _splitter)
-	_sheet("warped_warden", 48, 48, _warden)
-	_sheet("vault_sentinel", 48, 48, _sentinel)
+	_sheet("vault_sentinel", 96, 96, _sentinel, Callable(), true)
+	_sheet("warped_warden", 96, 96, _warden, Callable(), true)
+	_sheet("cipher_keeper", 144, 144, _keeper, Callable(), true)
 	print("sprites written to ", OUT_DIR)
 	quit()
 
 
-func _sheet(name: String, cw: int, ch: int, body: Callable, glow: Callable = Callable()) -> void:
-	var img := Image.create(cw * FRAMES, ch * 2, false, Image.FORMAT_RGBA8)
+## Writes [param name].png. A [param posed] body takes (painter, column, row) and draws
+## its own cast row; otherwise it takes (painter, column, moving) and the wind-up row
+## is its idle pose leaned and agitated by _windup().
+func _sheet(name: String, cw: int, ch: int, body: Callable, glow: Callable = Callable(), posed: bool = false) -> void:
+	var img := Image.create(cw * FRAMES, ch * ROWS, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
 	var p := PixelPainter.new(img, cw, ch)
-	for row: int in 2:
+	for row: int in ROWS:
 		for f: int in FRAMES:
 			p.cell(f, row)
-			body.call(p, f, row == 1)
+			if posed:
+				body.call(p, f, row)
+			elif row == CAST:
+				body.call(p, f, false)
+				_windup(p, f)
+			else:
+				body.call(p, f, row == MOVE)
 			p.outline(OUTLINE)
 	img.save_png(ProjectSettings.globalize_path(OUT_DIR + name + ".png"))
 	if glow.is_valid():
-		var gimg := Image.create(cw * FRAMES, ch * 2, false, Image.FORMAT_RGBA8)
+		var gimg := Image.create(cw * FRAMES, ch * ROWS, false, Image.FORMAT_RGBA8)
 		gimg.fill(Color(0, 0, 0, 0))
 		var g := PixelPainter.new(gimg, cw, ch)
-		for row: int in 2:
+		for row: int in ROWS:
 			for f: int in FRAMES:
 				g.cell(f, row)
-				glow.call(g, f, row == 1)
+				glow.call(g, f, row)
 		gimg.save_png(ProjectSettings.globalize_path(OUT_DIR + name + "_glow.png"))
 
 
+## Turns an idle frame into a wind-up frame: the upper half leans (a stair-step shear,
+## twice as far in the top quarter) and marker-coloured pixels brighten.
+func _windup(p: PixelPainter, f: int) -> void:
+	var src: Array[Color] = []
+	for y: int in p.h:
+		for x: int in p.w:
+			src.append(p.get_px(x, y))
+	p.rect(0, 0, p.w, p.h, Color(0, 0, 0, 0))
+	var lean: int = _WINDUP_LEAN[f]
+	for y: int in p.h:
+		var dx: int = lean * 2 if y < p.h / 4 else (lean if y < p.h / 2 else 0)
+		for x: int in p.w:
+			var c: Color = src[y * p.w + x]
+			if c.a <= 0.0:
+				continue
+			if c.s >= _MARKER_SAT:
+				c = c.lightened(_WINDUP_GLOW[f])
+			p.px(x + dx, y, c)
 # ── Fayde ────────────────────────────────────────────────────────────────────
 # Discoverer, not fighter: slight build, hooded coat to mid-calf, satchel strap,
 # hood peak as the single vertical accent, Prana glow in the hands and lens.
@@ -142,8 +189,21 @@ func _fayde_pose(f: int, moving: bool) -> Vector3i:
 	return Vector3i(breathe[f], 0, 0)
 
 
-func _fayde(p: PixelPainter, f: int, moving: bool) -> void:
-	var pose: Vector3i = _fayde_pose(f, moving)
+
+
+## Cast row, per column: upper-body lean back (px), extra hem sway, leg variant.
+## Wind-up, release, hold, recover (art bible §5.3: "hands pull back, then arms
+## extended, coat blown back 1 px").
+const _FAYDE_CAST_LEAN: Array[int] = [-1, -1, -1, 0]
+const _FAYDE_CAST_HEM: Array[int] = [0, -1, -1, 0]
+const _FAYDE_CAST_LEGS: Array[int] = [0, 1, 1, 0]
+
+
+func _fayde(p: PixelPainter, f: int, row: int) -> void:
+	if row == CAST:
+		_fayde_cast(p, f)
+		return
+	var pose: Vector3i = _fayde_pose(f, row == MOVE)
 	var legs: Array = _FAYDE_LEGS[pose.y]
 	for r: int in legs.size():
 		_ascii_row(p, legs[r], 27 + r, 0)
@@ -152,15 +212,69 @@ func _fayde(p: PixelPainter, f: int, moving: bool) -> void:
 		_ascii_row(p, _FAYDE_UPPER[r], r + pose.x, shift)
 
 
-func _ascii_row(p: PixelPainter, row: String, y: int, dx: int) -> void:
+func _fayde_cast(p: PixelPainter, f: int) -> void:
+	var lean: int = _FAYDE_CAST_LEAN[f]
+	var legs: Array = _FAYDE_LEGS[_FAYDE_CAST_LEGS[f]]
+	for r: int in legs.size():
+		_ascii_row(p, legs[r], 27 + r, 0)
+	for r: int in _FAYDE_UPPER.size():
+		var shift: int = lean + (_FAYDE_CAST_HEM[f] if r >= 24 else 0)
+		# The hanging hands (rows 21–22) are redrawn where the pose puts them.
+		_ascii_row(p, _FAYDE_UPPER[r], r, shift, r == 21 or r == 22)
+	var sleeve: Color = _FAYDE_COLOURS["C"]
+	var fold: Color = _FAYDE_COLOURS["c"]
+	if f == 1 or f == 2:
+		# Front sleeve leaves the body: clear it, then draw the arm reaching forward.
+		for y: int in range(18, 23):
+			for x: int in [15 + lean, 16 + lean]:
+				p.px(x, y, Color(0, 0, 0, 0))
+		var arm: Array[Vector2i] = [Vector2i(13, 16), Vector2i(14, 16), Vector2i(15, 16), Vector2i(16, 16)]
+		if f == 2:
+			arm = [Vector2i(13, 16), Vector2i(14, 15), Vector2i(15, 14), Vector2i(16, 13)]
+		for a: Vector2i in arm:
+			p.px(a.x, a.y, sleeve)
+			p.px(a.x, a.y + 1, fold)
+	for h: Vector2i in _fayde_cast_hands(f):
+		p.rect(h.x, h.y, 2, 2, SKIN)
+		p.px(h.x + 1, h.y + 1, _FAYDE_COLOURS["s"])
+
+
+## Top-left corner of each 2×2 hand in cast column [param f] (front hand first).
+func _fayde_cast_hands(f: int) -> Array[Vector2i]:
+	match f:
+		0:
+			return [Vector2i(12, 18), Vector2i(1, 19)]
+		1:
+			return [Vector2i(17, 16), Vector2i(15, 19)]
+		2:
+			return [Vector2i(17, 12), Vector2i(16, 17)]
+	return [Vector2i(15, 20), Vector2i(2, 21)]
+
+
+func _ascii_row(p: PixelPainter, row: String, y: int, dx: int, skip_skin: bool = false) -> void:
 	for x: int in row.length():
 		var k: String = row[x]
+		if skip_skin and k == "S":
+			continue
 		if _FAYDE_COLOURS.has(k):
 			p.px(x + dx, y, _FAYDE_COLOURS[k])
 
 
-func _fayde_glow(g: PixelPainter, f: int, moving: bool) -> void:
-	var d: int = _fayde_pose(f, moving).x
+func _fayde_glow(g: PixelPainter, f: int, row: int) -> void:
+	if row == CAST:
+		var lean: int = _FAYDE_CAST_LEAN[f]
+		var hands: Array[Vector2i] = _fayde_cast_hands(f)
+		for h: Vector2i in hands:
+			g.rect(h.x, h.y, 2, 2, Color.WHITE)
+		if f == 1 or f == 2:
+			# Release: a soft halo round the reaching hand.
+			var front: Vector2i = hands[0]
+			for d: Vector2i in [Vector2i(-1, 0), Vector2i(2, 0), Vector2i(0, -1), Vector2i(1, -1), Vector2i(0, 2), Vector2i(1, 2)]:
+				g.px(front.x + d.x, front.y + d.y, Color(1, 1, 1, 0.5))
+		g.px(12 + lean, 9, Color.WHITE)
+		g.px(9 + lean, 14, Color.WHITE if f == 1 else Color(1, 1, 1, 0.7))
+		return
+	var d: int = _fayde_pose(f, row == MOVE).x
 	# Hands.
 	for y: int in [21, 22]:
 		for x: int in [2, 3, 15, 16]:
@@ -336,38 +450,174 @@ func _splitter(p: PixelPainter, f: int, moving: bool) -> void:
 	p.px(12, 3 + hop, mk.darkened(0.2))
 
 
-# ── Bosses (48×48, scaled 2× in game) ───────────────────────────────────────
 
-## Warped Warden: asymmetric guardian, heavy left side, broken-Prana spiral at centre
-## in Corruption Violet (B1). Body breathes on one cycle, the mark pulses on another.
-func _warden(p: PixelPainter, f: int, moving: bool) -> void:
-	var breathe: int = ([0, 1, 1, 0] as Array[int])[f]
-	var step: int = (f % 2) if moving else 0
-	# Legs.
-	p.rect(12, 38 - step, 7, 10 + step, E3)
-	p.rect(29, 39 + step, 6, 9 - step, E3.darkened(0.2))
-	# Heavy left shoulder mass.
+
+# ── Bosses (native resolution, one sheet pixel = one world pixel) ───────────
+# Each boss has one reserved colour outside the Prana hues (art bible §4.3):
+# Sentinel B2 teal, Warden B1 violet, Keeper B3 rose. The cast row is the attack
+# wind-up: crouch, release, hold, recover.
+
+## Thick shaded limb from [param a] to [param b], [param width] px across.
+func _limb(p: PixelPainter, a: Vector2, b: Vector2, width: float, c: Color) -> void:
+	var n: Vector2 = (b - a).normalized().orthogonal() * width * 0.5
+	p.poly(PackedVector2Array([a + n, b + n, b - n, a - n]), c, true)
+
+
+## Riveted metal block with a lit top row and a dark bottom row.
+func _plate(p: PixelPainter, x: int, y: int, w: int, h: int, c: Color) -> void:
+	p.rect(x, y, w, h, c)
+	p.rect(x, y, w, 1, c.lightened(0.25))
+	p.rect(x, y + h - 1, w, 1, c.darkened(0.3))
+	p.px(x + 1, y + h / 2, c.darkened(0.45))
+	p.px(x + w - 2, y + h / 2, c.darkened(0.45))
+
+
+## Vault Sentinel (96×96): a walking vault door. Hinges down the left edge, a round
+## lock in reserved teal (B2) whose bolts turn, and a crown ridge with a keystone.
+## Wind-up: it crouches, the door seam splits with light and the bolts spin out.
+func _sentinel(p: PixelPainter, f: int, row: int) -> void:
+	var moving: bool = row == MOVE
+	var casting: bool = row == CAST
+	var b: int = ([0, 0, 1, 1] as Array[int])[f]
+	if casting:
+		b = ([3, -2, -2, 1] as Array[int])[f]
+	var lift_l: int = 3 if moving and f % 2 == 0 else 0
+	var lift_r: int = 3 if moving and f % 2 == 1 else 0
+	var teal: Color = B2_TEAL.lightened(0.45) if casting and (f == 1 or f == 2) else B2_TEAL
+	# Legs: thick pillars with wide foot plates.
+	for leg: Vector2i in [Vector2i(22, lift_l), Vector2i(58, lift_r)]:
+		var shade: Color = E3 if leg.x < 48 else E3.darkened(0.18)
+		p.poly(PackedVector2Array([
+			Vector2(leg.x, 72), Vector2(leg.x + 16, 72), Vector2(leg.x + 15, 90 - leg.y), Vector2(leg.x + 1, 90 - leg.y),
+		]), shade, true)
+		_plate(p, leg.x - 3, 89 - leg.y, 22, 6, shade.darkened(0.15))
+	# Slab body.
 	p.poly(PackedVector2Array([
-		Vector2(2, 20 + breathe), Vector2(8, 8 + breathe), Vector2(18, 6 + breathe),
-		Vector2(20, 30), Vector2(10, 40), Vector2(3, 34),
+		Vector2(12, 16 + b), Vector2(84, 16 + b), Vector2(88, 80 + b), Vector2(8, 80 + b),
 	]), STONE, true)
-	# Main torso.
 	p.poly(PackedVector2Array([
-		Vector2(10, 12 + breathe), Vector2(24, 4 + breathe), Vector2(38, 10 + breathe),
-		Vector2(42, 24), Vector2(36, 40), Vector2(14, 41),
+		Vector2(18, 23 + b), Vector2(78, 23 + b), Vector2(81, 74 + b), Vector2(15, 74 + b),
+	]), STONE.darkened(0.1))
+	# Door-plate seams and rivet rows.
+	p.line(17, 48 + b, 26, 48 + b, STONE.darkened(0.35))
+	p.line(70, 48 + b, 80, 48 + b, STONE.darkened(0.35))
+	for x: int in range(16, 82, 8):
+		p.rect(x, 19 + b, 2, 1, STONE.lightened(0.35))
+		p.rect(x, 77 + b, 2, 1, STONE.darkened(0.35))
+	for y: int in range(28, 74, 9):
+		p.px(80, y + b, STONE.lightened(0.2))
+	# The door seam splits with teal light on release.
+	if casting and (f == 1 or f == 2):
+		p.rect(47, 23 + b, 2, 52, teal)
+	# Hinges.
+	for y: int in [26, 44, 62]:
+		_plate(p, 3, y + b, 9, 8, METAL)
+	# Prana-scar cracks (the transformation marker), brighter while winding up.
+	var scar: Color = teal.darkened(0.25) if casting else B2_TEAL.darkened(0.35)
+	p.line(26, 30 + b, 32, 37 + b, scar)
+	p.line(32, 37 + b, 29, 43 + b, scar)
+	p.line(66, 62 + b, 72, 70 + b, scar)
+	p.line(72, 70 + b, 76, 69 + b, scar)
+	# Lock: outer ring, recessed face, dial ticks, turning bolts, lit hub, keyhole.
+	var cy: int = 48 + b
+	p.ellipse(48.0, cy, 22.0, 22.0, METAL, true)
+	p.ellipse(48.0, cy, 17.0, 17.0, METAL.darkened(0.35))
+	for i: int in 16:
+		var a: float = i * TAU / 16.0
+		p.px(48 + roundi(cos(a) * 19.5), cy + roundi(sin(a) * 19.5), METAL.lightened(0.3))
+	var spin: float = 1.0
+	if moving:
+		spin = 2.0
+	elif casting:
+		spin = 4.0
+	var bolt_r: float = 17.0 if casting and (f == 1 or f == 2) else 13.0
+	for i: int in 4:
+		var a: float = float(f) / FRAMES * TAU / 4.0 * spin + i * TAU / 4.0
+		p.rect(47 + roundi(cos(a) * bolt_r), cy - 1 + roundi(sin(a) * bolt_r), 3, 3, teal)
+	p.ellipse(48.0, cy, 7.0, 7.0, METAL.lightened(0.1), true)
+	var hub: Color = teal.lightened(0.2) if f % 2 == 0 or casting else teal
+	p.ellipse(48.0, cy, 4.0, 4.0, hub, true)
+	p.rect(47, cy - 2, 2, 2, OUTLINE)
+	p.rect(47, cy, 2, 3, OUTLINE)
+	# Crown ridge with a teal keystone.
+	p.poly(PackedVector2Array([Vector2(28, 17 + b), Vector2(48, 2 + b), Vector2(68, 17 + b)]), METAL_WARM, true)
+	p.line(29, 16 + b, 47, 3 + b, METAL_WARM.lightened(0.3))
+	p.rect(46, 8 + b, 5, 5, teal)
+	p.px(47, 9 + b, teal.lightened(0.5))
+
+
+## Warped Warden (96×96): an ancient asymmetric guardian, heavy stone left side,
+## lighter metal right arm, broken-Prana spiral in Corruption Violet (B1) at the centre.
+## The body breathes on one cycle and the mark pulses on another (internal conflict).
+## Wind-up: the right arm drops back, then heaves up crackling with violet arcs.
+func _warden(p: PixelPainter, f: int, row: int) -> void:
+	var moving: bool = row == MOVE
+	var casting: bool = row == CAST
+	var b: int = ([0, 1, 2, 1] as Array[int])[f]
+	if casting:
+		b = ([2, -1, -1, 1] as Array[int])[f]
+	var lift_l: int = 3 if moving and f % 2 == 0 else 0
+	var lift_r: int = 3 if moving and f % 2 == 1 else 0
+	var hot: bool = casting and (f == 1 or f == 2)
+	# Legs.
+	p.poly(PackedVector2Array([
+		Vector2(24, 74), Vector2(40, 74), Vector2(39, 91 - lift_l), Vector2(25, 91 - lift_l),
+	]), E3, true)
+	_plate(p, 21, 90 - lift_l, 21, 5, E3.darkened(0.15))
+	p.poly(PackedVector2Array([
+		Vector2(58, 78), Vector2(70, 78), Vector2(69, 91 - lift_r), Vector2(59, 91 - lift_r),
+	]), E3.darkened(0.2), true)
+	_plate(p, 56, 90 - lift_r, 17, 5, E3.darkened(0.3))
+	# Heavy left shoulder mass, flecked stone.
+	p.poly(PackedVector2Array([
+		Vector2(4, 40 + b), Vector2(16, 16 + b), Vector2(36, 12 + b),
+		Vector2(40, 60), Vector2(20, 80), Vector2(6, 68),
+	]), STONE, true)
+	for fl: Vector2i in [Vector2i(12, 30), Vector2i(20, 44), Vector2i(27, 24), Vector2i(13, 58), Vector2i(30, 52)]:
+		p.px(fl.x, fl.y + b, STONE.darkened(0.3))
+		p.px(fl.x + 1, fl.y + b - 1, STONE.lightened(0.2))
+	# Main torso with a plate seam.
+	p.poly(PackedVector2Array([
+		Vector2(20, 24 + b), Vector2(48, 8 + b), Vector2(76, 20 + b),
+		Vector2(84, 48), Vector2(72, 80), Vector2(28, 82),
 	]), METAL_WARM, true)
-	# Lighter right arm with arc remnants.
-	p.poly(PackedVector2Array([
-		Vector2(38, 14 + breathe), Vector2(45, 20 + breathe), Vector2(44, 32), Vector2(39, 30),
-	]), METAL, true)
-	p.ellipse(42.0, 34.0, 3.0, 3.0, METAL.lightened(0.1), true)
-	# Head slit.
-	p.rect(20, 9 + breathe, 10, 2, OUTLINE)
-	p.rect(22, 9 + breathe, 3, 1, B1_VIOLET.lightened(0.3))
-	# Broken-Prana spiral: pulses independently (offset cycle).
+	p.line(30, 66, 70, 62, METAL_WARM.darkened(0.3))
+	for x: int in range(34, 70, 7):
+		p.px(x, 63 + (70 - x) / 10, METAL_WARM.lightened(0.3))
+	# Right arm: shoulder to fist; the fist moves with the wind-up.
+	var fist := Vector2(84, 68)
+	if casting:
+		fist = ([Vector2(78, 76), Vector2(86, 18), Vector2(87, 14), Vector2(86, 48)] as Array[Vector2])[f]
+		fist.y += b
+	elif moving:
+		fist.y += float(([0, -2, 0, 2] as Array[int])[f])
+	var shoulder := Vector2(80, 30 + b)
+	_limb(p, shoulder, fist, 11.0, METAL)
+	p.ellipse(fist.x, fist.y, 6.5, 6.5, METAL.lightened(0.1), true)
+	p.ellipse(shoulder.x, shoulder.y, 6.0, 6.0, METAL.darkened(0.1), true)
+	# Arc remnants along the arm; live violet arcs on release.
+	var mid: Vector2 = shoulder.lerp(fist, 0.5)
+	p.px(roundi(mid.x) - 2, roundi(mid.y), METAL.lightened(0.35))
+	p.px(roundi(mid.x) + 1, roundi(mid.y) + 3, METAL.lightened(0.35))
+	if hot:
+		var arc: Color = B1_VIOLET.lightened(0.4)
+		for i: int in 6:
+			var a: float = i * TAU / 6.0 + f
+			var r: float = 9.0 + (i % 2) * 2.0
+			p.px(roundi(fist.x + cos(a) * r), roundi(fist.y + sin(a) * r), arc)
+		p.line(roundi(fist.x) - 3, roundi(fist.y) - 8, roundi(fist.x) + 2, roundi(fist.y) - 12, arc)
+	# Head slit with one violet eye (the whole slit burns on release).
+	p.rect(40, 18 + b, 20, 4, OUTLINE)
+	p.rect(44, 19 + b, 6, 2, B1_VIOLET.lightened(0.3))
+	if hot:
+		p.rect(41, 19 + b, 18, 2, B1_VIOLET.lightened(0.5))
+	# Orbiting shard off the broken left edge (fragmentation marker).
+	var sh := Vector2i(([6, 8, 10, 8] as Array[int])[f], ([10, 8, 10, 12] as Array[int])[f] + b)
+	p.poly(PackedVector2Array([Vector2(sh.x, sh.y), Vector2(sh.x + 5, sh.y - 3), Vector2(sh.x + 4, sh.y + 3)]), STONE.lightened(0.1), true)
+	# Broken-Prana spiral: pulses on its own cycle, 2×2 pixel steps.
 	var pulse: Color = B1_VIOLET.lightened(0.35) if f == 1 or f == 2 else B1_VIOLET
-	var cx: int = 26
-	var cy: int = 24
+	if casting:
+		pulse = B1_VIOLET.lightened(0.55) if hot else B1_VIOLET.lightened(0.2)
 	var spiral: Array[Vector2i] = [
 		Vector2i(0, 0), Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 2), Vector2i(-1, 2),
 		Vector2i(-2, 1), Vector2i(-2, 0), Vector2i(-2, -1), Vector2i(-1, -2), Vector2i(0, -3),
@@ -376,32 +626,97 @@ func _warden(p: PixelPainter, f: int, moving: bool) -> void:
 	for i: int in spiral.size():
 		if i == 9:
 			continue  # the break in the mark
-		p.px(cx + spiral[i].x, cy + spiral[i].y, pulse)
+		p.rect(52 + spiral[i].x * 2, 46 + b + spiral[i].y * 2, 2, 2, pulse)
 	# Prana-scar cracks.
-	p.line(14, 16, 18, 26, B1_VIOLET.darkened(0.25))
-	p.line(34, 30, 38, 36, B1_VIOLET.darkened(0.25))
+	var crack: Color = B1_VIOLET.lightened(0.2) if hot else B1_VIOLET.darkened(0.25)
+	p.line(28, 32 + b, 36, 52 + b, crack)
+	p.line(29, 32 + b, 37, 52 + b, crack)
+	p.line(64, 58, 72, 70, crack)
 
 
-## Vault Sentinel: a walking vault door, round lock at the centre in reserved teal (B2).
-func _sentinel(p: PixelPainter, f: int, moving: bool) -> void:
-	var breathe: int = ([0, 0, 1, 1] as Array[int])[f]
-	var step: int = (f % 2) if moving else 0
-	p.rect(10, 38 - step, 8, 10 + step, E3)
-	p.rect(30, 38 + step, 8, 10 - step, E3.darkened(0.2))
-	# Slab body.
+## Cipher Keeper (144×144): the vault's last guardian. A hooded monolith that hovers,
+## a turning cipher wheel behind its hood, one rose (B3) eye in the dark of the hood,
+## and two detached gauntlets. Its hood echoes Fayde's: the keeper of the cipher
+## he is carrying. Wind-up: gauntlets pull in to the chest, then rise and flare.
+func _keeper(p: PixelPainter, f: int, row: int) -> void:
+	var moving: bool = row == MOVE
+	var casting: bool = row == CAST
+	var hot: bool = casting and (f == 1 or f == 2)
+	var b: int = ([0, -1, -2, -1] as Array[int])[f]
+	if moving:
+		b = ([0, -2, 0, -2] as Array[int])[f]
+	elif casting:
+		b = ([2, -3, -4, 0] as Array[int])[f]
+	var rose: Color = B3_ROSE.lightened(0.4) if hot else B3_ROSE
+	# Cipher wheel behind the hood: a ring of glyph notches, one notch per 4 frames.
+	var wcy: int = 48 + b
+	p.ellipse(72.0, wcy, 43.0, 43.0, KEEPER_BRONZE.darkened(0.25), true)
+	p.ellipse(72.0, wcy, 37.0, 37.0, Color(0, 0, 0, 0))
+	for i: int in 12:
+		var a: float = (float(f) / FRAMES + i) * TAU / 12.0
+		var gx: int = 72 + roundi(cos(a) * 40.0)
+		var gy: int = wcy + roundi(sin(a) * 40.0)
+		var lit: bool = casting or i % 3 == 0
+		p.rect(gx - 1, gy - 1, 3, 3, rose if lit else KEEPER_TRIM)
+	# Robe / monolith body.
 	p.poly(PackedVector2Array([
-		Vector2(6, 8 + breathe), Vector2(42, 8 + breathe), Vector2(44, 40), Vector2(4, 40),
-	]), STONE, true)
-	# Rivet frame.
-	for x: int in range(8, 42, 4):
-		p.px(x, 10 + breathe, STONE.lightened(0.3))
-		p.px(x, 38, STONE.darkened(0.3))
-	# Lock ring, bolts rotating with the frame.
-	p.ellipse(24.0, 24.0 + breathe, 10.0, 10.0, METAL, true)
-	p.ellipse(24.0, 24.0 + breathe, 6.0, 6.0, METAL.darkened(0.3))
-	for i: int in 4:
-		var a: float = float(f) / FRAMES * TAU / 4.0 + i * TAU / 4.0
-		p.rect(24 + roundi(cos(a) * 8.0), 24 + breathe + roundi(sin(a) * 8.0), 2, 2, B2_TEAL)
-	p.ellipse(24.0, 24.0 + breathe, 3.0, 3.0, B2_TEAL.lightened(0.2) if f % 2 == 0 else B2_TEAL, true)
-	# Crown ridge.
-	p.poly(PackedVector2Array([Vector2(14, 8 + breathe), Vector2(24, 1 + breathe), Vector2(34, 8 + breathe)]), METAL_WARM, true)
+		Vector2(72, 12 + b), Vector2(92, 30 + b), Vector2(100, 70 + b), Vector2(98, 104 + b),
+		Vector2(86, 124 + b), Vector2(72, 130 + b), Vector2(58, 124 + b), Vector2(46, 104 + b),
+		Vector2(44, 70 + b), Vector2(52, 30 + b),
+	]), KEEPER_ROBE, true)
+	p.line(52, 30 + b, 72, 12 + b, KEEPER_TRIM)
+	p.line(72, 12 + b, 92, 30 + b, KEEPER_TRIM.darkened(0.2))
+	# Hood opening and the rose eye.
+	p.ellipse(72.0, 42.0 + b, 13.0, 15.0, KEEPER_VOID)
+	# The eye is a lens ring, wider on release.
+	var eye: float = 5.5 if hot else 4.5
+	p.ellipse(72.0, 40.0 + b, eye, eye, rose)
+	p.ellipse(72.0, 40.0 + b, eye - 2.0, eye - 2.0, KEEPER_VOID)
+	p.rect(71, 39 + b, 2, 2, rose.lightened(0.5))
+	# Mantle with rivets, chest cipher plate with a rose gem.
+	p.poly(PackedVector2Array([
+		Vector2(50, 58 + b), Vector2(94, 58 + b), Vector2(101, 71 + b), Vector2(43, 71 + b),
+	]), KEEPER_BRONZE, true)
+	for x: int in range(50, 96, 6):
+		p.px(x, 60 + b, KEEPER_BRONZE.lightened(0.3))
+	p.poly(PackedVector2Array([
+		Vector2(72, 66 + b), Vector2(83, 79 + b), Vector2(72, 92 + b), Vector2(61, 79 + b),
+	]), KEEPER_TRIM, true)
+	p.ellipse(72.0, 79.0 + b, 3.5, 3.5, rose, true)
+	# Chevron trim bands and the centre seam.
+	for y: int in [96, 110]:
+		p.line(50, y + b, 72, y + 8 + b, KEEPER_TRIM)
+		p.line(72, y + 8 + b, 94, y + b, KEEPER_TRIM.darkened(0.2))
+	p.line(72, 93 + b, 72, 128 + b, KEEPER_ROBE.darkened(0.35))
+	# Broken hem: shards drifting under the body (fragmentation marker).
+	var s: int = -b / 2
+	for sh: Vector2i in [Vector2i(60, 133), Vector2i(72, 137), Vector2i(84, 132)]:
+		p.poly(PackedVector2Array([
+			Vector2(sh.x - 3, sh.y + s), Vector2(sh.x + 3, sh.y + s), Vector2(sh.x, sh.y + 5 + s),
+		]), KEEPER_ROBE.lightened(0.1), true)
+	# Gauntlets.
+	var hands: Array[Vector2] = [Vector2(26, 84 - b), Vector2(118, 80 + b)]
+	if moving:
+		hands = [Vector2(30, 88 + b), Vector2(114, 84 + b)]
+	elif casting:
+		var poses: Array[Vector4] = [
+			Vector4(48, 76, 96, 76), Vector4(20, 52, 124, 48),
+			Vector4(18, 46, 126, 42), Vector4(24, 70, 120, 66),
+		]
+		hands = [Vector2(poses[f].x, poses[f].y), Vector2(poses[f].z, poses[f].w)]
+	for h: Vector2 in hands:
+		_keeper_gauntlet(p, h, rose, hot)
+
+
+func _keeper_gauntlet(p: PixelPainter, at: Vector2, rose: Color, hot: bool) -> void:
+	var x: float = at.x
+	var y: float = at.y
+	p.poly(PackedVector2Array([
+		Vector2(x - 8, y - 9), Vector2(x + 8, y - 9), Vector2(x + 9, y + 5), Vector2(x, y + 11), Vector2(x - 9, y + 5),
+	]), KEEPER_BRONZE, true)
+	p.rect(roundi(x) - 6, roundi(y) + 2, 12, 2, KEEPER_TRIM)
+	p.rect(roundi(x) - 1, roundi(y) - 4, 3, 3, rose)
+	if hot:
+		for i: int in 8:
+			var a: float = i * TAU / 8.0
+			p.px(roundi(x + cos(a) * 13.0), roundi(y + sin(a) * 13.0), rose)

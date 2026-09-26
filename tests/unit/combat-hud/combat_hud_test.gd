@@ -296,17 +296,17 @@ func test_mid_tween_rapid_hit_starts_from_current_value() -> void:
 	_teardown_hud(hud)
 
 
-# ── AC-HUD-04: Zone CAREFUL → amber bar modulate and label color ──────────────
+# ── AC-HUD-04: Zone CAREFUL → health-red bar, amber label (ADR-0035) ──────────
 
 ## GIVEN CombatHUD in tree; zone = FULL (default)
 ## WHEN player_hp_zone_changed(HPZone.CAREFUL) emits
-## THEN hp_bar.modulate == Color("#FFA500") AND hp_label font_color == Color("#FFA500")
-func test_zone_careful_applies_amber_color_to_bar_and_label() -> void:
+## THEN hp_bar.modulate == Color("#E61A0D") AND hp_label font_color == Color("#FFA500")
+func test_zone_careful_keeps_red_bar_and_turns_label_amber() -> void:
 	var hud: Node = _make_hud()
 
 	HealthAndDamage.player_hp_zone_changed.emit(GameEnums.HPZone.CAREFUL)
 
-	assert_bool(hud.hp_bar.modulate == Color("#FFA500")).is_true()
+	assert_bool(hud.hp_bar.modulate == Color("#E61A0D")).is_true()
 	assert_bool(hud.hp_label.get_theme_color(&"font_color") == Color("#FFA500")).is_true()
 
 	_teardown_hud(hud)
@@ -329,18 +329,18 @@ func test_zone_desperate_applies_red_color_to_bar_and_label() -> void:
 	_teardown_hud(hud)
 
 
-# ── AC-HUD-06: Zone FULL from DESPERATE → warm white bar, white label ─────────
+# ── AC-HUD-06: Zone FULL from DESPERATE → health-red bar, white label ─────────
 
-## GIVEN zone = DESPERATE (red modulate)
+## GIVEN zone = DESPERATE (hot red modulate)
 ## WHEN player_hp_zone_changed(HPZone.FULL) emits
-## THEN hp_bar.modulate == Color("#F5F0E8") AND hp_label font_color == Color("#FFFFFF")
-func test_zone_full_from_desperate_applies_warm_white_to_bar_and_white_to_label() -> void:
+## THEN hp_bar.modulate == Color("#E61A0D") (art bible health red) AND label is white
+func test_zone_full_from_desperate_applies_health_red_to_bar_and_white_to_label() -> void:
 	var hud: Node = _make_hud()
 
 	HealthAndDamage.player_hp_zone_changed.emit(GameEnums.HPZone.DESPERATE)
 	HealthAndDamage.player_hp_zone_changed.emit(GameEnums.HPZone.FULL)
 
-	assert_bool(hud.hp_bar.modulate == Color("#F5F0E8")).is_true()
+	assert_bool(hud.hp_bar.modulate == Color("#E61A0D")).is_true()
 	assert_bool(hud.hp_label.get_theme_color(&"font_color") == Color("#FFFFFF")).is_true()
 
 	_teardown_hud(hud)

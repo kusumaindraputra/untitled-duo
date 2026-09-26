@@ -178,7 +178,7 @@ func test_real_catalog_sprite_sizes_match_gdd() -> void:
 	assert_vector(catalog.get_type(ID_CHARGER).sprite_size).is_equal(Vector2i(12, 20))
 	assert_vector(catalog.get_type(ID_CLUSTER).sprite_size).is_equal(Vector2i(24, 24))
 	assert_vector(catalog.get_type(ID_RIFTER).sprite_size).is_equal(Vector2i(14, 14))
-	assert_vector(catalog.get_type(ID_WARPED_WARDEN).sprite_size).is_equal(Vector2i(48, 48))
-	assert_vector(catalog.get_type(ID_VAULT_SENTINEL).sprite_size).is_equal(Vector2i(48, 48))
+	assert_vector(catalog.get_type(ID_WARPED_WARDEN).sprite_size).is_equal(Vector2i(96, 96))
+	assert_vector(catalog.get_type(ID_VAULT_SENTINEL).sprite_size).is_equal(Vector2i(96, 96))
 
 	catalog.free()

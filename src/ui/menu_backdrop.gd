@@ -9,8 +9,8 @@ extends Control
 
 const FAYDE_TEXTURE: Texture2D = preload("res://assets/art/characters/fayde.png")
 const FAYDE_GLOW: Texture2D = preload("res://assets/art/characters/fayde_glow.png")
-## Fayde's sheet is 5×2 frames; frame 0 is the front idle.
-const FAYDE_FRAME := Rect2(0, 0, 16, 32)
+## Fayde's sheet is 4×3 frames of 20×32 (ADR-0034); frame 0 is the front idle.
+const FAYDE_FRAME := Rect2(0, 0, 20, 32)
 const FAYDE_SCALE: float = 7.0
 const SKY_TOP := Color(0.03, 0.025, 0.05)
 const SKY_BOTTOM := Color(0.09, 0.06, 0.1)

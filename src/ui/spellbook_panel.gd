@@ -180,6 +180,7 @@ func _build() -> void:
 	detail.add_child(_detail_sub)
 	_detail_body = _label(19, Color(0.88, 0.88, 0.92))
 	_detail_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_detail_body.theme_type_variation = UIFeel.BODY_TEXT
 	_detail_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	detail.add_child(_detail_body)
 

@@ -8,7 +8,7 @@
 [ext_resource type="Resource" path="res://assets/data/bullet_patterns/keeper_homing.tres" id="p_homing"]
 [ext_resource type="Resource" path="res://assets/data/bullet_patterns/keeper_weave.tres" id="p_weave"]
 [ext_resource type="Resource" path="res://assets/data/bullet_patterns/keeper_mortar.tres" id="p_mortar"]
-[ext_resource type="Texture2D" path="res://assets/art/characters/vault_sentinel.png" id="sprite_sheet"]
+[ext_resource type="Texture2D" path="res://assets/art/characters/cipher_keeper.png" id="sprite_sheet"]
 
 [resource]
 script = ExtResource("1_enemy_type")
@@ -21,12 +21,11 @@ base_damage = 25.0
 base_move_speed = 55.0
 drop_prana_type = null
 drop_rate = null
-sprite_size = Vector2i(48, 48)
+sprite_size = Vector2i(144, 144)
 debug_color = Color(0.95, 0.8, 0.35, 1)
 status = 1
 scene = ExtResource("2_scene")
 base_scale = 3.0
 pattern_layers = Array[ExtResource("3_bp")]([ExtResource("p_lattice"), ExtResource("p_fan"), ExtResource("p_homing"), ExtResource("p_weave"), ExtResource("p_mortar")])
 sprite_sheet = ExtResource("sprite_sheet")
-sprite_pixel_scale = 3.0
-sprite_tint = Color(1, 0.82, 0.45, 1)
+sprite_pixel_scale = 1.0

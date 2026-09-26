@@ -160,6 +160,7 @@ func _build() -> void:
 
 	_desc_label = _label("", 17, Color(0.82, 0.82, 0.88))
 	_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_desc_label.theme_type_variation = UIFeel.BODY_TEXT
 	_desc_label.custom_minimum_size = Vector2(640, 48)
 	_desc_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	root.add_child(_desc_label)

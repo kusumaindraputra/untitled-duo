@@ -92,6 +92,16 @@ func get_type_color(id: int) -> Color:
 	return _types[id].color
 
 
+## Returns the shape icon of the type with the given [param id] (ADR-0036).
+##
+## Cheap accessor like [method get_type_color]: returns the shared texture, never a
+## copy. Returns null for an out-of-range id or before _ready().
+func get_type_icon(id: int) -> Texture2D:
+	if not _initialized or id < 0 or id >= _types.size():
+		return null
+	return _types[id].icon
+
+
 ## Returns an independent deep copy of every PranaType in catalog order.
 ##
 ## Each element is an isolated duplicate; mutations are invisible to the catalog.

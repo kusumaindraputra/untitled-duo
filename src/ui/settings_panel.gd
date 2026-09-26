@@ -30,6 +30,8 @@ var _text_size: OptionButton = null
 ## The centred content, shrunk to fit the window at large text sizes (ADR-0032).
 var _root: VBoxContainer = null
 var _back: Button = null
+## Controls grid: action name, key button, pad button per row (ADR-0035).
+var _controls_grid: GridContainer = null
 ## Assist option controls, greyed out while the Assist switch is off.
 var _assist_controls: Array[Control] = []
 
@@ -164,33 +166,35 @@ func _build() -> void:
 	# the left stick, so only dash / cast / special get a pad button.
 	var right := _column(columns)
 	right.add_child(_label(_COPY.settings_controls_heading, 20, Color(0.75, 0.8, 1.0)))
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override(&"separation", 10)
-	header.add_child(_sized(_label("", 14, Color.WHITE), 104))
-	header.add_child(_sized(_label(_COPY.settings_keyboard_column, 14, Color(0.6, 0.6, 0.68)), 120))
-	header.add_child(_sized(_label(_COPY.settings_gamepad_heading, 14, Color(0.6, 0.6, 0.68)), 90))
-	right.add_child(header)
+	# ADR-0035: one grid for the header and every row, so the key and pad columns line
+	# up whatever width the longest action name takes at the current text size.
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override(&"h_separation", 10)
+	grid.add_theme_constant_override(&"v_separation", 8)
+	grid.add_child(_sized(_label("", 14, Color.WHITE), 104))
+	grid.add_child(_sized(_label(_COPY.settings_keyboard_column, 14, Color(0.6, 0.6, 0.68)), 120))
+	grid.add_child(_sized(_label(_COPY.settings_gamepad_heading, 14, Color(0.6, 0.6, 0.68)), 90))
 	for i: int in GameSettings.REMAPPABLE.size():
 		var action: StringName = GameSettings.REMAPPABLE[i]
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override(&"separation", 10)
 		var name_text: String = _COPY.settings_action_names[i] \
 			if i < _COPY.settings_action_names.size() else String(action)
-		row.add_child(_sized(_label(name_text, 16, Color(0.82, 0.82, 0.88)), 104))
+		grid.add_child(_sized(_label(name_text, 16, Color(0.82, 0.82, 0.88)), 104))
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(120, 32)
 		b.pressed.connect(_start_listening.bind(action))
 		_key_buttons[action] = b
-		row.add_child(b)
+		grid.add_child(b)
 		if GameSettings.PAD_REMAPPABLE.has(action):
 			var pb := Button.new()
 			pb.custom_minimum_size = Vector2(90, 32)
 			pb.pressed.connect(_start_listening_pad.bind(action))
 			_pad_buttons[action] = pb
-			row.add_child(pb)
+			grid.add_child(pb)
 		else:
-			row.add_child(_sized(_label(_COPY.settings_pad_stick, 14, Color(0.5, 0.5, 0.58)), 90))
-		right.add_child(row)
+			grid.add_child(_sized(_label(_COPY.settings_pad_stick, 14, Color(0.5, 0.5, 0.58)), 90))
+	right.add_child(grid)
+	_controls_grid = grid
 	var resets := HBoxContainer.new()
 	resets.add_theme_constant_override(&"separation", 10)
 	var reset := Button.new()
