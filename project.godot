@@ -42,6 +42,7 @@ SpellCastingEffects="*res://src/systems/spell_casting_effects.gd"
 SpellVFX="*res://src/ui/spell_vfx.gd"
 RunManager="*res://src/systems/run_manager.gd"
 InputPrompts="*res://src/core/input_prompts.gd"
+UIFeel="*res://src/ui/ui_feel.gd"
 
 [editor_plugins]
 

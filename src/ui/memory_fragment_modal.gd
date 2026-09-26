@@ -3,7 +3,8 @@
 ## Pauses the tree while open and restores the previous pause state when it closes
 ## (or is freed). Input is ignored for a short grace period so a cast or dash held
 ## at the moment a boss dies does not skip the text. Then any key, click or gamepad
-## button closes it and emits [signal closed].
+## button closes it and emits [signal closed]. The body types out (U9); a press while it
+## is typing shows it all instead of closing. Reduce motion shows it at once.
 ##
 ## Three ways to fill it (call one before add_child()):
 ## [method setup_fragment] for a story fragment, [method setup_ending] for an ending,
@@ -28,6 +29,11 @@ var _title: String = ""
 var _body: String = ""
 var _footnote: String = ""
 var _accent: Color = Color(0.55, 0.85, 1.0)
+
+## Body text, typed out a character at a time (U9); a press finishes it at once.
+var _body_label: Label = null
+var _type_time: float = 0.0
+var _typing: bool = false
 
 var _was_paused: bool = false
 var _age: float = 0.0
@@ -90,6 +96,18 @@ func get_footnote() -> String:
 	return _footnote
 
 
+## True while the body text is still being typed out (test seam).
+func is_typing() -> bool:
+	return _typing
+
+
+## Shows the whole body at once. Called on the first press while typing.
+func finish_typing() -> void:
+	_typing = false
+	if _body_label != null:
+		_body_label.visible_characters = -1
+
+
 ## True once the input grace period has passed.
 func can_dismiss() -> bool:
 	return _age >= INPUT_GRACE_SEC
@@ -123,6 +141,13 @@ func _exit_tree() -> void:
 
 func _process(delta: float) -> void:
 	_age += delta
+	if _typing:
+		_type_time += delta
+		var total: int = _body_label.get_total_character_count()
+		var shown: int = UIFeel.typewriter_chars(_type_time, total)
+		_body_label.visible_characters = shown
+		if shown >= total:
+			finish_typing()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -132,7 +157,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not pressed:
 		return
 	get_viewport().set_input_as_handled()
-	if can_dismiss():
+	if _typing:
+		finish_typing()
+	elif can_dismiss():
 		close()
 
 
@@ -171,6 +198,12 @@ func _build_ui() -> void:
 	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	body.custom_minimum_size = Vector2(760.0, 0.0)
 	vbox.add_child(body)
+	_body_label = body
+	_typing = not GameSettings.motion_reduced() and not _body.is_empty()
+	if _typing:
+		# Lay out the full text first so the card does not grow line by line.
+		body.visible_characters_behavior = TextServer.VC_CHARS_AFTER_SHAPING
+		body.visible_characters = 0
 
 	if not _footnote.is_empty():
 		var foot := _make_label(_footnote, 16, Color(0.75, 0.7, 0.55))
@@ -180,10 +213,9 @@ func _build_ui() -> void:
 	vbox.add_child(_make_label(_COPY.memory_continue_hint, 15, Color(0.5, 0.5, 0.56)))
 
 	# Fade in so the card reads as a memory surfacing, not a menu popping.
+	# Reduce motion shows it at once (UIFeel.fade_in).
 	for child: Node in [dim, center]:
-		(child as CanvasItem).modulate.a = 0.0
-		var tw: Tween = create_tween()
-		tw.tween_property(child, "modulate:a", 1.0, 0.5)
+		UIFeel.fade_in(child as CanvasItem, 0.5)
 
 
 func _make_label(text: String, size: int, color: Color) -> Label:

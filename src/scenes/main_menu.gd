@@ -41,6 +41,7 @@ func _ready() -> void:
 	progress = MetaProgress.load_from(progress_path)
 	GameSettings.active().apply_display_once()
 	_build_ui()
+	UIFeel.fade_in(self, 0.35)
 
 
 ## Builds the menu (U7): the vault backdrop with Fayde on the right; on the left the
@@ -48,6 +49,7 @@ func _ready() -> void:
 ## the Hard Mode toggle, with the controls line underneath.
 func _build_ui() -> void:
 	var backdrop := MenuBackdrop.new()
+	backdrop.animate = not GameSettings.motion_reduced()
 	add_child(backdrop)
 
 	var column := VBoxContainer.new()

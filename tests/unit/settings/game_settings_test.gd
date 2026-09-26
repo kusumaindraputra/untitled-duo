@@ -62,6 +62,7 @@ func test_game_settings_defaults() -> void:
 	assert_bool(s.fullscreen).is_false()
 	assert_float(s.screen_shake).is_equal(1.0)
 	assert_bool(s.reduce_flashes).is_false()
+	assert_bool(s.reduce_motion).is_false()
 	assert_that(s.window_size()).is_equal(GameSettings.RESOLUTIONS[0])
 
 
@@ -75,6 +76,7 @@ func test_game_settings_round_trip_keeps_audio_section() -> void:
 	s.vsync = false
 	s.screen_shake = 0.4
 	s.reduce_flashes = true
+	s.reduce_motion = true
 	s.key_overrides[ACTION_A] = KEY_J
 	assert_int(s.save_to(TEST_PATH)).is_equal(OK)
 	var back := GameSettings.load_from(TEST_PATH)
@@ -83,6 +85,7 @@ func test_game_settings_round_trip_keeps_audio_section() -> void:
 	assert_bool(back.vsync).is_false()
 	assert_float(back.screen_shake).is_equal_approx(0.4, 0.001)
 	assert_bool(back.reduce_flashes).is_true()
+	assert_bool(back.reduce_motion).is_true()
 	assert_int(back.key_overrides[ACTION_A]).is_equal(KEY_J)
 	var again := ConfigFile.new()
 	again.load(TEST_PATH)

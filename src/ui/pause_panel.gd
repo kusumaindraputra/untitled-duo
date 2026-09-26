@@ -63,6 +63,10 @@ static func sigil_lines(sigils: Array, copy: UICopy) -> Array[String]:
 	return lines
 
 
+func _ready() -> void:
+	UIFeel.fade_in(self)
+
+
 ## Builds the overlay from [param data] (see class doc).
 func setup(data: Dictionary) -> void:
 	anchor_right = 1.0

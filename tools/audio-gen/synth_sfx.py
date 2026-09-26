@@ -230,11 +230,24 @@ def sfx_vent_ignite():
     return 0.45, mix((1.0, whoosh), (0.3, env(tone(90, 120, 0.4, "saw"), 0.08, 1.0, hold=0.3)))
 
 
+def sfx_ui_focus():
+    return 0.22, note(1760, 0.03, "triangle", 2.5)
+
+
+def sfx_ui_confirm():
+    return 0.32, seq(note(880, 0.04, duty=0.25, decay=2.0), note(1320, 0.07, duty=0.25, decay=1.8))
+
+
+def sfx_ui_back():
+    return 0.28, seq(note(988, 0.04, "triangle", 2.0), note(660, 0.07, "triangle", 1.8))
+
+
 CUES = [
     sfx_bullet_fire, sfx_enemy_windup, sfx_laser_charge, sfx_laser_fire, sfx_mortar_whistle,
     sfx_mortar_blast, sfx_enemy_alert, sfx_boss_phase, sfx_perfect_dodge, sfx_perfect_cast,
     sfx_special_ready, sfx_special_fire, sfx_graze, sfx_orb_pickup, sfx_dash_ready, sfx_rank_up,
     sfx_room_rank, sfx_pillar_break, sfx_reaction, sfx_vent_ignite,
+    sfx_ui_focus, sfx_ui_confirm, sfx_ui_back,
 ]
 
 

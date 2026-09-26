@@ -37,6 +37,9 @@ func _ready() -> void:
 	if progress == null:
 		progress = MetaProgress.new()
 	_build()
+	for child: Node in get_children():
+		if child is CanvasItem:
+			UIFeel.fade_in(child as CanvasItem)
 	refresh()
 	var first: int = maxi(_META.heirloom_ids.find(progress.equipped), 0)
 	if not _buttons.is_empty():

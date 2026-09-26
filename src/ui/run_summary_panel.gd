@@ -65,6 +65,10 @@ static func stat_rows(data: Dictionary, copy: UICopy) -> Array:
 	]
 
 
+func _ready() -> void:
+	UIFeel.fade_in(self)
+
+
 ## Builds the screen for [param data] (see class doc for keys).
 func setup(data: Dictionary) -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

@@ -47,6 +47,8 @@ var vsync: bool = true
 ## Screen shake strength, 0.0 (off) to 1.0 (full).
 var screen_shake: float = 1.0
 var reduce_flashes: bool = false
+## Skips screen fades and typewriter text and stills menu motion (U9).
+var reduce_motion: bool = false
 ## Action → keycode for rebound actions only; unbound actions keep their defaults.
 var key_overrides: Dictionary[StringName, int] = {}
 
@@ -61,6 +63,11 @@ static func active() -> GameSettings:
 ## Multiplier for camera shake / trauma (1.0 when no settings are loaded).
 static func shake_multiplier() -> float:
 	return clampf(current.screen_shake, 0.0, 1.0) if current != null else 1.0
+
+
+## True when menus and screens should skip fades, typewriter text and idle motion.
+static func motion_reduced() -> bool:
+	return current != null and current.reduce_motion
 
 
 ## Multiplier for full-screen flash opacity (1.0, or REDUCED_FLASH_SCALE).
@@ -206,6 +213,7 @@ static func load_from(path: String = DEFAULT_PATH) -> GameSettings:
 	s.vsync = bool(cfg.get_value(_SECTION, "vsync", true))
 	s.screen_shake = clampf(float(cfg.get_value(_SECTION, "screen_shake", 1.0)), 0.0, 1.0)
 	s.reduce_flashes = bool(cfg.get_value(_SECTION, "reduce_flashes", false))
+	s.reduce_motion = bool(cfg.get_value(_SECTION, "reduce_motion", false))
 	if cfg.has_section(_KEYS_SECTION):
 		for key: String in cfg.get_section_keys(_KEYS_SECTION):
 			var action := StringName(key)
@@ -224,6 +232,7 @@ func save_to(path: String = DEFAULT_PATH) -> Error:
 	cfg.set_value(_SECTION, "vsync", vsync)
 	cfg.set_value(_SECTION, "screen_shake", screen_shake)
 	cfg.set_value(_SECTION, "reduce_flashes", reduce_flashes)
+	cfg.set_value(_SECTION, "reduce_motion", reduce_motion)
 	if cfg.has_section(_KEYS_SECTION):
 		cfg.erase_section(_KEYS_SECTION)
 	for action: StringName in key_overrides:

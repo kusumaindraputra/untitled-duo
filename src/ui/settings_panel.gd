@@ -33,6 +33,9 @@ func _ready() -> void:
 	GameSettings.ensure_actions()
 	settings.apply_keys()
 	_build()
+	for child: Node in get_children():
+		if child is CanvasItem:
+			UIFeel.fade_in(child as CanvasItem)
 	_back.grab_focus()
 
 
@@ -92,6 +95,10 @@ func _build() -> void:
 	var fl := _check(left, _COPY.settings_reduce_flashes, settings.reduce_flashes)
 	fl.toggled.connect(func(on: bool) -> void:
 		settings.reduce_flashes = on
+		_save())
+	var mo := _check(left, _COPY.settings_reduce_motion, settings.reduce_motion)
+	mo.toggled.connect(func(on: bool) -> void:
+		settings.reduce_motion = on
 		_save())
 
 	left.add_child(_label(_COPY.settings_audio_heading, 20, Color(0.75, 0.8, 1.0)))

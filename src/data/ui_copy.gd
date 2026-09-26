@@ -231,6 +231,8 @@ extends Resource
 @export var settings_comfort_heading: String = "Comfort"
 @export var settings_screen_shake: String = "Screen shake"
 @export var settings_reduce_flashes: String = "Reduce screen flashes"
+## Comfort toggle: no fades or typewriter text, still menu backdrop (U9).
+@export var settings_reduce_motion: String = "Reduce motion"
 @export var settings_audio_heading: String = "Audio"
 @export var settings_master: String = "Master"
 @export var settings_music: String = "Music"
