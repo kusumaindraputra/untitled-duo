@@ -158,7 +158,7 @@ func _build() -> void:
 	root.add_child(_desc_label)
 
 	_back = Button.new()
-	_back.text = _COPY.heirloom_back
+	_back.text = InputPrompts.pick(_COPY.heirloom_back, _COPY.heirloom_back_pad)
 	_back.custom_minimum_size = Vector2(200, 44)
 	_back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_back.add_theme_font_size_override(&"font_size", 18)

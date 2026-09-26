@@ -229,6 +229,11 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# U8: Start pauses / resumes on a gamepad, like Esc on the keyboard.
+	var joy := event as InputEventJoypadButton
+	if joy != null and joy.pressed and joy.button_index == JOY_BUTTON_START:
+		_toggle_pause()
+		return
 	if event is InputEventKey and not event.echo and event.pressed:
 		if event.keycode == KEY_ESCAPE:
 			_toggle_pause()
@@ -295,7 +300,10 @@ func _show_title_screen() -> void:
 	vbox.add_child(_make_spacer(40))
 
 	var controls := Label.new()
-	controls.text = "WASD / Stick  Move      Shift / X  Dash      Space / A  Cast      Enter / Y  Confirm\nGamepad: D-pad selects a grid slot · A places · B clears · RB cycles Prana"
+	controls.text = _title_controls_text()
+	InputPrompts.device_changed.connect(func(_pad: bool) -> void:
+		if is_instance_valid(controls):
+			controls.text = _title_controls_text())
 	controls.add_theme_font_size_override(&"font_size", 18)
 	controls.add_theme_color_override(&"font_color", Color(0.6, 0.6, 0.66))
 	controls.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -526,7 +534,8 @@ func _show_tutorial_overlay() -> void:
 		"1.  Your CORE Prana sits centre — it's your primary element.",
 		"2.  Clear rooms to earn Prana, then add them to your grid.",
 		"3.  3+ of one type = a stronger spell Tier.",
-		"4.  Press ENTER to confirm, then SPACE to cast in battle.",
+		InputPrompts.pick(_COPY.coach_confirm_step_kb % InputPrompts.key_label(&"cast", "Space"),
+			_COPY.coach_confirm_step_pad),
 	]
 	for line: String in steps:
 		var step := Label.new()
@@ -565,6 +574,11 @@ func _toggle_pause() -> void:
 		GameStateManager.resume_game()
 	else:
 		GameStateManager.pause_game()
+
+
+## Title-card controls for the last-used device (U8): moves and actions, then the grid.
+func _title_controls_text() -> String:
+	return InputPrompts.controls_line() + "\n" + InputPrompts.pick(_COPY.grid_controls_kb, _COPY.grid_controls_pad)
 
 
 ## Builds the pause overlay (PausePanel, U6) in response to GameStateManager.game_paused.

@@ -28,7 +28,10 @@ extends Resource
 @export var prep_header: String = "PREPARATION PHASE"
 
 ## Instructional hint under the preparation header.
-@export var prep_hint: String = "Drag Prana into the grid\nArrows move · E place · Q discard · C cycle"
+@export var prep_hint: String = "Drag Prana into the grid"
+## Second prep-hint line by device (U8): keyboard (place / discard / cycle keys) and pad.
+@export var prep_controls_format: String = "Arrows move · %s place · %s discard · %s cycle"
+@export var prep_controls_pad: String = "D-pad move · A place · B discard · RB cycle"
 
 ## Divider label above the player's Prana bag tray.
 @export var bag_label: String = "─── YOUR PRANA ───"
@@ -57,7 +60,8 @@ extends Resource
 @export_group("Combat HUD")
 
 ## First-combat dash hint (AC-DH-03).
-@export var dash_hint: String = "Shift / LT — Dash"
+@export var dash_hint_format: String = "%s — Dash"
+@export var dash_hint_pad: String = "X — Dash"
 
 ## Banner word shown when a Cascade fires this wave (ADR-0016 recognition layer).
 ## Rendered as "✦ {cascade_label} ×{mult}" by the Combat HUD callout.
@@ -71,7 +75,8 @@ extends Resource
 @export var special_label: String = "SPECIAL"
 
 ## Label beside the Special meter when it is full (names the keyboard + pad bindings).
-@export var special_ready_label: String = "SPECIAL READY — F / RMB / Y"
+@export var special_ready_format: String = "SPECIAL READY — %s / RMB"
+@export var special_ready_pad: String = "SPECIAL READY — Y"
 
 @export_group("Bullet Hell (ADR-0018)")
 
@@ -111,6 +116,7 @@ extends Resource
 
 ## Hint shown in the preparation panel when quick continue is available.
 @export var quick_continue_hint: String = "No new Prana — press Space or Enter to continue"
+@export var quick_continue_hint_pad: String = "No new Prana — press Y to continue"
 
 @export_group("Meta Progression (ADR-0025)")
 
@@ -417,3 +423,20 @@ extends Resource
 @export var heirloom_screen_title: String = "HEIRLOOMS"
 @export var heirloom_shards_format: String = "Cipher Shards  %d"
 @export var heirloom_back: String = "Back  (Esc)"
+
+@export_group("Button prompts (U8)")
+
+## Control summary on the main menu and the title card: move keys, dash, cast, special.
+@export var controls_format: String = "%s  Move      %s  Dash      %s  Cast      %s  Special      Enter  Confirm"
+@export var controls_pad: String = "Stick  Move      X  Dash      A  Cast      Y  Special      Y  Confirm"
+## Grid controls line on the title card.
+@export var grid_controls_kb: String = "Arrows select a grid slot · E places · Q clears · C cycles Prana"
+@export var grid_controls_pad: String = "D-pad selects a grid slot · A places · B clears · RB cycles Prana"
+## Pad variants of buttons whose keyboard text names a key.
+@export var pause_resume_pad: String = "Resume  (Start)"
+@export var pause_restart_pad: String = "Restart Run"
+@export var summary_run_again_pad: String = "Run Again"
+@export var heirloom_back_pad: String = "Back  (B)"
+## Last How-to-Fight step: keyboard (%s = cast key) and pad.
+@export var coach_confirm_step_kb: String = "4.  Press ENTER to confirm, then %s to cast in battle."
+@export var coach_confirm_step_pad: String = "4.  Press Y to confirm, then A to cast in battle."

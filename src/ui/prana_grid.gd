@@ -93,6 +93,8 @@ var _grid_panel: Control = null
 var _panel_layout: VBoxContainer = null
 ## Gamepad strip ("PAD: …"); shown only while the slot cursor is in use (U2). Null headless.
 var _gp_strip: HBoxContainer = null
+## Prep hint under the header; its controls line follows the last-used device (U8).
+var _hint_label: Label = null
 
 ## Compact 3×3 indicator shown in LOCKED state instead of the full grid panel.
 ## Null in headless tests. mouse_filter = MOUSE_FILTER_IGNORE (AC-CG-07).
@@ -134,6 +136,7 @@ func _ready() -> void:
 	GameStateManager.grid_locked.connect(_on_grid_locked)
 	GameStateManager.grid_hidden.connect(_on_grid_hidden)
 	arrangement_confirmed.connect(GameStateManager.receive_arrangement_confirmed)
+	InputPrompts.device_changed.connect(_on_device_changed)
 	_create_ui_nodes()
 	visible = false
 	# Initialize gamepad cursor position after first layout pass. (ADR-0013: must defer
@@ -544,6 +547,8 @@ func _create_ui_nodes() -> void:
 	layout.offset_top = 8.0
 	panel.add_child(layout)
 	_panel_layout = layout
+	# Wrapped labels re-measure after the first layout pass; refit whenever content height changes.
+	layout.minimum_size_changed.connect(_queue_fit_panel)
 
 	# Header
 	var header := Label.new()
@@ -552,7 +557,8 @@ func _create_ui_nodes() -> void:
 	layout.add_child(header)
 
 	var hint := Label.new()
-	hint.text = _COPY.prep_hint
+	_hint_label = hint
+	hint.text = _prep_hint_text()
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.add_theme_font_size_override(&"font_size", 13)
@@ -629,7 +635,7 @@ func _create_ui_nodes() -> void:
 	buttons.add_child(clear_btn)
 
 	_quick_hint = Label.new()
-	_quick_hint.text = _COPY.quick_continue_hint
+	_quick_hint.text = InputPrompts.pick(_COPY.quick_continue_hint, _COPY.quick_continue_hint_pad)
 	_quick_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_quick_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_quick_hint.add_theme_font_size_override(&"font_size", 14)
@@ -762,6 +768,19 @@ func build_spell_card() -> Dictionary:
 ## The current 9 slots as type ids (null = empty), copied. Read by the pause build view (U6).
 func get_slot_types() -> Array:
 	return _slots.duplicate()
+
+
+## Prep hint: the instruction line, then controls for the last-used device (U8).
+func _prep_hint_text() -> String:
+	return _COPY.prep_hint + "\n" + InputPrompts.prep_controls()
+
+
+func _on_device_changed(_using_pad: bool) -> void:
+	if _hint_label != null:
+		_hint_label.text = _prep_hint_text()
+	if _quick_hint != null:
+		_quick_hint.text = InputPrompts.pick(_COPY.quick_continue_hint, _COPY.quick_continue_hint_pad)
+	_queue_fit_panel()
 
 
 ## Element colours in type_id order, for views outside the grid (pause build view, U6).

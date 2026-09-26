@@ -28,6 +28,8 @@ const BUTTON_WIDTH: float = 280.0
 
 var _progress_label: Label = null
 var _play_button: Button = null
+## Controls line at the bottom; follows the last-used device (U8).
+var _controls_label: Label = null
 var _hard_toggle: CheckButton = null
 var _hard_locked_label: Label = null
 
@@ -86,9 +88,9 @@ func _build_ui() -> void:
 	_hard_locked_label = _make_label(_COPY.hard_mode_locked, 15, Color(0.5, 0.5, 0.56))
 	column.add_child(_hard_locked_label)
 
-	var controls := _make_label(
-		"WASD / Stick  Move      Shift / X  Dash      Space / A  Cast      Enter / Y  Confirm",
-		14, Color(0.55, 0.55, 0.62))
+	var controls := _make_label(InputPrompts.controls_line(), 14, Color(0.55, 0.55, 0.62))
+	_controls_label = controls
+	InputPrompts.device_changed.connect(_on_device_changed)
 	controls.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	controls.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	controls.offset_left = COLUMN_LEFT
@@ -106,6 +108,10 @@ func _build_ui() -> void:
 	_refresh_progress()
 	# Focus Play so keyboard (Enter/Space) and gamepad (ui_accept) work immediately.
 	_play_button.grab_focus()
+
+
+func _on_device_changed(_using_pad: bool) -> void:
+	_controls_label.text = InputPrompts.controls_line()
 
 
 ## A left-aligned menu button of the column's width.

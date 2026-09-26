@@ -96,8 +96,8 @@ func setup(data: Dictionary) -> void:
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	buttons.add_theme_constant_override(&"separation", 12)
 	columns.add_child(buttons)
-	resume_button = _button(buttons, _COPY.pause_resume, resume_pressed)
-	_button(buttons, _COPY.pause_restart, restart_pressed)
+	resume_button = _button(buttons, InputPrompts.pick(_COPY.pause_resume, _COPY.pause_resume_pad), resume_pressed)
+	_button(buttons, InputPrompts.pick(_COPY.pause_restart, _COPY.pause_restart_pad), restart_pressed)
 	settings_button = _button(buttons, _COPY.settings_button.capitalize(), settings_pressed)
 	_button(buttons, _COPY.coach_replay_button, tutorial_pressed)
 	_button(buttons, _COPY.pause_main_menu, main_menu_pressed)

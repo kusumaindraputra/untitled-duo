@@ -134,7 +134,7 @@ func setup(data: Dictionary) -> void:
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	buttons.add_theme_constant_override(&"separation", 16)
 	root.add_child(buttons)
-	run_again_button = _button(_COPY.summary_run_again)
+	run_again_button = _button(InputPrompts.pick(_COPY.summary_run_again, _COPY.summary_run_again_pad))
 	run_again_button.pressed.connect(func() -> void: run_again_pressed.emit())
 	buttons.add_child(run_again_button)
 	var menu := _button(_COPY.summary_main_menu)

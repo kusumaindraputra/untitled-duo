@@ -119,6 +119,8 @@ var chain_dots_container: HBoxContainer = null
 ## Label shown during Combat Phase with the dash keybinding hint (AC-DH-01, AC-DH-03).
 ## Null in headless tests.
 var _dash_hint_label: Label = null
+## True while the Special meter is full (its label shows the ready prompt).
+var _special_ready: bool = false
 
 ## Special meter bar (beside the dash icon); fills from SpellCastingEffects.special_meter_changed.
 var _special_bar: ProgressBar = null
@@ -288,6 +290,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_create_ui_nodes()
 	get_viewport().size_changed.connect(_layout_boss_ui)
+	InputPrompts.device_changed.connect(_on_device_changed)
 	HealthAndDamage.damage_taken.connect(_on_damage_taken)
 	HealthAndDamage.enemy_killed.connect(_on_enemy_killed)
 	HealthAndDamage.health_restored.connect(_on_health_restored)
@@ -453,7 +456,7 @@ func _create_ui_nodes() -> void:
 	add_child(chain_dots_container)
 
 	_dash_hint_label = Label.new()
-	_dash_hint_label.text = _COPY.dash_hint
+	_dash_hint_label.text = InputPrompts.dash_hint()
 	_dash_hint_label.add_theme_font_size_override(&"font_size", 12)
 	_dash_hint_label.add_theme_color_override(&"font_color", Color(0.8, 0.8, 0.86))
 	_dash_hint_label.position = Vector2(30, 58)
@@ -1364,6 +1367,14 @@ func _on_combat_started(_is_boss: bool = false) -> void:
 	chain_dots_container.visible = true
 
 
+## Rebuilds device-dependent prompts when the player switches keyboard ↔ pad (U8).
+func _on_device_changed(_using_pad: bool) -> void:
+	if _dash_hint_label != null:
+		_dash_hint_label.text = InputPrompts.dash_hint()
+	if _special_label != null and _special_ready:
+		_special_label.text = InputPrompts.special_ready()
+
+
 ## Handles special_meter_changed from SpellCastingEffects: fills the bar, and when full
 ## tints it in the core Prana colour and swaps the label to the ready prompt.
 func _on_special_meter_changed(value: float, max_value: float) -> void:
@@ -1372,7 +1383,8 @@ func _on_special_meter_changed(value: float, max_value: float) -> void:
 	_special_bar.max_value = max_value
 	_special_bar.value = value
 	var is_full: bool = max_value > 0.0 and value >= max_value
-	_special_label.text = _COPY.special_ready_label if is_full else _COPY.special_label
+	_special_ready = is_full
+	_special_label.text = InputPrompts.special_ready() if is_full else _COPY.special_label
 	var tint: Color = Color(0.75, 0.75, 0.75)
 	if is_full:
 		tint = Color.WHITE
