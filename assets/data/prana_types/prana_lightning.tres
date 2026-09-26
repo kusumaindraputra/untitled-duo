@@ -1,8 +1,7 @@
 [gd_resource type="Resource" script_class="PranaType" load_steps=4 format=3]
 
 [ext_resource type="Script" uid="uid://ck4rpqu6u0n07" path="res://src/data/prana_type.gd" id="1_lightning"]
-
-[sub_resource type="ImageTexture" id="ImageTexture_lightning"]
+[ext_resource type="Texture2D" path="res://assets/art/ui/prana_icons/prana_stormgold.png" id="2_icon"]
 
 [sub_resource type="AudioStreamWAV" id="AudioStreamWAV_lightning"]
 
@@ -13,7 +12,7 @@ name = "Stormgold"
 element = "lightning"
 semantic_identity = "A heartbeat compressed into a crack of thunder."
 color = Color(1.0, 0.8, 0.0, 1)
-icon = SubResource("ImageTexture_lightning")
+icon = ExtResource("2_icon")
 vfx_burst_shape = 2
 audio_signature = SubResource("AudioStreamWAV_lightning")
 cast_animation = 2

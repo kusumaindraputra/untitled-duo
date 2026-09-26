@@ -1,6 +1,6 @@
 ## prana_type_token.gd — Draggable Prana type token in the Type Selector panel.
 ##
-## Displays a colored tile with the type abbreviation. Implements get_drag_data()
+## Displays a colored tile with the type's shape icon (ADR-0036) over its abbreviation. Implements get_drag_data()
 ## so the player can drag it onto a PranaGridSlot (PranaGridSlot.can_drop_data
 ## accepts any Dictionary with "type_id").
 ##
@@ -34,6 +34,9 @@ static func type_abbrev(type_id: int) -> String:
 		return "?"
 	return _COPY.type_abbrevs[type_id]
 
+## Whole-number scale for the 12 px shape icon on a token (24 px).
+const ICON_SCALE: int = 2
+
 ## Prana type index (0–4). Set by PranaGrid._create_ui_nodes() before add_child().
 var type_id: int = -1
 
@@ -57,13 +60,23 @@ func _ready() -> void:
 	bg.color = type_color(type_id)
 	add_child(bg)
 
+	var stack := VBoxContainer.new()
+	stack.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	stack.add_theme_constant_override(&"separation", 0)
+	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(stack)
+
+	var icon := PranaIcon.make_rect(type_id, ICON_SCALE, PranaIcon.ON_COLOR_TINT, false)
+	stack.add_child(icon)
+
 	var label := Label.new()
 	label.text = type_abbrev(type_id)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	label.add_theme_font_size_override(&"font_size", 12)
+	label.add_theme_color_override(&"font_color", PranaIcon.ON_COLOR_TINT)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(label)
+	stack.add_child(label)
 
 
 ## Left-click behaviour depends on mode. Bag tokens (from_bag) select this type for
@@ -83,13 +96,11 @@ func _gui_input(event: InputEvent) -> void:
 
 ## Returns the drag payload consumed by PranaGridSlot._drop_data().
 ## Bag tokens tag the payload "from_bag" so the drop consumes a bag fragment and only
-## lands on an empty slot. Drag preview shows the type abbreviation label.
+## lands on an empty slot. Drag preview shows the type's shape icon in its colour.
 func _get_drag_data(_at_position: Vector2) -> Variant:
 	if type_id < 0:
 		return null
-	var preview := Label.new()
-	preview.text = type_abbrev(type_id)
-	set_drag_preview(preview)
+	set_drag_preview(PranaIcon.make_rect(type_id, PranaGridSlot.ICON_SCALE, type_color(type_id), false))
 	var payload: Dictionary = { "type_id": type_id }
 	if from_bag:
 		payload["from_bag"] = true

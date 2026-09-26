@@ -44,6 +44,13 @@ var _default_stylebox: StyleBoxFlat = null
 ## Created in _ready(); null until the node enters the scene tree.
 var _color_rect: ColorRect = null
 
+## Shape icon over the colour so the type reads without colour (ADR-0036).
+## Created in _ready(); hidden while the slot is empty.
+var _icon_rect: TextureRect = null
+
+## Whole-number scale for the 12 px icon: 36 px inside the 54 px slot.
+const ICON_SCALE: int = 3
+
 
 func _ready() -> void:
 	_color_rect = ColorRect.new()
@@ -51,6 +58,10 @@ func _ready() -> void:
 	_color_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_color_rect.color = EMPTY_COLOR
 	add_child(_color_rect)
+	_icon_rect = PranaIcon.make_rect(0, ICON_SCALE)
+	_icon_rect.visible = false
+	add_child(_icon_rect)
+	refresh(_displayed_type_id)
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
 
@@ -63,9 +74,8 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 	if _displayed_type_id == -1:
 		return null
 	var payload := { "type_id": _displayed_type_id, "source_slot": slot_index }
-	var preview := Label.new()
-	preview.text = str(_displayed_type_id)
-	set_drag_preview(preview)
+	set_drag_preview(PranaIcon.make_rect(_displayed_type_id, ICON_SCALE,
+			PranaTypeToken.type_color(_displayed_type_id), false))
 	return payload
 
 
@@ -136,3 +146,7 @@ func refresh(type_id: int) -> void:
 	_displayed_type_id = type_id
 	if _color_rect != null:
 		_color_rect.color = EMPTY_COLOR if type_id == -1 else PranaTypeToken.type_color(type_id)
+	if _icon_rect != null:
+		_icon_rect.visible = type_id != -1
+		if type_id != -1:
+			_icon_rect.texture = PranaIcon.texture(type_id, ICON_SCALE)

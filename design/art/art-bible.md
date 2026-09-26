@@ -325,6 +325,8 @@ Every Prana slot displays a small icon that is silhouette-readable without color
 
 **Validation rule:** Each icon must be recognizable in silhouette at 8×8 px. If it cannot be read at that size, the icon must be simplified before shipping.
 
+**Implemented (ADR-0036):** the icons ship as 12×12 white silhouettes in `assets/art/ui/prana_icons/` (flame, eye, bolt, snowflake, clover), tinted black on Prana-colour tiles and Prana colour on dark buttons. They show on grid slots, bag tokens, core Prana pick, Prana sigil cards and the pause build grid. A unit test checks the silhouettes stay distinct at 8×8.
+
 #### Additional Redundancy Cues
 
 | Cue | Implementation |

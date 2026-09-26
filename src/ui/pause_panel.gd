@@ -32,6 +32,8 @@ const EMPTY_SLOT := Color(0.14, 0.14, 0.18)
 const BUTTON_SIZE := Vector2(240, 48)
 const CARD_WIDTH: float = 360.0
 const CELL_SIZE: float = 30.0
+## Whole-number scale for the 12 px Prana shape icon in a mini-grid cell (24 px).
+const MINI_ICON_SCALE: int = 2
 ## Size of the pause floor map relative to the HUD one.
 const MAP_SCALE: float = 1.25
 ## Legend swatch size and text size.
@@ -235,7 +237,7 @@ func _card_panel() -> PanelContainer:
 	return card
 
 
-## A 3×3 of coloured cells with element abbreviations; empty slots stay dark.
+## A 3×3 of coloured cells with element shape icons (ADR-0036); empty slots stay dark.
 func _mini_grid(grid: Array, colors: Array, abbrevs: Array) -> Control:
 	var g := GridContainer.new()
 	g.columns = 3
@@ -256,10 +258,14 @@ func _mini_grid(grid: Array, colors: Array, abbrevs: Array) -> Control:
 			sb.set_border_width_all(2)
 		cell.add_theme_stylebox_override(&"panel", sb)
 		if t != null and int(t) >= 0 and int(t) < abbrevs.size():
-			var l := _label(str(abbrevs[int(t)]), 10, Color(0.06, 0.05, 0.08))
-			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			cell.add_child(l)
+			var icon: Texture2D = PranaIcon.texture(int(t), MINI_ICON_SCALE)
+			if icon != null:
+				cell.add_child(PranaIcon.make_rect(int(t), MINI_ICON_SCALE))
+			else:
+				var l := _label(str(abbrevs[int(t)]), 10, Color(0.06, 0.05, 0.08))
+				l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+				cell.add_child(l)
 		g.add_child(cell)
 	return g
 
