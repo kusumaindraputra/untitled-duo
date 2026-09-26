@@ -15,4 +15,4 @@ homing_turn_deg = 60.0
 homing_duration = 1.1
 speed = 105.0
 damage_mult = 0.5
-color = Color(1, 0.8, 0.3, 1)
+accent = &"keeper"

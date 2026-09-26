@@ -16,4 +16,4 @@ spin_deg = 9.0
 speed = 80.0
 speed_step = 35.0
 damage_mult = 0.5
-color = Color(1, 0.3, 0.6, 1)
+accent = &"warden"

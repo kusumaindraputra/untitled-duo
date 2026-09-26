@@ -16,4 +16,4 @@ active_sec = 0.3
 length = 600.0
 width = 5.0
 damage_mult = 0.9
-color = Color(0.45, 0.9, 1, 1)
+accent = &"sentinel"

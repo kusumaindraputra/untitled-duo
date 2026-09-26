@@ -14,4 +14,3 @@ bursts = 2
 burst_interval = 0.18
 speed = 170.0
 damage_mult = 0.9
-color = Color(0.55, 0.75, 1, 1)

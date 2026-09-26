@@ -13,4 +13,3 @@ active_sec = 0.35
 length = 560.0
 width = 5.0
 damage_mult = 1.4
-color = Color(1, 0.25, 0.2, 1)

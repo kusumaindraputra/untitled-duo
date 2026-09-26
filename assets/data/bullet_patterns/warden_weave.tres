@@ -17,4 +17,4 @@ sine_frequency = 2.0
 speed = 85.0
 damage_mult = 0.4
 bullet_radius = 3.5
-color = Color(0.3, 0.95, 0.8, 1)
+accent = &"warden"

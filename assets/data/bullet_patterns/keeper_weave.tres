@@ -18,4 +18,4 @@ sine_frequency = 2.5
 speed = 90.0
 damage_mult = 0.4
 bullet_radius = 3.5
-color = Color(0.6, 0.9, 1, 1)
+accent = &"keeper"
