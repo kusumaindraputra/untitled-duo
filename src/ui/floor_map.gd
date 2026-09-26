@@ -7,14 +7,17 @@
 ## types never depend on colour alone.
 ##
 ## CombatHUD owns it and calls [method set_floor]. Layout is a pure static function so
-## it is unit-testable without a scene tree.
+## it is unit-testable without a scene tree. The pause screen draws a larger copy with
+## a legend (ADR-0032) from [method snapshot] and [member map_scale].
 class_name FloorMap
 extends Control
 
-## Node radius, and spacing between columns and rows, in px.
-const NODE_RADIUS: float = 8.0
-const COL_SPACING: float = 24.0
-const ROW_SPACING: float = 20.0
+## Node radius, and spacing between columns and rows, in px at map_scale 1.
+const NODE_RADIUS: float = 10.0
+const COL_SPACING: float = 30.0
+const ROW_SPACING: float = 26.0
+## Node letter size in px at map_scale 1.
+const GLYPH_FONT_SIZE: int = 13
 ## Outer padding of the map's backing card, in px.
 const PAD: float = 8.0
 ## Colours for the backing card, edges and the "you are here" ring.
@@ -30,12 +33,15 @@ var type_colors: Array[Color] = []
 var type_letters: Array[String] = []
 var mod_letters: Array[String] = []
 var mod_colors: Array[Color] = []
+## Size multiplier for nodes, spacing and letters (the HUD uses 1, the pause map more).
+var map_scale: float = 1.0
 
 var _types: Array = []
 var _states: Array = []
 var _mods: Array = []
 var _edges: Array = []
 var _current: int = -1
+var _entry: int = -1
 var _cells: Array[Vector2i] = []
 
 
@@ -81,15 +87,16 @@ static func compute_layout(count: int, edges: Array, entry: int) -> Array[Vector
 	return cells
 
 
-## Pixel size of a layout from [method compute_layout] (rows are in half-row units).
-static func layout_size(cells: Array[Vector2i]) -> Vector2:
+## Pixel size of a layout from [method compute_layout] (rows are in half-row units)
+## at [param scale].
+static func layout_size(cells: Array[Vector2i], scale: float = 1.0) -> Vector2:
 	var max_c: int = 0
 	var max_r: int = 0
 	for cell in cells:
 		max_c = maxi(max_c, cell.x)
 		max_r = maxi(max_r, cell.y)
-	return Vector2(float(max_c) * COL_SPACING, float(max_r) * ROW_SPACING * 0.5) \
-		+ Vector2(NODE_RADIUS + PAD, NODE_RADIUS + PAD) * 2.0
+	return (Vector2(float(max_c) * COL_SPACING, float(max_r) * ROW_SPACING * 0.5) \
+		+ Vector2(NODE_RADIUS, NODE_RADIUS) * 2.0) * scale + Vector2(PAD, PAD) * 2.0
 
 
 ## Sets the floor to draw and resizes the map to fit. [param edges] holds Vector2i(from, to).
@@ -99,16 +106,44 @@ func set_floor(types: Array, states: Array, mods: Array, edges: Array, current: 
 	_mods = mods
 	_edges = edges
 	_current = current
+	_entry = entry
 	_cells = compute_layout(types.size(), edges, entry)
-	size = layout_size(_cells)
+	size = layout_size(_cells, map_scale)
+	custom_minimum_size = size
 	queue_redraw()
+
+
+## What this map shows, as the arguments of [method set_floor] plus its colours and
+## letters, so another FloorMap can draw the same floor ({} before set_floor).
+func snapshot() -> Dictionary:
+	if _cells.is_empty():
+		return {}
+	return {
+		"types": _types, "states": _states, "mods": _mods, "edges": _edges,
+		"current": _current, "entry": _entry,
+		"type_colors": type_colors, "type_letters": type_letters,
+		"mod_letters": mod_letters, "mod_colors": mod_colors,
+	}
+
+
+## Builds a map from a [method snapshot] at [param scale].
+static func from_snapshot(snap: Dictionary, scale: float) -> FloorMap:
+	var m := FloorMap.new()
+	m.map_scale = scale
+	m.type_colors.assign(snap.get("type_colors", []))
+	m.type_letters.assign(snap.get("type_letters", []))
+	m.mod_letters.assign(snap.get("mod_letters", []))
+	m.mod_colors.assign(snap.get("mod_colors", []))
+	m.set_floor(snap.get("types", []), snap.get("states", []), snap.get("mods", []),
+		snap.get("edges", []), int(snap.get("current", -1)), int(snap.get("entry", -1)))
+	return m
 
 
 ## Centre of room [param idx] in local px.
 func node_center(idx: int) -> Vector2:
 	var cell: Vector2i = _cells[idx]
-	return Vector2(PAD + NODE_RADIUS + float(cell.x) * COL_SPACING,
-		PAD + NODE_RADIUS + float(cell.y) * ROW_SPACING * 0.5)
+	return Vector2(PAD, PAD) + Vector2(NODE_RADIUS + float(cell.x) * COL_SPACING,
+		NODE_RADIUS + float(cell.y) * ROW_SPACING * 0.5) * map_scale
 
 
 func _visited(idx: int) -> bool:
@@ -128,8 +163,9 @@ func _draw() -> void:
 		if v.x >= _cells.size() or v.y >= _cells.size():
 			continue
 		var walked: bool = _visited(v.x) and _visited(v.y)
-		draw_line(node_center(v.x), node_center(v.y), EDGE_WALKED if walked else EDGE_DIM, 2.0, true)
+		draw_line(node_center(v.x), node_center(v.y), EDGE_WALKED if walked else EDGE_DIM, 2.0 * map_scale, true)
 	var font: Font = get_theme_default_font()
+	var r: float = NODE_RADIUS * map_scale
 	for i in _cells.size():
 		var c: Vector2 = node_center(i)
 		var t: int = int(_types[i])
@@ -138,15 +174,15 @@ func _draw() -> void:
 		col.a = 1.0 if visited else 0.4
 		var mod: int = int(_mods[i]) if i < _mods.size() else 0
 		if i == _current:
-			draw_circle(c, NODE_RADIUS + 3.0, CURRENT_RING)
+			draw_circle(c, r + 3.0 * map_scale, CURRENT_RING)
 		elif mod > 0 and mod < mod_colors.size():
-			draw_circle(c, NODE_RADIUS + 2.0, mod_colors[mod])
-		draw_circle(c, NODE_RADIUS, col)
+			draw_circle(c, r + 2.0 * map_scale, mod_colors[mod])
+		draw_circle(c, r, col)
 		var letter: String = type_letters[t] if t >= 0 and t < type_letters.size() else "?"
 		if mod > 0 and mod < mod_letters.size():
 			letter = mod_letters[mod]
 		if font != null:
-			var fs: int = 11
+			var fs: int = roundi(GLYPH_FONT_SIZE * map_scale)
 			var w: float = font.get_string_size(letter, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 			var glyph: Color = GLYPH_COLOR
 			glyph.a = 1.0 if visited else 0.7
