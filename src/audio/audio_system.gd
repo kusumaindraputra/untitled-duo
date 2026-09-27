@@ -19,6 +19,10 @@
 ##   Tween kill-before-create order: kill prior tween, then set incoming volume, then play,
 ##   then create new tween (ADR-0012 Crossfade Implementation section).
 ##
+## Low-pass muffle (ADR-0044): one shared low-pass on Music/SFX/AMB sweeps down while the
+## pause menu is open and while Fayde is in the DESPERATE HP zone. Tuning lives in
+## assets/data/audio_filter_tuning.tres.
+##
 ## ADR: adr-0012-audio-system-implementation-contract.md
 extends Node
 
@@ -148,6 +152,23 @@ var _current_stinger_priority: int = -1
 ## Last stinger event played — provides restore_duration_sec for _restore_music_after_stinger().
 var _last_stinger_event: AudioEventData = null
 
+# ── Low-pass muffle — pause + critical HP (ADR-0044) ─────────────────────────
+
+## Name tag on the shared low-pass effect, so a re-run _ready() adopts it instead of stacking.
+const MUFFLE_EFFECT_NAME: String = "CipherMuffle"
+const _FILTER_TUNING: AudioFilterTuning = preload("res://assets/data/audio_filter_tuning.tres")
+
+## Muffle tuning. Swappable in tests; defaults to assets/data/audio_filter_tuning.tres.
+var filter_tuning: AudioFilterTuning = _FILTER_TUNING
+## One low-pass resource shared by every filtered bus, so one cutoff moves them all.
+var _lowpass: AudioEffectLowPassFilter = null
+## True while the game is paused through GameStateManager (pause menu).
+var _muffle_paused: bool = false
+## True while Fayde sits in the DESPERATE HP zone.
+var _muffle_critical: bool = false
+## Live cutoff sweep. Runs through pause and slow-mo; killed before each new sweep.
+var _filter_tween: Tween = null
+
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 func _ready() -> void:
@@ -170,6 +191,14 @@ func _ready() -> void:
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	GameStateManager.death_started.connect(_on_death_started)
 	GameStateManager.run_ended.connect(_on_run_ended)
+	# Low-pass muffle (ADR-0044): pause menu and DESPERATE HP zone.
+	_install_lowpass()
+	GameStateManager.game_paused.connect(set_muffle_paused.bind(true))
+	GameStateManager.game_resumed.connect(set_muffle_paused.bind(false))
+	GameStateManager.run_started.connect(clear_muffle)
+	GameStateManager.run_ended.connect(clear_muffle.unbind(1))
+	if is_instance_valid(HealthAndDamage):
+		HealthAndDamage.player_hp_zone_changed.connect(_on_hp_zone_changed)
 	# Restore the player's saved volume preferences (no-op on first run / in CI).
 	load_audio_settings()
 
@@ -818,6 +847,118 @@ func _compute_crossfade_volume(
 ## This is a TEST-ONLY pure function (AC-AS-31).
 func _slider_to_db(slider_value: int) -> float:
 	return lerpf(-80.0, 0.0, float(slider_value) / 100.0)
+
+# ── Low-pass muffle — pause + critical HP (ADR-0044) ─────────────────────────
+
+## Puts one shared AudioEffectLowPassFilter on every bus in [member filter_tuning]'s list,
+## bypassed until a muffle engages. Idempotent: an effect already tagged
+## [constant MUFFLE_EFFECT_NAME] is adopted rather than added twice.
+func _install_lowpass() -> void:
+	for bus_name: StringName in filter_tuning.buses:
+		var idx: int = AudioServer.get_bus_index(bus_name)
+		if idx == -1:
+			continue
+		if _find_muffle_slot(idx) != -1:
+			if _lowpass == null:
+				_lowpass = AudioServer.get_bus_effect(idx, _find_muffle_slot(idx)) as AudioEffectLowPassFilter
+			continue
+		if _lowpass == null:
+			_lowpass = AudioEffectLowPassFilter.new()
+			_lowpass.resource_name = MUFFLE_EFFECT_NAME
+		AudioServer.add_bus_effect(idx, _lowpass)
+	if _lowpass == null:
+		return
+	_lowpass.resonance = filter_tuning.resonance
+	_apply_cutoff(filter_tuning.open_cutoff_hz)
+
+
+## Returns the effect slot holding the muffle filter on bus [param idx], or -1.
+func _find_muffle_slot(idx: int) -> int:
+	for slot: int in range(AudioServer.get_bus_effect_count(idx)):
+		var effect: AudioEffect = AudioServer.get_bus_effect(idx, slot)
+		if effect is AudioEffectLowPassFilter and effect.resource_name == MUFFLE_EFFECT_NAME:
+			return slot
+	return -1
+
+
+## Muffles the mix while the game is paused; releases it on resume.
+func set_muffle_paused(paused: bool) -> void:
+	_muffle_paused = paused
+	_refresh_muffle()
+
+
+## Muffles the mix while Fayde's HP is critical (DESPERATE zone); releases it on recovery.
+func set_muffle_critical(critical: bool) -> void:
+	_muffle_critical = critical
+	_refresh_muffle()
+
+
+## Drops both muffle sources. Called on run start and run end so no menu inherits a muffle.
+func clear_muffle() -> void:
+	_muffle_paused = false
+	_muffle_critical = false
+	_refresh_muffle()
+
+
+## Current low-pass cutoff in Hz ([member AudioFilterTuning.open_cutoff_hz] when clear).
+func get_muffle_cutoff() -> float:
+	return _lowpass.cutoff_hz if _lowpass != null else filter_tuning.open_cutoff_hz
+
+
+## Cutoff the filter is heading to for the current pause / critical state.
+func get_muffle_target() -> float:
+	if not filter_tuning.enabled:
+		return filter_tuning.open_cutoff_hz
+	return filter_tuning.target_cutoff(_muffle_paused, _muffle_critical)
+
+
+## True while the filter is live on the buses (not bypassed).
+func is_muffle_engaged() -> bool:
+	if _lowpass == null or filter_tuning.buses.is_empty():
+		return false
+	var idx: int = AudioServer.get_bus_index(filter_tuning.buses[0])
+	var slot: int = _find_muffle_slot(idx) if idx != -1 else -1
+	return slot != -1 and AudioServer.is_bus_effect_enabled(idx, slot)
+
+
+func _on_hp_zone_changed(zone: GameEnums.HPZone) -> void:
+	set_muffle_critical(zone == GameEnums.HPZone.DESPERATE)
+
+
+## Sweeps the cutoff toward [method get_muffle_target]. Engaging uses engage_sec, releasing
+## release_sec. The tween runs while the tree is paused and ignores death slow-mo.
+func _refresh_muffle() -> void:
+	if _lowpass == null:
+		return
+	if _filter_tween != null:
+		_filter_tween.kill()
+		_filter_tween = null
+	var from_hz: float = _lowpass.cutoff_hz
+	var to_hz: float = get_muffle_target()
+	var duration: float = filter_tuning.engage_sec if to_hz < from_hz else filter_tuning.release_sec
+	if is_equal_approx(from_hz, to_hz) or duration <= 0.0 or not is_inside_tree():
+		_apply_cutoff(to_hz)
+		return
+	_filter_tween = create_tween()
+	_filter_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	_filter_tween.set_ignore_time_scale(true)
+	_filter_tween.tween_method(_apply_cutoff, from_hz, to_hz, duration) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+
+## Sets the shared cutoff and bypasses the filter on every bus once it is fully open.
+func _apply_cutoff(hz: float) -> void:
+	if _lowpass == null:
+		return
+	_lowpass.cutoff_hz = hz
+	var engaged: bool = hz < filter_tuning.open_cutoff_hz - 1.0
+	for bus_name: StringName in filter_tuning.buses:
+		var idx: int = AudioServer.get_bus_index(bus_name)
+		if idx == -1:
+			continue
+		var slot: int = _find_muffle_slot(idx)
+		if slot != -1:
+			AudioServer.set_bus_effect_enabled(idx, slot, engaged)
 
 # ── Test accessors ────────────────────────────────────────────────────────────
 
