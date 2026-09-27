@@ -132,7 +132,7 @@ Five blocks. Each block ends with a build uploaded to the project `builds/` fold
 | 3.3 | **U7 main menu layout** and Heirloom screen | |
 | 3.4 | **F2 assist options** | `settings.cfg`, tests for the damage and speed scale |
 | 3.5 | **F4 more Heirlooms** | data in `.tres` |
-| 3.6 | Balance pass on run length and boss HP from playtest timings | `.tres` only |
+| 3.6 | Balance pass on run length and boss HP from playtest timings | done 2026-09-27 with the ADR-0051 bot; recheck in 4.5 |
 
 Exit: **feature freeze**. From here no new features, only polish, fixes and tuning.
 
