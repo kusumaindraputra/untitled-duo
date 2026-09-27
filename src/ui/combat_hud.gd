@@ -319,6 +319,9 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_create_ui_nodes()
+	_group_left_card()
+	add_to_group(HUD_PREFS_GROUP)
+	refresh_hud_prefs()
 	get_viewport().size_changed.connect(_layout_boss_ui)
 	InputPrompts.device_changed.connect(_on_device_changed)
 	HealthAndDamage.damage_taken.connect(_on_damage_taken)
@@ -1511,7 +1514,7 @@ func set_minimap(room_types: Array, room_states: Array, current_idx: int,
 	# Pin the strip to the top-right of the viewport.
 	var total_w: float = count * _MINIMAP_MARKER_SIZE + maxf(0.0, count - 1) * _MINIMAP_MARKER_SEP
 	var vp_w: float = get_viewport_rect().size.x
-	_minimap_root.position = Vector2(vp_w - total_w - _MINIMAP_MARGIN, _MINIMAP_MARGIN)
+	_minimap_root.position = Vector2(vp_w - total_w * _minimap_root.scale.x - _MINIMAP_MARGIN, _MINIMAP_MARGIN)
 
 
 ## U4 — draws the floor as a node map (FloorMap) pinned top-right.
@@ -1528,7 +1531,8 @@ func _show_floor_map(types: Array, states: Array, mods: Array, edges: Array,
 	_floor_map.visible = true
 	_floor_map.set_floor(types, states, mods, edges, current_idx, entry_idx)
 	var vp_w: float = get_viewport_rect().size.x
-	_minimap_root.position = Vector2(vp_w - _floor_map.size.x - _MINIMAP_MARGIN * 0.5, _MINIMAP_MARGIN * 0.5)
+	_minimap_root.position = Vector2(vp_w - _floor_map.size.x * _minimap_root.scale.x - _MINIMAP_MARGIN * 0.5,
+		_MINIMAP_MARGIN * 0.5)
 
 
 ## The floor map's current contents (FloorMap.snapshot()), or {} when none is shown.
@@ -1544,7 +1548,7 @@ func get_floor_map_data() -> Dictionary:
 func get_floor_map_bottom() -> float:
 	if _floor_map == null or not _floor_map.visible:
 		return 0.0
-	return _minimap_root.position.y + _floor_map.size.y
+	return _minimap_root.position.y + _floor_map.size.y * _minimap_root.scale.y
 
 
 ## Handles preparation_started from GameStateManager.
@@ -1798,3 +1802,64 @@ func _on_dash_cooldown_changed(available: bool) -> void:
 	if _dash_cooldown_icon == null:
 		return
 	_dash_cooldown_icon.color.a = 1.0 if available else DASH_COOLDOWN_DIMMED_ALPHA
+
+
+# ── ADR-0046: HUD scale and card opacity ──────────────────────────────────────
+
+## Group the Settings panel calls refresh_hud_prefs() on after a HUD option changes.
+const HUD_PREFS_GROUP: StringName = &"hud_prefs"
+
+## Parent of every left-card node, scaled from the top-left corner by the HUD size
+## setting. The card's own layout (_layout_left_column) stays in unscaled px.
+var _left_group: Control = null
+
+
+## Moves the left card and its rows under one Control so the HUD size setting can
+## scale them together. Keeps their draw order and the card's place among siblings.
+func _group_left_card() -> void:
+	_left_group = Control.new()
+	_left_group.name = "LeftCard"
+	_left_group.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_left_group)
+	move_child(_left_group, _left_panel.get_index())
+	var rows: Array[Control] = [_left_panel, _ghost_bar, hp_bar, hp_label, _dash_hint_label,
+		_dash_cooldown_icon, _special_bar, _special_label, _combo_counter_label,
+		_floor_label, _room_label, _style_badge, _style_caption, _style_bar, _sigil_strip]
+	rows.sort_custom(func(a: Control, b: Control) -> bool: return a.get_index() < b.get_index())
+	for row: Control in rows:
+		remove_child(row)
+		_left_group.add_child(row)
+
+
+## Re-reads HUD scale and card opacity from GameSettings (ADR-0046).
+func refresh_hud_prefs() -> void:
+	apply_hud_prefs(GameSettings.hud_scale(), GameSettings.hud_card_alpha())
+
+
+## Scales the left card and the floor map by [param hud_scale] and sets the left card's
+## background and border to [param card_alpha] of their normal opacity.
+func apply_hud_prefs(hud_scale: float, card_alpha: float) -> void:
+	if _left_group == null:
+		return
+	_left_group.scale = Vector2(hud_scale, hud_scale)
+	var card := _left_panel.get_theme_stylebox(&"panel") as StyleBoxFlat
+	if card != null:
+		card.bg_color.a = LEFT_PANEL_BG.a * card_alpha
+		card.border_color.a = LEFT_PANEL_BORDER.a * card_alpha
+	# The map stays pinned to the top-right corner; the marker strip re-pins itself on
+	# its next set_minimap().
+	_minimap_root.scale = Vector2(hud_scale, hud_scale)
+	if _floor_map != null and _floor_map.visible:
+		_minimap_root.position.x = get_viewport_rect().size.x - _floor_map.size.x * hud_scale \
+			- _MINIMAP_MARGIN * 0.5
+
+
+## Current HUD scale on the left card (test / QA hook).
+func get_hud_scale() -> float:
+	return _left_group.scale.x if _left_group != null else 1.0
+
+
+## Left card background opacity (test / QA hook).
+func get_card_alpha() -> float:
+	var card := _left_panel.get_theme_stylebox(&"panel") as StyleBoxFlat if _left_panel != null else null
+	return card.bg_color.a if card != null else 0.0

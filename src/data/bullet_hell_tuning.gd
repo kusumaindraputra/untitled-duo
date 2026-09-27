@@ -58,3 +58,10 @@ extends Resource
 
 ## Seconds a reinforcement group spends as a warning marker before it activates.
 @export var reinforcement_warning_sec: float = 0.6
+
+@export_group("Performance")
+
+## Most enemy bullets alive at once (ADR-0050). At the cap a volley fires only the
+## bullets that fit, so the web build keeps its frame budget in the densest boss phases.
+## 0 = no cap. Safe range 160–320; the busiest fight measured peaks well below it.
+@export var max_live_bullets: int = 240

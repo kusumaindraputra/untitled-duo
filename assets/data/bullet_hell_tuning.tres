@@ -22,3 +22,4 @@ elite_tint = Color(1.6, 1.3, 0.4, 1)
 elite_pattern = ExtResource("2_elite")
 elite_room_bonus = 0.35
 reinforcement_warning_sec = 0.6
+max_live_bullets = 240

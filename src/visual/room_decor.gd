@@ -26,7 +26,7 @@ const KEEP_CLEAR: float = 90.0
 ## Minimum distance between two hanging face props.
 const FACE_MIN_BETWEEN: float = 140.0
 
-var _ledge: Node2D = null
+var _ledge: QuadBatch = null
 var _rim: Node2D = null
 var _face: Node2D = null
 var _whimsy: WhimsyDetail = null
@@ -106,7 +106,7 @@ func get_whimsy() -> WhimsyDetail:
 
 
 ## The raised back ledge node (tests).
-func get_ledge() -> Node2D:
+func get_ledge() -> QuadBatch:
 	return _ledge
 
 
@@ -134,11 +134,14 @@ static func ledge_cells(upper_edges: Array[PackedVector2Array]) -> Array[Vector2
 ## faces dropping back to floor level. Drawn above the floor tiles (z 1) and below
 ## every character (z >= 1 + y offset keeps characters on top at the far rim).
 func _build_ledge(cells: Array[Vector2], look: RoomLook) -> void:
-	_ledge = Node2D.new()
+	# ADR-0050: one QuadBatch instead of 3 Polygon2D + 1 Line2D per tile, so the whole
+	# ledge is one draw call on the web build.
+	_ledge = QuadBatch.new()
 	_ledge.name = "RimLedge"
 	_ledge.z_index = 1
 	add_child(_ledge)
 	var top_col: Color = look.edge_face.lerp(look.floor_base, 0.55)
+	var lip_col: Color = look.floor_highlight.darkened(0.2)
 	var rise := Vector2(0.0, -LEDGE_RISE)
 	# Far tiles first so nearer ledge caps cover the faces behind them.
 	var ordered: Array[Vector2] = cells.duplicate()
@@ -148,23 +151,12 @@ func _build_ledge(cells: Array[Vector2], look: RoomLook) -> void:
 		var right := c + Vector2(_HALF.x, 0.0) + rise
 		var bottom := c + Vector2(0.0, _HALF.y) + rise
 		var left := c + Vector2(-_HALF.x, 0.0) + rise
-		var face_l := Polygon2D.new()
-		face_l.polygon = PackedVector2Array([left, bottom, bottom - rise, left - rise])
-		face_l.color = look.edge_face
-		_ledge.add_child(face_l)
-		var face_r := Polygon2D.new()
-		face_r.polygon = PackedVector2Array([bottom, right, right - rise, bottom - rise])
-		face_r.color = look.edge_face.darkened(0.25)
-		_ledge.add_child(face_r)
-		var cap := Polygon2D.new()
-		cap.polygon = PackedVector2Array([top, right, bottom, left])
-		cap.color = top_col
-		_ledge.add_child(cap)
-		var lip := Line2D.new()
-		lip.points = PackedVector2Array([left, top, right])
-		lip.width = 1.0
-		lip.default_color = look.floor_highlight.darkened(0.2)
-		_ledge.add_child(lip)
+		_ledge.add_flat(PackedVector2Array([left, bottom, bottom - rise, left - rise]), look.edge_face)
+		_ledge.add_flat(PackedVector2Array([bottom, right, right - rise, bottom - rise]),
+			look.edge_face.darkened(0.25))
+		_ledge.add_flat(PackedVector2Array([top, right, bottom, left]), top_col)
+		_ledge.add_segment(left, top, 1.0, lip_col)
+		_ledge.add_segment(top, right, 1.0, lip_col)
 
 
 ## Hang points on the slab face just under each lower boundary edge's midpoint.

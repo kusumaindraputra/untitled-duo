@@ -754,7 +754,8 @@ func _build_platform_edge() -> void:
 	if old != null:
 		old.free()
 	var look: RoomLook = get_look()
-	var root := Node2D.new()
+	# ADR-0050: every face is a quad in one QuadBatch (one draw call on the web build).
+	var root := QuadBatch.new()
 	root.name = "PlatformEdge"
 	root.z_index = -1
 	add_child(root)
@@ -767,10 +768,8 @@ func _build_platform_edge() -> void:
 		# Left-facing edges run down-right from the left corner (a.x < b.x, a.y < b.y).
 		var faces_left: bool = (b.x - a.x) * (b.y - a.y) > 0.0
 		var top: Color = look.edge_face if faces_left else look.edge_face.darkened(0.25)
-		var face := Polygon2D.new()
-		face.polygon = PackedVector2Array([a, b, b + drop, a + drop])
-		face.vertex_colors = PackedColorArray([top, top, look.edge_face_bottom, look.edge_face_bottom])
-		root.add_child(face)
+		root.add_quad(PackedVector2Array([a, b, b + drop, a + drop]),
+			PackedColorArray([top, top, look.edge_face_bottom, look.edge_face_bottom]))
 
 
 ## Returns the floor's boundary edges on the lower half of their tile (the ones a
