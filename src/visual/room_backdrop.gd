@@ -44,6 +44,11 @@ func setup(look: RoomLook) -> void:
 	front.add_child(_vignette_rect)
 
 
+## The void rect behind the world (ADR-0042 combat dim). Null before setup().
+func get_back_rect() -> ColorRect:
+	return _back_rect
+
+
 ## Returns the shader parameter [param param] of the backdrop (tests).
 func get_backdrop_param(param: StringName) -> Variant:
 	return (_back_rect.material as ShaderMaterial).get_shader_parameter(param)
