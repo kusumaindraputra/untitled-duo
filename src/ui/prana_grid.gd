@@ -570,8 +570,11 @@ func _create_ui_nodes() -> void:
 	grid.columns = 3
 	grid.add_theme_constant_override(&"h_separation", 4)
 	grid.add_theme_constant_override(&"v_separation", 4)
-	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	layout.add_child(grid)
+	# ADR-0042 (art bible §3.4): the grid sits in an octagonal frame, slots are circles.
+	var frame := PranaGridFrame.new()
+	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	layout.add_child(frame)
+	frame.add_child(grid)
 
 	for i in GRID_SIZE:
 		var slot := PranaGridSlot.new()
@@ -706,6 +709,8 @@ func _create_ui_nodes() -> void:
 	cursor_style.bg_color = Color(1.0, 1.0, 1.0, 0.0)  # transparent fill
 	cursor_style.border_color = Color("#FFD700")          # gold border
 	cursor_style.set_border_width_all(3)
+	cursor_style.set_corner_radius_all(int(SLOT_SIZE))  # clamps to a circle round the slot
+	cursor_style.anti_aliasing = true
 	cursor.add_theme_stylebox_override(&"panel", cursor_style)
 	cursor.z_index = 10  # renders above slot Panel nodes
 	add_child(cursor)

@@ -62,6 +62,7 @@ const _MARKER_SAT: float = 0.42
 func _init() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
 	_sheet("fayde", 20, 32, _fayde, _fayde_glow, true)
+	_crumple_strip()
 	_sheet("drifter", 22, 18, _drifter)
 	_sheet("charger", 14, 26, _charger)
 	_sheet("cluster", 26, 24, _cluster)
@@ -285,6 +286,82 @@ func _fayde_glow(g: PixelPainter, f: int, row: int) -> void:
 	# Prana-sensing lens over the near eye, and the collar clasp.
 	g.px(12, 9 + d, Color.WHITE)
 	g.px(9, 14 + d, Color(1, 1, 1, 0.7))
+
+
+# ── Fayde crumple (ADR-0042) ────────────────────────────────────────────────
+# Art bible §5.3 defeat stage 1: "knees bent, arms loose, head down. Reads as
+# exhausted, not dead." One row of CRUMPLE_FRAMES columns, same 20×32 cell and
+# feet-on-origin as the main sheet, written to fayde_crumple.png (+ _glow).
+
+const CRUMPLE_FRAMES: int = 4
+## Per column: whole-body drop (px), extra head drop, head lean forward.
+const _CRUMPLE_DROP: Array[int] = [1, 3, 5, 6]
+const _CRUMPLE_HEAD_DROP: Array[int] = [0, 1, 1, 2]
+const _CRUMPLE_HEAD_LEAN: Array[int] = [0, 1, 1, 1]
+## Legs as the knees give: standing, bent outward, kneeling.
+const _CRUMPLE_LEGS: Array = [
+	["....ccPP..PPcc......", "......PP..PP........", "......PP..PP........", ".....KKK..KKK.......", ".....KKK..KKK......."],
+	["....cPPP..PPPc......", "....PPP....PPP......", "....PP......PP......", "....KKK....KKK......"],
+	["...PPPP....PPPP.....", "...KKKK....KKKK....."],
+]
+
+
+func _crumple_legs(f: int) -> Array:
+	var d: int = _CRUMPLE_DROP[f]
+	return _CRUMPLE_LEGS[0 if d <= 1 else (1 if d <= 3 else 2)]
+
+
+func _crumple_strip() -> void:
+	var cw: int = 20
+	var ch: int = 32
+	var img := Image.create(cw * CRUMPLE_FRAMES, ch, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var p := PixelPainter.new(img, cw, ch)
+	var gimg := Image.create(cw * CRUMPLE_FRAMES, ch, false, Image.FORMAT_RGBA8)
+	gimg.fill(Color(0, 0, 0, 0))
+	var g := PixelPainter.new(gimg, cw, ch)
+	for f: int in CRUMPLE_FRAMES:
+		p.cell(f, 0)
+		g.cell(f, 0)
+		_fayde_crumple(p, f)
+		p.outline(OUTLINE)
+		_fayde_crumple_glow(g, f)
+	img.save_png(ProjectSettings.globalize_path(OUT_DIR + "fayde_crumple.png"))
+	gimg.save_png(ProjectSettings.globalize_path(OUT_DIR + "fayde_crumple_glow.png"))
+
+
+func _fayde_crumple(p: PixelPainter, f: int) -> void:
+	var d: int = _CRUMPLE_DROP[f]
+	var legs: Array = _crumple_legs(f)
+	for r: int in legs.size():
+		_ascii_row(p, legs[r], ch_bottom(legs.size()) + r, 0)
+	# Torso first, then the head over it, so the dipped head sits in front of the collar.
+	for r: int in range(14, _FAYDE_UPPER.size()):
+		_ascii_row(p, _FAYDE_UPPER[r], r + d, 0)
+	for r: int in range(0, 14):
+		var row: String = _FAYDE_UPPER[r]
+		if f >= 2:
+			# Head down: the fringe falls over the brow and the eyes close.
+			if r == 7:
+				row = row.replace("S", "H")
+			elif r == 9:
+				row = row.replace("E", "s")
+		_ascii_row(p, row, r + d + _CRUMPLE_HEAD_DROP[f], _CRUMPLE_HEAD_LEAN[f])
+
+
+## First row of a leg block [param rows] tall that ends on the cell's last row.
+func ch_bottom(rows: int) -> int:
+	return 32 - rows
+
+
+func _fayde_crumple_glow(g: PixelPainter, f: int) -> void:
+	var d: int = _CRUMPLE_DROP[f]
+	# Hands still hold the last Prana, fading as Fayde sinks.
+	var a: float = 1.0 - 0.15 * float(f)
+	for y: int in [21, 22]:
+		for x: int in [2, 3, 15, 16]:
+			g.px(x, y + d, Color(1, 1, 1, a))
+	g.px(12 + _CRUMPLE_HEAD_LEAN[f], 9 + d + _CRUMPLE_HEAD_DROP[f], Color(1, 1, 1, a * 0.7))
 
 
 # ── Standard enemies ─────────────────────────────────────────────────────────

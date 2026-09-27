@@ -287,7 +287,7 @@ func _apply_final_kill_punch() -> void:
 		return
 	var player: Node = get_tree().get_first_node_in_group(&"player")
 	if player != null and player.has_method(&"add_camera_trauma"):
-		player.add_camera_trauma(0.45)
+		player.add_camera_trauma(ShakeState.DEFAULT_TUNING.medium)
 
 
 ## Returns the active enemy pool config, loading defaults on first access. (LD-03)

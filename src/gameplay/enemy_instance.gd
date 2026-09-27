@@ -19,6 +19,8 @@ const BULLET_HELL_TUNING: BulletHellTuning = preload("res://assets/data/bullet_h
 const AWARENESS_TUNING: EnemyAwarenessTuning = preload("res://assets/data/enemy_awareness_tuning.tres")
 ## ADR-0034 — sprite hit flash, wind-up pose and death dissolve timings.
 const FX_TUNING: CharacterFxTuning = preload("res://assets/data/character_fx_tuning.tres")
+## ADR-0041 — a boss dissolves slower, inside its death cinematic.
+const MOMENT_TUNING: BigMomentTuning = preload("res://assets/data/big_moment_tuning.tres")
 
 ## Emitted once when a dormant enemy notices Fayde (ADR-0024).
 signal alerted()
@@ -594,7 +596,8 @@ func _stop_attack_vfx() -> void:
 
 
 ## Solid white flash on successful spell hit (ADR-0034: the sprite turns white
-## through the pixel_character shader; placeholder bodies fall back to overbright).
+## through the pixel_character shader; placeholder bodies fall back to overbright),
+## plus a squash-and-spring bounce along the blow (ADR-0040).
 ## Kills _vfx_tween so the looping contact/telegraph pulse does not immediately
 ## override the flash — called via duck-typing from SpellVFX._on_damage_taken.
 func request_hit_flash() -> void:
@@ -605,10 +608,25 @@ func request_hit_flash() -> void:
 	if pc != null and pc.visible:
 		modulate = Color.WHITE
 		pc.flash(FX_TUNING.hit_flash_color, FX_TUNING.enemy_flash_sec)
+		pc.squash(hit_squash_peak(), FX_TUNING.enemy_hit_squash_sec)
 		return
 	modulate = Color(3.0, 3.0, 3.0, 1.0)
 	var tw: Tween = create_tween()
 	tw.tween_property(self, "modulate", Color.WHITE, 0.10)
+
+
+## ADR-0040 hit bounce: the sprite squashes along the blow (from Fayde to this
+## enemy), less on a boss. Horizontal squash when Fayde is unknown.
+func hit_squash_peak() -> Vector2:
+	var amount: float = FX_TUNING.enemy_hit_squash
+	if is_boss():
+		amount *= FX_TUNING.boss_squash_scale
+	var dir: Vector2 = Vector2.RIGHT
+	if is_instance_valid(_fayde_ref) and _fayde_ref.is_inside_tree() and is_inside_tree():
+		var d: Vector2 = global_position - _fayde_ref.global_position
+		if d != Vector2.ZERO:
+			dir = d
+	return PixelCharacter.stretch_along(dir, -amount)
 
 
 ## Applies a status effect color tint to communicate active status to the player.
@@ -827,7 +845,7 @@ func _on_phase_up(phase: int) -> void:
 	phase_changed.emit(phase)
 	request_hit_flash()
 	if is_instance_valid(_fayde_ref) and _fayde_ref.has_method(&"add_camera_trauma"):
-		_fayde_ref.add_camera_trauma(0.35)
+		_fayde_ref.add_camera_trauma(ShakeState.DEFAULT_TUNING.medium)
 	Sfx.play(&"sfx_boss_phase")
 
 
@@ -987,7 +1005,9 @@ func _on_death_animation_finished(_anim_name: StringName) -> void:
 ## Arms the float-accumulator fallback timer when no "death" animation is available (AC-EAI-29).
 func _start_death_fallback_timer() -> void:
 	_death_fallback_active = true
-	_death_fallback_timer = BASE_DEATH_DURATION
+	# A boss stays until its longer dissolve has finished (ADR-0041).
+	_death_fallback_timer = maxf(BASE_DEATH_DURATION, dissolve_seconds() + 0.1) \
+		if is_boss() else BASE_DEATH_DURATION
 
 
 ## Fires the initial contact hit and arms the repeat timer (AC-EAI-10).
@@ -1246,6 +1266,12 @@ func _spawn_death_burst(prana_affiliation: GameEnums.DamageClass) -> void:
 ## ADR-0034 — breaks the sprite apart while the body waits to be freed. The rim
 ## takes the enemy's Prana colour, like the death burst; neutral enemies and
 ## bosses use the tuning's neutral colour.
+## Seconds this enemy's death dissolve lasts: the boss dissolve for a boss (ADR-0041),
+## the shared CharacterFxTuning value otherwise.
+func dissolve_seconds() -> float:
+	return MOMENT_TUNING.boss_dissolve_sec if is_boss() else FX_TUNING.dissolve_sec
+
+
 func _dissolve_sprite(affiliation: GameEnums.DamageClass) -> void:
 	var pc: PixelCharacter = get_node_or_null(^"PixelCharacter") as PixelCharacter
 	if pc == null or not pc.visible:
@@ -1255,7 +1281,7 @@ func _dissolve_sprite(affiliation: GameEnums.DamageClass) -> void:
 		var type_data: PranaType = PranaCatalog.get_type(affiliation)
 		if type_data != null:
 			rim = type_data.color
-	pc.dissolve(FX_TUNING.dissolve_sec, rim)
+	pc.dissolve(dissolve_seconds(), rim)
 
 
 ## Shows [param et]'s pixel-art sheet (ADR-0022), creating the PixelCharacter child

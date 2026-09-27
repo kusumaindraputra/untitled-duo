@@ -30,6 +30,8 @@ const _HIT_STOP_DURATION_MAX: float = 0.08
 const _DEATH_SLOW_SCALE: float = 0.15
 ## Real-time duration of the slow-mo before the death overlay appears.
 const _DEATH_SLOW_DURATION: float = 0.75
+## ADR-0042 juice timings (combat dim, crumple pose).
+const _JUICE: HudJuiceTuning = preload("res://assets/data/hud_juice_tuning.tres")
 
 ## Whole-number scale for the Prana shape icon on a core-pick card (48 px, ADR-0036).
 const CORE_PICK_ICON_SCALE: int = 4
@@ -86,6 +88,8 @@ var _room_rng := RandomNumberGenerator.new()
 
 ## Guards hit-stop from stacking during the death slow-mo sequence.
 var _in_death_sequence: bool = false
+## ADR-0042: the Prana colour in Fayde's hands when she fell, for the defeat screen.
+var _last_prana_color: Color = UIPalette.ACCENT
 
 ## Title-screen CanvasLayer shown at boot before the run starts. Freed on Begin.
 var _title_layer: CanvasLayer = null
@@ -96,6 +100,10 @@ var _sigil_manager: SigilManager = null
 
 ## Fast-pace layer (ADR-0019). Created in _ready(), wired to the player and HUD there.
 var _pace_director: PaceDirector = null
+## ADR-0041 — boss death beat; reward screens wait for it.
+var _boss_cinematic: BossDeathCinematic = null
+## ADR-0041 — CLEAR banner and slow-mo when a room is cleared.
+var _room_clear_moment: RoomClearMoment = null
 var _sigil_effects: SigilEffects = null
 var _boss_director: BossDirector = null
 ## ADR-0028 — seed of this run; picks each floor boss's variant.
@@ -221,6 +229,16 @@ func _ready() -> void:
 	_pace_director.perfect_dodge_triggered.connect(Rumble.on_perfect_dodge)
 	if not SpellCastingEffects.special_fired.is_connected(Rumble.on_special_fired):
 		SpellCastingEffects.special_fired.connect(Rumble.on_special_fired)
+	# ADR-0041 big moments: the boss death cinematic and the room clear payoff.
+	# Wired here because the room clear needs the WaveManager and the HUD layer.
+	_boss_cinematic = BossDeathCinematic.new()
+	_boss_cinematic.name = "BossDeathCinematic"
+	add_child(_boss_cinematic)
+	_room_clear_moment = RoomClearMoment.new()
+	_room_clear_moment.name = "RoomClearMoment"
+	_room_clear_moment.wave_manager = $WaveManager
+	_room_clear_moment.banner_layer = $CanvasLayer
+	add_child(_room_clear_moment)
 	# ADR-0026 behaviour sigils: effects hang off gameplay signals; SigilManager adds stacks.
 	_sigil_effects = SigilEffects.new()
 	_sigil_effects.name = "SigilEffects"
@@ -230,6 +248,10 @@ func _ready() -> void:
 	_sigil_manager.sigil_applied.connect(_log_sigil)
 	# F1 Spellbook: the build cast each room and every enemy type defeated.
 	GameStateManager.combat_started.connect(_log_build_discoveries)
+	# ADR-0042: the room's ambient dims at wave start and lifts once the fight is over.
+	GameStateManager.combat_started.connect(_on_combat_dim_in)
+	GameStateManager.room_cleared.connect(_on_combat_dim_out)
+	GameStateManager.wave_ended.connect(_on_combat_dim_out)
 	HealthAndDamage.enemy_killed.connect(_log_enemy_discovery)
 	_pace_director.perfect_dodge_triggered.connect(_sigil_effects.on_perfect_dodge)
 	# Transient reward bag: Prana picked from post-room rewards land here, then the
@@ -701,6 +723,20 @@ func _restart_from_pause() -> void:
 
 # ── Private ───────────────────────────────────────────────────────────────────
 
+## ADR-0042 (art bible §2.3): a 0.3 s ambient dim marks "thinking" → "fighting".
+func _on_combat_dim_in(_is_boss: bool) -> void:
+	var room := SceneManager.get_current_scene() as IsometricRoom
+	if room != null:
+		room.set_combat_dim(_JUICE.combat_dim, _JUICE.dim_in_sec)
+
+
+## ADR-0042: the room brightens again when the wave or the room is over.
+func _on_combat_dim_out() -> void:
+	var room := SceneManager.get_current_scene() as IsometricRoom
+	if room != null:
+		room.set_combat_dim(0.0, _JUICE.dim_out_sec)
+
+
 ## Called after each room transition completes. Rewires WaveManager to the new
 ## room's SpawnMarkers, updates room type flags, then restarts prep phase.
 func _on_room_transitioned(new_room_idx: int) -> void:
@@ -829,6 +865,7 @@ func _register_input_actions() -> void:
 ## Generates the next floor and loads it via RTM — _on_room_transitioned handles
 ## spawn rewiring + restart_preparation() when load_floor() completes.
 func _on_floor_completed() -> void:
+	await _await_boss_cinematic()
 	# ADR-0027: a cleared floor recovers the next memory before the next floor loads.
 	var card: MemoryFragmentModal = _recover_memory(StoryRules.Beat.FLOOR_CLEAR, 0)
 	if card != null:
@@ -889,8 +926,11 @@ func _apply_floor_pool_config() -> void:
 ## board state before the overlay appears (Gamefeel Audit Issue 5.1).
 ## Uses ignore_time_scale=true so the timer ticks in real seconds regardless of time_scale.
 func _on_run_ended(win: bool) -> void:
+	if win:
+		await _await_boss_cinematic()
 	if not win and not _in_death_sequence:
 		_in_death_sequence = true
+		_crumple_fayde()
 		Engine.time_scale = _DEATH_SLOW_SCALE
 		await get_tree().create_timer(_DEATH_SLOW_DURATION, true, false, true).timeout
 		Engine.time_scale = GameSettings.base_time_scale()
@@ -929,6 +969,28 @@ func _on_run_ended(win: bool) -> void:
 	panel.run_again_button.grab_focus()
 
 
+## ADR-0041: lets a running boss death cinematic finish before any reward screen.
+func _await_boss_cinematic() -> void:
+	if is_instance_valid(_boss_cinematic) and _boss_cinematic.is_playing():
+		await _boss_cinematic.finished
+
+
+## ADR-0042 (art bible §5.3): Fayde's sprite gives way to the crumple pose where she
+## fell. The live sprite is only hidden, never changed, and the run restart rebuilds it.
+func _crumple_fayde() -> void:
+	var pc: PixelCharacter = $PlayerController.get_node_or_null(^"PixelCharacter") as PixelCharacter
+	if pc == null:
+		return
+	_last_prana_color = pc.glow_color
+	var crumple := CrumplePose.new()
+	crumple.name = "CrumplePose"
+	crumple.scale = Vector2(pc.pixel_scale, pc.pixel_scale)
+	var face: Vector2 = $PlayerController.get_facing_direction()
+	crumple.setup(pc.glow_color, Color.WHITE, face.x < 0.0)
+	pc.visible = false
+	$PlayerController.add_child(crumple)
+
+
 ## U5 — the run summary's data: RunManager stats plus what this loop logged during the
 ## run (room ranks, sigils, floors cleared) and memories recovered since the run began.
 func _build_summary_data(win: bool, run_data: Dictionary, shards: int, hard_unlocked: bool) -> Dictionary:
@@ -951,6 +1013,7 @@ func _build_summary_data(win: bool, run_data: Dictionary, shards: int, hard_unlo
 		"assist": _assist_used,
 		"records": _new_records + _revealed_heirloom_lines(found),
 		"death": "" if win else DeathRecap.line(HealthAndDamage.last_player_hit, _COPY),
+		"prana_color": _last_prana_color,
 	}
 
 
@@ -1081,7 +1144,8 @@ func _on_wave_ended() -> void:
 			_bonus_shards += bonus
 			$CanvasLayer/CombatHUD.show_room_banner(_COPY.challenge_won_format % bonus,
 				UIPalette.ACCENT)
-		await get_tree().create_timer(0.5).timeout
+		# ADR-0041: the sigil offer waits until the CLEAR banner has had its beat.
+		await get_tree().create_timer(RoomClearMoment.reward_delay_sec(), true, false, true).timeout
 		_sigil_manager.offer_sigils(picks)
 	elif _sigil_manager != null and rtype == DungeonGraph.ROOM_TYPE_REST:
 		await get_tree().create_timer(0.5).timeout

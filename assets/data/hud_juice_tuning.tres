@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="HudJuiceTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/hud_juice_tuning.gd" id="1_hj"]
+
+[resource]
+script = ExtResource("1_hj")
+ghost_hold_sec = 0.4
+ghost_drain_sec = 0.35
+ghost_color = Color(0.913725, 0.882353, 0.827451, 1)
+jolt_px = 3.0
+jolt_sec = 0.16
+jolt_full_share = 0.15
+combat_dim = 0.18
+dim_in_sec = 0.3
+dim_out_sec = 0.8
+crumple_sec = 0.45
+crumple_portrait_scale = 5

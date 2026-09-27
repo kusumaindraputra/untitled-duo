@@ -37,3 +37,30 @@ extends Resource
 @export_range(0.0, 1.0) var dissolve_rise: float = 0.45
 ## Rim colour for enemies with no Prana affiliation (bosses and neutral enemies).
 @export var dissolve_neutral_color: Color = Color(1.0, 0.95, 0.85, 1.0)
+
+@export_group("Squash & stretch")
+
+## ADR-0040. Each amount is how far the sprite deforms at the peak (0.2 = 20 % wider
+## and 20 % shorter, or the reverse); it then springs back with one overshoot.
+## Reduce motion turns all of it off.
+
+## Stretch along the dash direction when Fayde dashes.
+@export_range(0.0, 0.5) var dash_stretch: float = 0.26
+## Seconds the dash stretch takes to settle.
+@export var dash_stretch_sec: float = 0.2
+## Squash when the dash ends and Fayde plants her feet.
+@export_range(0.0, 0.5) var dash_land_squash: float = 0.14
+## Seconds of that landing squash.
+@export var dash_land_sec: float = 0.16
+## Squash (wide and short) when a cast begins; the overshoot is the release.
+@export_range(0.0, 0.5) var cast_squash: float = 0.18
+## Seconds of the cast squash.
+@export var cast_squash_sec: float = 0.24
+## Squash along the blow when an enemy is hit, so it visibly bounces.
+@export_range(0.0, 0.5) var enemy_hit_squash: float = 0.22
+## Seconds of the enemy hit bounce.
+@export var enemy_hit_squash_sec: float = 0.22
+## Share of the hit bounce a boss gets (big bodies wobbling reads as rubbery).
+@export_range(0.0, 1.0) var boss_squash_scale: float = 0.45
+## Extra springs after the peak: 1.0 = one overshoot the other way, then rest.
+@export_range(0.0, 3.0) var squash_wobbles: float = 1.0

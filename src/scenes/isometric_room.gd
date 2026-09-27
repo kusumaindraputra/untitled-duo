@@ -82,6 +82,9 @@ const _HAZARD_FALLBACK_CLEAR_DIST: float = 75.0
 
 var _look: RoomLook = null
 var _ambience_tween: Tween = null
+## ADR-0042 prep→combat dim: the tween and the current dim amount (0 = none).
+var _dim_tween: Tween = null
+var _dim_amount: float = 0.0
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
@@ -834,6 +837,55 @@ func set_ambience(color: Color, weight: float, seconds: float = 1.0) -> void:
 		return
 	_ambience_tween = create_tween()
 	_ambience_tween.tween_property(_tile_map, ^"modulate", target, seconds)
+
+
+## Darkens the room's ambient by [param amount] (0–1) over [param seconds]
+## (ADR-0042, art bible §2.3: "ambient drops 15–20 % at wave start", a 0.3 s dim).
+## Only the floor, its edge, the ground decor and the backdrop dim. Characters, spells,
+## hazards, doors, pillars and rubble keep full brightness, so everything the player
+## has to read stays as legible as in the prep phase. Uses self_modulate on the floor,
+## so it stacks with the boss ambience tint (set_ambience) instead of fighting it.
+func set_combat_dim(amount: float, seconds: float) -> void:
+	_dim_amount = clampf(amount, 0.0, 1.0)
+	var target: Color = dim_color(_dim_amount)
+	if _dim_tween != null:
+		_dim_tween.kill()
+		_dim_tween = null
+	var targets: Array[Dictionary] = _dim_targets()
+	if seconds <= 0.0 or not is_inside_tree():
+		for t: Dictionary in targets:
+			(t["node"] as CanvasItem).set(t["prop"], target)
+		return
+	_dim_tween = create_tween().set_parallel(true)
+	for t: Dictionary in targets:
+		_dim_tween.tween_property(t["node"], NodePath(String(t["prop"])), target, seconds) \
+			.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+
+
+## The current combat dim amount (0 = none). For tests and QA.
+func get_combat_dim() -> float:
+	return _dim_amount
+
+
+## Pure: the modulate that darkens by [param amount] (0–1), alpha kept at 1.
+static func dim_color(amount: float) -> Color:
+	var v: float = 1.0 - clampf(amount, 0.0, 1.0)
+	return Color(v, v, v, 1.0)
+
+
+## The canvas items the combat dim touches, each with the property it drives.
+func _dim_targets() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if _tile_map != null:
+		out.append({"node": _tile_map, "prop": &"self_modulate"})
+	for n: StringName in [&"PlatformEdge", &"RoomDecor"]:
+		var item := get_node_or_null(NodePath(String(n))) as CanvasItem
+		if item != null:
+			out.append({"node": item, "prop": &"modulate"})
+	var backdrop := get_node_or_null(^"RoomBackdrop") as RoomBackdrop
+	if backdrop != null and backdrop.get_back_rect() != null:
+		out.append({"node": backdrop.get_back_rect(), "prop": &"modulate"})
+	return out
 
 
 ## Pure: the floor modulate for an ambience of [param color] at [param weight] over
