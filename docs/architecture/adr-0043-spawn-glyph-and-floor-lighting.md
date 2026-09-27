@@ -110,3 +110,21 @@ Two items from the juice review:
 - Tests: tests/unit/lighting/ (spawn glyph timeline and drawing, floor lighting pools,
   cap, light mask, room wiring) and tests/unit/gamefeel/enemy_spawn_vfx_test.gd (enemy starts
   flat with a glyph).
+
+## ADR Dependencies
+
+- ADR-0023 (PixelVFX raster helpers), ADR-0037 (enemy bullet palette),
+  ADR-0039 (boss ambience on the floor `modulate`), ADR-0042 (combat dim on the floor
+  `self_modulate`), ADR-0014 (spawn order, unchanged).
+
+## Engine Compatibility
+
+- Godot 4.6, Compatibility renderer (desktop and WebGL 2). Uses `PointLight2D`,
+  `Light2D.range_item_cull_mask`, `CanvasItem.light_mask` and `GradientTexture2D`, all
+  unchanged since 4.0. No shadows, no post-4.3 APIs.
+
+## GDD Requirements Addressed
+
+- Art bible §2 Combat Phase lighting ("dynamic, spell-reactive; spell bursts own the
+  brightness budget") and §6 "no dynamic lighting on sprite layers".
+- Juice review items 5 (spawn effect) and 7 (2D lighting).
