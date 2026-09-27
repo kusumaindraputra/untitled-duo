@@ -93,6 +93,17 @@ three keys are new and start at their defaults. It still bumps the version, as
 v1 → v2 did for the pad section (ADR-0031), so a file's version says which options
 it can hold.
 
+## ADR Dependencies
+
+ADR-0003 (signal-driven, display-only UI), ADR-0004 (float accumulator timers),
+ADR-0031 (settings file version), ADR-0032 (text size), ADR-0035 (measured left
+card), ADR-0042 (HP ghost chunk, now part of the scaled left card).
+
+## Engine Compatibility
+
+Godot 4.6. It uses only APIs that predate 4.4: `Control.scale`, `SceneTree.call_group`,
+`Node.PROCESS_MODE_PAUSABLE`, `StyleBoxFlat` and `ConfigFile`.
+
 ## Alternatives Considered
 
 - **Scaling the whole CombatHUD Control.** Rejected. The chain dots and the dash ring
