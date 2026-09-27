@@ -84,6 +84,8 @@ var _base_combat_cfg: EnemyPoolConfig = null
 var _room_modifier: int = RoomModifiers.NONE
 var _room_flawless: bool = true
 var _bonus_shards: int = 0
+## ADR-0046 corner toasts for sigils, memories and shards gained mid-run.
+var _toaster: HudToaster = null
 var _room_rng := RandomNumberGenerator.new()
 
 ## Guards hit-stop from stacking during the death slow-mo sequence.
@@ -193,6 +195,15 @@ func _ready() -> void:
 	indicators.player = $PlayerController
 	$CanvasLayer.add_child(indicators)
 	$CanvasLayer.move_child(indicators, 0)
+	# ADR-0046: corner toasts and the optional run clock, beside the HUD.
+	_toaster = HudToaster.new()
+	_toaster.name = "HudToaster"
+	$CanvasLayer.add_child(_toaster)
+	var run_timer := RunTimerLabel.new()
+	run_timer.name = "RunTimer"
+	run_timer.clock = RunManager.get_elapsed_sec
+	$CanvasLayer.add_child(run_timer)
+	_toaster.bottom_inset = run_timer.corner_height
 	# Boss-intro UI: WaveManager announces boss spawns; HUD shows name card + HP bar.
 	$WaveManager.boss_spawned.connect(hud._on_boss_spawned)
 	# ADR-0028: every floor boss changes the arena at each phase, and each plays one
@@ -877,6 +888,7 @@ func _on_floor_completed() -> void:
 	# ADR-0027: a cleared floor recovers the next memory before the next floor loads.
 	var card: MemoryFragmentModal = _recover_memory(StoryRules.Beat.FLOOR_CLEAR, 0)
 	if card != null:
+		_toast(_COPY.toast_memory_format % [_meta.fragments_found, StoryRules.total()], UIPalette.COOL)
 		await card.closed
 	_floors_cleared += 1
 	_current_floor += 1
@@ -1057,11 +1069,19 @@ func _log_sigil(sigil_id: StringName) -> void:
 	for sigil: Dictionary in _sigil_manager.get_catalog():
 		if sigil.get("id", &"") == sigil_id:
 			_run_sigils.append({"title": str(sigil.get("title", sigil_id)), "desc": str(sigil.get("desc", ""))})
+			_toast(_COPY.toast_sigil_format % str(sigil.get("title", sigil_id)), UIPalette.GOOD)
 			var hud: CombatHUD = get_node_or_null(^"CanvasLayer/CombatHUD") as CombatHUD
 			if hud != null:  # ADR-0045 chip strip
 				hud.get_sigil_strip().add_sigil(sigil_id, str(sigil.get("title", sigil_id)),
 					bool(sigil.get("behaviour", false)))
 			return
+
+
+## ADR-0046 — pushes a corner toast. The toaster is pausable, so one pushed under a
+## modal (sigil offer, memory card) waits and shows once play resumes.
+func _toast(text: String, color: Color) -> void:
+	if is_instance_valid(_toaster):
+		_toaster.push(text, color)
 
 
 ## F4: summary lines for Heirlooms that this run's memories made available.
@@ -1172,6 +1192,7 @@ func _on_wave_ended() -> void:
 		var bonus: int = RoomModifiers.bonus_shards(_room_modifier, _room_flawless)
 		if bonus > 0:
 			_bonus_shards += bonus
+			_toast(_COPY.toast_shards_format % [bonus, _bonus_shards], UIPalette.ACCENT)
 			$CanvasLayer/CombatHUD.show_room_banner(_COPY.challenge_won_format % bonus,
 				UIPalette.ACCENT)
 		# ADR-0041: the sigil offer waits until the CLEAR banner has had its beat.

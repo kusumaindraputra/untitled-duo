@@ -411,6 +411,15 @@ extends Resource
 	"Close range, low damage. Heals you over time.",
 ]
 
+## Two hands (ADR-0057): labels beside the grid's left and right columns.
+@export var hand_ayden_label: String = "AYDEN\npower"
+@export var hand_faith_label: String = "FAITH\ncontrol"
+## Preview lines for the hands: bonus percent for Ayden (damage) and Faith (status time).
+@export var hand_power_format: String = "Ayden's hand  +%d%% damage"
+@export var hand_control_format: String = "Faith's hand  +%d%% status time"
+## Appended when both hands hold the same number of Prana: the touch multiplier.
+@export var hands_touch_format: String = "Hands touch  ×%.1f"
+
 ## Next-tier hint: how many more of the core element, its name, the tier reached.
 @export var spell_preview_next_tier_format: String = "Add %d more %s for Tier %d"
 
@@ -498,7 +507,7 @@ extends Resource
 ## Title, tagline and the main buttons, top to bottom (Memories and Settings use
 ## memories_button_format and settings_button).
 @export var menu_title: String = "THE LAST CIPHER"
-@export var menu_subtitle: String = "Arrange Prana. Cast. Survive three floors."
+@export var menu_subtitle: String = "Two brothers' Prana. One pair of hands."
 @export var menu_play: String = "PLAY"
 @export var menu_heirlooms: String = "HEIRLOOMS"
 @export var menu_quit: String = "QUIT"
@@ -649,6 +658,17 @@ extends Resource
 ## Settings rows.
 @export var settings_text_size: String = "Text size"
 @export var settings_bullet_outline: String = "High-contrast bullets"
+
+## ADR-0046 Settings rows: the HUD heading, HUD scale, card opacity and run timer.
+@export var settings_hud_heading: String = "HUD"
+@export var settings_hud_scale: String = "HUD size"
+@export var settings_hud_opacity: String = "HUD card opacity"
+@export var settings_run_timer: String = "Show run timer"
+## ADR-0046 corner toasts (%s = sigil title; %d/%d = memory number and total;
+## %d = shards gained, %d = bonus shards this run).
+@export var toast_sigil_format: String = "Sigil gained · %s"
+@export var toast_memory_format: String = "Memory found · %d/%d"
+@export var toast_shards_format: String = "+%d Cipher Shards · %d this run"
 ## Colour-blind Prana palette row (ADR-0047) and its choices by GameSettings.ColorMode.
 @export var settings_color_mode: String = "Prana colours"
 @export var settings_color_modes: Array[String] = [

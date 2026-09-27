@@ -603,6 +603,9 @@ func _apply_hit(target: Node, pt: int, tier_mod: float, se: SpellEffect,
 	# Step 8c — Perfect Cast bonus (1.0 unless this attack landed in the rhythm window).
 	raw *= _perfect_mult
 
+	# Step 8d — Ayden's hand (ADR-0057): Prana in the grid's left column add power.
+	raw *= se.hand_power_mult
+
 	# Step 9 — deliver damage (element-neutral; affiliation cut 2026-06-21).
 	_health_and_damage.apply_damage(target, raw, GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
 
@@ -645,21 +648,23 @@ func _apply_knockback(target: Node, tier_mod: float) -> void:
 ## used as spell_base_damage for Burn DoT tick calculations (GDD Rule 8).
 ## Verdant Regen targets _fayde_ref (not the enemy); guarded for null in tests.
 func _apply_status_effects(target: Node, pt: int, se: SpellEffect, step4_raw: float) -> void:
+	# Faith's hand (ADR-0057): Prana in the grid's right column lengthen the core status.
+	var hold: float = se.hand_control_mult
 	match pt:
 		0:  # Ashfire — Burn DoT; step4_raw drives tick magnitude.
-			_apply_burn(target, 2.0, step4_raw)
+			_apply_burn(target, 2.0 * hold, step4_raw)
 		1:  # Voidblue — Blind.
 			var dur: float = 2.0 + se.aggregate_stat_bonus.get(&"VOID_BLIND_DUR", 0.0)
-			_status_effects.apply_status(target, GameEnums.BaseStatus.BLIND, dur)
+			_status_effects.apply_status(target, GameEnums.BaseStatus.BLIND, dur * hold)
 		2:  # Stormgold — Stun. SEM calls target.apply_stun(dur) → STUNNED state.
 			var dur: float = 0.8 + se.aggregate_stat_bonus.get(&"STORM_STUN_DUR", 0.0)
-			_apply_stun(target, dur)
+			_apply_stun(target, dur * hold)
 		3:  # Deepfrost — Freeze. SEM calls target.apply_speed_modifier(0.50).
 			var dur: float = 2.0 + se.aggregate_stat_bonus.get(&"FROST_FREEZE_DUR", 0.0)
-			_status_effects.apply_status(target, GameEnums.BaseStatus.FREEZE, dur)
+			_status_effects.apply_status(target, GameEnums.BaseStatus.FREEZE, dur * hold)
 		4:  # Verdant — Regen on Fayde (not on the enemy target).
 			if _fayde_ref != null:
-				_status_effects.apply_status(_fayde_ref, GameEnums.BaseStatus.REGENERATE, 3.0)
+				_status_effects.apply_status(_fayde_ref, GameEnums.BaseStatus.REGENERATE, 3.0 * hold)
 
 
 ## Fires the secondary effect for a tier_attack_modifier == 0.0 attack slot.

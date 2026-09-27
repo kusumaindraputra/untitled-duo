@@ -47,11 +47,12 @@ static func more_for_next_tier(primary_count: int, primary_tier: int) -> int:
 ##   modifiers:  Array of { "type": int, "text": String }
 ##   reactions:  Array[String] — "Name: what it does"
 ##   cascade:    String — empty when no cascade fires
+##   hands:      String — the two-hands bonuses (ADR-0057); empty when both hands are empty
 static func build(summary: Dictionary, reactions: Array, cascade: CascadeEffect,
 		names: Array, copy: UICopy) -> Dictionary:
 	var out: Dictionary = {
 		"empty": true, "primary": -1, "title": "", "summary": "", "hint": copy.spell_preview_empty,
-		"modifiers": [], "reactions": [], "cascade": "",
+		"modifiers": [], "reactions": [], "cascade": "", "hands": "",
 	}
 	var primary: int = summary.get("primary_type", -1)
 	if primary < 0:
@@ -88,7 +89,23 @@ static func build(summary: Dictionary, reactions: Array, cascade: CascadeEffect,
 
 	if cascade != null:
 		out["cascade"] = copy.spell_preview_cascade_format % cascade.cascade_mult
+	out["hands"] = hands_line(summary.get("hands", {}), copy)
 	return out
+
+
+## One preview line for the grid's two hands (ADR-0057) from a PranaHands.read()
+## Dictionary; empty when both hands are empty. Pure.
+static func hands_line(hands: Dictionary, copy: UICopy) -> String:
+	var parts: PackedStringArray = PackedStringArray()
+	var power: float = hands.get("power_mult", 1.0)
+	var control: float = hands.get("control_mult", 1.0)
+	if power > 1.0:
+		parts.append(copy.hand_power_format % roundi((power - 1.0) * 100.0))
+	if control > 1.0:
+		parts.append(copy.hand_control_format % roundi((control - 1.0) * 100.0))
+	if hands.get("touch", false):
+		parts.append(copy.hands_touch_format % PranaHands.TUNING.touch_mult)
+	return "  ·  ".join(parts)
 
 
 ## Renders a [method build] result as bbcode for the panel's RichTextLabel.
@@ -102,6 +119,9 @@ static func to_bbcode(card: Dictionary, colors: Array, abbrevs: Array) -> String
 	lines.append("[b][color=#%s]%s[/color][/b]" % [_color_hex(primary, colors), card["title"]])
 	lines.append(card["summary"])
 	lines.append("[color=#%s]%s[/color]" % [HINT_COLOR.to_html(false), card["hint"]])
+	# ADR-0057: the hands sit right under the core line; they come from where Prana sit.
+	if card.get("hands", "") != "":
+		lines.append("[color=#%s]%s[/color]" % [UIPalette.TEXT.to_html(false), card["hands"]])
 	for m: Dictionary in card["modifiers"]:
 		var t: int = m["type"]
 		lines.append("[color=#%s]+ %s[/color]  %s" % [_color_hex(t, colors), _entry(abbrevs, t), m["text"]])
