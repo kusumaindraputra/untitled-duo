@@ -43,19 +43,20 @@ def main(paths: list[str]) -> None:
         est = [player_sec(r) for r in wins]
         print(f"\nfull runs: {len(wins)}/{len(runs)}  est. player time median {fmt(statistics.median(est))}"
               f"  range {fmt(min(est))}-{fmt(max(est))}")
-    by_floor: dict[int, list[float]] = {}
+    boss_floor: dict[int, list[float]] = {}
     room_floor: dict[int, list[float]] = {}
     for r in runs:
         for room in r.get("room_log", []):
-            bucket = by_floor if room["type"] == BOSS else room_floor
-            bucket.setdefault(room["floor"], []).append(room["combat_sec"])
+            if room["type"] != BOSS:
+                room_floor.setdefault(room["floor"], []).append(room["combat_sec"])
+        for b in r.get("boss_fights", []):
+            boss_floor.setdefault(b["floor"], []).append(b["combat_sec"])
     for fl in sorted(room_floor):
         v = room_floor[fl]
         print(f"floor {fl}: room fight median {statistics.median(v):.0f}s over {len(v)} rooms")
-    for fl in sorted(by_floor):
-        v = by_floor[fl]
+    for fl in sorted(boss_floor):
+        v = boss_floor[fl]
         print(f"floor {fl}: boss fight median {statistics.median(v):.0f}s (n={len(v)}, {min(v):.0f}-{max(v):.0f}s)")
-
 
 if __name__ == "__main__":
     main(sys.argv[1:])
