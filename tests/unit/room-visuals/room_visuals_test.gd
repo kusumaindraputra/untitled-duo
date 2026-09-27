@@ -157,8 +157,8 @@ func test_platform_edge_hangs_under_the_lower_boundary() -> void:
 	var room := _build()
 	var edges: Array[PackedVector2Array] = room.get_lower_boundary_edges()
 	assert_int(edges.size()).is_greater(0)
-	var edge_root: Node2D = room.get_node("PlatformEdge")
-	assert_int(edge_root.get_child_count()).is_equal(edges.size())
+	var edge_root: QuadBatch = room.get_node("PlatformEdge") as QuadBatch
+	assert_int(edge_root.quad_count()).is_equal(edges.size())
 	assert_int(edge_root.z_index).is_less(0)
 	# Edges come back ordered left to right.
 	for e: PackedVector2Array in edges:
