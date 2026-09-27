@@ -33,6 +33,7 @@ const _ENEMY_SPEED: float = 120.0
 const _FRAMES: int = 120
 
 var _root: Node2D = null
+var _time_scale: float = 1.0
 var _temp_actions: Array[StringName] = []
 
 
@@ -42,11 +43,16 @@ func before_test() -> void:
 		if not InputMap.has_action(action):
 			InputMap.add_action(action)
 			_temp_actions.append(action)
+		Input.action_release(action)
+	# Other suites (hitstop, slow-mo) may leave the clock scaled; these tests count frames.
+	_time_scale = Engine.time_scale
+	Engine.time_scale = 1.0
 	_root = Node2D.new()
 	add_child(_root)
 
 
 func after_test() -> void:
+	Engine.time_scale = _time_scale
 	for action: StringName in _temp_actions:
 		InputMap.erase_action(action)
 	_temp_actions.clear()
@@ -125,18 +131,22 @@ func test_enemy_walking_onto_fayde_in_corner_keeps_her_inside() -> void:
 
 
 ## GIVEN Fayde next to the rim with nothing else around
-## WHEN she walks along the rim
+## WHEN she moves left into the rim and slides along it (same move + guard as her
+##      _physics_process, driven by hand so held input from other suites can't leak in)
 ## THEN the guard does not stop legal movement
 func test_walking_along_rim_still_moves() -> void:
 	_make_rim()
 	var pc := _make_fayde()
+	pc.set_physics_process(false)
 	pc.global_position = Vector2(-100, -62)
 	await get_tree().physics_frame
 
-	Input.action_press(&"move_left")
 	for i: int in 30:
+		pc.velocity = Vector2(-PlayerController.MOVE_SPEED, 0.0)
+		var before: Vector2 = pc.global_position
+		pc.move_and_slide()
+		pc._undo_wall_crossing(before)
 		await get_tree().physics_frame
-	Input.action_release(&"move_left")
 
 	assert_float(pc.global_position.x).is_less(-120.0)
 	assert_bool(_inside_room(pc.global_position)).is_true()
