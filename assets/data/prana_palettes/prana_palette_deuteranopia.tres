@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="PranaPalette" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/prana_palette.gd" id="1_pp"]
+
+[resource]
+script = ExtResource("1_pp")
+colors = Array[Color]([Color(0.82353, 0.16471, 0.07843, 1), Color(0.13333, 0.20000, 0.94118, 1), Color(0.96078, 0.94118, 0.06275, 1), Color(0.33333, 0.76863, 0.98039, 1), Color(0.06275, 0.96078, 0.62745, 1)])

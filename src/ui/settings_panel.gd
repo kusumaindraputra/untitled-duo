@@ -27,6 +27,7 @@ var _listening_pad: StringName = &""
 var _resolution: OptionButton = null
 var _shake_value: Label = null
 var _text_size: OptionButton = null
+var _color_mode: OptionButton = null
 ## The centred content, shrunk to fit the window at large text sizes (ADR-0032).
 var _root: VBoxContainer = null
 var _back: Button = null
@@ -135,6 +136,14 @@ func _build() -> void:
 	bo.toggled.connect(func(on: bool) -> void:
 		settings.bullet_outline = on
 		_save())
+	# ADR-0047: colour-blind Prana palette.
+	_color_mode = OptionButton.new()
+	_color_mode.name = "ColorMode"
+	for label: String in _COPY.settings_color_modes:
+		_color_mode.add_item(label)
+	_color_mode.select(clampi(settings.color_mode, 0, _color_mode.item_count - 1))
+	_color_mode.item_selected.connect(_on_color_mode_selected)
+	left.add_child(_row(_COPY.settings_color_mode, _color_mode))
 
 
 	var middle := _column(columns)
@@ -347,6 +356,13 @@ func _on_text_size_selected(idx: int) -> void:
 	_save()
 	if is_inside_tree():
 		UIFeel.apply_text_scale_tree(get_tree().root, settings.text_scale_value())
+
+
+## Saves the colour-blind mode and recolours every Prana at once (ADR-0047).
+func _on_color_mode_selected(idx: int) -> void:
+	settings.color_mode = idx
+	_save()
+	PranaCatalog.set_palette(settings.prana_palette())
 
 
 func _on_shake_changed(v: float) -> void:

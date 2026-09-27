@@ -12,8 +12,8 @@ var _colors: Array[Color] = []
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	for type_id: int in PranaCatalog.type_count():
-		_colors.append(PranaCatalog.get_type_color(type_id))
+	_read_colors()
+	PranaCatalog.palette_changed.connect(_read_colors)
 	_apply()
 	if GameSettings.motion_reduced():
 		set_process(false)
@@ -21,6 +21,14 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_time += delta
+	_apply()
+
+
+## Reads the Prana colours in effect (again when the colour-blind palette changes).
+func _read_colors() -> void:
+	_colors.clear()
+	for type_id: int in PranaCatalog.type_count():
+		_colors.append(PranaCatalog.get_type_color(type_id))
 	_apply()
 
 
