@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ShakeTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/shake_tuning.gd" id="1_shake"]
+
+[resource]
+script = ExtResource("1_shake")
+max_offset_px = 10.0
+trauma_decay = 3.5
+noise_speed = 42.0
+kick_max_px = 8.0
+kick_per_trauma_px = 7.0
+kick_return = 18.0
+light = 0.3
+medium = 0.5
+heavy = 0.7
+massive = 0.9
+reduce_motion_scale = 0.35
