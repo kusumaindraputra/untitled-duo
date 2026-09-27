@@ -52,7 +52,7 @@ Three medium-priority HUD items from the UI/HUD review:
   index 1) and `hud_card_opacity` (clamped to `HUD_CARD_OPACITY_MIN` = 0.3 … 1.0).
   The static helpers `hud_scale()` and `hud_card_alpha()` return 1.0 when no
   settings are loaded.
-- CombatHUD moves the left-card nodes (card, HP row, Special, dash, Style, floor and
+- CombatHUD moves the left-card nodes (card, HP ghost chunk and HP row, Special, dash, Style, floor and
   room lines, combo counter) under one `LeftCard` Control in `_group_left_card()`,
   keeping their draw order. Scaling that group from the top-left corner scales the
   whole card, while `_layout_left_column()` keeps working in unscaled px. The floor

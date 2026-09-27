@@ -45,6 +45,9 @@ func test_left_card_rows_share_one_group() -> void:
 	assert_str(group.name).is_equal("LeftCard")
 	assert_object(hud._left_panel.get_parent()).is_same(group)
 	assert_object(hud._style_bar.get_parent()).is_same(group)
+	assert_object(hud._ghost_bar.get_parent()).is_same(group)
+	# The ghost chunk still draws under the real HP fill (ADR-0042).
+	assert_int(hud._ghost_bar.get_index()).is_less(hud.hp_bar.get_index())
 	# The card background still draws beneath its rows.
 	assert_int(hud._left_panel.get_index()).is_less(hud.hp_bar.get_index())
 	_teardown_hud(hud)

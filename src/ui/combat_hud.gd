@@ -1816,7 +1816,7 @@ func _group_left_card() -> void:
 	_left_group.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_left_group)
 	move_child(_left_group, _left_panel.get_index())
-	var rows: Array[Control] = [_left_panel, hp_bar, hp_label, _dash_hint_label,
+	var rows: Array[Control] = [_left_panel, _ghost_bar, hp_bar, hp_label, _dash_hint_label,
 		_dash_cooldown_icon, _special_bar, _special_label, _combo_counter_label,
 		_floor_label, _room_label, _style_badge, _style_caption, _style_bar]
 	rows.sort_custom(func(a: Control, b: Control) -> bool: return a.get_index() < b.get_index())
