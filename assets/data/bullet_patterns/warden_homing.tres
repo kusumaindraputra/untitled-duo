@@ -16,4 +16,4 @@ homing_turn_deg = 75.0
 homing_duration = 1.0
 speed = 115.0
 damage_mult = 0.5
-color = Color(0.9, 0.5, 1, 1)
+accent = &"warden"

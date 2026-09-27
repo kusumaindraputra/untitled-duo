@@ -17,4 +17,3 @@ sine_amplitude = 16.0
 sine_frequency = 1.6
 speed = 130.0
 damage_mult = 0.6
-color = Color(0.4, 1, 0.6, 1)

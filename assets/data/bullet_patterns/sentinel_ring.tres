@@ -16,4 +16,4 @@ spin_deg = 12.8
 aim_at_player = false
 speed = 100.0
 damage_mult = 0.45
-color = Color(0.4, 0.95, 0.85, 1)
+accent = &"sentinel"

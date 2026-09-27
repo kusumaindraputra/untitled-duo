@@ -17,4 +17,3 @@ speed = 110.0
 max_range = 200.0
 bullet_radius = 3.5
 damage_mult = 1.0
-color = Color(1, 0.6, 0.15, 1)

@@ -13,7 +13,8 @@ const DESPAWN_FADE_DIST: float = 50.0
 ## Trail length grows to this max over TRAIL_GROW_TIME seconds.
 const TRAIL_MAX_LENGTH: float = 30.0
 const TRAIL_GROW_TIME: float = 0.15
-const DEFAULT_COLOR: Color = Color(0.6, 0.8, 1.0, 1.0)
+## Legacy launch() bullets have no pattern: they use the palette's mob core (ADR-0037).
+const DEFAULT_ACCENT: StringName = EnemyBulletPalette.DEFAULT_ACCENT
 const DEFAULT_RADIUS: float = 4.0
 
 ## Every live enemy bullet is in this group — bullet cancel queries it (ADR-0018).
@@ -29,9 +30,14 @@ const COLLISION_MASK_WALLS: int = 1
 const COLLISION_MASK_FULL_COVER: int = 32
 
 const TUNING: BulletHellTuning = preload("res://assets/data/bullet_hell_tuning.tres")
-## High-contrast outline widths past the bullet radius, px (ADR-0032).
-const OUTLINE_WHITE: float = 4.0
-const OUTLINE_BLACK: float = 2.0
+const PALETTE: EnemyBulletPalette = preload("res://assets/data/enemy_bullet_palette.tres")
+## High-contrast outline widths past the bullet radius, px (ADR-0032). They sit outside
+## the family rim so the option keeps the enemy colour ring (ADR-0037).
+const OUTLINE_WHITE: float = 5.5
+const OUTLINE_BLACK: float = 3.5
+## Family rim ring and dark separator widths past the bullet radius, px (ADR-0037).
+const RIM_WIDTH: float = 2.5
+const SEPARATOR_WIDTH: float = 1.0
 
 ## Who fired this bullet with which attack, for the death recap (DeathRecap.cause()).
 ## Set by the shooter after launch; cleared on reuse.
@@ -47,7 +53,8 @@ var _freed: bool = false
 var _speed: float = PROJECTILE_SPEED
 var _max_range: float = MAX_RANGE
 var _radius: float = DEFAULT_RADIUS
-var _color: Color = DEFAULT_COLOR
+## Core colour from the pattern accent; the rim is always PALETTE.rim.
+var _color: Color = PALETTE.core_for(DEFAULT_ACCENT)
 var _motion: BulletPattern.Motion = BulletPattern.Motion.STRAIGHT
 var _sine_amplitude: float = 0.0
 var _sine_frequency: float = 0.0
@@ -101,19 +108,23 @@ func _draw() -> void:
 	if _distance_traveled > _max_range - DESPAWN_FADE_DIST:
 		fade = clampf((_max_range - _distance_traveled) / DESPAWN_FADE_DIST, 0.0, 1.0)
 	var c: Color = _color
-	# Trail line behind the projectile.
+	var rim: Color = PALETTE.rim
+	var sep: Color = PALETTE.separator
+	# Trail and glow in the hostile family colour (ADR-0037), so every enemy shot
+	# reads as one family however its core is tinted.
 	var trail_len: float = lerpf(0.0, TRAIL_MAX_LENGTH, clampf(_alive_time / TRAIL_GROW_TIME, 0.0, 1.0))
-	draw_line(-_direction * trail_len, Vector2.ZERO, Color(c.r * 0.4, c.g * 0.5, c.b, 0.5 * fade), 3.0, true)
-	# Outer glow, dark rim (readable on any floor), bright core.
-	draw_circle(Vector2.ZERO, _radius * 2.5, Color(c.r, c.g, c.b, 0.15 * fade))
+	draw_line(-_direction * trail_len, Vector2.ZERO, Color(rim.r, rim.g, rim.b, 0.45 * fade), 3.0, true)
+	draw_circle(Vector2.ZERO, _radius * 2.5, Color(rim.r, rim.g, rim.b, 0.16 * fade))
 	# ADR-0032 high-contrast option: a thick white ring around a black one, so the
 	# bullet's edge reads on any floor and against any other effect.
 	if GameSettings.bullet_outline_on():
 		draw_circle(Vector2.ZERO, _radius + OUTLINE_WHITE, Color(1.0, 1.0, 1.0, fade))
 		draw_circle(Vector2.ZERO, _radius + OUTLINE_BLACK, Color(0.0, 0.0, 0.0, fade))
-	draw_circle(Vector2.ZERO, _radius + 1.5, Color(0.05, 0.02, 0.1, 0.8 * fade))
+	# Family rim, dark separator, accent core, white pip.
+	draw_circle(Vector2.ZERO, _radius + RIM_WIDTH, Color(rim.r, rim.g, rim.b, fade))
+	draw_circle(Vector2.ZERO, _radius + SEPARATOR_WIDTH, Color(sep.r, sep.g, sep.b, sep.a * fade))
 	draw_circle(Vector2.ZERO, _radius, Color(c.r, c.g, c.b, 0.95 * fade))
-	draw_circle(Vector2.ZERO, _radius * 0.45, Color(1.0, 1.0, 1.0, 0.9 * fade))
+	draw_circle(Vector2.ZERO, _radius * 0.3, Color(1.0, 1.0, 1.0, 0.9 * fade))
 
 
 ## Sets the travel direction (normalised) and damage amount. Call after add_child().
@@ -132,7 +143,7 @@ func launch_pattern(direction: Vector2, base_damage: float, p: BulletPattern, bu
 	_speed = bullet_speed
 	_max_range = p.max_range
 	_radius = p.bullet_radius
-	_color = p.color
+	_color = p.core_color()
 	_motion = p.motion
 	_sine_amplitude = p.sine_amplitude
 	_sine_frequency = p.sine_frequency
@@ -167,7 +178,7 @@ func reset_for_reuse() -> void:
 	_speed = PROJECTILE_SPEED
 	_max_range = MAX_RANGE
 	_radius = DEFAULT_RADIUS
-	_color = DEFAULT_COLOR
+	_color = PALETTE.core_for(DEFAULT_ACCENT)
 	_motion = BulletPattern.Motion.STRAIGHT
 	cause = {}
 	visible = true
@@ -279,8 +290,8 @@ func _on_body_entered(body: Node2D) -> void:
 	# ADR-0020 — a pillar absorbs the bullet and wears down.
 	if body is CoverPillar:
 		(body as CoverPillar).take_hit(1)
-	# Wall / pillar impact — brief impact flash then despawn.
-	_spawn_impact_burst(_color)
+	# Wall / pillar impact — brief impact flash in the family colour, then despawn.
+	_spawn_impact_burst(PALETTE.rim)
 	_despawn()
 
 

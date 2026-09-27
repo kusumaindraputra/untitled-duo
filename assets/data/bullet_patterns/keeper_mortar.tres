@@ -17,4 +17,4 @@ splash_count = 10
 speed = 120.0
 max_range = 280.0
 damage_mult = 0.8
-color = Color(1, 0.35, 0.6, 1)
+accent = &"keeper"
