@@ -160,6 +160,31 @@ extends Resource
 ## Line on the end screen the first time Hard Mode unlocks.
 @export var hard_mode_unlocked_banner: String = "HARD MODE UNLOCKED — switch it on from the main menu"
 
+## ADR-0052 Ascension. Main-menu button while Hard Mode is on (%d = level, %d = highest
+## unlocked); pressing it steps through the unlocked levels.
+@export var ascension_button_format: String = "Ascension %d / %d"
+## Button text at level 0.
+@export var ascension_off: String = "Ascension: off  (press to raise)"
+## Shown under the Hard Mode toggle before the first Hard Mode win.
+@export var ascension_locked: String = "Win on Hard Mode to unlock Ascension"
+## End screen line when a win opens the next level (%d = level).
+@export var ascension_unlocked_format: String = "ASCENSION %d UNLOCKED — pick it from the main menu"
+## What each level adds, Ascension 1 first. The menu shows the picked level's line.
+@export var ascension_level_descs: Array[String] = [
+	"Enemies have 10% more HP",
+	"Enemy bullets fly 8% faster",
+	"Elites appear more often",
+	"Bosses have 15% more HP",
+	"Healing is 25% weaker",
+	"One more enemy in every wave",
+	"Enemies fire 10% more often, with shorter warnings",
+	"Enemies and bosses have 10% more HP again",
+]
+## Menu line under the picked level's own change (%d = highest level below it).
+@export var ascension_stacks_format: String = "· plus everything from Ascension 1–%d"
+## Shard bonus line under the level list (%d = percent).
+@export var ascension_shard_format: String = "+%d%% Cipher Shards on top of Hard Mode"
+
 ## Line on the core-pick screen naming the equipped Heirloom (%s = sigil title).
 @export var heirloom_active_format: String = "Heirloom: %s"
 
@@ -542,6 +567,9 @@ extends Resource
 	9: "Weaves between others and fires crossing lines.",
 	10: "Splits into smaller copies when it dies.",
 	11: "Floor 3 boss. The keeper of the last cipher.",
+	12: "Rings out slow double rings of frost. Slip through the gaps.",
+	13: "Keeps its distance and sends seeking shots. Outturn them.",
+	14: "Rears back, then looses a stacked lance. Step aside, not back.",
 }
 
 @export_group("Assist (F2)")
