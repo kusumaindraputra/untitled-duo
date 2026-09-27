@@ -56,6 +56,8 @@ const KNOCKBACK_DURATION: float = 0.08
 
 ## Camera zoom, look-ahead and smoothing live in camera_tuning.tres (ADR-0024).
 const CAMERA_TUNING: CameraTuning = preload("res://assets/data/camera_tuning.tres")
+## ADR-0040 — squash & stretch amounts and timings for dash and landing.
+const FX_TUNING: CharacterFxTuning = preload("res://assets/data/character_fx_tuning.tres")
 
 ## Movement speed multiplier during cast lock — Fayde can still move but at reduced speed.
 ## GDD Rule 6: movement is dampened, not zeroed, during the post-hit recovery window.
@@ -69,10 +71,6 @@ const ZOOM_TWEEN_DURATION: float = 0.35
 ## Replaces the old black-flash snap so the zoom-in IS the combat-start signal.
 const ZOOM_COMBAT_PUNCH_DURATION: float = 0.22
 
-## Trauma-based camera shake parameters (Gamefeel Audit Issue 2.3).
-## Trauma decays at TRAUMA_DECAY units/sec; squared before applying to offset (quadratic feel).
-const TRAUMA_DECAY: float = 3.5
-const SHAKE_MAX_OFFSET: float = 10.0
 
 # ── Private variables ─────────────────────────────────────────────────────────
 
@@ -114,10 +112,6 @@ var audio_system: Variant = null
 var _footstep_timer: float = 0.0
 var _footstep_bag: Array[StringName] = []
 var _last_footstep_played: StringName = &""
-
-## Trauma-based camera shake accumulator. Range [0.0, 1.0]. Decays each frame.
-## Written by add_camera_trauma(); read in _physics_process() to compute offset.
-var _trauma: float = 0.0
 
 ## Remaining seconds of post-hit i-frame blink (white, no tint — distinct from dash cyan).
 ## Driven by HealthAndDamage.damage_taken so the player can read grace frames after being hit.
@@ -224,19 +218,6 @@ func _physics_process(delta: float) -> void:
 			modulate = Color.WHITE
 		_blink_timer = 0.0
 
-	# ── Camera shake (Gamefeel Audit Issue 2.3) ──────────────────────────────────
-	if _trauma > 0.0:
-		_trauma = maxf(_trauma - TRAUMA_DECAY * delta, 0.0)
-		var shake: float = _trauma * _trauma  # quadratic: gentle at low trauma, sharp at high
-		if is_instance_valid(_camera) and shake > 0.001:
-			var t_ms: float = float(Time.get_ticks_msec())
-			_camera.offset = Vector2(
-				sin(t_ms * 0.073) * shake * SHAKE_MAX_OFFSET,
-				cos(t_ms * 0.091) * shake * SHAKE_MAX_OFFSET
-			)
-		elif is_instance_valid(_camera):
-			_camera.offset = Vector2.ZERO
-
 	if _controller_state == ControllerState.DISABLED:
 		velocity = Vector2.ZERO
 		return
@@ -279,6 +260,7 @@ func _physics_process(delta: float) -> void:
 		_dash_duration_timer -= delta
 		if _dash_duration_timer <= 0.0:
 			_controller_state = ControllerState.ENABLED
+			_squash(PixelCharacter.squash_peak(FX_TUNING.dash_land_squash), FX_TUNING.dash_land_sec)
 			_is_invincible = false
 			collision_mask = COLLISION_MASK_NORMAL
 			if _dash_charges < _max_dash_charges() and _dash_cooldown_timer <= 0.0:
@@ -359,6 +341,7 @@ func _start_dash(input_dir: Vector2) -> void:
 	dash_charges_changed.emit(_dash_charges, _max_dash_charges())
 	if _dash_charges == 0:
 		dash_cooldown_changed.emit(false)
+	_squash(PixelCharacter.stretch_along(dash_dir, FX_TUNING.dash_stretch), FX_TUNING.dash_stretch_sec)
 	_spawn_dash_dust()
 	_spawn_dash_ghosts(dash_dir)
 
@@ -566,7 +549,7 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	modulate = Color.WHITE
 	_blink_timer = 0.0
 	_post_hit_blink_timer = 0.0
-	_trauma = 0.0
+	ScreenShake.reset()
 	_dash_duration_timer = 0.0
 	_dash_cooldown_timer = 0.0
 	_dash_charges = _max_dash_charges()
@@ -712,7 +695,8 @@ func boss_reveal_zoom() -> void:
 func _on_player_died() -> void:
 	_controller_state = ControllerState.DISABLED
 	velocity = Vector2.ZERO
-	add_camera_trauma(0.85)  # death shake: strong jolt before overlay appears
+	# Death shake: strong jolt before the overlay appears.
+	add_camera_trauma(ShakeState.DEFAULT_TUNING.massive)
 
 
 ## Spawns a procedural dust burst at Fayde's feet when a dash starts.
@@ -779,21 +763,33 @@ func _spawn_pixel_ghosts(pixel: PixelCharacter, dash_dir: Vector2) -> void:
 		tw.tween_callback(ghost.queue_free)
 
 
-## Adds [param amount] to the camera shake trauma accumulator (clamped to 1.0).
-## Values: 0.2 = light (Cluster hit), 0.5 = medium (Charger charge), 0.85 = heavy (death).
-## Trauma decays at TRAUMA_DECAY per second and is squared before offset application.
-## Also rumbles the gamepad (ADR-0031), scaled by the Rumble setting, not Screen shake.
-func add_camera_trauma(amount: float) -> void:
-	_trauma = minf(_trauma + amount * GameSettings.shake_multiplier(), 1.0)
+## Shakes the screen by [param amount] trauma (0–1) through the ScreenShake service
+## (ADR-0040), with an optional kick along [param direction], and rumbles the gamepad
+## (ADR-0031, scaled by the Rumble setting, not Screen shake). Use this for impacts
+## Fayde feels in her hands; use ScreenShake directly for shake with no rumble.
+func add_camera_trauma(amount: float, direction: Vector2 = Vector2.ZERO) -> void:
+	ScreenShake.add_trauma(amount, direction)
 	Rumble.from_trauma(amount)
+
+
+## Squashes Fayde's pixel sprite to [param peak] and springs it back over
+## [param duration] seconds (ADR-0040). No-op without a sprite.
+func _squash(peak: Vector2, duration: float) -> void:
+	var pixel: PixelCharacter = get_node_or_null(^"PixelCharacter") as PixelCharacter
+	if pixel != null:
+		pixel.squash(peak, duration)
 
 
 ## Responds to heavy_hit (final_damage >= HEAVY_HIT_THRESHOLD) with camera trauma.
 ## Trauma scales linearly with damage above the threshold, capped at heavy-charge level.
-func _on_heavy_hit(_target: Node, final_damage: int) -> void:
+## The view kicks along the blow: toward the target when Fayde lands it.
+func _on_heavy_hit(target: Node, final_damage: int) -> void:
 	var t: float = lerpf(0.25, 0.55,
 		clampf((float(final_damage) - float(HealthAndDamage.HEAVY_HIT_THRESHOLD)) / 30.0, 0.0, 1.0))
-	add_camera_trauma(t)
+	var dir: Vector2 = Vector2.ZERO
+	if target != self and target is Node2D and is_inside_tree():
+		dir = (target as Node2D).global_position - global_position
+	add_camera_trauma(t, dir)
 
 
 ## Starts the post-hit white blink when Fayde takes damage.

@@ -596,7 +596,8 @@ func _stop_attack_vfx() -> void:
 
 
 ## Solid white flash on successful spell hit (ADR-0034: the sprite turns white
-## through the pixel_character shader; placeholder bodies fall back to overbright).
+## through the pixel_character shader; placeholder bodies fall back to overbright),
+## plus a squash-and-spring bounce along the blow (ADR-0040).
 ## Kills _vfx_tween so the looping contact/telegraph pulse does not immediately
 ## override the flash — called via duck-typing from SpellVFX._on_damage_taken.
 func request_hit_flash() -> void:
@@ -607,10 +608,25 @@ func request_hit_flash() -> void:
 	if pc != null and pc.visible:
 		modulate = Color.WHITE
 		pc.flash(FX_TUNING.hit_flash_color, FX_TUNING.enemy_flash_sec)
+		pc.squash(hit_squash_peak(), FX_TUNING.enemy_hit_squash_sec)
 		return
 	modulate = Color(3.0, 3.0, 3.0, 1.0)
 	var tw: Tween = create_tween()
 	tw.tween_property(self, "modulate", Color.WHITE, 0.10)
+
+
+## ADR-0040 hit bounce: the sprite squashes along the blow (from Fayde to this
+## enemy), less on a boss. Horizontal squash when Fayde is unknown.
+func hit_squash_peak() -> Vector2:
+	var amount: float = FX_TUNING.enemy_hit_squash
+	if is_boss():
+		amount *= FX_TUNING.boss_squash_scale
+	var dir: Vector2 = Vector2.RIGHT
+	if is_instance_valid(_fayde_ref) and _fayde_ref.is_inside_tree() and is_inside_tree():
+		var d: Vector2 = global_position - _fayde_ref.global_position
+		if d != Vector2.ZERO:
+			dir = d
+	return PixelCharacter.stretch_along(dir, -amount)
 
 
 ## Applies a status effect color tint to communicate active status to the player.
@@ -829,7 +845,7 @@ func _on_phase_up(phase: int) -> void:
 	phase_changed.emit(phase)
 	request_hit_flash()
 	if is_instance_valid(_fayde_ref) and _fayde_ref.has_method(&"add_camera_trauma"):
-		_fayde_ref.add_camera_trauma(0.35)
+		_fayde_ref.add_camera_trauma(ShakeState.DEFAULT_TUNING.medium)
 	Sfx.play(&"sfx_boss_phase")
 
 
