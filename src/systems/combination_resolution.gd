@@ -271,6 +271,12 @@ func _resolve(fragments: Array) -> SpellEffect:
 	effect.active_reactions = recognition["reactions"]
 	effect.active_cascade = recognition["cascade"]
 
+	# Two hands (Rule 18, ADR-0057): Ayden's column adds power, Faith's adds control.
+	var hands: Dictionary = PranaHands.read(fragments)
+	effect.hand_power_mult = hands["power_mult"]
+	effect.hand_control_mult = hands["control_mult"]
+	effect.hands_touching = hands["touch"]
+
 	return effect
 
 
@@ -295,9 +301,11 @@ func set_test_fragments(fragments: Array) -> void:
 ##   primary_count: int (matching-type slots, incl. centre)
 ##   nonprimary:    Array of { "type": int, "tier": int, "count": int } for each
 ##                  non-primary type that is active (tier > 0), ordered by type id.
+##   hands:         PranaHands.read() of the grid (ADR-0057); always present.
 func preview_build(type_ids: Array) -> Dictionary:
 	var result: Dictionary = {
 		"primary_type": -1, "primary_tier": 0, "primary_count": 0, "nonprimary": [],
+		"hands": PranaHands.read(type_ids),
 	}
 	if type_ids.size() <= 4 or type_ids[4] == null:
 		return result

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="HandsTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/hands_tuning.gd" id="1_hands"]
+
+[resource]
+script = ExtResource("1_hands")
+ayden_slots = PackedInt32Array(0, 3, 6)
+faith_slots = PackedInt32Array(2, 5, 8)
+power_per_prana = 0.06
+control_per_prana = 0.12
+touch_mult = 1.5

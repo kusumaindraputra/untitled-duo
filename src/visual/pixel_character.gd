@@ -12,6 +12,8 @@
 ## ADR-0034 effects, all driven from _process and the pixel_character shader:
 ## flash() turns every opaque pixel one colour for a moment (hit flash), play_cast()
 ## plays the cast row once, and dissolve() breaks the sprite apart in 2×2 clusters.
+## ADR-0056: with a cast_sheet, play_cast() can take a cast style (one row per Prana,
+## GameEnums.CastAnimation) and shows that row instead of the plain cast row.
 ## ADR-0040: squash() deforms the sprite around its feet and springs it back (dash,
 ## cast, hit bounce). It scales the sprites, not this node, so callers' scale is kept.
 class_name PixelCharacter
@@ -25,6 +27,8 @@ const ROWS: int = 3
 const ROW_IDLE: int = 0
 const ROW_MOVE: int = 1
 const ROW_CAST: int = 2
+## Rows in a cast_sheet, one per GameEnums.CastAnimation value.
+const CAST_STYLES: int = 5
 ## Parent speed (px/s) above which the moving row plays.
 const MOVE_THRESHOLD: float = 12.0
 const FX_TUNING: CharacterFxTuning = preload("res://assets/data/character_fx_tuning.tres")
@@ -38,6 +42,11 @@ const FX_SHADER: Shader = preload("res://assets/shaders/pixel_character.gdshader
 	set(value):
 		glow_sheet = value
 		_apply_sheet()
+## Per-Prana cast poses (ADR-0056): CAST_STYLES rows of FRAMES columns, same cell
+## size as [member sheet]. Null: every cast plays the sheet's own cast row.
+@export var cast_sheet: Texture2D = null
+## Glow for [member cast_sheet], same layout.
+@export var cast_glow_sheet: Texture2D = null
 ## Tint of the glow sheet (Fayde: the active Prana colour).
 @export var glow_color: Color = Color(0.239, 0.851, 0.941, 1.0):
 	set(value):
@@ -64,6 +73,8 @@ var _flash_sec: float = 0.0
 var _flash_elapsed: float = 0.0
 var _cast_sec: float = 0.0
 var _cast_elapsed: float = 0.0
+var _cast_style: int = -1
+var _showing_styles: bool = false
 var _dissolve_sec: float = 0.0
 var _dissolve_elapsed: float = 0.0
 var _squash_peak: Vector2 = Vector2.ONE
@@ -127,13 +138,22 @@ func flash(color: Color, duration: float, strength: float = 1.0) -> void:
 
 
 ## Plays the cast row once over [param duration] seconds (wind-up, release, hold,
-## recover). Idle and moving rows resume afterwards.
-func play_cast(duration: float) -> void:
+## recover). Idle and moving rows resume afterwards. [param style] picks a row of
+## [member cast_sheet] (a GameEnums.CastAnimation value); -1, an out-of-range style
+## or no cast_sheet plays the plain cast row.
+func play_cast(duration: float, style: int = -1) -> void:
 	if duration <= 0.0:
 		return
 	_cast_sec = duration
 	_cast_elapsed = 0.0
+	var styled: bool = cast_sheet != null and style >= 0 and style < CAST_STYLES
+	_cast_style = style if styled else -1
 	_update_frame()
+
+
+## Cast style row showing now, or -1 when not casting or casting the plain row.
+func get_cast_style() -> int:
+	return _cast_style if is_casting() else -1
 
 
 ## True while the cast row is playing.
@@ -203,7 +223,8 @@ func advance_fx(delta: float) -> void:
 ## The caller owns it and places it with global_position.
 func make_ghost() -> Sprite2D:
 	var g: Sprite2D = _make_sprite()
-	g.texture = sheet
+	g.texture = _body.texture
+	g.vframes = _body.vframes
 	g.frame = _body.frame
 	g.flip_h = _body.flip_h
 	g.offset = _body.offset
@@ -244,6 +265,12 @@ func get_frame_size() -> Vector2i:
 	return Vector2i(sheet.get_width() / FRAMES, sheet.get_height() / ROWS)
 
 
+## Returns the [member cast_sheet] frame [param elapsed] seconds into a cast of
+## [param duration] seconds in cast style [param style]. Pure.
+static func styled_cast_frame_for(elapsed: float, duration: float, style: int) -> int:
+	return cast_frame_for(elapsed, duration) - ROW_CAST * FRAMES + style * FRAMES
+
+
 ## Returns the frame index for elapsed [param time] on a looping [param row]. Pure.
 static func frame_for(time: float, row: int, frames_per_sec: float) -> int:
 	var col: int = int(floor(time * frames_per_sec)) % FRAMES
@@ -272,13 +299,31 @@ func _update_frame() -> void:
 	if sheet == null:
 		return
 	var f: int
-	if is_casting():
+	var styled: bool = is_casting() and _cast_style >= 0
+	_show_cast_sheet(styled)
+	if styled:
+		f = styled_cast_frame_for(_cast_elapsed, _cast_sec, _cast_style)
+	elif is_casting():
 		f = cast_frame_for(_cast_elapsed, _cast_sec)
 	else:
 		f = frame_for(_time, ROW_MOVE if _moving else ROW_IDLE, fps)
 	_body.frame = f
 	if _glow.visible:
 		_glow.frame = f
+
+
+## Swaps both sprites between the main sheet and the cast-style sheet.
+func _show_cast_sheet(on: bool) -> void:
+	if on == _showing_styles:
+		return
+	_showing_styles = on
+	var rows: int = CAST_STYLES if on else ROWS
+	for s: Sprite2D in [_body, _glow]:
+		s.vframes = rows
+	_body.texture = cast_sheet if on else sheet
+	_glow.texture = cast_glow_sheet if on else glow_sheet
+	if _material != null:
+		_material.set_shader_parameter(&"sheet_rows", float(rows))
 
 
 func _apply_squash() -> void:
@@ -294,7 +339,7 @@ func _ensure_material() -> void:
 		return
 	_material = ShaderMaterial.new()
 	_material.shader = FX_SHADER
-	_material.set_shader_parameter(&"sheet_rows", float(ROWS))
+	_material.set_shader_parameter(&"sheet_rows", float(CAST_STYLES if _showing_styles else ROWS))
 	_material.set_shader_parameter(&"dissolve_edge", FX_TUNING.dissolve_edge)
 	_material.set_shader_parameter(&"dissolve_rise", FX_TUNING.dissolve_rise)
 	_body.material = _material
@@ -313,6 +358,7 @@ func _apply_sheet() -> void:
 		s.hframes = FRAMES
 		s.vframes = ROWS
 	_apply_squash()
+	_showing_styles = false
 	_body.texture = sheet
 	_glow.texture = glow_sheet
 	_glow.visible = glow_sheet != null
