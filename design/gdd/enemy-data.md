@@ -87,8 +87,13 @@ Players do not engage with Enemy Data as a system. They engage with enemy types 
 | 8 | **Mortar** | Shooter | Shadow (Voidblue) | 40 | 14.0 | 25 px/s | Voidblue (ID 1) | *0.40* | 2 | 16×16 px | active |
 | 9 | **Weaver** | Swarmer | Lightning (Stormgold) | 30 | 9.0 | 65 px/s | Stormgold (ID 2) | *0.40* | 1 | 16×16 px | active |
 | 10 | **Splitter** | Seeker | Nature (Verdant) | 40 | 12.0 | 75 px/s | Verdant (ID 4) | *0.40* | 1 | 16×16 px | active |
+| 12 | **Pulsar** | Seeker | Ice (Deepfrost) | 45 | 10.0 | 40 px/s | Deepfrost (ID 3) | *0.40* | 1 | 18×16 px | active |
+| 13 | **Wisp** | Shooter | Shadow (Voidblue) | 34 | 10.0 | 55 px/s | Voidblue (ID 1) | *0.40* | 2 | 12×20 px | active |
+| 14 | **Lancer** | Rusher | Fire (Ashfire) | 70 | 14.0 | 70 px/s | Ashfire (ID 0) | *0.40* | 2 | 20×14 px | active |
 
 *Affiliation column is cosmetic/drop-typing only since 2026-06-21. Drop values (`drop_rate`, `drop_prana_type`) remain provisional — subject to revision after Prana Drop / Loot GDD is authored. Rifter fills the prior "no Verdant-affiliated enemy" gap noted in the Open Questions.*
+
+*IDs 12–14 (2026-09-27, ADR-0053) add one enemy per floor: Pulsar joins from Floor 1 (slow double frost rings, `pulsar_ring`), Wisp from Floor 2 (two seeking shots, `wisp_seeker`), Lancer on Floor 3 (a stacked lance of speeding shots, `lancer_lance`). Each later floor keeps the earlier floors' newcomers in its pool.*
 
 *IDs 6–10 (2026-09-24, ADR-0018) are the bullet-hell roster. Their attacks are data, not code: each EnemyType carries `pattern_layers` (and Splitter a `death_pattern`) pointing at BulletPattern resources in `assets/data/bullet_patterns/`. Behaviour per pattern is specified in `design/gdd/bullet-hell.md`.*
 

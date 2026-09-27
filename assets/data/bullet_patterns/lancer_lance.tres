@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="BulletPattern" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/bullet_pattern.gd" id="1_bp"]
+
+[resource]
+script = ExtResource("1_bp")
+interval = 2.4
+initial_delay = 1.1
+windup_sec = 0.4
+shape = 1
+count = 3
+spread_deg = 18.0
+bursts = 4
+burst_interval = 0.08
+speed = 130.0
+speed_step = 35.0
+damage_mult = 0.55

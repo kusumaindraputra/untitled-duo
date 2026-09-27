@@ -72,6 +72,10 @@ func _init() -> void:
 	_sheet("sniper", 16, 28, _sniper)
 	_sheet("spinner", 22, 18, _spinner)
 	_sheet("splitter", 18, 18, _splitter)
+	# ADR-0053: one new enemy per floor.
+	_sheet("pulsar", 22, 22, _pulsar)
+	_sheet("wisp", 16, 26, _wisp)
+	_sheet("lancer", 26, 20, _lancer)
 	_sheet("vault_sentinel", 96, 96, _sentinel, Callable(), true)
 	_sheet("warped_warden", 96, 96, _warden, Callable(), true)
 	_sheet("cipher_keeper", 144, 144, _keeper, Callable(), true)
@@ -527,6 +531,74 @@ func _splitter(p: PixelPainter, f: int, moving: bool) -> void:
 	p.px(12, 3 + hop, mk.darkened(0.2))
 
 
+
+
+## Pulsar (Deepfrost, F1, ADR-0053): a squat bell on a stone collar, ringed by a
+## frost halo that swells before each ring volley.
+func _pulsar(p: PixelPainter, f: int, moving: bool) -> void:
+	var mk: Color = PixelPainter.marker(DEEPFROST)
+	var swell: float = ([0.0, 0.7, 1.4, 0.7] as Array[float])[f]
+	var bob: int = -1 if moving and f % 2 == 1 else 0
+	# Halo arcs left and right (broken ring, reads as "pulse" without colour).
+	for side: int in [-1, 1]:
+		for i: int in 5:
+			var a: float = (-0.5 + 0.25 * i) * PI * 0.5
+			var x: int = roundi(11.0 + side * (9.0 + swell) * cos(a))
+			var y: int = roundi(11.0 + (6.0 + swell * 0.5) * sin(a)) + bob
+			p.px(x, y, mk if i % 2 == 0 else mk.darkened(0.25))
+	# Bell body.
+	p.poly(PackedVector2Array([
+		Vector2(7, 5 + bob), Vector2(15, 5 + bob), Vector2(17, 15 + bob), Vector2(5, 15 + bob),
+	]), METAL, true)
+	p.ellipse(11.0, 5.0 + bob, 4.0, 2.0, METAL.lightened(0.1), true)
+	# Stone collar and the clapper core.
+	p.rect(4, 15 + bob, 14, 2, STONE)
+	p.rect(10, 9 + bob, 3, 4, mk.lightened(0.15 + swell * 0.1))
+	p.px(11, 18 + bob, mk.darkened(0.2))
+
+
+## Wisp (Voidblue, F2, ADR-0053): a tall hooded lantern whose void flame leans
+## toward its target. Keeps its distance and lets its seeking shots do the work.
+func _wisp(p: PixelPainter, f: int, moving: bool) -> void:
+	var mk: Color = PixelPainter.marker(VOIDBLUE)
+	var sway: int = ([0, 1, 0, -1] as Array[int])[f]
+	var bob: int = -1 if moving and f % 2 == 0 else 0
+	# Trailing wisp tail.
+	p.line(8, 18 + bob, 7 - sway, 24, E3)
+	p.line(8, 18 + bob, 9 - sway, 25, E3.darkened(0.2))
+	# Hood.
+	p.poly(PackedVector2Array([
+		Vector2(8 + sway, 1 + bob), Vector2(14, 10 + bob), Vector2(13, 19 + bob),
+		Vector2(3, 19 + bob), Vector2(2, 10 + bob),
+	]), E7, true)
+	# Lantern opening with the flame.
+	p.ellipse(8.0, 12.0 + bob, 3.5, 4.5, OUTLINE, false)
+	p.ellipse(8.0 + sway * 0.5, 12.0 + bob, 2.0, 3.0, mk, true)
+	p.px(8 + sway, 10 + bob, mk.lightened(0.5))
+	# Hood seam.
+	p.line(8 + sway, 2 + bob, 8, 7 + bob, E3)
+
+
+## Lancer (Ashfire, F3, ADR-0053): a low four-legged frame carrying a long ember
+## lance; it rears back before loosing a stacked lance of shots.
+func _lancer(p: PixelPainter, f: int, moving: bool) -> void:
+	var mk: Color = PixelPainter.marker(ASHFIRE)
+	var step: int = (1 if f % 2 == 0 else -1) if moving else 0
+	# Legs.
+	p.line(6, 12, 3 + step, 19, E3)
+	p.line(9, 12, 10 - step, 19, E3.darkened(0.15))
+	p.line(15, 12, 13 + step, 19, E3)
+	p.line(18, 12, 20 - step, 19, E3.darkened(0.15))
+	# Body.
+	p.ellipse(12.0, 10.0, 8.0, 3.5, METAL_WARM, true)
+	# Lance: shaft forward (right), ember tip.
+	var thrust: int = ([0, 1, 2, 1] as Array[int])[f]
+	p.rect(14, 6, 9 + thrust, 2, STONE.lightened(0.1))
+	p.poly(PackedVector2Array([
+		Vector2(22 + thrust, 4), Vector2(25 + thrust, 7), Vector2(22 + thrust, 9),
+	]), mk, true)
+	# Visor slit.
+	p.rect(7, 9, 5, 1, mk.darkened(0.2))
 
 
 # ── Bosses (native resolution, one sheet pixel = one world pixel) ───────────

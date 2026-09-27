@@ -41,6 +41,10 @@ const _ENTRY_FILES: Array[String] = [
 	"enemy_splitter.tres",
 	# ADR-0026 final boss (Floor 3), id 11.
 	"enemy_cipher_keeper.tres",
+	# ADR-0053 one new enemy per floor: Pulsar (F1) 12, Wisp (F2) 13, Lancer (F3) 14.
+	"enemy_pulsar.tres",
+	"enemy_wisp.tres",
+	"enemy_lancer.tres",
 ]
 
 # ── Private state ─────────────────────────────────────────────────────────────
