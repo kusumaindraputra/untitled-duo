@@ -630,6 +630,17 @@ extends Resource
 ## Settings rows.
 @export var settings_text_size: String = "Text size"
 @export var settings_bullet_outline: String = "High-contrast bullets"
+
+## ADR-0046 Settings rows: the HUD heading, HUD scale, card opacity and run timer.
+@export var settings_hud_heading: String = "HUD"
+@export var settings_hud_scale: String = "HUD size"
+@export var settings_hud_opacity: String = "HUD card opacity"
+@export var settings_run_timer: String = "Show run timer"
+## ADR-0046 corner toasts (%s = sigil title; %d/%d = memory number and total;
+## %d = shards gained, %d = bonus shards this run).
+@export var toast_sigil_format: String = "Sigil gained · %s"
+@export var toast_memory_format: String = "Memory found · %d/%d"
+@export var toast_shards_format: String = "+%d Cipher Shards · %d this run"
 ## Colour-blind Prana palette row (ADR-0047) and its choices by GameSettings.ColorMode.
 @export var settings_color_mode: String = "Prana colours"
 @export var settings_color_modes: Array[String] = [
