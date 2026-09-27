@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="HudToastTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/hud_toast_tuning.gd" id="1_toast"]
+
+[resource]
+script = ExtResource("1_toast")
+hold_sec = 2.6
+in_sec = 0.18
+out_sec = 0.4
+slide_px = 18.0
+max_visible = 3
+max_queued = 6
+margin = 12.0
+gap = 6.0
+font_size = 16
