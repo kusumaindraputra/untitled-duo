@@ -27,6 +27,8 @@ var _listening_pad: StringName = &""
 var _resolution: OptionButton = null
 var _shake_value: Label = null
 var _text_size: OptionButton = null
+## HUD size choice (ADR-0046).
+var _hud_scale: OptionButton = null
 var _color_mode: OptionButton = null
 ## The centred content, shrunk to fit the window at large text sizes (ADR-0032).
 var _root: VBoxContainer = null
@@ -170,6 +172,27 @@ func _build() -> void:
 	_assist_controls.append(ad)
 	_refresh_assist()
 	middle.add_child(_label(_COPY.settings_assist_note, 14, UIPalette.TEXT_FAINT))
+
+	# ADR-0046: HUD size, card opacity and the run timer. Each change reaches the
+	# live HUD at once through the "hud_prefs" group, so it shows from the pause menu.
+	middle.add_child(_label(_COPY.settings_hud_heading, 20, Color(0.75, 0.8, 1.0)))
+	_hud_scale = OptionButton.new()
+	_hud_scale.name = "HudScale"
+	for f: float in GameSettings.HUD_SCALES:
+		_hud_scale.add_item("%d%%" % roundi(f * 100.0))
+	_hud_scale.select(clampi(settings.hud_scale_idx, 0, GameSettings.HUD_SCALES.size() - 1))
+	_hud_scale.item_selected.connect(_on_hud_scale_selected)
+	middle.add_child(_row(_COPY.settings_hud_scale, _hud_scale))
+	_percent_slider(middle, _COPY.settings_hud_opacity, GameSettings.HUD_CARD_OPACITY_MIN,
+		settings.hud_card_opacity, func(v: float) -> void:
+			settings.hud_card_opacity = v
+			_refresh_hud())
+	var rt := _check(middle, _COPY.settings_run_timer, settings.show_run_timer)
+	rt.name = "RunTimer"
+	rt.toggled.connect(func(on: bool) -> void:
+		settings.show_run_timer = on
+		_save()
+		_refresh_hud())
 
 	# Keyboard key and gamepad button side by side (ADR-0031). Movement stays on
 	# the left stick, so only dash / cast / special get a pad button.
@@ -356,6 +379,19 @@ func _on_text_size_selected(idx: int) -> void:
 	_save()
 	if is_inside_tree():
 		UIFeel.apply_text_scale_tree(get_tree().root, settings.text_scale_value())
+
+
+## Saves the HUD size and rescales the live HUD.
+func _on_hud_scale_selected(idx: int) -> void:
+	settings.hud_scale_idx = idx
+	_save()
+	_refresh_hud()
+
+
+## Tells every live HUD part to re-read the HUD options (ADR-0046).
+func _refresh_hud() -> void:
+	if is_inside_tree():
+		get_tree().call_group(CombatHUD.HUD_PREFS_GROUP, &"refresh_hud_prefs")
 
 
 ## Saves the colour-blind mode and recolours every Prana at once (ADR-0047).

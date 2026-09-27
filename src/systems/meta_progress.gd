@@ -29,6 +29,10 @@ var unlocked: Array[StringName] = []
 ## Heirloom granted at the next run start; &"" = none.
 var equipped: StringName = &""
 var hard_mode: bool = false
+## Ascension (ADR-0052): the level picked for the next run (0 = plain Hard Mode) and the
+## highest level unlocked so far. Only in effect while Hard Mode is.
+var ascension: int = 0
+var ascension_unlocked: int = 0
 ## True once the in-combat tutorial coach has been completed.
 var tutorial_done: bool = false
 ## True once the guided first room (ADR-0055) was finished or skipped. Saves from before
@@ -59,24 +63,30 @@ var boss_best_sec: Dictionary[int, float] = {}
 ## Shards earned by a run that reached [param floor_reached], cleared
 ## [param rooms] rooms and slew [param kills] enemies. See design/gdd/meta-progression.md.
 static func shards_for_run(t: MetaTuning, floor_reached: int, rooms: int, kills: int,
-		win: bool, hard: bool) -> int:
+		win: bool, hard: bool, ascension_bonus: float = 0.0) -> int:
 	var total: int = t.shards_per_floor * maxi(floor_reached, 1) \
 		+ t.shards_per_room * maxi(rooms, 0) \
 		+ (maxi(kills, 0) / maxi(t.kills_per_shard, 1)) \
 		+ (t.win_bonus if win else 0)
 	if hard:
-		total = roundi(float(total) * t.hard_mode_shard_mult)
+		total = roundi(float(total) * (t.hard_mode_shard_mult + maxf(ascension_bonus, 0.0)))
 	return total
 
 
 ## Records a finished run, pays its shards and returns how many were paid.
 ## [param run_data] is RunManager.get_run_data(), optionally carrying "bonus_shards"
 ## (flawless Challenge rooms, ADR-0026), which is added after the Hard Mode multiplier.
+## A win on Hard Mode at the highest unlocked Ascension opens the next level (ADR-0052).
 func record_run(t: MetaTuning, run_data: Dictionary, win: bool) -> int:
 	var floor_reached: int = int(run_data.get("current_floor", 1))
+	var hard: bool = hard_mode_active(t)
+	var level: int = active_ascension(t)
+	var bonus: float = t.ascension.stacked(level).shard_bonus if t.ascension != null else 0.0
 	var earned: int = shards_for_run(t, floor_reached, int(run_data.get("rooms_cleared", 0)),
-		int(run_data.get("enemies_killed", 0)), win, hard_mode) \
+		int(run_data.get("enemies_killed", 0)), win, hard, bonus) \
 		+ maxi(int(run_data.get("bonus_shards", 0)), 0)
+	if win and hard and level >= ascension_unlocked and ascension_unlocked < max_ascension(t):
+		ascension_unlocked += 1
 	shards += earned
 	lifetime_shards += earned
 	runs += 1
@@ -159,6 +169,41 @@ static func apply_hard_mode(cfg: EnemyPoolConfig, t: MetaTuning) -> EnemyPoolCon
 		hard.enemy_count_max = cfg.enemy_count_max + t.hard_extra_enemies
 	hard.elite_chance = clampf(cfg.elite_chance + t.hard_elite_chance_bonus, 0.0, 1.0)
 	return hard
+
+
+# ── Ascension (ADR-0052) ──────────────────────────────────────────────────────
+
+## Highest Ascension level the tuning defines (0 when it has none).
+static func max_ascension(t: MetaTuning) -> int:
+	return t.ascension.max_level() if t != null and t.ascension != null else 0
+
+
+## The Ascension level in effect for the next run: the picked level, capped by what is
+## unlocked, and 0 unless Hard Mode is active.
+func active_ascension(t: MetaTuning) -> int:
+	if not hard_mode_active(t):
+		return 0
+	return clampi(ascension, 0, mini(ascension_unlocked, max_ascension(t)))
+
+
+## Steps the picked level by [param step], wrapping between 0 and the highest unlocked
+## level. Returns the new level.
+func cycle_ascension(t: MetaTuning, step: int = 1) -> int:
+	var top: int = mini(ascension_unlocked, max_ascension(t))
+	if top <= 0:
+		ascension = 0
+		return 0
+	ascension = posmod(clampi(ascension, 0, top) + step, top + 1)
+	return ascension
+
+
+## Returns a copy of [param cfg] with the active Ascension applied, or [param cfg]
+## itself at level 0.
+func apply_ascension(cfg: EnemyPoolConfig, t: MetaTuning) -> EnemyPoolConfig:
+	var level: int = active_ascension(t)
+	if level <= 0 or t.ascension == null:
+		return cfg
+	return t.ascension.apply(cfg, level)
 
 
 # ── Story (ADR-0027) ──────────────────────────────────────────────────────────
@@ -256,6 +301,8 @@ static func load_from(path: String = DEFAULT_PATH) -> MetaProgress:
 			p.unlocked.append(sid)
 	p.equipped = StringName(str(cfg.get_value(_SECTION, "equipped", "")))
 	p.hard_mode = bool(cfg.get_value(_SECTION, "hard_mode", false))
+	p.ascension_unlocked = maxi(int(cfg.get_value(_SECTION, "ascension_unlocked", 0)), 0)
+	p.ascension = clampi(int(cfg.get_value(_SECTION, "ascension", 0)), 0, p.ascension_unlocked)
 	p.tutorial_done = bool(cfg.get_value(_SECTION, "tutorial_done", false))
 	p.tutorial_room_done = bool(cfg.get_value(_SECTION, "tutorial_room_done",
 		p.tutorial_done or p.runs > 0))
@@ -294,6 +341,8 @@ func save_to(path: String = DEFAULT_PATH) -> Error:
 	cfg.set_value(_SECTION, "unlocked", ids)
 	cfg.set_value(_SECTION, "equipped", String(equipped))
 	cfg.set_value(_SECTION, "hard_mode", hard_mode)
+	cfg.set_value(_SECTION, "ascension", ascension)
+	cfg.set_value(_SECTION, "ascension_unlocked", ascension_unlocked)
 	cfg.set_value(_SECTION, "tutorial_done", tutorial_done)
 	cfg.set_value(_SECTION, "tutorial_room_done", tutorial_room_done)
 	cfg.set_value(_SECTION, "last_core", String(last_core))

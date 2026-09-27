@@ -91,6 +91,8 @@ var _base_combat_cfg: EnemyPoolConfig = null
 var _room_modifier: int = RoomModifiers.NONE
 var _room_flawless: bool = true
 var _bonus_shards: int = 0
+## ADR-0046 corner toasts for sigils, memories and shards gained mid-run.
+var _toaster: HudToaster = null
 var _room_rng := RandomNumberGenerator.new()
 
 ## Guards hit-stop from stacking during the death slow-mo sequence.
@@ -200,6 +202,15 @@ func _ready() -> void:
 	indicators.player = $PlayerController
 	$CanvasLayer.add_child(indicators)
 	$CanvasLayer.move_child(indicators, 0)
+	# ADR-0046: corner toasts and the optional run clock, beside the HUD.
+	_toaster = HudToaster.new()
+	_toaster.name = "HudToaster"
+	$CanvasLayer.add_child(_toaster)
+	var run_timer := RunTimerLabel.new()
+	run_timer.name = "RunTimer"
+	run_timer.clock = RunManager.get_elapsed_sec
+	$CanvasLayer.add_child(run_timer)
+	_toaster.bottom_inset = run_timer.corner_height
 	# Boss-intro UI: WaveManager announces boss spawns; HUD shows name card + HP bar.
 	$WaveManager.boss_spawned.connect(hud._on_boss_spawned)
 	# ADR-0028: every floor boss changes the arena at each phase, and each plays one
@@ -806,6 +817,8 @@ func _apply_assist() -> void:
 	# ADR-0033: the Core's damage-taken share stacks with the Assist share.
 	var core_share: float = _core.damage_taken_mult if _core != null else 1.0
 	HealthAndDamage.player_damage_mult = s.effective_damage() * core_share
+	# ADR-0052: Ascension can cut healing.
+	HealthAndDamage.player_heal_mult = _ascension_level().heal_mult
 	var pc: Node = get_node_or_null(^"PlayerController")
 	if pc != null and &"auto_dash" in pc:
 		pc.set(&"auto_dash", s.effective_auto_dash())
@@ -972,6 +985,7 @@ func _on_floor_completed() -> void:
 	# ADR-0027: a cleared floor recovers the next memory before the next floor loads.
 	var card: MemoryFragmentModal = _recover_memory(StoryRules.Beat.FLOOR_CLEAR, 0)
 	if card != null:
+		_toast(_COPY.toast_memory_format % [_meta.fragments_found, StoryRules.total()], UIPalette.COOL)
 		await card.closed
 	_floors_cleared += 1
 	_current_floor += 1
@@ -1014,15 +1028,26 @@ func _load_pool_configs() -> void:
 ## Sets WaveManager pool configs for the current floor (combat + boss).
 func _apply_floor_pool_config() -> void:
 	var floor_idx: int = clampi(_current_floor - 1, 0, _floor_pool_configs.size() - 1)
-	var hard: bool = _meta != null and _meta.hard_mode_active(_META)
 	if not _floor_pool_configs.is_empty():
-		var cfg: EnemyPoolConfig = _floor_pool_configs[floor_idx]
-		_base_combat_cfg = MetaProgress.apply_hard_mode(cfg, _META) if hard else cfg
+		_base_combat_cfg = _run_pool(_floor_pool_configs[floor_idx])
 		$WaveManager.enemy_pool_config = _base_combat_cfg
 	if not _boss_pool_configs.is_empty():
 		var boss_idx: int = clampi(_current_floor - 1, 0, _boss_pool_configs.size() - 1)
-		var boss_cfg: EnemyPoolConfig = _boss_pool_configs[boss_idx]
-		$WaveManager.boss_pool_config = MetaProgress.apply_hard_mode(boss_cfg, _META) if hard else boss_cfg
+		$WaveManager.boss_pool_config = _run_pool(_boss_pool_configs[boss_idx])
+
+
+## [param cfg] with this run's Hard Mode and Ascension (ADR-0052) applied, as a copy.
+func _run_pool(cfg: EnemyPoolConfig) -> EnemyPoolConfig:
+	if _meta == null or not _meta.hard_mode_active(_META):
+		return cfg
+	return _meta.apply_ascension(MetaProgress.apply_hard_mode(cfg, _META), _META)
+
+
+## The stacked Ascension changes in effect this run (neutral values when none).
+func _ascension_level() -> AscensionLevel:
+	if _meta == null or _META.ascension == null:
+		return AscensionLevel.new()
+	return _META.ascension.stacked(_meta.active_ascension(_META))
 
 
 ## Death slow-mo: brief 0.15× time-scale window so the player can read the final
@@ -1048,12 +1073,16 @@ func _on_run_ended(win: bool) -> void:
 	# ADR-0025: pay Cipher Shards once per run and save before building the overlay.
 	var shards_earned: int = 0
 	var hard_newly_unlocked: bool = false
+	var ascension_opened: int = 0
 	if _meta != null and not _run_recorded:
 		_run_recorded = true
 		var was_unlocked: bool = _meta.is_hard_mode_unlocked(_META)
+		var was_ascension: int = _meta.ascension_unlocked
 		run_data["bonus_shards"] = _bonus_shards
 		shards_earned = _meta.record_run(_META, run_data, win)
 		hard_newly_unlocked = not was_unlocked and _meta.is_hard_mode_unlocked(_META)
+		if _meta.ascension_unlocked > was_ascension:
+			ascension_opened = _meta.ascension_unlocked
 		var run_sec: float = float(run_data.get("run_time_sec", 0.0))
 		if win and not _assist_used and _meta.record_win_time(run_sec):
 			_new_records.push_front(Records.new_run_line(run_sec))
@@ -1066,7 +1095,10 @@ func _on_run_ended(win: bool) -> void:
 	var panel := RunSummaryPanel.new()
 	overlay.add_child(panel)
 	add_child(overlay)
-	panel.setup(_build_summary_data(win, run_data, shards_earned, hard_newly_unlocked))
+	var summary: Dictionary = _build_summary_data(win, run_data, shards_earned, hard_newly_unlocked)
+	summary["ascension_unlocked"] = ascension_opened
+	summary["ascension"] = _meta.active_ascension(_META) if _meta != null else 0
+	panel.setup(summary)
 	panel.run_again_pressed.connect(_restart_from_pause)
 	panel.main_menu_pressed.connect(_to_main_menu)
 	panel.run_again_button.grab_focus()
@@ -1134,11 +1166,19 @@ func _log_sigil(sigil_id: StringName) -> void:
 	for sigil: Dictionary in _sigil_manager.get_catalog():
 		if sigil.get("id", &"") == sigil_id:
 			_run_sigils.append({"title": str(sigil.get("title", sigil_id)), "desc": str(sigil.get("desc", ""))})
+			_toast(_COPY.toast_sigil_format % str(sigil.get("title", sigil_id)), UIPalette.GOOD)
 			var hud: CombatHUD = get_node_or_null(^"CanvasLayer/CombatHUD") as CombatHUD
 			if hud != null:  # ADR-0045 chip strip
 				hud.get_sigil_strip().add_sigil(sigil_id, str(sigil.get("title", sigil_id)),
 					bool(sigil.get("behaviour", false)))
 			return
+
+
+## ADR-0046 — pushes a corner toast. The toaster is pausable, so one pushed under a
+## modal (sigil offer, memory card) waits and shows once play resumes.
+func _toast(text: String, color: Color) -> void:
+	if is_instance_valid(_toaster):
+		_toaster.push(text, color)
 
 
 ## F4: summary lines for Heirlooms that this run's memories made available.
@@ -1252,6 +1292,7 @@ func _on_wave_ended() -> void:
 		var bonus: int = RoomModifiers.bonus_shards(_room_modifier, _room_flawless)
 		if bonus > 0:
 			_bonus_shards += bonus
+			_toast(_COPY.toast_shards_format % [bonus, _bonus_shards], UIPalette.ACCENT)
 			$CanvasLayer/CombatHUD.show_room_banner(_COPY.challenge_won_format % bonus,
 				UIPalette.ACCENT)
 		# ADR-0041: the sigil offer waits until the CLEAR banner has had its beat.

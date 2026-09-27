@@ -13,6 +13,11 @@ const DESPAWN_FADE_DIST: float = 50.0
 ## Trail length grows to this max over TRAIL_GROW_TIME seconds.
 const TRAIL_MAX_LENGTH: float = 30.0
 const TRAIL_GROW_TIME: float = 0.15
+## Extra seconds a bullet keeps redrawing after its trail or homing turn settles.
+const REDRAW_SLACK_SEC: float = 0.05
+## Trail width, px. Matches the old 3 px anti-aliased draw_line, whose feather drew
+## about 4 px wide at combat zoom.
+const TRAIL_WIDTH: float = 4.0
 ## Legacy launch() bullets have no pattern: they use the palette's mob core (ADR-0037).
 const DEFAULT_ACCENT: StringName = EnemyBulletPalette.DEFAULT_ACCENT
 const DEFAULT_RADIUS: float = 4.0
@@ -88,6 +93,8 @@ func _ready() -> void:
 	# being monitorable adds no unwanted overlaps.
 	monitorable = true
 	z_index = 2100  # above every y-sorted entity (1..2000) so bullets stay readable
+	# BulletArt is baked at 2 texels per px; filter it smoothly at any camera zoom.
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	body_entered.connect(_on_body_entered)
 
 
@@ -97,7 +104,10 @@ func _physics_process(delta: float) -> void:
 	_alive_time += delta
 	_advance(delta)
 	_distance_traveled += _speed * delta
-	queue_redraw()
+	# ADR-0050: the drawing is in local space, so moving needs no redraw. Only the
+	# trail growth, a homing turn and the end-of-range fade change what is drawn.
+	if needs_redraw(_alive_time, _distance_traveled, _max_range, _motion, _homing_duration):
+		queue_redraw()
 	_check_player()
 	if not _freed and _distance_traveled >= _max_range:
 		_despawn()
@@ -109,22 +119,14 @@ func _draw() -> void:
 		fade = clampf((_max_range - _distance_traveled) / DESPAWN_FADE_DIST, 0.0, 1.0)
 	var c: Color = _color
 	var rim: Color = PALETTE.rim
-	var sep: Color = PALETTE.separator
 	# Trail and glow in the hostile family colour (ADR-0037), so every enemy shot
-	# reads as one family however its core is tinted.
+	# reads as one family however its core is tinted. ADR-0032 high-contrast option: a
+	# thick white ring around a black one. ADR-0050: the layers are baked once by
+	# BulletArt and drawn as quads that batch across bullets.
+	var art: BulletArt = BulletArt.for_bullet(_radius, GameSettings.bullet_outline_on(), rim, PALETTE.separator)
 	var trail_len: float = lerpf(0.0, TRAIL_MAX_LENGTH, clampf(_alive_time / TRAIL_GROW_TIME, 0.0, 1.0))
-	draw_line(-_direction * trail_len, Vector2.ZERO, Color(rim.r, rim.g, rim.b, 0.45 * fade), 3.0, true)
-	draw_circle(Vector2.ZERO, _radius * 2.5, Color(rim.r, rim.g, rim.b, 0.16 * fade))
-	# ADR-0032 high-contrast option: a thick white ring around a black one, so the
-	# bullet's edge reads on any floor and against any other effect.
-	if GameSettings.bullet_outline_on():
-		draw_circle(Vector2.ZERO, _radius + OUTLINE_WHITE, Color(1.0, 1.0, 1.0, fade))
-		draw_circle(Vector2.ZERO, _radius + OUTLINE_BLACK, Color(0.0, 0.0, 0.0, fade))
-	# Family rim, dark separator, accent core, white pip.
-	draw_circle(Vector2.ZERO, _radius + RIM_WIDTH, Color(rim.r, rim.g, rim.b, fade))
-	draw_circle(Vector2.ZERO, _radius + SEPARATOR_WIDTH, Color(sep.r, sep.g, sep.b, sep.a * fade))
-	draw_circle(Vector2.ZERO, _radius, Color(c.r, c.g, c.b, 0.95 * fade))
-	draw_circle(Vector2.ZERO, _radius * 0.3, Color(1.0, 1.0, 1.0, 0.9 * fade))
+	art.draw(self, -_direction * trail_len, Color(rim.r, rim.g, rim.b, 0.45 * fade), TRAIL_WIDTH,
+		Color(c.r, c.g, c.b, 0.95 * fade), fade)
 
 
 ## Sets the travel direction (normalised) and damage amount. Call after add_child().
@@ -135,6 +137,7 @@ func launch(direction: Vector2, base_damage: float) -> void:
 	_line_pos = position
 	_resolve_player()
 	add_to_group(GROUP)
+	queue_redraw()
 
 
 ## Launches with the bullet parameters of [param p] at [param bullet_speed].
@@ -188,6 +191,26 @@ func reset_for_reuse() -> void:
 	cause = {}
 	visible = true
 	process_mode = PROCESS_MODE_PAUSABLE
+
+
+## True when [param tree] already holds BulletHellTuning.max_live_bullets live enemy
+## bullets (ADR-0050); new bullets are then skipped. A cap of 0 never blocks.
+static func at_cap(tree: SceneTree, cap: int = TUNING.max_live_bullets) -> bool:
+	if tree == null or cap <= 0:
+		return false
+	return tree.get_node_count_in_group(GROUP) >= cap
+
+
+## True while the bullet's look changes from frame to frame (ADR-0050): the trail is
+## still growing, a homing bullet is still turning, or it is fading near max range.
+## One frame of slack past the growth window lets the trail settle at full length.
+static func needs_redraw(alive: float, traveled: float, max_range: float,
+		motion: BulletPattern.Motion, homing_duration: float) -> bool:
+	if alive <= TRAIL_GROW_TIME + REDRAW_SLACK_SEC:
+		return true
+	if motion == BulletPattern.Motion.HOMING and alive <= homing_duration + REDRAW_SLACK_SEC:
+		return true
+	return traveled > max_range - DESPAWN_FADE_DIST
 
 
 ## Removes every live enemy bullet within [param radius] of [param origin].

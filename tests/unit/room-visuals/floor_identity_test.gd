@@ -212,7 +212,8 @@ func test_back_ledge_lies_outside_the_floor() -> void:
 	assert_int(cells.size()).is_greater(0)
 	for c: Vector2 in cells:
 		assert_bool(used.has(tm.local_to_map(c))).is_false()
-	assert_int(_decor(room).get_ledge().get_child_count()).is_equal(cells.size() * 4)
+	# Per tile: two faces, the cap and the two lip segments (ADR-0050 QuadBatch).
+	assert_int(_decor(room).get_ledge().quad_count()).is_equal(cells.size() * 5)
 	_destroy(room)
 
 

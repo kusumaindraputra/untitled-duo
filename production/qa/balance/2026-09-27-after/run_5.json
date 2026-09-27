@@ -1,0 +1,182 @@
+{
+  "ascension": 0,
+  "boss_fights": [
+    {
+      "combat_sec": 63.1,
+      "damage": 0,
+      "floor": 1
+    },
+    {
+      "combat_sec": 20.0,
+      "damage": 0,
+      "floor": 2
+    },
+    {
+      "combat_sec": 90.6,
+      "damage": 0,
+      "floor": 3
+    }
+  ],
+  "combat_sec": 803.7,
+  "damage_taken": 60,
+  "est_player_sec": 1477.5,
+  "floor_reached": 3,
+  "god": true,
+  "hard": false,
+  "hp_low": 80,
+  "outcome": "win",
+  "room_log": [
+    {
+      "combat_sec": 46.3,
+      "damage": 0,
+      "floor": 1,
+      "type": 0
+    },
+    {
+      "combat_sec": 59.4,
+      "damage": 0,
+      "floor": 1,
+      "type": 0
+    },
+    {
+      "combat_sec": 20.4,
+      "damage": 0,
+      "floor": 1,
+      "type": 0
+    },
+    {
+      "combat_sec": 39.3,
+      "damage": 0,
+      "floor": 1,
+      "type": 0
+    },
+    {
+      "combat_sec": 49.2,
+      "damage": 0,
+      "floor": 1,
+      "type": 0
+    },
+    {
+      "combat_sec": 67.1,
+      "damage": 0,
+      "floor": 1,
+      "type": 1
+    },
+    {
+      "combat_sec": 0.5,
+      "damage": 20,
+      "floor": 1,
+      "type": 2
+    },
+    {
+      "combat_sec": 0.0,
+      "damage": 0,
+      "floor": 1,
+      "type": 3
+    },
+    {
+      "combat_sec": 46.9,
+      "damage": 0,
+      "floor": 2,
+      "type": 0
+    },
+    {
+      "combat_sec": 37.7,
+      "damage": 0,
+      "floor": 2,
+      "type": 0
+    },
+    {
+      "combat_sec": 38.6,
+      "damage": 0,
+      "floor": 2,
+      "type": 0
+    },
+    {
+      "combat_sec": 18.1,
+      "damage": 0,
+      "floor": 2,
+      "type": 0
+    },
+    {
+      "combat_sec": 39.7,
+      "damage": 0,
+      "floor": 2,
+      "type": 0
+    },
+    {
+      "combat_sec": 63.1,
+      "damage": 0,
+      "floor": 2,
+      "type": 1
+    },
+    {
+      "combat_sec": 0.5,
+      "damage": 20,
+      "floor": 2,
+      "type": 2
+    },
+    {
+      "combat_sec": 0.0,
+      "damage": 0,
+      "floor": 2,
+      "type": 3
+    },
+    {
+      "combat_sec": 70.0,
+      "damage": 0,
+      "floor": 3,
+      "type": 0
+    },
+    {
+      "combat_sec": 36.1,
+      "damage": 0,
+      "floor": 3,
+      "type": 0
+    },
+    {
+      "combat_sec": 48.6,
+      "damage": 0,
+      "floor": 3,
+      "type": 0
+    },
+    {
+      "combat_sec": 46.9,
+      "damage": 0,
+      "floor": 3,
+      "type": 0
+    },
+    {
+      "combat_sec": 40.4,
+      "damage": 0,
+      "floor": 3,
+      "type": 0
+    },
+    {
+      "combat_sec": 34.6,
+      "damage": 0,
+      "floor": 3,
+      "type": 1
+    },
+    {
+      "combat_sec": 0.5,
+      "damage": 20,
+      "floor": 3,
+      "type": 2
+    },
+    {
+      "combat_sec": 0.0,
+      "damage": 0,
+      "floor": 3,
+      "type": 3
+    }
+  ],
+  "rooms": 24,
+  "screens": 30,
+  "seed": 5,
+  "sigils": 28,
+  "sim_sec": 1073.5,
+  "stall_sec": 20.0,
+  "stalls": 5,
+  "win": true
+}

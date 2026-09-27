@@ -33,8 +33,11 @@ static func for_parent(parent: Node) -> BulletPool:
 	return pool
 
 
-## Returns a ready-to-launch bullet parented to this pool.
+## Returns a ready-to-launch bullet parented to this pool, or null when the live
+## bullet cap is reached (ADR-0050) — callers skip that bullet.
 func acquire() -> Projectile:
+	if is_inside_tree() and Projectile.at_cap(get_tree()):
+		return null
 	var p: Projectile = null
 	while not _idle.is_empty() and p == null:
 		var candidate: Projectile = _idle.pop_back()

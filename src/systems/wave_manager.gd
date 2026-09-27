@@ -573,6 +573,11 @@ func _spawn_entries(entries: Array, reinforcement: bool) -> int:
 		var variant: BossVariant = boss_variants.get(int(entry["type_id"])) as BossVariant
 		if variant != null:
 			hp_mult *= variant.hp_mult
+		# ADR-0052 Ascension: the pool's own HP multiplier, bosses and mobs apart.
+		var cfg: EnemyPoolConfig = _get_pool_config()
+		var is_boss_entry: bool = int(entry.get("archetype", -1)) == GameEnums.EnemyArchetype.BOSS
+		var pool_hp_mult: float = cfg.boss_hp_mult if is_boss_entry else cfg.enemy_hp_mult
+		hp_mult *= pool_hp_mult
 		HealthAndDamage.register_enemy(enemy, entry["type_id"], hp_mult)  # ADR-0014: BEFORE add_child
 		add_child(enemy)
 		enemy.global_position = final_pos
@@ -583,7 +588,7 @@ func _spawn_entries(entries: Array, reinforcement: bool) -> int:
 			enemy.enter_dormant()
 		if elite:
 			enemy.make_elite(BULLET_HELL_TUNING)
-		var cfg: EnemyPoolConfig = _get_pool_config()
+		enemy.apply_hp_mult(pool_hp_mult)
 		enemy.apply_difficulty(cfg.bullet_speed_mult, cfg.fire_rate_mult, cfg.telegraph_mult)
 		if variant != null:
 			enemy.apply_boss_variant(variant)

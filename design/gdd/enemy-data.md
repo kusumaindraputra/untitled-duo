@@ -80,15 +80,20 @@ Players do not engage with Enemy Data as a system. They engage with enemy types 
 | 1 | **Charger** | Rusher | Ice (Deepfrost) | 90 | 30.0 | 50 px/s (base) | Deepfrost (ID 3) | *0.40* | 2 | 12×20 px | active |
 | 2 | **Cluster** | Swarmer | Lightning (Stormgold) | 30 | 10.0 | 70 px/s | Stormgold (ID 2) | *0.60* | 1 | 24×24 px | active |
 | 4 | **Rifter** | Shooter | Nature (Verdant) | 32 | 12.0 | 35 px/s | Verdant (ID 4) | *0.40* | 2 | 14×14 px | active |
-| 3 | **Warped Warden** | Boss | null | 500 | 25.0 | 40 px/s | null | null | null | 96×96 px | vs_scope |
-| 5 | **Vault Sentinel** | Boss | null | 250 | 25.0 | 65 px/s | null | null | null | 96×96 px | vs_scope |
+| 3 | **Warped Warden** | Boss | null | 1800 | 25.0 | 40 px/s | null | null | null | 96×96 px | vs_scope |
+| 5 | **Vault Sentinel** | Boss | null | 600 | 25.0 | 65 px/s | null | null | null | 96×96 px | vs_scope |
 | 6 | **Spinner** | Shooter | Fire (Ashfire) | 44 | 10.0 | 30 px/s | Ashfire (ID 0) | *0.40* | 2 | 16×16 px | active |
 | 7 | **Sniper** | Shooter | Ice (Deepfrost) | 28 | 14.0 | 40 px/s | Deepfrost (ID 3) | *0.40* | 2 | 16×16 px | active |
 | 8 | **Mortar** | Shooter | Shadow (Voidblue) | 40 | 14.0 | 25 px/s | Voidblue (ID 1) | *0.40* | 2 | 16×16 px | active |
 | 9 | **Weaver** | Swarmer | Lightning (Stormgold) | 30 | 9.0 | 65 px/s | Stormgold (ID 2) | *0.40* | 1 | 16×16 px | active |
 | 10 | **Splitter** | Seeker | Nature (Verdant) | 40 | 12.0 | 75 px/s | Verdant (ID 4) | *0.40* | 1 | 16×16 px | active |
+| 12 | **Pulsar** | Seeker | Ice (Deepfrost) | 45 | 10.0 | 40 px/s | Deepfrost (ID 3) | *0.40* | 1 | 18×16 px | active |
+| 13 | **Wisp** | Shooter | Shadow (Voidblue) | 34 | 10.0 | 55 px/s | Voidblue (ID 1) | *0.40* | 2 | 12×20 px | active |
+| 14 | **Lancer** | Rusher | Fire (Ashfire) | 70 | 14.0 | 70 px/s | Ashfire (ID 0) | *0.40* | 2 | 20×14 px | active |
 
 *Affiliation column is cosmetic/drop-typing only since 2026-06-21. Drop values (`drop_rate`, `drop_prana_type`) remain provisional — subject to revision after Prana Drop / Loot GDD is authored. Rifter fills the prior "no Verdant-affiliated enemy" gap noted in the Open Questions.*
+
+*IDs 12–14 (2026-09-27, ADR-0053) add one enemy per floor: Pulsar joins from Floor 1 (slow double frost rings, `pulsar_ring`), Wisp from Floor 2 (two seeking shots, `wisp_seeker`), Lancer on Floor 3 (a stacked lance of speeding shots, `lancer_lance`). Each later floor keeps the earlier floors' newcomers in its pool.*
 
 *IDs 6–10 (2026-09-24, ADR-0018) are the bullet-hell roster. Their attacks are data, not code: each EnemyType carries `pattern_layers` (and Splitter a `death_pattern`) pointing at BulletPattern resources in `assets/data/bullet_patterns/`. Behaviour per pattern is specified in `design/gdd/bullet-hell.md`.*
 
@@ -152,8 +157,8 @@ These are not formulas — they are ratio targets to preserve during Health & Da
 | Charger | 90 | 1.8× | 30.0 | ~2.1× |
 | Cluster | 30 | 0.6× | 10.0 | ~0.7× |
 | Rifter | 32 | ~0.64× | 12.0 | ~0.86× |
-| Warped Warden *(VS)* | 500 | 10× | 25.0 | ~1.8× |
-| Vault Sentinel *(VS)* | 250 | 5× | 25.0 | ~1.8× |
+| Warped Warden *(VS)* | 1800 | 36× | 25.0 | ~1.8× |
+| Vault Sentinel *(VS)* | 600 | 12× | 25.0 | ~1.8× |
 
 **Design intent (post 2026-06-20 rebalance):** Charger is the high-burst tank (hits hard, dies slowest of the regular enemies — ~3 Charger hits kill Fayde). Cluster is individually fragile but dangerous in packs of 3–5. Rifter is a slow ranged threat that rewards a player who closes distance and prioritizes it. Values reflect the rebalance goal: with no elemental shortcut, enemies must survive 1–2 well-placed hits and threaten back.
 
@@ -234,7 +239,7 @@ All numeric values in Enemy Data are data-driven — they live in the catalog an
 
 | Knob | Current Value | Notes |
 |------|--------------|-------|
-| `base_hp` — D/Ch/Cl/Ri/WW/VS | 50 / 90 / 30 / 32 / 500 / 250 | Current (2026-06-20 rebalance). Do not tune independently of the damage model. |
+| `base_hp` — D/Ch/Cl/Ri/WW/VS | 50 / 90 / 30 / 32 / 1800 / 600 | Bosses retuned 2026-09-27 by the ADR-0051 balance bot (Cipher Keeper 900 → 2700). Do not tune independently of the damage model. |
 | `base_damage` — D/Ch/Cl/Ri/WW/VS | 14 / 30 / 10 / 12 / 25 / 25 | Current (2026-06-20 rebalance). Charger is the burst tank by design. |
 | `base_move_speed` — D/Ch/Cl/Ri/WW/VS | 80 / 50 / 70 / 35 / 40 / 65 px/s | Speed ratios intentional (Drifter fastest non-boss, Rifter slowest). |
 

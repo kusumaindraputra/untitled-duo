@@ -33,6 +33,10 @@ var _records_label: Label = null
 var _controls_label: Label = null
 var _hard_toggle: CheckButton = null
 var _hard_locked_label: Label = null
+## ADR-0052: steps through the unlocked Ascension levels while Hard Mode is on.
+var _ascension_button: Button = null
+## The stacked changes of the picked level, or the "win on Hard Mode" hint.
+var _ascension_label: Label = null
 ## The left column, centred vertically and shrunk to fit at large text sizes (ADR-0032).
 var _column: VBoxContainer = null
 ## Space kept free under the column for the controls line, px.
@@ -113,6 +117,13 @@ func _build_ui() -> void:
 	column.add_child(_hard_toggle)
 	_hard_locked_label = _make_label(_COPY.hard_mode_locked, 15, UIPalette.TEXT_FAINT)
 	column.add_child(_hard_locked_label)
+	_ascension_button = _menu_button(column, "", 15)
+	_ascension_button.custom_minimum_size = Vector2(BUTTON_WIDTH, 32)
+	_ascension_button.pressed.connect(_on_ascension_pressed)
+	_ascension_label = _make_label("", 13, UIPalette.TEXT_DIM)
+	_ascension_label.custom_minimum_size = Vector2(COLUMN_WIDTH, 0)
+	_ascension_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(_ascension_label)
 
 	var controls := _make_label(InputPrompts.controls_line(), 14, UIPalette.TEXT_FAINT)
 	_controls_label = controls
@@ -200,11 +211,53 @@ func _refresh_progress() -> void:
 	_hard_toggle.visible = hard_open
 	_hard_toggle.set_pressed_no_signal(progress.hard_mode_active(_META))
 	_hard_locked_label.visible = not hard_open
+	_refresh_ascension()
+
+
+## ADR-0052: the Ascension button and its description follow Hard Mode. Before the
+## first Hard Mode win only the hint shows; at level 0 the button offers to raise it.
+func _refresh_ascension() -> void:
+	var hard_on: bool = progress.hard_mode_active(_META)
+	var top: int = mini(progress.ascension_unlocked, MetaProgress.max_ascension(_META))
+	_ascension_button.visible = hard_on and top > 0
+	_ascension_label.visible = hard_on
+	if not hard_on:
+		return
+	if top <= 0:
+		_ascension_label.text = _COPY.ascension_locked
+		return
+	var level: int = progress.active_ascension(_META)
+	_ascension_button.text = _COPY.ascension_off if level == 0 \
+		else _COPY.ascension_button_format % [level, top]
+	_ascension_label.text = ascension_text(level)
+
+
+## What the picked level adds, a reminder that lower levels still apply, and the
+## stacked shard bonus ("" at level 0). Kept to three lines so the menu column fits at
+## 130 % text.
+static func ascension_text(level: int) -> String:
+	if level <= 0 or _META.ascension == null:
+		return ""
+	var lines: Array[String] = []
+	if level - 1 < _COPY.ascension_level_descs.size():
+		lines.append("· " + _COPY.ascension_level_descs[level - 1])
+	if level > 1:
+		lines.append(_COPY.ascension_stacks_format % (level - 1))
+	var bonus: float = _META.ascension.stacked(level).shard_bonus
+	lines.append(_COPY.ascension_shard_format % roundi(bonus * 100.0))
+	return "\n".join(lines)
+
+
+func _on_ascension_pressed() -> void:
+	progress.cycle_ascension(_META)
+	progress.save_to(progress_path)
+	_refresh_ascension()
 
 
 func _on_hard_mode_toggled(on: bool) -> void:
 	progress.hard_mode = on
 	progress.save_to(progress_path)
+	_refresh_ascension()
 
 
 func _make_label(text: String, size: int, color: Color) -> Label:

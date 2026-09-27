@@ -6,8 +6,8 @@
 script = ExtResource("1_config")
 threat_budget_min = 18
 threat_budget_max = 26
-threat_cost = { 0: 1, 1: 2, 2: 1, 4: 1, 6: 2, 7: 2, 8: 2, 9: 1, 10: 1 }
-enemy_pool = Array[int]([0, 1, 2, 4, 6, 7, 8, 9, 10])
+threat_cost = { 0: 1, 1: 2, 2: 1, 4: 1, 6: 2, 7: 2, 8: 2, 9: 1, 10: 1, 14: 2, 12: 1, 13: 2 }
+enemy_pool = Array[int]([0, 1, 2, 4, 6, 7, 8, 9, 10, 14, 12, 13])
 guaranteed_types = Array[int]([0, 1, 2, 4])
 min_counts = { 2: 2 }
 enemy_count_max = 16
