@@ -47,6 +47,11 @@ const FOOTSTEP_VELOCITY_THRESHOLD: float = 10.0     # activated: Story PC-004
 const COLLISION_LAYER_PLAYER: int = 2
 const COLLISION_MASK_NORMAL: int = 53  # walls (1) + enemies (4) + debris (16) + pillars (32, ADR-0020)
 const COLLISION_MASK_DASHING: int = 33  # walls (1) + pillars (32) — dash passes through enemies and debris, never through full cover
+## Layers Fayde's centre may never cross within one physics step: walls (1) + pillars (32).
+## Enemies do not collide with Fayde, so one can walk onto her; move_and_slide() then
+## pushes her out of it, and at a floor corner that push can carry her over an
+## ArenaBounds segment. _undo_wall_crossing() refuses any such step.
+const WALL_CROSS_MASK: int = 33
 
 ## Modulate alpha oscillation interval during i-frames — ~8 blinks/sec at 60fps.
 const BLINK_INTERVAL: float = 0.06
@@ -312,7 +317,9 @@ func _physics_process(delta: float) -> void:
 		else:
 			_camera.position = _camera.position.lerp(Vector2.ZERO, delta * 4.0)
 
+	var before_move: Vector2 = global_position
 	move_and_slide()
+	_undo_wall_crossing(before_move)
 
 # ── Public methods ────────────────────────────────────────────────────────────
 
@@ -492,6 +499,19 @@ func request_knockback(from_pos: Vector2, strength: float) -> void:
 	_cast_lock_timer = 0.0
 
 # ── Private methods ───────────────────────────────────────────────────────────
+
+## Puts Fayde back at [param before] when this step's move carried her centre across
+## a wall or pillar on [constant WALL_CROSS_MASK]. The rim is a segment soup with no
+## inside, so once she is over it nothing ever pushes her back into the room.
+func _undo_wall_crossing(before: Vector2) -> void:
+	if global_position == before or not is_inside_tree():
+		return
+	var query := PhysicsRayQueryParameters2D.create(before, global_position, WALL_CROSS_MASK, [get_rid()])
+	if get_world_2d().direct_space_state.intersect_ray(query).is_empty():
+		return
+	global_position = before
+	velocity = Vector2.ZERO
+
 
 ## Snaps an input vector to the nearest of 8 directions (45° increments).
 func _snap_to_8dir(input: Vector2) -> Vector2:

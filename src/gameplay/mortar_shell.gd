@@ -86,6 +86,8 @@ func explode() -> void:
 			for i: int in pattern.splash_count:
 				var dir: Vector2 = Vector2.from_angle(TAU / float(pattern.splash_count) * float(i))
 				var b: Projectile = pool.acquire()
+				if b == null:
+					break  # live bullet cap (ADR-0050)
 				b.global_position = global_position
 				b.launch_pattern(dir, damage * 0.5, pattern, pattern.speed)
 				b.cause = cause
