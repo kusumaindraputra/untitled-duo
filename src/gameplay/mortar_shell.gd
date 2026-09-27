@@ -48,18 +48,20 @@ func _physics_process(delta: float) -> void:
 func _draw() -> void:
 	if pattern == null:
 		return
-	var c: Color = pattern.color
+	# ADR-0037: the zone fills with the pattern accent; its rings use the hostile rim.
+	var c: Color = pattern.core_color()
+	var rim: Color = BulletPattern.rim_color()
 	var r: float = pattern.radius
 	if _exploded:
 		var a: float = clampf(_flash / BLAST_FLASH_SEC, 0.0, 1.0)
-		draw_circle(Vector2.ZERO, r, Color(1.0, 0.9, 0.6, 0.55 * a))
-		draw_arc(Vector2.ZERO, r * (1.2 - 0.2 * a), 0.0, TAU, 32, Color(c.r, c.g, c.b, a), 3.0, true)
+		draw_circle(Vector2.ZERO, r, Color(1.0, 0.85, 0.95, 0.55 * a))
+		draw_arc(Vector2.ZERO, r * (1.2 - 0.2 * a), 0.0, TAU, 32, Color(rim.r, rim.g, rim.b, a), 3.0, true)
 		return
 	var p: float = 1.0 - clampf(_timer / maxf(_telegraph_sec(), 0.01), 0.0, 1.0)
-	draw_circle(Vector2.ZERO, r, Color(c.r, c.g, c.b, 0.10 + 0.15 * p))
-	draw_arc(Vector2.ZERO, r, 0.0, TAU, 32, Color(c.r, c.g, c.b, 0.7), 1.5, true)
+	draw_circle(Vector2.ZERO, r, Color(c.r, c.g, c.b, 0.12 + 0.15 * p))
+	draw_arc(Vector2.ZERO, r, 0.0, TAU, 32, Color(rim.r, rim.g, rim.b, 0.8), 1.5, true)
 	# Closing ring: shrinks onto the blast edge as the shell lands.
-	draw_arc(Vector2.ZERO, lerpf(r * 2.2, r, p), 0.0, TAU, 32, Color(c.r, c.g, c.b, 0.4 + 0.5 * p), 2.0, true)
+	draw_arc(Vector2.ZERO, lerpf(r * 2.2, r, p), 0.0, TAU, 32, Color(rim.r, rim.g, rim.b, 0.4 + 0.5 * p), 2.0, true)
 
 
 ## Detonates now: damages Fayde inside the radius and releases splash bullets.

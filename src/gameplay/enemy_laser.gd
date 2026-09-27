@@ -70,14 +70,18 @@ func _draw() -> void:
 	if pattern == null:
 		return
 	var end: Vector2 = Vector2.from_angle(angle) * beam_length()
-	var c: Color = pattern.color
+	# ADR-0037: telegraph, glow and edge in the hostile rim colour; the beam's core
+	# carries the pattern accent.
+	var c: Color = pattern.core_color()
+	var rim: Color = BulletPattern.rim_color()
 	if _phase == Phase.TELEGRAPH:
 		var p: float = 1.0 - clampf(_timer / maxf(_telegraph_sec(), 0.01), 0.0, 1.0)
-		draw_line(Vector2.ZERO, end, Color(c.r, c.g, c.b, 0.25 + 0.35 * p), 1.0 + p, true)
+		draw_line(Vector2.ZERO, end, Color(rim.r, rim.g, rim.b, 0.25 + 0.35 * p), 1.0 + p, true)
 	elif _phase == Phase.ACTIVE:
-		draw_line(Vector2.ZERO, end, Color(c.r, c.g, c.b, 0.35), pattern.width * 3.0, true)
-		draw_line(Vector2.ZERO, end, Color(c.r, c.g, c.b, 0.95), pattern.width * 2.0, true)
-		draw_line(Vector2.ZERO, end, Color(1.0, 1.0, 1.0, 0.95), pattern.width * 0.7, true)
+		draw_line(Vector2.ZERO, end, Color(rim.r, rim.g, rim.b, 0.35), pattern.width * 3.0, true)
+		draw_line(Vector2.ZERO, end, Color(rim.r, rim.g, rim.b, 0.95), pattern.width * 2.0, true)
+		draw_line(Vector2.ZERO, end, Color(c.r, c.g, c.b, 0.95), pattern.width * 1.2, true)
+		draw_line(Vector2.ZERO, end, Color(1.0, 1.0, 1.0, 0.95), pattern.width * 0.5, true)
 
 
 ## Distance from [param point] (global) to the beam segment.

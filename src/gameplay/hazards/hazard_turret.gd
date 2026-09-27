@@ -75,7 +75,8 @@ func _fire(angles: PackedFloat32Array, speed: float) -> void:
 func _draw() -> void:
 	if spec == null:
 		return
-	var c: Color = spec.pattern.color if spec.pattern != null else spec.color
+	# ADR-0037: a turret that shoots bullets glows in the hostile rim colour.
+	var c: Color = BulletPattern.rim_color() if spec.pattern != null else spec.color
 	var body_col: Color = Color(0.22, 0.2, 0.26, 1.0)
 	# Shadow + octagonal base.
 	draw_colored_polygon(CoverPillar._ellipse(Vector2(0, 2), BASE_RADIUS * 1.2, BASE_RADIUS * 0.55), Color(0, 0, 0, 0.5))

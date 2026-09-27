@@ -13,4 +13,3 @@ bursts = 1
 speed = 105.0
 max_range = 620.0
 bullet_radius = 5.0
-color = Color(1, 0.4, 0.55, 1)

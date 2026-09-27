@@ -13,6 +13,8 @@ enum Kind { BULLETS = 0, LASER = 1, MORTAR = 2 }
 enum Shape { AIMED = 0, FAN = 1, RING = 2, SPIRAL = 3 }
 enum Motion { STRAIGHT = 0, SINE = 1, HOMING = 2 }
 
+const PALETTE: EnemyBulletPalette = preload("res://assets/data/enemy_bullet_palette.tres")
+
 @export_group("Timing")
 
 @export var kind: Kind = Kind.BULLETS
@@ -57,7 +59,10 @@ enum Motion { STRAIGHT = 0, SINE = 1, HOMING = 2 }
 @export var damage_mult: float = 0.5
 @export var bullet_radius: float = 4.0
 @export var max_range: float = 420.0
-@export var color: Color = Color(0.6, 0.8, 1.0, 1.0)
+## Colour accent from the enemy bullet palette (ADR-0037): &"mob" for ordinary
+## enemies and hazards, or a boss id (&"sentinel", &"warden", &"keeper").
+## Empty or unknown ids fall back to the mob core.
+@export var accent: StringName = EnemyBulletPalette.DEFAULT_ACCENT
 
 @export_group("Hazard (LASER / MORTAR)")
 
@@ -71,3 +76,13 @@ enum Motion { STRAIGHT = 0, SINE = 1, HOMING = 2 }
 @export var radius: float = 48.0
 ## MORTAR: bullets released in a ring when the shell lands (0 = none).
 @export var splash_count: int = 0
+
+
+## Core colour of this pattern's shots, from its [member accent].
+func core_color() -> Color:
+	return PALETTE.core_for(accent)
+
+
+## Hostile family rim shared by every enemy shot.
+static func rim_color() -> Color:
+	return PALETTE.rim

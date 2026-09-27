@@ -804,7 +804,7 @@ func _fire_pattern_volley(pattern: BulletPattern, angles: PackedFloat32Array, sp
 			Sfx.play(&"sfx_bullet_fire")
 
 
-## Brief pre-fire glow in the pattern's colour so every volley is telegraphed.
+## Brief pre-fire glow in the hostile rim colour (ADR-0037) so every volley is telegraphed.
 ## Skipped while a looping telegraph (_vfx_tween) owns modulate.
 func _start_windup_flash(pattern: BulletPattern) -> void:
 	if _vfx_tween != null or pattern.windup_sec <= 0.0:
@@ -812,7 +812,7 @@ func _start_windup_flash(pattern: BulletPattern) -> void:
 	Sfx.play(&"sfx_enemy_windup")
 	if _windup_tween:
 		_windup_tween.kill()
-	var c: Color = pattern.color
+	var c: Color = BulletPattern.rim_color()
 	modulate = Color(1.0 + c.r, 1.0 + c.g, 1.0 + c.b, 1.0)
 	# ADR-0034 — the sprite plays its wind-up row across the telegraph.
 	var pc: PixelCharacter = get_node_or_null(^"PixelCharacter") as PixelCharacter

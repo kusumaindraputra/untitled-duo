@@ -14,4 +14,4 @@ spin_deg = 18.0
 speed = 70.0
 damage_mult = 0.4
 bullet_radius = 5.0
-color = Color(0.7, 0.75, 0.9, 1)
+accent = &"sentinel"
