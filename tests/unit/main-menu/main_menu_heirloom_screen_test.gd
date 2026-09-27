@@ -107,7 +107,8 @@ func test_main_menu_buttons_in_order() -> void:
 
 	var texts: Array[String] = []
 	for b: Node in menu._play_button.get_parent().get_children():
-		if b is Button and not b is CheckButton:
+		# Hidden buttons (the ADR-0052 Ascension button without Hard Mode) are not in the menu.
+		if b is Button and not b is CheckButton and (b as Button).visible:
 			texts.append((b as Button).text)
 
 	var book: Vector2i = Spellbook.progress(menu.progress)

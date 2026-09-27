@@ -83,6 +83,9 @@ var first_run_active: bool = false
 ## 0.5–1.0) times the Cipher Core's damage_taken_mult (ADR-0033); applies to every
 ## source after first-run mercy.
 var player_damage_mult: float = 1.0
+## ADR-0052 — multiplies every heal Fayde receives (Ascension; 1.0 = unchanged). Set by
+## the run scene each time it applies the run's options.
+var player_heal_mult: float = 1.0
 
 ## What last hurt Fayde this run: { "attacker": String, "attack": StringName } as
 ## passed to apply_damage(), or {} when the hit carried no cause. The run summary's
@@ -315,7 +318,8 @@ func apply_heal(target: Node, heal_amount: float) -> void:
 	if is_player:
 		old_hp = _fayde_current_hp
 		max_hp = FAYDE_MAX_HP
-		_fayde_current_hp = roundi(clampf(float(_fayde_current_hp) + heal_amount, 0.0, float(max_hp)))
+		var heal: float = heal_amount * maxf(player_heal_mult, 0.0)
+		_fayde_current_hp = roundi(clampf(float(_fayde_current_hp) + heal, 0.0, float(max_hp)))
 		new_hp = _fayde_current_hp
 	else:
 		var instance_id: int = target.get_instance_id()

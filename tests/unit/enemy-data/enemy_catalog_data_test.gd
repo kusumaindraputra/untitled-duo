@@ -28,7 +28,10 @@ const ID_SNIPER: int = 7
 const ID_MORTAR: int = 8
 const ID_WEAVER: int = 9
 const ID_SPLITTER: int = 10
-const ACTIVE_IDS: Array[int] = [0, 1, 2, 4, 6, 7, 8, 9, 10]
+const ID_PULSAR: int = 12
+const ID_WISP: int = 13
+const ID_LANCER: int = 14
+const ACTIVE_IDS: Array[int] = [0, 1, 2, 4, 6, 7, 8, 9, 10, 12, 13, 14]
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -51,12 +54,12 @@ func _ids_of(types: Array) -> Array[int]:
 
 # ── Catalog composition ───────────────────────────────────────────────────────
 
-## AC-ED-01 / AC-ED-02: 9 active + 3 vs_scope bosses = 12 total entries (ADR-0018
-## roster plus the ADR-0026 final boss).
-func test_real_catalog_has_twelve_entries() -> void:
+## AC-ED-01 / AC-ED-02: 12 active + 3 vs_scope bosses = 15 total entries (ADR-0018
+## roster, the ADR-0026 final boss and the ADR-0053 floor enemies).
+func test_real_catalog_has_fifteen_entries() -> void:
 	var catalog: Node = _load_real_catalog()
 
-	assert_int(catalog.count()).is_equal(12)
+	assert_int(catalog.count()).is_equal(15)
 
 	catalog.free()
 
@@ -119,13 +122,16 @@ func test_real_catalog_base_stats_match_gdd() -> void:
 		ID_CHARGER: [90, 30.0],
 		ID_CLUSTER: [30, 10.0],
 		ID_RIFTER: [32, 12.0],
-		ID_WARPED_WARDEN: [500, 25.0],
-		ID_VAULT_SENTINEL: [250, 25.0],
+		ID_WARPED_WARDEN: [1800, 25.0],
+		ID_VAULT_SENTINEL: [600, 25.0],
 		ID_SPINNER: [44, 10.0],
 		ID_SNIPER: [28, 14.0],
 		ID_MORTAR: [40, 14.0],
 		ID_WEAVER: [30, 9.0],
 		ID_SPLITTER: [40, 12.0],
+		ID_PULSAR: [45, 10.0],
+		ID_WISP: [34, 10.0],
+		ID_LANCER: [70, 14.0],
 	}
 
 	for id: int in expected:

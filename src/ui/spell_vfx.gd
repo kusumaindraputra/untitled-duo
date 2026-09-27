@@ -207,14 +207,17 @@ func _on_cast_started(spell_effect: SpellEffect) -> void:
 		return
 	# Look up canonical type color; fall back to white if catalog unavailable.
 	var pulse_color: Color = Color.WHITE
+	# ADR-0056: the centre Prana picks Fayde's cast pose (fire dance, reach, snap...).
+	var cast_style: int = -1
 	if spell_effect != null:
 		var type_data: PranaType = PranaCatalog.get_type(spell_effect.primary_type)
 		if type_data != null:
 			# Overbrighten the type color for a visible flash without losing hue identity.
 			pulse_color = type_data.color
+			cast_style = int(type_data.cast_animation)
 	var pc: PixelCharacter = player.get_node_or_null(^"PixelCharacter") as PixelCharacter
 	if pc != null:
-		pc.play_cast(_FX_TUNING.fayde_cast_sec)
+		pc.play_cast(_FX_TUNING.fayde_cast_sec, cast_style)
 		pc.flash(pulse_color, _FX_TUNING.cast_flash_sec, _FX_TUNING.cast_flash_strength)
 		pc.squash(PixelCharacter.squash_peak(_FX_TUNING.cast_squash), _FX_TUNING.cast_squash_sec)
 	else:

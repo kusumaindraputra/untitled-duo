@@ -189,6 +189,15 @@ This makes SC&E the single stat broker for the wave. No system reads `aggregate_
 - **17f. Spatial language.** The core's cardinal cross (slots 1/3/5/7) is the Cascade engine; the corners (slots 0/2/6/8) never feed the Cascade — they serve primary-tier and ring reactions. Positioning intent is explicit: surround the core to flavor it, fill corners to support it.
 - **17g. Preview.** The prep preview (Rule 16f) must also surface the armed Cascade (lead + modifier icons) live, computed via the same stateless path as reactions.
 
+**18. Two hands (ADR-0057, 2026-09-27).** Fayde is made from two brothers: Ayden, raw power, and Faith, precise control. The grid's **left column (slots 0/3/6) is Ayden's hand** and its **right column (slots 2/5/8) is Faith's hand**. The middle column (1/4/7) belongs to neither. Any filled slot counts, whatever its type or level.
+
+- **18a. Ayden's hand.** `hand_power_mult = 1 + power_per_prana × A`, where `A` is the filled Ayden slots (0–3). SC&E multiplies every primary chain hit by it (Step 8d, after Perfect). Reaction and Cascade bonus hits and the Special are not scaled.
+- **18b. Faith's hand.** `hand_control_mult = 1 + control_per_prana × F`, where `F` is the filled Faith slots (0–3). SC&E multiplies the duration of the core Prana's own status (Burn, Blind, Stun, Freeze, Regenerate) by it. Reaction-applied statuses are not scaled.
+- **18c. Touch.** When `A == F ≥ 1`, the hands touch and both bonuses (the part above 1.0) are multiplied by `touch_mult`.
+- **18d. Tuning.** `assets/data/hands_tuning.tres`: `power_per_prana` 0.06, `control_per_prana` 0.12, `touch_mult` 1.5, and the slot lists. At most: +27 % damage and +54 % status time (3 + 3, touching).
+- **18e. Preview.** The prep panel labels the columns AYDEN / FAITH (brightened while that hand holds Prana) and prints one line under the core with the active bonuses and the touch.
+- **18f. Spatial language.** Slots 3 and 5 are both cardinal neighbours of the core (reactions, Cascade) and part of a hand, so placement now trades reaction value against hand balance. Corners feed the hands and primary tier only.
+
 ---
 
 ### States and Transitions

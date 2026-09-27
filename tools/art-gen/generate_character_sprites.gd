@@ -63,6 +63,7 @@ func _init() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
 	_sheet("fayde", 20, 32, _fayde, _fayde_glow, true)
 	_crumple_strip()
+	_cast_styles_sheet()
 	_sheet("drifter", 22, 18, _drifter)
 	_sheet("charger", 14, 26, _charger)
 	_sheet("cluster", 26, 24, _cluster)
@@ -72,6 +73,10 @@ func _init() -> void:
 	_sheet("sniper", 16, 28, _sniper)
 	_sheet("spinner", 22, 18, _spinner)
 	_sheet("splitter", 18, 18, _splitter)
+	# ADR-0053: one new enemy per floor.
+	_sheet("pulsar", 22, 22, _pulsar)
+	_sheet("wisp", 16, 26, _wisp)
+	_sheet("lancer", 26, 20, _lancer)
 	_sheet("vault_sentinel", 96, 96, _sentinel, Callable(), true)
 	_sheet("warped_warden", 96, 96, _warden, Callable(), true)
 	_sheet("cipher_keeper", 144, 144, _keeper, Callable(), true)
@@ -286,6 +291,180 @@ func _fayde_glow(g: PixelPainter, f: int, row: int) -> void:
 	# Prana-sensing lens over the near eye, and the collar clasp.
 	g.px(12, 9 + d, Color.WHITE)
 	g.px(9, 14 + d, Color(1, 1, 1, 0.7))
+
+
+# ── Fayde cast styles (ADR-0056) ────────────────────────────────────────────
+# One row per Prana cast style (GameEnums.CastAnimation), in enum order: Ashfire
+# fire dance, Voidblue reach-and-pull, Stormgold snap, Deepfrost horse-stance push,
+# Verdant bloom. Same 20×32 cell and feet-on-origin as the main sheet, written to
+# fayde_casts.png (+ _glow). Four columns: wind-up, release, follow-through, recover.
+
+const CAST_STYLES: int = 5
+## Sleeve colours for an arm drawn over the coat (lit core, dark edge).
+const _SLEEVE_LIT := Color("#B89C7A")
+const _SLEEVE_EDGE := Color("#4E3E30")
+const STYLE_ASHFIRE: int = 0
+const STYLE_VOIDBLUE: int = 1
+const STYLE_STORMGOLD: int = 2
+const STYLE_DEEPFROST: int = 3
+const STYLE_VERDANT: int = 4
+
+## Extra stances for the styles, rows 27–31. 3 wide horse stance, 4 front-leg kick,
+## 5 deep lunge.
+const _STYLE_LEGS: Array = [
+	["....cPPP..PPPc......", "...PPP......PPP.....", "..PPP........PPP....", "..KKK.........KKK...", ".KKKK.........KKKK.."],
+	["....ccPP..PPPPPPPPKK", "......PP....PPPPPPKK", "......PP............", ".....KKK............", ".....KKK............"],
+	["....cPP....PPc......", "...PP.......PP......", "..PP.........PP.....", ".KK..........KKK....", "KK...........KKK...."],
+]
+
+## Per style, per column: [lean px, body drop px, legs, front hand, back hand, mirror].
+## Legs index _FAYDE_LEGS (0–2) or _STYLE_LEGS (3–5). Hands are the top-left of a 2×2
+## hand in cell pixels. Mirror draws the frame turned away (the Ashfire spin).
+const _STYLE_POSES: Array = [
+	[ # Ashfire: chamber low, palm strike from a lunge, spin, sweeping kick.
+		[-1, 1, 3, Vector2i(11, 20), Vector2i(0, 15), false],
+		[1, 1, 5, Vector2i(18, 14), Vector2i(5, 20), false],
+		[0, 0, 0, Vector2i(18, 15), Vector2i(0, 15), true],
+		[-1, 0, 4, Vector2i(16, 9), Vector2i(1, 11), false],
+	],
+	[ # Voidblue: reach low, claw out, pull the shadow back to the chest.
+		[1, 0, 1, Vector2i(18, 19), Vector2i(3, 21), false],
+		[1, 0, 1, Vector2i(18, 16), Vector2i(1, 17), false],
+		[-1, 0, 2, Vector2i(13, 17), Vector2i(0, 18), false],
+		[0, 0, 0, Vector2i(14, 19), Vector2i(2, 20), false],
+	],
+	[ # Stormgold: cock the hand by the ear, snap two fingers forward, hold, drop.
+		[-1, 0, 0, Vector2i(12, 7), Vector2i(2, 20), false],
+		[1, 0, 1, Vector2i(18, 11), Vector2i(1, 17), false],
+		[1, 0, 1, Vector2i(18, 11), Vector2i(1, 17), false],
+		[0, 0, 0, Vector2i(15, 17), Vector2i(2, 20), false],
+	],
+	[ # Deepfrost: sink into a horse stance, palms at the chest, push, hold, rise.
+		[-1, 2, 3, Vector2i(12, 17), Vector2i(10, 18), false],
+		[0, 2, 3, Vector2i(17, 16), Vector2i(16, 19), false],
+		[0, 2, 3, Vector2i(18, 16), Vector2i(17, 19), false],
+		[0, 1, 3, Vector2i(15, 18), Vector2i(3, 20), false],
+	],
+	[ # Verdant: cupped hands low, raised to the chin, opened wide like a flower.
+		[0, 1, 0, Vector2i(11, 20), Vector2i(9, 20), false],
+		[0, 0, 0, Vector2i(11, 14), Vector2i(8, 14), false],
+		[0, 0, 0, Vector2i(17, 8), Vector2i(0, 8), false],
+		[0, 0, 0, Vector2i(18, 11), Vector2i(0, 11), false],
+	],
+]
+
+
+func _cast_styles_sheet() -> void:
+	var cw: int = 20
+	var ch: int = 32
+	var img := Image.create(cw * FRAMES, ch * CAST_STYLES, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var p := PixelPainter.new(img, cw, ch)
+	var gimg := Image.create(cw * FRAMES, ch * CAST_STYLES, false, Image.FORMAT_RGBA8)
+	gimg.fill(Color(0, 0, 0, 0))
+	var g := PixelPainter.new(gimg, cw, ch)
+	for style: int in CAST_STYLES:
+		for f: int in FRAMES:
+			var pose: Array = _STYLE_POSES[style][f]
+			p.cell(f, style)
+			g.cell(f, style)
+			_fayde_styled(p, pose)
+			_fayde_styled_glow(g, style, f, pose)
+			if pose[5]:
+				_mirror_cell(p, cw, ch)
+				_mirror_cell(g, cw, ch)
+			p.outline(OUTLINE)
+	img.save_png(ProjectSettings.globalize_path(OUT_DIR + "fayde_casts.png"))
+	gimg.save_png(ProjectSettings.globalize_path(OUT_DIR + "fayde_casts_glow.png"))
+
+
+func _fayde_styled(p: PixelPainter, pose: Array) -> void:
+	var lean: int = pose[0]
+	var drop: int = pose[1]
+	var li: int = pose[2]
+	var legs: Array = _FAYDE_LEGS[li] if li < 3 else _STYLE_LEGS[li - 3]
+	for r: int in legs.size():
+		_ascii_row(p, legs[r], 27 + r, 0)
+	for r: int in _FAYDE_UPPER.size():
+		if r + drop >= 27 and li != 4:
+			break # the crouch tucks the coat hem behind the bent legs
+		_ascii_row(p, _FAYDE_UPPER[r], r + drop, lean, r == 21 or r == 22)
+	# Both sleeves leave the body: clear them, then draw each arm to its hand.
+	for y: int in range(17 + drop, 23 + drop):
+		for x: int in [2, 3, 4, 14, 15, 16]:
+			p.px(x + lean, y, Color(0, 0, 0, 0))
+	var back: Vector2i = pose[4]
+	var front: Vector2i = pose[3]
+	_style_arm(p, Vector2i(4 + lean, 16 + drop), back)
+	_style_arm(p, Vector2i(14 + lean, 16 + drop), front)
+
+
+## A 2 px sleeve from [param shoulder] to the hand whose top-left is [param hand].
+func _style_arm(p: PixelPainter, shoulder: Vector2i, hand: Vector2i) -> void:
+	var tip: Vector2i = hand + Vector2i(0 if hand.x >= shoulder.x else 1, 0)
+	# Dark edge above and below, lit core: the arm reads even across the coat.
+	p.line(shoulder.x, shoulder.y - 1, tip.x, tip.y - 1, _SLEEVE_EDGE)
+	p.line(shoulder.x, shoulder.y + 1, tip.x, tip.y + 1, _SLEEVE_EDGE)
+	p.line(shoulder.x, shoulder.y, tip.x, tip.y, _SLEEVE_LIT)
+	p.rect(hand.x, hand.y, 2, 2, SKIN)
+	p.px(hand.x + 1, hand.y + 1, _FAYDE_COLOURS["s"])
+
+
+## Glow: both hands, the lens and clasp, and one small element mark per style on the
+## release and follow-through columns, tinted in game with the cast's Prana colour.
+func _fayde_styled_glow(g: PixelPainter, style: int, f: int, pose: Array) -> void:
+	var lean: int = pose[0]
+	var drop: int = pose[1]
+	var front: Vector2i = pose[3]
+	var back: Vector2i = pose[4]
+	for h: Vector2i in [front, back]:
+		g.rect(h.x, h.y, 2, 2, Color.WHITE)
+	g.px(12 + lean, 9 + drop, Color.WHITE)
+	g.px(9 + lean, 14 + drop, Color(1, 1, 1, 0.7))
+	var soft := Color(1, 1, 1, 0.55)
+	match style:
+		STYLE_ASHFIRE:
+			if f == 1: # flame licking off the striking palm
+				for d: Vector2i in [Vector2i(0, -1), Vector2i(1, -2), Vector2i(-1, -1), Vector2i(-2, 0)]:
+					g.px(front.x + d.x, front.y + d.y, soft)
+			elif f == 2: # ring of fire round the spin
+				for x: int in range(2, 18):
+					g.px(x, 26 if (x % 3) != 0 else 25, soft)
+			elif f == 3: # arc trailing the kicking foot
+				for d: Vector2i in [Vector2i(17, 25), Vector2i(15, 24), Vector2i(13, 24), Vector2i(19, 26)]:
+					g.px(d.x, d.y, soft)
+		STYLE_VOIDBLUE:
+			if f == 1: # threads reaching out from the claw
+				g.px(front.x + 1, front.y - 2, soft)
+				g.px(front.x - 1, front.y + 3, soft)
+			elif f == 2: # the shadow reeled in along the pull
+				for x: int in range(front.x + 2, 20, 2):
+					g.px(x, front.y + 1, soft)
+		STYLE_STORMGOLD:
+			if f == 1 or f == 2: # spark jumping off the fingertips
+				var zig: Array[Vector2i] = [Vector2i(0, -2), Vector2i(-1, -3), Vector2i(0, -4), Vector2i(-1, -5)]
+				for d: Vector2i in zig:
+					g.px(front.x + 1 + d.x, front.y + d.y, Color.WHITE if f == 1 else soft)
+		STYLE_DEEPFROST:
+			if f == 1 or f == 2: # frost shards between the pushing palms
+				for d: Vector2i in [Vector2i(1, 2), Vector2i(0, 3), Vector2i(1, -1)]:
+					g.px(front.x + d.x, front.y + d.y, soft)
+			if f == 0: # breath held in the stance
+				g.px(14 + lean, 11 + drop, soft)
+		STYLE_VERDANT:
+			if f >= 2: # petals drifting up between the open arms
+				for d: Vector2i in [Vector2i(6, 6), Vector2i(9, 4), Vector2i(12, 6), Vector2i(9, 2)]:
+					g.px(d.x, d.y + (f - 2), soft)
+
+
+## Flips the current cell left-to-right in place.
+func _mirror_cell(p: PixelPainter, cw: int, ch: int) -> void:
+	for y: int in ch:
+		for x: int in cw / 2:
+			var a: Color = p.get_px(x, y)
+			var b: Color = p.get_px(cw - 1 - x, y)
+			p.px(x, y, b)
+			p.px(cw - 1 - x, y, a)
 
 
 # ── Fayde crumple (ADR-0042) ────────────────────────────────────────────────
@@ -527,6 +706,74 @@ func _splitter(p: PixelPainter, f: int, moving: bool) -> void:
 	p.px(12, 3 + hop, mk.darkened(0.2))
 
 
+
+
+## Pulsar (Deepfrost, F1, ADR-0053): a squat bell on a stone collar, ringed by a
+## frost halo that swells before each ring volley.
+func _pulsar(p: PixelPainter, f: int, moving: bool) -> void:
+	var mk: Color = PixelPainter.marker(DEEPFROST)
+	var swell: float = ([0.0, 0.7, 1.4, 0.7] as Array[float])[f]
+	var bob: int = -1 if moving and f % 2 == 1 else 0
+	# Halo arcs left and right (broken ring, reads as "pulse" without colour).
+	for side: int in [-1, 1]:
+		for i: int in 5:
+			var a: float = (-0.5 + 0.25 * i) * PI * 0.5
+			var x: int = roundi(11.0 + side * (9.0 + swell) * cos(a))
+			var y: int = roundi(11.0 + (6.0 + swell * 0.5) * sin(a)) + bob
+			p.px(x, y, mk if i % 2 == 0 else mk.darkened(0.25))
+	# Bell body.
+	p.poly(PackedVector2Array([
+		Vector2(7, 5 + bob), Vector2(15, 5 + bob), Vector2(17, 15 + bob), Vector2(5, 15 + bob),
+	]), METAL, true)
+	p.ellipse(11.0, 5.0 + bob, 4.0, 2.0, METAL.lightened(0.1), true)
+	# Stone collar and the clapper core.
+	p.rect(4, 15 + bob, 14, 2, STONE)
+	p.rect(10, 9 + bob, 3, 4, mk.lightened(0.15 + swell * 0.1))
+	p.px(11, 18 + bob, mk.darkened(0.2))
+
+
+## Wisp (Voidblue, F2, ADR-0053): a tall hooded lantern whose void flame leans
+## toward its target. Keeps its distance and lets its seeking shots do the work.
+func _wisp(p: PixelPainter, f: int, moving: bool) -> void:
+	var mk: Color = PixelPainter.marker(VOIDBLUE)
+	var sway: int = ([0, 1, 0, -1] as Array[int])[f]
+	var bob: int = -1 if moving and f % 2 == 0 else 0
+	# Trailing wisp tail.
+	p.line(8, 18 + bob, 7 - sway, 24, E3)
+	p.line(8, 18 + bob, 9 - sway, 25, E3.darkened(0.2))
+	# Hood.
+	p.poly(PackedVector2Array([
+		Vector2(8 + sway, 1 + bob), Vector2(14, 10 + bob), Vector2(13, 19 + bob),
+		Vector2(3, 19 + bob), Vector2(2, 10 + bob),
+	]), E7, true)
+	# Lantern opening with the flame.
+	p.ellipse(8.0, 12.0 + bob, 3.5, 4.5, OUTLINE, false)
+	p.ellipse(8.0 + sway * 0.5, 12.0 + bob, 2.0, 3.0, mk, true)
+	p.px(8 + sway, 10 + bob, mk.lightened(0.5))
+	# Hood seam.
+	p.line(8 + sway, 2 + bob, 8, 7 + bob, E3)
+
+
+## Lancer (Ashfire, F3, ADR-0053): a low four-legged frame carrying a long ember
+## lance; it rears back before loosing a stacked lance of shots.
+func _lancer(p: PixelPainter, f: int, moving: bool) -> void:
+	var mk: Color = PixelPainter.marker(ASHFIRE)
+	var step: int = (1 if f % 2 == 0 else -1) if moving else 0
+	# Legs.
+	p.line(6, 12, 3 + step, 19, E3)
+	p.line(9, 12, 10 - step, 19, E3.darkened(0.15))
+	p.line(15, 12, 13 + step, 19, E3)
+	p.line(18, 12, 20 - step, 19, E3.darkened(0.15))
+	# Body.
+	p.ellipse(12.0, 10.0, 8.0, 3.5, METAL_WARM, true)
+	# Lance: shaft forward (right), ember tip.
+	var thrust: int = ([0, 1, 2, 1] as Array[int])[f]
+	p.rect(14, 6, 9 + thrust, 2, STONE.lightened(0.1))
+	p.poly(PackedVector2Array([
+		Vector2(22 + thrust, 4), Vector2(25 + thrust, 7), Vector2(22 + thrust, 9),
+	]), mk, true)
+	# Visor slit.
+	p.rect(7, 9, 5, 1, mk.darkened(0.2))
 
 
 # ── Bosses (native resolution, one sheet pixel = one world pixel) ───────────

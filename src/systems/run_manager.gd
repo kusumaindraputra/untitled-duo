@@ -74,6 +74,14 @@ func _exit_tree() -> void:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+## Seconds on the run clock: live while a run is active, the final time after it ends
+## (0.0 before the first run). The same wall clock the Records use (ADR-0046 timer).
+func get_elapsed_sec() -> float:
+	if _run_active:
+		return float(Time.get_ticks_msec() - _run_start_msec) / 1000.0
+	return _run_elapsed_sec
+
+
 ## Returns a copy of the current run state dictionary.
 ##
 ## Keys:

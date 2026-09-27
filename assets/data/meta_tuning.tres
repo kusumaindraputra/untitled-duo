@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="MetaTuning" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="MetaTuning" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/data/meta_tuning.gd" id="1_meta"]
+[ext_resource type="Resource" path="res://assets/data/ascension/ascension_config.tres" id="2_asc"]
 
 [resource]
 script = ExtResource("1_meta")
@@ -18,3 +19,4 @@ hard_fire_rate_mult = 1.2
 hard_telegraph_mult = 0.85
 hard_extra_enemies = 2
 hard_elite_chance_bonus = 0.1
+ascension = ExtResource("2_asc")

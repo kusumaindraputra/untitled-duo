@@ -72,7 +72,7 @@ punish players whose tab crashed.
 | `hp` | `HealthAndDamage.get_fayde_hp()` |
 | `run` | `RunManager.snapshot()`: rooms, waves, kills, best combo, floor, run time so far |
 | `ranks`, `floors_cleared`, `bonus_shards`, `fragments_at_start`, `assist_used`, `new_records` | the run summary (U5, F2, F3, ADR-0026) |
-| `hard` | Hard Mode as it was at run start, so the menu toggle can't change a run halfway |
+| `hard`, `ascension` | Hard Mode and Ascension level (ADR-0052) as the run started. Resume writes them back to MetaProgress, so the menu can't change a run halfway |
 | `log_builds`, `casts`, `resumes` | the playtest log below |
 
 `RunSave.read()` returns `{}` for a missing file, another `SAVE_VERSION`, or a

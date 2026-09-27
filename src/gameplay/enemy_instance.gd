@@ -457,6 +457,15 @@ func apply_difficulty(bullet_speed_mult: float, fire_rate_mult: float, telegraph
 		runner.rate_mult = _fire_rate_mult
 
 
+## ADR-0052 — scales max and current HP by the pool's Ascension multiplier. Call after
+## init() / make_elite(); the H&D pool must be registered with the same multiplier.
+func apply_hp_mult(mult: float) -> void:
+	if is_equal_approx(mult, 1.0):
+		return
+	_max_hp = maxi(roundi(float(_max_hp) * mult), 1)
+	_current_hp = _max_hp
+
+
 ## Difficulty multipliers as [bullet_speed, fire_rate, telegraph] (test / debug hook).
 func get_difficulty() -> Vector3:
 	return Vector3(_bullet_speed_mult, _fire_rate_mult, _telegraph_mult)
@@ -755,7 +764,7 @@ func _tick_swarmer(delta: float) -> void:
 ## Spawns a Projectile aimed at the last known Fayde direction (S8-05).
 ## Guards against missing parent (headless test context).
 func _fire_projectile() -> void:
-	if get_parent() == null:
+	if get_parent() == null or Projectile.at_cap(get_tree()):
 		return
 	var proj: Projectile = Projectile.new()
 	get_parent().add_child(proj)
@@ -825,6 +834,8 @@ func _fire_pattern_volley(pattern: BulletPattern, angles: PackedFloat32Array, sp
 				return
 			for a: float in angles:
 				var b: Projectile = pool.acquire()
+				if b == null:
+					break  # live bullet cap (ADR-0050)
 				b.global_position = global_position
 				b.launch_pattern(Vector2.from_angle(a), damage, pattern, speed * _bullet_speed_mult)
 				b.cause = hit_cause
@@ -1246,6 +1257,8 @@ func _fire_salvo() -> void:
 	if is_instance_valid(_fayde_ref):
 		aim_angle = (_fayde_ref.global_position - global_position).angle()
 	for i: int in BOSS_SALVO_COUNT:
+		if Projectile.at_cap(get_tree()):
+			break
 		var angle: float = aim_angle + (TAU / float(BOSS_SALVO_COUNT)) * float(i)
 		var dir: Vector2 = Vector2.from_angle(angle)
 		var proj: Projectile = Projectile.new()
