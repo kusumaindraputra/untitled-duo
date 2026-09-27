@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="HudReadoutTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/hud_readout_tuning.gd" id="1_hrt"]
+
+[resource]
+script = ExtResource("1_hrt")
+boss_ghost_hold_sec = 0.45
+boss_ghost_drain_per_sec = 0.6
+boss_phase_flash_sec = 0.5
+boss_phase_flash_alpha = 0.75
+boss_notch_width = 2.0
+strip_chip_size = 28.0
+strip_chip_gap = 4.0
+strip_pulse_sec = 0.35

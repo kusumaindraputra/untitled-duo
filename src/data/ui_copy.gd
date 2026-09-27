@@ -447,6 +447,8 @@ extends Resource
 ## Buttons.
 @export var summary_run_again: String = "Run Again  (R)"
 @export var summary_main_menu: String = "Main Menu"
+## Opens the beta feedback form (ADR-0045). Hidden while no form URL is set.
+@export var summary_feedback: String = "Send Feedback"
 ## Shown under the title when the run used any Assist option (F2).
 @export var summary_assist_note: String = "Assist on"
 
@@ -475,6 +477,8 @@ extends Resource
 @export var menu_play: String = "PLAY"
 @export var menu_heirlooms: String = "HEIRLOOMS"
 @export var menu_quit: String = "QUIT"
+## Opens the beta feedback form (ADR-0045). Hidden while no form URL is set.
+@export var menu_feedback: String = "SEND FEEDBACK"
 ## Heirloom screen heading, shard line and back button.
 @export var heirloom_screen_title: String = "HEIRLOOMS"
 @export var heirloom_shards_format: String = "Cipher Shards  %d"

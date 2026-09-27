@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="FeedbackConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/feedback_config.gd" id="1_fbc"]
+
+[resource]
+script = ExtResource("1_fbc")
+form_url = ""
+version_param = ""
