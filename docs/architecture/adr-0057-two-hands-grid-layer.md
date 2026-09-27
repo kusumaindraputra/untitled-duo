@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (awaiting the user's pick between a rule and a look-only framing)
+Accepted (the user chose the rule over a look-only framing, 2026-09-27)
 
 ## Date
 
