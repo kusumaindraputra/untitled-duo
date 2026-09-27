@@ -55,6 +55,7 @@
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/ui_focus.wav" id="ui_focus"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/ui_confirm.wav" id="ui_confirm"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/ui_back.wav" id="ui_back"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/boss_felled.wav" id="bm_boss_felled"]
 
 ;; ── SFX: Combat / Spells ────────────────────────────────────────────────────
 [sub_resource type="Resource" id="R_spell_cast"]
@@ -425,6 +426,17 @@ min_interval_sec = 0.25
 pitch_jitter = 0.1
 volume_db = -3.0
 
+;; ── Stinger: boss death cinematic (ADR-0041) — ducks the music to near silence ──
+[sub_resource type="Resource" id="R_boss_felled"]
+script = ExtResource("2_data")
+stream = ExtResource("bm_boss_felled")
+bus = &"SFX"
+priority = 2
+duck_depth_db = -40.0
+restore_duration_sec = 1.2
+stinger_priority = 0
+volume_db = 0.0
+
 ;; ── UI: menu focus / confirm / back (beta plan U9) ──────────────────────────
 [sub_resource type="Resource" id="R_ui_focus"]
 script = ExtResource("2_data")
@@ -506,6 +518,7 @@ events = {
 &"sfx_pillar_break": SubResource("R_pillar_break"),
 &"sfx_reaction": SubResource("R_reaction"),
 &"sfx_vent_ignite": SubResource("R_vent_ignite"),
+&"stg_boss_felled": SubResource("R_boss_felled"),
 &"ui_focus": SubResource("R_ui_focus"),
 &"ui_confirm": SubResource("R_ui_confirm"),
 &"ui_back": SubResource("R_ui_back")

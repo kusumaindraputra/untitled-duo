@@ -98,6 +98,9 @@ extends Resource
 ## Room-clear rank banner; %s is the rank letter.
 @export var room_rank_format: String = "RANK %s"
 
+## Big word that punches in when the last enemy of a room falls (ADR-0041).
+@export var room_clear_banner: String = "CLEAR"
+
 @export_group("Floors (ADR-0020)")
 
 ## Floor names, in floor order (floor 1 first). Shown in the HUD and the floor intro.
