@@ -7,6 +7,7 @@
 ##              high-contrast bullet outlines (ADR-0032)
 ##   controls — keyboard key per remappable action, gamepad button per combat action
 ##   feel     — gamepad rumble strength (0–100 %)
+##   hud      — HUD scale, HUD card opacity and the optional run timer (ADR-0046)
 ##
 ## The "game" section carries a `version` (ADR-0031). load_from() upgrades older
 ## files step by step through migrate(), so a tester's settings survive updates.
@@ -23,9 +24,9 @@ const _KEYS_SECTION: String = "keys"
 const _PAD_SECTION: String = "pad"
 
 ## Settings file format. v1 = files written before ADR-0031 (no version key).
-## v2 adds the "pad" section and rumble. Bump this and add a step to migrate()
+## v2 adds the "pad" section and rumble. v3 adds the HUD options (ADR-0046). Bump this and add a step to migrate()
 ## whenever a key is renamed, moved or reinterpreted.
-const SETTINGS_VERSION: int = 2
+const SETTINGS_VERSION: int = 3
 
 ## Window sizes offered in windowed mode (16:9; the game renders at 1152×648 and
 ## scales, so every size shows the same view).
@@ -64,6 +65,12 @@ const ASSIST_SPEED_MIN: float = 0.7
 const REDUCED_FLASH_SCALE: float = 0.3
 ## Text size choices (ADR-0032): multipliers on every UI font size, in menu order.
 const TEXT_SCALES: Array[float] = [1.0, 1.15, 1.3]
+## HUD scale choices (ADR-0046): multipliers on the corner HUD (left card, floor map,
+## toasts, run timer), in menu order. Index 1 is the default 100 %.
+const HUD_SCALES: Array[float] = [0.85, 1.0, 1.15, 1.3]
+const HUD_SCALE_DEFAULT_IDX: int = 1
+## Lowest HUD card opacity offered, so the card never vanishes behind its text.
+const HUD_CARD_OPACITY_MIN: float = 0.3
 
 ## The settings in effect. Loaded on first use of active().
 static var current: GameSettings = null
@@ -96,6 +103,12 @@ var key_overrides: Dictionary[StringName, int] = {}
 var pad_overrides: Dictionary[StringName, int] = {}
 ## Gamepad rumble strength, 0.0 (off) to 1.0 (full).
 var rumble: float = 1.0
+## Index into HUD_SCALES (ADR-0046).
+var hud_scale_idx: int = HUD_SCALE_DEFAULT_IDX
+## Opacity of the HUD card backgrounds, HUD_CARD_OPACITY_MIN to 1.0 (ADR-0046).
+var hud_card_opacity: float = 1.0
+## Shows the run clock in the HUD (ADR-0046). Off by default.
+var show_run_timer: bool = false
 
 
 ## The settings in effect, loading them from disk the first time.
@@ -154,6 +167,26 @@ static func text_scale() -> float:
 ## This instance's text multiplier from text_scale_idx.
 func text_scale_value() -> float:
 	return TEXT_SCALES[clampi(text_scale_idx, 0, TEXT_SCALES.size() - 1)]
+
+
+## Multiplier on the corner HUD (1.0 when no settings are loaded).
+static func hud_scale() -> float:
+	return current.hud_scale_value() if current != null else 1.0
+
+
+## This instance's HUD multiplier from hud_scale_idx.
+func hud_scale_value() -> float:
+	return HUD_SCALES[clampi(hud_scale_idx, 0, HUD_SCALES.size() - 1)]
+
+
+## Opacity multiplier for HUD card backgrounds (1.0 when no settings are loaded).
+static func hud_card_alpha() -> float:
+	return clampf(current.hud_card_opacity, HUD_CARD_OPACITY_MIN, 1.0) if current != null else 1.0
+
+
+## True when the HUD should show the run clock.
+static func run_timer_on() -> bool:
+	return current != null and current.show_run_timer
 
 
 ## True when enemy bullets should draw their high-contrast outline.
@@ -382,6 +415,11 @@ static func load_from(path: String = DEFAULT_PATH) -> GameSettings:
 			if REMAPPABLE.has(action) and code > 0:
 				s.key_overrides[action] = code
 	s.rumble = clampf(float(cfg.get_value(_SECTION, "rumble", 1.0)), 0.0, 1.0)
+	s.hud_scale_idx = clampi(int(cfg.get_value(_SECTION, "hud_scale_idx", HUD_SCALE_DEFAULT_IDX)),
+		0, HUD_SCALES.size() - 1)
+	s.hud_card_opacity = clampf(float(cfg.get_value(_SECTION, "hud_card_opacity", 1.0)),
+		HUD_CARD_OPACITY_MIN, 1.0)
+	s.show_run_timer = bool(cfg.get_value(_SECTION, "show_run_timer", false))
 	if cfg.has_section(_PAD_SECTION):
 		for key: String in cfg.get_section_keys(_PAD_SECTION):
 			var action := StringName(key)
@@ -406,6 +444,9 @@ static func migrate(cfg: ConfigFile, from_version: int) -> int:
 			1:
 				# v1 → v2: nothing moved. The pad section and rumble are new and start
 				# at their defaults; keys, audio and every "game" value carry over.
+				pass
+			2:
+				# v2 → v3: the HUD options are new and start at their defaults.
 				pass
 		v += 1
 	if v > from_version:
@@ -436,6 +477,9 @@ func save_to(path: String = DEFAULT_PATH) -> Error:
 	for action: StringName in key_overrides:
 		cfg.set_value(_KEYS_SECTION, String(action), key_overrides[action])
 	cfg.set_value(_SECTION, "rumble", rumble)
+	cfg.set_value(_SECTION, "hud_scale_idx", hud_scale_idx)
+	cfg.set_value(_SECTION, "hud_card_opacity", hud_card_opacity)
+	cfg.set_value(_SECTION, "show_run_timer", show_run_timer)
 	if cfg.has_section(_PAD_SECTION):
 		cfg.erase_section(_PAD_SECTION)
 	for action: StringName in pad_overrides:
