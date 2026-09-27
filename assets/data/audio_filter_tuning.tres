@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AudioFilterTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/audio_filter_tuning.gd" id="1_afl"]
+
+[resource]
+script = ExtResource("1_afl")
+enabled = true
+buses = Array[StringName]([&"Music", &"SFX", &"AMB"])
+open_cutoff_hz = 20500.0
+pause_cutoff_hz = 700.0
+critical_cutoff_hz = 2200.0
+resonance = 0.6
+engage_sec = 0.2
+release_sec = 0.45
