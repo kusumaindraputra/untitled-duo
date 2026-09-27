@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="MusicPlaylist" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/music_playlist.gd" id="1_mpl"]
+
+[resource]
+script = ExtResource("1_mpl")
+menu_cue = &"mus_title"
+preparation_cue = &"mus_preparation"
+floor_combat_cues = Array[StringName]([&"mus_combat_floor", &"mus_combat_floor2", &"mus_combat_floor3"])
+victory_cue = &"mus_ending"
+defeat_cue = &"sfx_run_lose"

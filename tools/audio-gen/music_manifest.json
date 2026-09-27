@@ -1,5 +1,5 @@
 {
-  "_comment": "Music generation manifest for ElevenLabs /v1/music endpoint.",
+  "_comment": "Music generation manifest for ElevenLabs /v1/music endpoint. mus_title, mus_combat_floor2, mus_combat_floor3 and mus_ending currently ship as procedural renders from synth_music.py (ADR-0049); these prompts regenerate them with a key.",
   "_sonic_identity": "The Last Cipher — sci-fi dungeon crawler, android child (Fayde) vs robots underground. Progressive metal + electronic hybrid. Intensity rises from Rest → Combat Floor → Elite/Mini-boss → Boss. All tracks seamlessly loopable.",
   "tracks": [
     {
@@ -31,6 +31,30 @@
       "file": "mus_combat_boss",
       "duration_seconds": 60,
       "prompt": "Epic orchestral progressive metal instrumental for a sci-fi dungeon boss fight, maximum intensity level 3. Heavy distorted guitars with sweeping cinematic synth orchestration, powerful low-end, dramatic dynamic shifts, thunderous drums, urgent and grand. Android child faces a massive robot overlord in the final confrontation deep underground. Climactic and heroic. Seamlessly loopable."
+    },
+    {
+      "event": "mus_title",
+      "file": "mus_title",
+      "duration_seconds": 46,
+      "prompt": "Mysterious, slightly hopeful ambient electronic instrumental for the title screen of a sci-fi dungeon game. Warm synth pads in A minor, a soft echoing arpeggio, a clear bell-like melody, very light pulse, no heavy drums, 84 BPM. An android child stands at the sealed vault door. Seamlessly loopable, no vocals."
+    },
+    {
+      "event": "mus_combat_floor2",
+      "file": "mus_combat_floor2",
+      "duration_seconds": 41,
+      "prompt": "Progressive metal and electronic instrumental for the second floor of a sci-fi dungeon, the Warped Warden's twisted halls. E phrygian, 140 BPM, wobbling detuned synth bass, syncopated off-kilter drums, distorted guitar stabs, uneasy and warped. Intensity 2 out of 3. Seamlessly loopable, no vocals."
+    },
+    {
+      "event": "mus_combat_floor3",
+      "file": "mus_combat_floor3",
+      "duration_seconds": 49,
+      "prompt": "Relentless progressive metal instrumental for the final floor of a sci-fi dungeon, the Cipher Core. C# minor, 156 BPM, galloping bass, heavy power chords, fast synth arpeggios, driving double-kick fills, urgent heroic lead melody. The last push. Seamlessly loopable, no vocals."
+    },
+    {
+      "event": "mus_ending",
+      "file": "mus_ending",
+      "duration_seconds": 58,
+      "prompt": "Hopeful, emotional ending theme for a sci-fi dungeon game after the final boss. D major, 76 BPM, warm synth pads, gentle bell melody, soft drums that enter halfway, resolving on a held D major chord that rings out. Bittersweet relief, the android child remembers. Not a loop; ends cleanly, no vocals."
     }
   ]
 }
