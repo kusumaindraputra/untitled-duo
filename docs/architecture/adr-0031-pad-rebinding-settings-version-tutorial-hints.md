@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted (tutorial hints extended by ADR-0055: the first run's first room is now a guided lesson)
 
 ## Date
 

@@ -163,6 +163,18 @@ func current_step(phase: Phase = Phase.COMBAT) -> StringName:
 	return &""
 
 
+## Ticks [param steps] quietly (no sound, no check flash), e.g. the lessons the guided
+## first room already taught (ADR-0055). Emits [signal completed] if nothing is left.
+func pretick(steps: Array[StringName]) -> void:
+	for id: StringName in steps:
+		if _done.has(id):
+			_done[id] = true
+	if is_done() and not _finished:
+		_finished = true
+		completed.emit()
+		_show_done()
+
+
 ## Number of ticked steps.
 func done_count() -> int:
 	var n: int = 0

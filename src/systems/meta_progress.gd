@@ -35,6 +35,9 @@ var ascension: int = 0
 var ascension_unlocked: int = 0
 ## True once the in-combat tutorial coach has been completed.
 var tutorial_done: bool = false
+## True once the guided first room (ADR-0055) was finished or skipped. Saves from before
+## it existed count as done when the player already finished the coach or a run.
+var tutorial_room_done: bool = false
 ## Cipher Core picked for the last run (ADR-0033); the pick screen starts on it.
 var last_core: StringName = &""
 ## Memory fragments recovered so far, in story order (ADR-0027).
@@ -301,6 +304,8 @@ static func load_from(path: String = DEFAULT_PATH) -> MetaProgress:
 	p.ascension_unlocked = maxi(int(cfg.get_value(_SECTION, "ascension_unlocked", 0)), 0)
 	p.ascension = clampi(int(cfg.get_value(_SECTION, "ascension", 0)), 0, p.ascension_unlocked)
 	p.tutorial_done = bool(cfg.get_value(_SECTION, "tutorial_done", false))
+	p.tutorial_room_done = bool(cfg.get_value(_SECTION, "tutorial_room_done",
+		p.tutorial_done or p.runs > 0))
 	p.last_core = StringName(str(cfg.get_value(_SECTION, "last_core", "")))
 	p.fragments_found = maxi(int(cfg.get_value(_SECTION, "fragments_found", 0)), 0)
 	p.ending_seen = bool(cfg.get_value(_SECTION, "ending_seen", false))
@@ -339,6 +344,7 @@ func save_to(path: String = DEFAULT_PATH) -> Error:
 	cfg.set_value(_SECTION, "ascension", ascension)
 	cfg.set_value(_SECTION, "ascension_unlocked", ascension_unlocked)
 	cfg.set_value(_SECTION, "tutorial_done", tutorial_done)
+	cfg.set_value(_SECTION, "tutorial_room_done", tutorial_room_done)
 	cfg.set_value(_SECTION, "last_core", String(last_core))
 	cfg.set_value(_SECTION, "fragments_found", fragments_found)
 	cfg.set_value(_SECTION, "ending_seen", ending_seen)
