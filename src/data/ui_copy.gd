@@ -548,6 +548,10 @@ extends Resource
 @export var menu_title: String = "THE LAST CIPHER"
 @export var menu_subtitle: String = "Two brothers' Prana. One pair of hands."
 @export var menu_play: String = "PLAY"
+## ADR-0048: shown above Play when a run was saved mid-way (%d = floor, %d = room).
+@export var menu_continue_format: String = "CONTINUE  (FLOOR %d, ROOM %d)"
+## Banner when a saved run resumes at the start of its last room.
+@export var run_resumed_banner: String = "RUN RESUMED"
 @export var menu_heirlooms: String = "HEIRLOOMS"
 @export var menu_quit: String = "QUIT"
 ## Opens the beta feedback form (ADR-0045). Hidden while no form URL is set.

@@ -68,6 +68,10 @@ const TUTORIAL_ROOM_COVERS: Array[StringName] = [
 
 ## Where between-run progress is read and written (ADR-0025).
 var progress_path: String = MetaProgress.DEFAULT_PATH
+## ADR-0048: where the run in progress is saved at each room start, and where
+## finished runs are logged for playtests. Tests point these at temp files.
+var run_save_path: String = RunSave.DEFAULT_PATH
+var run_log_path: String = RunLog.DEFAULT_PATH
 ## Between-run progress: Heirloom, Hard Mode, shard payout at run end.
 var _meta: MetaProgress = null
 ## Guards the shard payout so a run is only recorded once.
@@ -150,6 +154,16 @@ var _assist_used: bool = false
 var _boss_elapsed: float = 0.0
 var _boss_timing: bool = false
 var _new_records: Array[String] = []
+## ADR-0048 run save and playtest log: non-Prana sigil ids in the order taken (replayed
+## on resume), each fight's build, spells cast, times this run was resumed, and a
+## guard so a run is logged once.
+var _applied_sigils: Array[String] = []
+var _log_builds: Array[Dictionary] = []
+var _casts: int = 0
+var _resumes: int = 0
+var _run_logged: bool = false
+## True while a resumed run replays its sigils, so they don't toast again.
+var _replaying_sigils: bool = false
 
 func _ready() -> void:
 	_apply_assist()  # also resets Engine.time_scale from any prior slow-mo (reload via R)
@@ -293,6 +307,14 @@ func _ready() -> void:
 	GameStateManager.run_ended.connect(_on_run_ended)
 	GameStateManager.wave_ended.connect(_on_wave_ended)
 	GameStateManager.floor_completed.connect(_on_floor_completed)
+	SpellCastingEffects.cast_started.connect(_on_cast_started)
+
+	# ADR-0048: Continue on the main menu resumes the saved run at its last room.
+	if RunSave.take_resume_request():
+		var saved: Dictionary = RunSave.read(run_save_path)
+		if not saved.is_empty() and int(saved["total_floors"]) == total_floors:
+			_resume_run(saved)
+			return
 
 	# The full scene (arena, player, HUD) is now wired and visible. Gate the run
 	# behind a title card so the demo opens with context instead of dropping the
@@ -310,8 +332,7 @@ func _input(event: InputEvent) -> void:
 		if event.keycode == KEY_ESCAPE:
 			_toggle_pause()
 		elif event.keycode == KEY_R:
-			Engine.time_scale = GameSettings.base_time_scale()  # cancel slow-mo before reload
-			get_tree().reload_current_scene()
+			_restart_from_pause()
 		elif OS.is_debug_build() and event.keycode == KEY_F1:
 			# DEBUG QA: toggle god mode (blocks ALL incoming damage) for full-loop playtest.
 			# Gated to debug builds so an exported demo build can't trip these by accident.
@@ -596,6 +617,7 @@ func _on_core_picked(type_id: int) -> void:
 		_start_tutorial_room(type_id)
 	elif _meta == null or not _meta.tutorial_done:
 		_start_coach()
+	_write_run_save()
 
 
 ## ADR-0033: applies the run's Cipher Core after run_started reset the run state, and
@@ -845,6 +867,10 @@ func _apply_assist() -> void:
 
 ## Restart button: unpause, reset time scale, reload the scene for a fresh run.
 func _restart_from_pause() -> void:
+	# ADR-0048: Restart abandons the run, so its save goes and the log notes it.
+	if _run_in_progress():
+		_log_run(RunLog.OUTCOME_ABANDONED, RunManager.snapshot())
+	RunSave.clear(run_save_path)
 	_save_progress()
 	get_tree().paused = false
 	Engine.time_scale = GameSettings.base_time_scale()
@@ -887,6 +913,7 @@ func _on_room_transitioned(new_room_idx: int) -> void:
 	hud.set_room_progress(_rooms_entered, PathBuilder.rooms_per_run(_dungeon_graph))
 	_update_minimap()
 	GameStateManager.restart_preparation()
+	_write_run_save()
 
 
 ## Pushes the current floor's room layout to the HUD minimap. Builds plain type/state
@@ -945,11 +972,13 @@ func _configure_wave_manager_for_room(room_idx: int) -> void:
 
 ## Picks the combat-state music cue for [param rtype] via AudioSystem.
 ## Boss/elite/rest rooms each get a dedicated track; all other rooms reset to the
-## default floor track. No-op if AudioSystem is unavailable (e.g. headless tests).
+## current floor's own loop (ADR-0049). No-op if AudioSystem is unavailable (e.g. headless tests).
 func _select_room_music(rtype: int) -> void:
 	var audio: Node = get_node_or_null("/root/AudioSystem")
 	if audio == null or not audio.has_method(&"override_combat_cue"):
 		return
+	if audio.has_method(&"set_music_floor"):
+		audio.set_music_floor(_current_floor)
 	match rtype:
 		DungeonGraph.ROOM_TYPE_BOSS:
 			audio.override_combat_cue(&"mus_combat_boss")
@@ -1072,6 +1101,9 @@ func _ascension_level() -> AscensionLevel:
 ## board state before the overlay appears (Gamefeel Audit Issue 5.1).
 ## Uses ignore_time_scale=true so the timer ticks in real seconds regardless of time_scale.
 func _on_run_ended(win: bool) -> void:
+	# ADR-0048: the run is over, so there is nothing to continue. Cleared before the
+	# death slow-mo so closing the game during it can't bring the run back.
+	RunSave.clear(run_save_path)
 	if win:
 		await _await_boss_cinematic()
 	if not win and not _in_death_sequence:
@@ -1088,6 +1120,7 @@ func _on_run_ended(win: bool) -> void:
 			audio.play_event(evt)
 
 	var run_data: Dictionary = RunManager.get_run_data()
+	_log_run(RunLog.OUTCOME_WIN if win else RunLog.OUTCOME_DEATH, run_data)
 	# ADR-0025: pay Cipher Shards once per run and save before building the overlay.
 	var shards_earned: int = 0
 	var hard_newly_unlocked: bool = false
@@ -1179,12 +1212,14 @@ func _log_room_rank(rank_letter: String, _heal: float, _meter_bonus: float) -> v
 func _log_sigil(sigil_id: StringName) -> void:
 	if String(sigil_id).begins_with("prana_"):
 		return
+	_applied_sigils.append(String(sigil_id))
 	if _meta != null:
 		_meta.discover_sigil(sigil_id)
 	for sigil: Dictionary in _sigil_manager.get_catalog():
 		if sigil.get("id", &"") == sigil_id:
 			_run_sigils.append({"title": str(sigil.get("title", sigil_id)), "desc": str(sigil.get("desc", ""))})
-			_toast(_COPY.toast_sigil_format % str(sigil.get("title", sigil_id)), UIPalette.GOOD)
+			if not _replaying_sigils:
+				_toast(_COPY.toast_sigil_format % str(sigil.get("title", sigil_id)), UIPalette.GOOD)
 			var hud: CombatHUD = get_node_or_null(^"CanvasLayer/CombatHUD") as CombatHUD
 			if hud != null:  # ADR-0045 chip strip
 				hud.get_sigil_strip().add_sigil(sigil_id, str(sigil.get("title", sigil_id)),
@@ -1210,7 +1245,10 @@ func _revealed_heirloom_lines(found: int) -> Array[String]:
 ## F1: records the confirmed grid's core spell and armed reactions in the Spellbook.
 func _log_build_discoveries(_is_boss: bool) -> void:
 	var grid: PranaGrid = get_tree().get_first_node_in_group(&"prana_grid") as PranaGrid
-	if _meta == null or grid == null:
+	if grid == null:
+		return
+	_log_builds.append(RunLog.build_entry(_current_floor, _rooms_entered, grid.get_slot_types()))
+	if _meta == null:
 		return
 	var found: Dictionary = Spellbook.discoveries_from_grid(grid.get_slot_types())
 	_meta.discover_spell(int(found["core"]))
@@ -1396,3 +1434,146 @@ func _ensure_joypad_motion_action(action: StringName, axis: JoyAxis, axis_value:
 	ev.axis = axis
 	ev.axis_value = axis_value
 	InputMap.action_add_event(action, ev)
+
+
+# ── Run save and playtest log (ADR-0048) ──────────────────────────────────────
+
+func _on_cast_started(_effect: SpellEffect) -> void:
+	if _run_in_progress():
+		_casts += 1
+
+
+## True while a run is being played: past the core pick, not over and not logged.
+func _run_in_progress() -> bool:
+	if _run_logged or _run_recorded or _in_death_sequence:
+		return false
+	var state: GameEnums.GameState = GameStateManager.get_active_state()
+	return state == GameEnums.GameState.PREPARATION_PHASE \
+		or state == GameEnums.GameState.COMBAT_PHASE \
+		or state == GameEnums.GameState.PAUSED
+
+
+## Everything a resumed run needs, as of the start of the current room.
+func _run_snapshot() -> Dictionary:
+	var rtm: RoomTransitionManager = $RoomTransitionManager
+	return {
+		"floor": _current_floor,
+		"total_floors": total_floors,
+		"run_seed": _run_seed,
+		"rng_seed": _room_rng.seed,
+		"rng_state": _room_rng.state,
+		"graph": _dungeon_graph.to_data(),
+		"room_idx": rtm.get_current_room_idx(),
+		"rooms_entered": _rooms_entered,
+		"core": String(_core.id) if _core != null else "",
+		"loadout": _prana_loadout.get_slots(),
+		"bag": _prana_bag.get_items(),
+		"sigils": _applied_sigils.duplicate(),
+		"hp": HealthAndDamage.get_fayde_hp(),
+		"run": RunManager.snapshot(),
+		"ranks": _run_ranks.duplicate(),
+		"floors_cleared": _floors_cleared,
+		"fragments_at_start": _fragments_at_start,
+		"bonus_shards": _bonus_shards,
+		"assist_used": _assist_used,
+		"new_records": _new_records.duplicate(),
+		"hard": _meta != null and _meta.hard_mode,
+		"ascension": _meta.ascension if _meta != null else 0,
+		"log_builds": _log_builds.duplicate(true),
+		"casts": _casts,
+		"resumes": _resumes,
+	}
+
+
+## Saves the run at the start of a room (and right after the core pick).
+func _write_run_save() -> void:
+	if not _run_in_progress() or _dungeon_graph == null \
+			or _prana_loadout == null or _prana_bag == null:
+		return
+	var err: Error = RunSave.write(_run_snapshot(), run_save_path)
+	if err != OK:
+		push_warning("debug_game_loop: run save failed (%s)" % error_string(err))
+
+
+## Rebuilds the saved run instead of showing the title: same floor and graph, Core,
+## build, bag, sigils, HP and run stats, then loads the saved room in its prep phase.
+func _resume_run(data: Dictionary) -> void:
+	_resumes = int(data.get("resumes", 0)) + 1
+	_current_floor = int(data["floor"])
+	_run_seed = int(data.get("run_seed", _run_seed))
+	_room_rng.seed = int(data.get("rng_seed", _room_rng.seed))
+	_room_rng.state = int(data.get("rng_state", _room_rng.state))
+	$WaveManager.boss_variants = BossDirector.ROSTER.pick_all(_run_seed)
+	# Hard Mode and Ascension stay as the run started, whatever the menu says now.
+	if _meta != null:
+		_meta.hard_mode = bool(data.get("hard", false))
+		_meta.ascension = int(data.get("ascension", 0))
+	var rtm: RoomTransitionManager = $RoomTransitionManager
+	_apply_floor_theme(rtm)
+	_dungeon_graph = DungeonGraph.from_data(data["graph"] as Dictionary)
+	GameStateManager.set_is_final_floor(_current_floor >= total_floors)
+	_apply_floor_pool_config()
+	_floors_cleared = int(data.get("floors_cleared", 0))
+	_fragments_at_start = int(data.get("fragments_at_start", _fragments_at_start))
+	_bonus_shards = int(data.get("bonus_shards", 0))
+	_assist_used = bool(data.get("assist_used", false))
+	_casts = int(data.get("casts", 0))
+	for v: Variant in data.get("ranks", []):
+		_run_ranks.append(str(v))
+	for v: Variant in data.get("new_records", []):
+		_new_records.append(str(v))
+	for v: Variant in data.get("log_builds", []):
+		_log_builds.append(v as Dictionary)
+
+	_prana_loadout.set_slots(data["loadout"] as Array)
+	GameStateManager.start_run()  # run_started resets HP, bag, sigil stacks, run stats
+	_selected_core = _CORES.get_core(StringName(str(data.get("core", ""))))
+	_start_core()
+	for v: Variant in data.get("bag", []):
+		_prana_bag.add(int(v))
+	# Sigils are replayed in the order taken; _log_sigil rebuilds the lists and HUD chips.
+	var sigils: Array = data.get("sigils", []) as Array
+	_applied_sigils.clear()
+	_run_sigils.clear()
+	_replaying_sigils = true
+	for v: Variant in sigils:
+		_sigil_manager.apply_sigil(StringName(str(v)))
+	_replaying_sigils = false
+	HealthAndDamage.restore_fayde_hp(int(data["hp"]))
+	var hud: CombatHUD = $CanvasLayer/CombatHUD
+	hud.sync_hp(HealthAndDamage.get_fayde_hp())
+	RunManager.restore_snapshot(data.get("run", {}) as Dictionary)
+	# _on_room_transitioned counts the room again, and saves once it is loaded.
+	_rooms_entered = int(data["rooms_entered"]) - 1
+	hud.show_room_banner(_COPY.run_resumed_banner, UIPalette.ACCENT)
+	if _meta == null or not _meta.tutorial_done:
+		_start_coach()
+	rtm.load_floor(_dungeon_graph, int(data["room_idx"]))
+
+
+## Appends this run to the playtest log once: outcome, floor, rooms, time, cause of
+## death and the spells cast.
+func _log_run(outcome: String, run_data: Dictionary) -> void:
+	if _run_logged:
+		return
+	_run_logged = true
+	var died: bool = outcome == RunLog.OUTCOME_DEATH
+	var death: Dictionary = HealthAndDamage.last_player_hit if died else {}
+	var run: Dictionary = {
+		"floor": _current_floor,
+		"rooms": int(run_data.get("rooms_cleared", 0)),
+		"run_sec": float(run_data.get("run_time_sec", 0.0)),
+		"core": String(_core.id) if _core != null else "",
+		"sigils": _applied_sigils.duplicate(),
+		"casts": _casts,
+		"assist": _assist_used,
+		"hard": _meta != null and _meta.hard_mode_active(_META),
+		"resumes": _resumes,
+	}
+	var e: Dictionary = RunLog.entry(outcome, run, death,
+		DeathRecap.line(death, _COPY) if died else "", _log_builds,
+		Time.get_datetime_string_from_system(true) + "Z",
+		str(ProjectSettings.get_setting("application/config/version", "dev")))
+	var err: Error = RunLog.append(e, run_log_path)
+	if err != OK:
+		push_warning("debug_game_loop: run log write failed (%s)" % error_string(err))

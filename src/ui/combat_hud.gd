@@ -1222,6 +1222,19 @@ func _on_damage_taken(target: Node, final_damage: int, current_hp: int) -> void:
 	_hold_ghost()
 
 
+## Snaps the HP bar, ghost and label to [param current_hp] with no animation or hit
+## feedback. Used when a saved run resumes (ADR-0048).
+func sync_hp(current_hp: int) -> void:
+	_hp_timer = 0.0
+	_hp_start = float(current_hp)
+	_hp_target = float(current_hp)
+	hp_bar.value = float(current_hp)
+	_ghost_bar.value = float(current_hp)
+	_ghost_hold = 0.0
+	_ghost_drain = 0.0
+	hp_label.text = "%d / %d" % [current_hp, FAYDE_MAX_HP]
+
+
 ## Boss-intro handler: connected to WaveManager.boss_spawned by the game loop.
 ## Shows the name card + top-centre HP bar and triggers the camera reveal zoom.
 func _on_boss_spawned(boss: Node) -> void:

@@ -32,6 +32,10 @@
 [ext_resource type="AudioStream" path="res://assets/audio/music/mus_combat_floor.mp3" id="30_mus_combat_floor"]
 [ext_resource type="AudioStream" path="res://assets/audio/music/mus_combat_elite.mp3" id="31_mus_combat_elite"]
 [ext_resource type="AudioStream" path="res://assets/audio/music/mus_combat_boss.mp3" id="32_mus_combat_boss"]
+[ext_resource type="AudioStream" path="res://assets/audio/music/mus_title.mp3" id="mp_mus_title"]
+[ext_resource type="AudioStream" path="res://assets/audio/music/mus_combat_floor2.mp3" id="mp_mus_combat_floor2"]
+[ext_resource type="AudioStream" path="res://assets/audio/music/mus_combat_floor3.mp3" id="mp_mus_combat_floor3"]
+[ext_resource type="AudioStream" path="res://assets/audio/music/mus_ending.mp3" id="mp_mus_ending"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/bullet_fire.wav" id="fp_bullet_fire"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/enemy_windup.wav" id="fp_enemy_windup"]
 [ext_resource type="AudioStream" path="res://assets/audio/sfx/laser_charge.wav" id="fp_laser_charge"]
@@ -241,6 +245,30 @@ priority = 0
 [sub_resource type="Resource" id="R_mus_combat_boss"]
 script = ExtResource("2_data")
 stream = ExtResource("32_mus_combat_boss")
+bus = &"Music"
+priority = 0
+
+[sub_resource type="Resource" id="R_mus_title"]
+script = ExtResource("2_data")
+stream = ExtResource("mp_mus_title")
+bus = &"Music"
+priority = 0
+
+[sub_resource type="Resource" id="R_mus_combat_floor2"]
+script = ExtResource("2_data")
+stream = ExtResource("mp_mus_combat_floor2")
+bus = &"Music"
+priority = 0
+
+[sub_resource type="Resource" id="R_mus_combat_floor3"]
+script = ExtResource("2_data")
+stream = ExtResource("mp_mus_combat_floor3")
+bus = &"Music"
+priority = 0
+
+[sub_resource type="Resource" id="R_mus_ending"]
+script = ExtResource("2_data")
+stream = ExtResource("mp_mus_ending")
 bus = &"Music"
 priority = 0
 
@@ -498,6 +526,10 @@ events = {
 &"mus_combat_floor": SubResource("R_mus_combat_floor"),
 &"mus_combat_elite": SubResource("R_mus_combat_elite"),
 &"mus_combat_boss": SubResource("R_mus_combat_boss"),
+&"mus_title": SubResource("R_mus_title"),
+&"mus_combat_floor2": SubResource("R_mus_combat_floor2"),
+&"mus_combat_floor3": SubResource("R_mus_combat_floor3"),
+&"mus_ending": SubResource("R_mus_ending"),
 &"sfx_bullet_fire": SubResource("R_bullet_fire"),
 &"sfx_enemy_windup": SubResource("R_enemy_windup"),
 &"sfx_laser_charge": SubResource("R_laser_charge"),

@@ -125,15 +125,19 @@ func wire_exit_doors(room_scene: Node) -> void:
 ## Re-entrant calls while a transition is in progress are silently ignored.
 ## The caller need not await — connect to [signal room_transition_completed] for completion.
 ##
+## [param room_idx] ≥ 0 loads that room instead of the entry room: a resumed run
+## (ADR-0048) starts in the room it was saved in.
+##
 ## Usage (from floor orchestrator):
 ##   rtm.load_floor(new_graph)
 ##   # _on_room_transitioned fires via room_transition_completed when ready
-func load_floor(graph: DungeonGraph) -> void:
+func load_floor(graph: DungeonGraph, room_idx: int = -1) -> void:
 	if _is_transitioning or graph == null:
 		return
 	_is_transitioning = true
 	_graph = graph
-	_current_idx = _graph.get_entry_room()
+	_current_idx = room_idx if room_idx >= 0 and room_idx < graph.room_count() \
+		else _graph.get_entry_room()
 
 	await _fade_to(1.0)
 
