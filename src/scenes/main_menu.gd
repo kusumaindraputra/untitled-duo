@@ -5,8 +5,7 @@
 ## match the project's programmatic-UI convention (see debug_game_loop / combat_hud).
 ##
 ## Display-only front-end: it never mutates gameplay state — it only swaps scenes and
-## adjusts audio buses. AudioSystem boots in its MAIN_MENU music state, so no music
-## wiring is required here.
+## adjusts audio buses. On open it asks AudioSystem for the title loop (ADR-0049).
 extends Control
 
 ## Scene loaded when the player presses Play: the full three-floor run, so the
@@ -50,6 +49,10 @@ func _ready() -> void:
 	_column.minimum_size_changed.connect(func() -> void: _fit_column.call_deferred())
 	get_viewport().size_changed.connect(func() -> void: _fit_column.call_deferred())
 	UIFeel.fade_in(self, 0.35)
+	# ADR-0049: the title loop. Deferred so AudioSystem's players are in the tree at boot.
+	var audio: Node = get_node_or_null(^"/root/AudioSystem")
+	if audio != null and audio.has_method(&"play_menu_music"):
+		audio.play_menu_music.call_deferred()
 
 
 func _fit_column() -> void:
