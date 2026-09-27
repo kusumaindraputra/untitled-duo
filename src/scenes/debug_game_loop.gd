@@ -162,6 +162,9 @@ func _ready() -> void:
 
 	# Wire initial room: spawn markers + exit doors + room type flags.
 	var initial_room: IsometricRoom = $SubSceneRoot/IsometricRoom
+	# ADR-0038: main.tscn builds this room before the floor theme is known.
+	if rtm.floor_theme != null:
+		initial_room.apply_floor_look(rtm.floor_theme)
 	$WaveManager.spawn_points_container = initial_room.get_node("SpawnMarkers")
 	_configure_wave_manager_for_room(_dungeon_graph.get_entry_room())
 	rtm.wire_exit_doors(initial_room)

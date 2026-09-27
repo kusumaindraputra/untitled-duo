@@ -4,6 +4,13 @@
 
 [resource]
 script = ExtResource("1_script")
+motif = 3
+whimsy_kinds = Array[int]([5, 6])
+prop_dark = Color(0.11, 0.07, 0.125, 1)
+prop_mid = Color(0.306, 0.227, 0.333, 1)
+prop_light = Color(0.478, 0.384, 0.518, 1)
+prop_glow = Color(0.706, 0.549, 0.69, 1)
+silhouette = Color(0.165, 0.106, 0.173, 1)
 floor_base = Color(0.29, 0.23, 0.29, 1)
 floor_alt = Color(0.35, 0.27, 0.34, 1)
 floor_seam = Color(0.14, 0.10, 0.14, 1)

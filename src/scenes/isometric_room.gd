@@ -71,6 +71,9 @@ const _HAZARD_FALLBACK_CLEAR_DIST: float = 75.0
 ## Placed at a safe position inside the walkable zone after _build_floor() completes.
 @export var anchor_object_data: AnchorObject = null
 
+## Seed for the background props and whimsy detail (ADR-0038). -1 = random per build.
+@export var decor_seed: int = -1
+
 # ── @onready ──────────────────────────────────────────────────────────────────
 
 @onready var _spawn_markers: Node2D = $SpawnMarkers
@@ -106,6 +109,7 @@ func _ready() -> void:
 	if anchor_object_data != null:
 		_place_anchor_object(anchor_object_data)
 	_spawn_exit_door()
+	_build_decor()
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
@@ -417,6 +421,25 @@ func _install_floor_atlas() -> void:
 func _set_floor_cell(cell: Vector2i) -> void:
 	var v: int = FloorTileAtlas.variant_for_cell(cell, get_look())
 	_tile_map.set_cell(cell, _FLOOR_SOURCE_ID, Vector2i(v, 0))
+
+
+## Re-skins an already built room with [param theme]'s look (ADR-0038): floor
+## tiles, platform edge, backdrop and decor. Used for the first room, which
+## main.tscn builds before the floor theme is known. Layout, collision, debris and
+## pillars are untouched.
+func apply_floor_look(theme: FloorTheme) -> void:
+	floor_theme = theme
+	_look = null
+	if not is_node_ready():
+		return
+	var cells: Array[Vector2i] = _tile_map.get_used_cells()
+	_install_floor_atlas()
+	for cell: Vector2i in cells:
+		_set_floor_cell(cell)
+	_build_platform_edge()
+	_add_backdrop()
+	_apply_floor_theme()
+	_build_decor()
 
 
 ## Returns this room's environment palette: the floor theme's look, or the
@@ -731,12 +754,22 @@ func _build_platform_edge() -> void:
 ## Returns the floor's boundary edges on the lower half of their tile (the ones a
 ## viewer looking down sees the side of), each as [a, b] with a.x < b.x.
 func get_lower_boundary_edges() -> Array[PackedVector2Array]:
+	return _boundary_edges(true)
+
+
+## Returns the floor's boundary edges on the upper half of their tile (the far rim,
+## where background props stand), each as [a, b] with a.x < b.x.
+func get_upper_boundary_edges() -> Array[PackedVector2Array]:
+	return _boundary_edges(false)
+
+
+func _boundary_edges(lower_half: bool) -> Array[PackedVector2Array]:
 	var corner_offsets: Array[Vector2] = [
 		Vector2(0, -_TILE_Y_STEP), Vector2(_TILE_X_STEP, 0),
 		Vector2(0, _TILE_Y_STEP), Vector2(-_TILE_X_STEP, 0),
 	]
 	var count: Dictionary = {}
-	var lower: Dictionary = {}  # edge key → [a, b] for edges on the lower half of a tile
+	var picked: Dictionary = {}  # edge key → [a, b] for edges on the wanted half of a tile
 	for cell: Vector2i in _tile_map.get_used_cells():
 		var center: Vector2 = _tile_map.map_to_local(cell)
 		for i: int in range(4):
@@ -744,13 +777,29 @@ func get_lower_boundary_edges() -> Array[PackedVector2Array]:
 			var b: Vector2 = center + corner_offsets[(i + 1) % 4]
 			var key: String = _edge_key(a, b)
 			count[key] = int(count.get(key, 0)) + 1
-			if (a.y + b.y) * 0.5 > center.y:
-				lower[key] = PackedVector2Array([a, b] if a.x < b.x else [b, a])
+			if ((a.y + b.y) * 0.5 > center.y) == lower_half:
+				picked[key] = PackedVector2Array([a, b] if a.x < b.x else [b, a])
 	var out: Array[PackedVector2Array] = []
-	for key: String in lower:
+	for key: String in picked:
 		if int(count[key]) == 1:
-			out.append(lower[key] as PackedVector2Array)
+			out.append(picked[key] as PackedVector2Array)
 	return out
+
+
+## Adds the floor's background props and the room's whimsy detail (ADR-0038).
+## Decor stands outside the walkable floor and owns no collision.
+func _build_decor() -> void:
+	var old: Node = get_node_or_null(^"RoomDecor")
+	if old != null:
+		old.free()
+	var seed_value: int = decor_seed
+	if seed_value < 0:
+		seed_value = randi()
+	var is_boss: bool = room_template != null and room_template.room_type == 3
+	var decor := RoomDecor.new()
+	decor.build(get_look(), get_upper_boundary_edges(), get_lower_boundary_edges(),
+		_keep_clear_points(), is_boss, seed_value)
+	add_child(decor)
 
 
 ## Adds the screen-space backdrop and vignette for this floor's look (ADR-0021).
