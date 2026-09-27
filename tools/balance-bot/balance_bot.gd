@@ -15,7 +15,8 @@
 ## carries both the measured bot time and an estimated player time.
 ##
 ## Flags: --god (Fayde takes no damage: measures pace, not survival), --seed=N,
-## --hard (Hard Mode), --ascension=N (ADR-0052), --out=PATH, --max-min=N (abort after N
+## --hard (Hard Mode), --ascension=N (ADR-0052), --core=N (starting Prana type, random
+## when absent), --out=PATH, --max-min=N (abort after N
 ## simulated minutes). This is a dev tool: nothing in the shipped game loads it.
 extends Node
 
@@ -30,6 +31,7 @@ var _seed: int = 1
 var _god: bool = false
 var _hard: bool = false
 var _ascension: int = 0
+var _core: int = -1
 var _out_path: String = "user://balance_bot/run.json"
 var _max_frames: int = 0
 var _rng := RandomNumberGenerator.new()
@@ -108,6 +110,8 @@ func _parse_args() -> void:
 			_seed = int(arg.get_slice("=", 1))
 		elif arg.begins_with("--ascension="):
 			_ascension = int(arg.get_slice("=", 1))
+		elif arg.begins_with("--core="):
+			_core = int(arg.get_slice("=", 1))
 		elif arg.begins_with("--out="):
 			_out_path = arg.get_slice("=", 1)
 		elif arg.begins_with("--max-min="):
@@ -127,7 +131,9 @@ func _physics_process(_delta: float) -> void:
 		if _frame == 5:
 			_game._begin_run()
 		elif _frame == 10:
-			_game._on_core_picked(_rng.randi_range(0, 4))
+			if _core < 0:
+				_core = _rng.randi_range(0, 4)
+			_game._on_core_picked(_core)
 			_started = true
 		return
 	_release_taps()
@@ -491,7 +497,7 @@ func _build_report(win: bool, reason: String) -> Dictionary:
 	var overhead: float = _CFG.human_prep_sec * _rooms.size() \
 		+ _CFG.human_screen_sec * _screens + _CFG.human_sigil_sec * _sigils
 	return {
-		"seed": _seed, "god": _god, "hard": _hard, "ascension": _ascension,
+		"seed": _seed, "god": _god, "hard": _hard, "ascension": _ascension, "core": _core,
 		"outcome": reason, "win": win,
 		"floor_reached": int(_game.get(&"_current_floor")),
 		"rooms": rooms.size(),
