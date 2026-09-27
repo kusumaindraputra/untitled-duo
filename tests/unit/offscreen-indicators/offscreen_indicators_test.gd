@@ -53,18 +53,24 @@ func test_offscreen_indicators_alpha_full_near_and_min_far() -> void:
 
 
 func test_player_hit_adds_camera_trauma() -> void:
+	var prev: GameSettings = GameSettings.current
+	GameSettings.current = null
+	ScreenShake.reset()
 	var player := PlayerController.new()
 	player.add_to_group(&"player")
 	player._on_player_damage_taken(player, 5, 90)
-	assert_float(player._trauma).is_equal_approx(PlayerController.CAMERA_TUNING.player_hit_trauma, 0.001)
+	assert_float(ScreenShake.get_trauma()).is_equal_approx(PlayerController.CAMERA_TUNING.player_hit_trauma, 0.001)
 	player.free()
+	ScreenShake.reset()
+	GameSettings.current = prev
 
 
 func test_player_hit_zero_damage_adds_no_trauma() -> void:
+	ScreenShake.reset()
 	var player := PlayerController.new()
 	player.add_to_group(&"player")
 	player._on_player_damage_taken(player, 0, 90)
-	assert_float(player._trauma).is_equal(0.0)
+	assert_float(ScreenShake.get_trauma()).is_equal(0.0)
 	player.free()
 
 

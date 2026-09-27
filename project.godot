@@ -43,6 +43,7 @@ SpellVFX="*res://src/ui/spell_vfx.gd"
 RunManager="*res://src/systems/run_manager.gd"
 InputPrompts="*res://src/core/input_prompts.gd"
 UIFeel="*res://src/ui/ui_feel.gd"
+ScreenShake="*res://src/core/screen_shake.gd"
 
 [editor_plugins]
 
