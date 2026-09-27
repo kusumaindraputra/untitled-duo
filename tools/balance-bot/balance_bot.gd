@@ -76,6 +76,7 @@ func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://balance_bot"))
 	var meta := MetaProgress.new()
 	meta.tutorial_done = true
+	meta.tutorial_room_done = true  # ADR-0055: the bot fights real waves from room 1
 	meta.wins = maxi(_ascension + 1, 1) if (_hard or _ascension > 0) else 0
 	meta.hard_mode = _hard or _ascension > 0
 	if meta.get(&"ascension") != null:

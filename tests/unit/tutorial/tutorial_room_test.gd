@@ -193,3 +193,16 @@ func test_tutorial_coach_pretick_skips_room_lessons_quietly() -> void:
 	assert_str(String(c.current_step(TutorialCoach.Phase.PREP))).is_equal("")
 	assert_bool(c.is_done()).is_false()
 	c.free()
+
+
+func test_tutorial_room_cancel_ends_quietly() -> void:
+	var t := TutorialRoom.new()
+	var calls: Array[bool] = []
+	t.finished.connect(func(skipped: bool) -> void: calls.append(skipped))
+	t.cancel()
+	assert_bool(t.is_finished()).is_true()
+	assert_array(calls).is_empty()
+	assert_bool(t.notify(&"move")).is_false()
+	t.skip()
+	assert_array(calls).is_empty()
+	t.free()

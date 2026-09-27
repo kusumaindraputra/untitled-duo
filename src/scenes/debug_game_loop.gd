@@ -668,6 +668,23 @@ func _start_tutorial_room(core_type_id: int) -> void:
 		_prana_bag.add(core_type_id)
 
 
+## ADR-0055: leaving the room mid-lesson (debug room skip, perf probe, balance bot)
+## drops the lessons without saving and stops holding waves. Players cannot leave:
+## the doors stay shut until the room's wave is cleared.
+func _cancel_tutorial_room() -> void:
+	if not is_instance_valid(_tutorial_room):
+		return
+	var tut: TutorialRoom = _tutorial_room
+	_tutorial_room = null
+	if GameStateManager.combat_started.is_connected(tut.on_combat_started):
+		GameStateManager.combat_started.disconnect(tut.on_combat_started)
+	if HealthAndDamage.damage_taken.is_connected(tut.on_damage_taken):
+		HealthAndDamage.damage_taken.disconnect(tut.on_damage_taken)
+	tut.cancel()
+	tut.queue_free()
+	$WaveManager.hold_wave = false
+
+
 ## ADR-0055: the lessons ended. Saves the flags, unhooks the lessons and lets the
 ## room's wave in: at once when skipped, after the "training complete" line otherwise.
 func _on_tutorial_room_finished(skipped: bool) -> void:
@@ -865,6 +882,7 @@ func _on_room_transitioned(new_room_idx: int) -> void:
 	if new_room is IsometricRoom:
 		$PlayerController.position = (new_room as IsometricRoom).get_player_spawn_position()
 	_rooms_entered += 1
+	_cancel_tutorial_room()
 	var hud: CombatHUD = $CanvasLayer/CombatHUD
 	hud.set_room_progress(_rooms_entered, PathBuilder.rooms_per_run(_dungeon_graph))
 	_update_minimap()

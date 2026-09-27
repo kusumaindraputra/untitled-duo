@@ -163,6 +163,18 @@ func skip() -> void:
 	_finish(true)
 
 
+## Ends the lessons without [signal finished], e.g. when a tool or debug key moves
+## Fayde out of the room mid-lesson. Nothing is saved; the caller frees this node.
+func cancel() -> void:
+	if _finished:
+		return
+	_finished = true
+	_clear_training()
+	if panel != null:
+		panel.close()
+		panel = null
+
+
 ## Lesson line for [param step] on the keyboard or the pad, with the bound key or
 ## button filled in. Empty for an unknown step.
 static func hint_text(step: StringName, pad: bool) -> String:
