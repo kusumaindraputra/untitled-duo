@@ -112,6 +112,14 @@ var boss_variants: Dictionary = {}
 ## Set by debug_game_loop after each room transition via DungeonGraph room type.
 @export var is_final_room: bool = false
 
+## ADR-0055 — while true, the room's wave is built but neither previewed nor spawned
+## when combat starts; the guided first room runs its lessons first and then calls
+## [method release_wave]. Set by debug_game_loop before the run starts.
+var hold_wave: bool = false
+
+## True when combat started while [member hold_wave] kept the wave back.
+var _wave_held: bool = false
+
 # ── Signals ───────────────────────────────────────────────────────────────────
 
 ## Emitted when the current wave's enemies are all defeated.
@@ -208,12 +216,27 @@ func _on_preparation_started(_wave_index: int, _waves_remaining: int) -> void:
 	_enemies_total = 0
 	_wave_state = WaveState.IDLE
 	_pending_groups.clear()
+	_wave_held = false
 	_clear_enemy_fire()
 	if room_type == DungeonGraph.ROOM_TYPE_REST:
 		_clear_wave_preview()
 		return
 	_build_wave_composition()
-	_show_wave_preview()
+	if not hold_wave:
+		_show_wave_preview()
+
+
+## ADR-0055 — lets the held wave go: spawns it when combat already started, otherwise
+## shows the usual preview for the preparation phase. No-op when nothing is held.
+func release_wave() -> void:
+	if not hold_wave:
+		return
+	hold_wave = false
+	if _wave_held:
+		_wave_held = false
+		_spawn_wave()
+	elif GameStateManager.get_active_state() == GameEnums.GameState.PREPARATION_PHASE:
+		_show_wave_preview()
 
 
 ## Handles combat phase start.
@@ -226,6 +249,9 @@ func _on_combat_started(is_boss: bool) -> void:
 		push_warning("WaveManager: combat_started(is_boss:true) received while wave active — FP scope guard")
 		return
 	_clear_wave_preview()
+	if hold_wave:
+		_wave_held = true
+		return
 	if room_type == DungeonGraph.ROOM_TYPE_REST:
 		_apply_rest_heal()
 		_wave_state = WaveState.WAVE_COMPLETE

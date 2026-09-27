@@ -326,6 +326,45 @@ extends Resource
 ## Pause-menu button that turns the coach back on.
 @export var coach_replay_button: String = "Replay Tutorial"
 
+@export_group("Tutorial Room")
+
+## Counter above each guided-room lesson (%d = lesson number, %d = total). ADR-0055.
+@export var tutorial_heading: String = "TRAINING %d / %d"
+
+## Guided first-room lessons, in TutorialRoom.STEPS order. %s, when present, is the
+## bound key or button (the pad "place" line takes two: cycle, then place).
+@export var tutorial_steps_kb: Array[String] = [
+	"Drag a Prana from YOUR PRANA into an empty slot.",
+	"Press %s to lock the grid and fight.",
+	"Move with %s.",
+	"Press %s to dash.",
+	"Press %s to cast at a training target.",
+	"Dash (%s) through a shot just before it hits.",
+]
+@export var tutorial_steps_pad: Array[String] = [
+	"Pick a Prana with %s, then press %s on an empty slot.",
+	"Press %s to lock the grid and fight.",
+	"Move with the left stick.",
+	"Press %s to dash.",
+	"Press %s to cast at a training target.",
+	"Dash (%s) through a shot just before it hits.",
+]
+## Smaller second line under each lesson (same order).
+@export var tutorial_details: Array[String] = [
+	"Matching types make a stronger spell.",
+	"The grid decides which spell you cast.",
+	"Walk over to the training targets.",
+	"You can't be hit while dashing.",
+	"Your spell comes from the grid you built.",
+	"A Perfect Dodge slows time and fills your Special.",
+]
+## Skip prompt on the lesson card (%s = key or button to hold).
+@export var tutorial_skip_format: String = "Hold %s to skip training"
+## Shown when the last lesson is done.
+@export var tutorial_done: String = "Training complete."
+## Room banner as the room's real wave arrives after the lessons.
+@export var tutorial_now_real: String = "NOW FOR REAL"
+
 @export_group("Memory Fragments")
 
 ## Small header above a newly recovered fragment.

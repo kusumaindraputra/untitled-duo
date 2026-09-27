@@ -290,6 +290,14 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	visible = true
 
 
+## PranaBag.bag_changed adapter (wired by the game loop): rebuilds the tray when Prana
+## land in the bag while the grid is open, e.g. the guided first room's lesson Prana
+## (ADR-0055). Other states ignore it; the next preparation phase reads the bag anyway.
+func on_bag_changed(_items: Array) -> void:
+	if _state == State.ARRANGEMENT:
+		_refresh_bag_tray()
+
+
 ## Resolves the persistent PranaLoadout via group, or null if none (tests).
 func _get_loadout() -> Node:
 	return get_tree().get_first_node_in_group(&"prana_loadout") if is_inside_tree() else null

@@ -60,6 +60,11 @@ const _META: MetaTuning = preload("res://assets/data/meta_tuning.tres")
 ## ADR-0033 — the Cipher Cores offered on the core-pick screen.
 const _CORES: CoreRoster = preload("res://assets/data/cores/core_roster.tres")
 const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
+## ADR-0055: coach hints the guided first room already teaches (tiers ride on the
+## "place" lesson), ticked quietly when the coach takes over after the room.
+const TUTORIAL_ROOM_COVERS: Array[StringName] = [
+	&"confirm", &"move", &"cast", &"dash", &"tiers", &"perfect_dodge",
+]
 
 ## Where between-run progress is read and written (ADR-0025).
 var progress_path: String = MetaProgress.DEFAULT_PATH
@@ -69,6 +74,8 @@ var _meta: MetaProgress = null
 var _run_recorded: bool = false
 ## In-combat tutorial checklist; null once completed or when already done.
 var _coach: TutorialCoach = null
+## ADR-0055 guided first room; null outside the first run's first room.
+var _tutorial_room: TutorialRoom = null
 
 var _dungeon_graph: DungeonGraph = null
 var _gen: DungeonGenerator = DungeonGenerator.new()
@@ -266,6 +273,10 @@ func _ready() -> void:
 	_prana_loadout = PranaLoadout.new()
 	_prana_loadout.name = "PranaLoadout"
 	add_child(_prana_loadout)
+	# ADR-0055: Prana dropped in the bag while the grid is open show up in its tray.
+	var grid: PranaGrid = get_tree().get_first_node_in_group(&"prana_grid") as PranaGrid
+	if grid != null:
+		_prana_bag.bag_changed.connect(grid.on_bag_changed)
 	GameStateManager.reset_to_main_menu()
 	GameStateManager.set_is_final_floor(_current_floor >= total_floors)
 	GameStateManager.run_ended.connect(_on_run_ended)
@@ -561,13 +572,18 @@ func _on_core_picked(type_id: int) -> void:
 		_core_pick_layer.queue_free()
 		_core_pick_layer = null
 	get_tree().paused = false
+	# ADR-0055: the first run's first room holds its wave back for the lessons.
+	var guided: bool = _wants_tutorial_room()
+	$WaveManager.hold_wave = guided
 	GameStateManager.start_run()
 	_start_core()
 	# ADR-0025: the equipped Heirloom is a stat sigil granted before the first room.
 	if _meta != null and _sigil_manager != null and _meta.run_heirloom() != &"":
 		_sigil_manager.apply_sigil(_meta.run_heirloom())
 	$CanvasLayer/CombatHUD.show_floor_intro(_current_floor)
-	if _meta == null or not _meta.tutorial_done:
+	if guided:
+		_start_tutorial_room(type_id)
+	elif _meta == null or not _meta.tutorial_done:
 		_start_coach()
 
 
@@ -604,6 +620,80 @@ func _start_coach() -> void:
 	_coach.completed.connect(_on_coach_completed)
 
 
+## ADR-0055: true when this run should open with the guided first room.
+func _wants_tutorial_room() -> bool:
+	return _meta != null and not _meta.tutorial_room_done and _current_floor == 1
+
+
+## ADR-0055: starts the guided lessons in the room Fayde is standing in. The parent
+## owns the wiring: lesson Prana into the bag, the lesson card on the HUD layer, the
+## room's spawn markers as target spots, and every signal the lessons listen to.
+func _start_tutorial_room(core_type_id: int) -> void:
+	if is_instance_valid(_tutorial_room):
+		return
+	var room: Node2D = SceneManager.get_current_scene() as Node2D
+	_tutorial_room = TutorialRoom.new()
+	_tutorial_room.name = "TutorialRoom"
+	_tutorial_room.player = $PlayerController
+	if room != null:
+		var entities: Node2D = room.get_node_or_null(^"EntityLayer") as Node2D
+		_tutorial_room.arena = entities if entities != null else room
+	var markers: Node = $WaveManager.spawn_points_container
+	if markers != null:
+		for m: Node in markers.get_children():
+			if m is Node2D:
+				_tutorial_room.spots.append((m as Node2D).global_position)
+	var panel := TutorialRoomPanel.new()
+	panel.name = "TutorialRoomPanel"
+	$CanvasLayer.add_child(panel)
+	_tutorial_room.panel = panel
+	add_child(_tutorial_room)
+	GameStateManager.combat_started.connect(_tutorial_room.on_combat_started)
+	HealthAndDamage.damage_taken.connect(_tutorial_room.on_damage_taken)
+	_pace_director.perfect_dodge_triggered.connect(_tutorial_room.on_perfect_dodge)
+	_prana_bag.bag_changed.connect(_tutorial_room.on_bag_changed)
+	_tutorial_room.finished.connect(_on_tutorial_room_finished)
+	for i: int in TutorialRoom.TUNING.bag_prana:
+		_prana_bag.add(core_type_id)
+
+
+## ADR-0055: the lessons ended. Saves the flags, unhooks the lessons and lets the
+## room's wave in: at once when skipped, after the "training complete" line otherwise.
+func _on_tutorial_room_finished(skipped: bool) -> void:
+	if _meta != null:
+		_meta.tutorial_room_done = true
+		if skipped:
+			_meta.tutorial_done = true
+		_meta.save_to(progress_path)
+	var tut: TutorialRoom = _tutorial_room
+	if GameStateManager.combat_started.is_connected(tut.on_combat_started):
+		GameStateManager.combat_started.disconnect(tut.on_combat_started)
+	if HealthAndDamage.damage_taken.is_connected(tut.on_damage_taken):
+		HealthAndDamage.damage_taken.disconnect(tut.on_damage_taken)
+	tut.queue_free()
+	_tutorial_room = null
+	if skipped:
+		_release_tutorial_wave(true)
+	else:
+		# Pausable timer: the wave waits for the card, and for the player in the pause menu.
+		get_tree().create_timer(TutorialRoom.TUNING.done_hold_sec + 0.45, false) \
+			.timeout.connect(_release_tutorial_wave.bind(false))
+
+
+## ADR-0055: spawns the held wave (or shows its preview while the grid is open) and,
+## after a finished lesson run, hands over to the coach for the advanced hints.
+func _release_tutorial_wave(skipped: bool) -> void:
+	$WaveManager.release_wave()
+	if GameStateManager.get_active_state() == GameEnums.GameState.COMBAT_PHASE:
+		_pace_director.style.begin_room()  # the lessons don't count toward the room rank
+		($CanvasLayer/CombatHUD as CombatHUD).show_room_banner(_COPY.tutorial_now_real,
+			UIPalette.ACCENT)
+	if skipped or (_meta != null and _meta.tutorial_done):
+		return
+	_start_coach()
+	_coach.pretick(TUTORIAL_ROOM_COVERS)
+
+
 ## Marks the tutorial done in the saved progress so later runs skip it.
 func _on_coach_completed() -> void:
 	if _meta != null:
@@ -615,7 +705,11 @@ func _on_coach_completed() -> void:
 func _replay_tutorial() -> void:
 	if _meta != null:
 		_meta.tutorial_done = false
+		_meta.tutorial_room_done = false  # ADR-0055: the next run opens with the lessons
 		_meta.save_to(progress_path)
+	if is_instance_valid(_tutorial_room):
+		GameStateManager.resume_game()
+		return
 	if is_instance_valid(_coach):
 		_coach.queue_free()
 		_coach = null
@@ -863,6 +957,9 @@ func _register_input_actions() -> void:
 	_ensure_key_action(&"prana_place",      KEY_E)
 	_ensure_key_action(&"prana_clear",      KEY_Q)
 	_ensure_key_action(&"prana_type_cycle", KEY_C)
+	# ADR-0055: held to skip the guided first room (Back is never offered for rebinding).
+	_ensure_key_action(&"tutorial_skip", KEY_BACKSPACE)
+	_ensure_joypad_action(&"tutorial_skip", JOY_BUTTON_BACK)
 	# ADR-0026: player key bindings replace the defaults registered above.
 	GameSettings.active().apply_keys()
 
@@ -1067,6 +1164,9 @@ func _log_build_discoveries(_is_boss: bool) -> void:
 ## timer and may set a record (never with Assist on).
 func _log_enemy_discovery(_instance_id: int, type_id: int, _affiliation: GameEnums.DamageClass) -> void:
 	if _meta == null:
+		return
+	# ADR-0055: training targets borrow a catalog type; they are not a discovery.
+	if is_instance_valid(_tutorial_room) and _tutorial_room.is_target(_instance_id):
 		return
 	_meta.discover_enemy(type_id)
 	if not _boss_timing or not Records.boss_ids().has(type_id):

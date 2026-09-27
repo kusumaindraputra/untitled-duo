@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="TutorialRoomTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/tutorial_room_tuning.gd" id="1_tut"]
+
+[resource]
+script = ExtResource("1_tut")
+bag_prana = 2
+move_distance = 120.0
+target_count = 2
+target_min_distance = 90.0
+target_hp_mult = 4.0
+target_respawn_sec = 1.2
+turret_distance = 150.0
+shot_interval_sec = 1.8
+shot_telegraph_sec = 0.55
+shot_speed = 120.0
+shot_radius = 6.0
+dodge_fallback_shots = 12
+skip_hold_sec = 1.0
+tick_hold_sec = 0.8
+done_hold_sec = 1.6

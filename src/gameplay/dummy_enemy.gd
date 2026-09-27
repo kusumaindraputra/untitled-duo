@@ -33,6 +33,10 @@ const _BAR_Y: float = -55.0
 
 # ── Private state ─────────────────────────────────────────────────────────────
 
+## HP multiple the caller also passed to HealthAndDamage.register_enemy, so the bar
+## reads the same pool (TutorialRoom targets are tougher, ADR-0055). Set before add_child.
+var hp_mult: float = 1.0
+
 var _current_hp: int  = 50
 var _max_hp: int      = 50
 var _is_dead: bool    = false
@@ -103,7 +107,7 @@ func _setup_collision() -> void:
 func _read_max_hp() -> void:
 	var enemy_type: EnemyType = EnemyCatalog.get_type(DUMMY_TYPE_ID)
 	if enemy_type != null:
-		_max_hp = enemy_type.base_hp
+		_max_hp = maxi(roundi(float(enemy_type.base_hp) * hp_mult), 1)
 		_current_hp = _max_hp
 
 
