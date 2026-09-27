@@ -599,6 +599,12 @@ SC&E computes these before each `apply_status()` call:
 | Deepfrost | `CAST_PUSH` | `"cast_push"` |
 | Verdant | `CAST_BLOOM` | `"cast_bloom"` |
 
+> **Implemented (ADR-0056, 2026-09-27):** each value is a row of
+> `assets/art/characters/fayde_casts.png`. Ashfire is a fire dance (chamber, palm
+> strike from a lunge, spin, sweeping kick), Voidblue reaches and pulls, Stormgold
+> snaps two fingers forward, Deepfrost pushes from a horse stance, and Verdant opens
+> both hands like a flower. The primary (centre) Prana picks the pose.
+
 **Miss cast**: cast animation fires from Fayde in facing direction; no hit burst emitted; `spell_hit_element` NOT emitted.
 
 **Zero-modifier attack** (e.g. Verdant T2 SELF type, `tier_attack_modifier == 0.0`): hit burst VFX fires at `target.global_position`; `apply_damage` NOT called.

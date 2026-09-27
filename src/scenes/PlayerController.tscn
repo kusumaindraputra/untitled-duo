@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/player_controller.gd" id="1_pc"]
 [ext_resource type="Script" path="res://src/scenes/debug_circle_2d.gd" id="2_dbg"]
@@ -6,6 +6,8 @@
 [ext_resource type="Script" path="res://src/visual/pixel_character.gd" id="4_pix"]
 [ext_resource type="Texture2D" path="res://assets/art/characters/fayde.png" id="5_sheet"]
 [ext_resource type="Texture2D" path="res://assets/art/characters/fayde_glow.png" id="6_glow"]
+[ext_resource type="Texture2D" path="res://assets/art/characters/fayde_casts.png" id="7_casts"]
+[ext_resource type="Texture2D" path="res://assets/art/characters/fayde_casts_glow.png" id="8_casts_glow"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_1"]
 radius = 8.0
@@ -32,6 +34,8 @@ hide_body = true
 script = ExtResource("4_pix")
 sheet = ExtResource("5_sheet")
 glow_sheet = ExtResource("6_glow")
+cast_sheet = ExtResource("7_casts")
+cast_glow_sheet = ExtResource("8_casts_glow")
 
 [node name="SpellVFX" type="AnimatedSprite2D" parent="."]
 visible = false
