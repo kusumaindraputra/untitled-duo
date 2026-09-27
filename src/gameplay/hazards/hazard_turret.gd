@@ -65,6 +65,8 @@ func _fire(angles: PackedFloat32Array, speed: float) -> void:
 	var muzzle: Vector2 = global_position + Vector2(0, -14)
 	for a: float in angles:
 		var b: Projectile = pool.acquire()
+		if b == null:
+			break  # live bullet cap (ADR-0050)
 		b.global_position = muzzle
 		b.launch_pattern(Vector2.from_angle(a), spec.damage, spec.pattern, speed)
 		b.cause = DeathRecap.cause(DeathRecap.hazard_attacker(spec.kind),

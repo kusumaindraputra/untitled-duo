@@ -61,3 +61,10 @@ extends Resource
 
 ## ADR-0019 — multiplies laser and mortar telegraph time (0.85 = 15 % less warning).
 @export_range(0.3, 1.5) var telegraph_mult: float = 1.0
+
+## ADR-0052 — multiplies the HP of every ordinary enemy spawned from this config
+## (Ascension). Elite and boss-variant multipliers stack on top.
+@export_range(0.5, 4.0) var enemy_hp_mult: float = 1.0
+
+## ADR-0052 — multiplies the HP of bosses spawned from this config (Ascension).
+@export_range(0.5, 4.0) var boss_hp_mult: float = 1.0

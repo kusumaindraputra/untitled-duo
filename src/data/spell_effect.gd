@@ -40,6 +40,17 @@ extends Resource
 ## -1 = unset (invalid SpellEffect).
 @export var primary_base_status: int = -1
 
+## Two hands (ADR-0057): damage multiplier from Ayden's hand (left column), applied to
+## every primary chain hit. 1.0 = empty hand.
+@export var hand_power_mult: float = 1.0
+
+## Two hands (ADR-0057): duration multiplier from Faith's hand (right column), applied
+## to the core Prana's own status. 1.0 = empty hand.
+@export var hand_control_mult: float = 1.0
+
+## Two hands (ADR-0057): true when both hands hold the same number of Prana.
+@export var hands_touching: bool = false
+
 ## Active non-primary type modifiers for this wave (GDD Rule 11).
 ## Array[NonPrimaryModifier]. One entry per qualifying non-primary type.
 ## Empty if no non-primary types meet the tier threshold.

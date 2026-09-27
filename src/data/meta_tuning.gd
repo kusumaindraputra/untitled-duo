@@ -47,6 +47,11 @@ extends Resource
 ## Chance added to each pool's elite_chance.
 @export var hard_elite_chance_bonus: float = 0.1
 
+@export_group("Ascension")
+
+## The Ascension ladder above Hard Mode (ADR-0052). Null = no Ascension.
+@export var ascension: AscensionConfig = null
+
 
 ## Memories needed before [param id] can be bought (0 when ungated or unknown).
 func memories_needed(id: StringName) -> int:
