@@ -6,7 +6,7 @@
 ##   - cast_started      → modulate pulse on Fayde (cast readiness cue)
 ##   - spell_hit_element → per-type GPUParticles2D hit burst at target position
 ##   - cast_hit_started  → cast-lock tint (locked movement visual feedback)
-##   - heavy_hit         → amplified hitstop + shake + red flash (GF-06 heavy-hit juice)
+##   - heavy_hit         → amplified hitstop + red flash (GF-06; the shake comes from PlayerController)
 ##   - player_died       → death cinematic: slow-motion + red vignette + death ring
 ##
 ## Also routes audio events to AudioSystem — fire-and-forget, null-safe.
@@ -27,25 +27,18 @@ extends Node
 const HITSTOP_DURATION_US: int = 80_000
 ## Near-freeze scale (not exactly 0 so _process still runs on PROCESS_MODE_ALWAYS nodes).
 const HITSTOP_TIME_SCALE: float = 0.05
-## Seconds of decaying camera shake per hit.
-const SHAKE_DURATION_US: int = 180_000
-## Max camera offset at shake peak (pixels).
-const SHAKE_AMPLITUDE: float = 4.0
+## Screen shake goes through the ScreenShake autoload (ADR-0040). Spell hits use the
+## LIGHT preset scaled by the multipliers below, with a kick along the hit.
 
-var _camera: Camera2D = null
 var _in_hitstop: bool = false
 var _hitstop_end_us: int = 0
-var _shake_end_us: int = 0
 
 ## Multiplier applied to VFX, hitstop, and shake when the final chain attack lands.
 const COMBO_ENDER_AMPLIFY: float = 1.5
 
-## Shake amplitude multiplier for a fired Cascade — a "power surge" cue at cast
-## resolve that reinforces the HUD callout (ADR-0016 recognition layer).
-const CASCADE_SHAKE_MULT: float = 1.2
-
-## Screen-shake amplifier for the Special burst — the biggest planned kick in combat.
-const SPECIAL_SHAKE_MULT: float = 2.0
+## A fired Cascade shakes at MEDIUM — a "power surge" cue at cast resolve that
+## reinforces the HUD callout (ADR-0016). The Special shakes at MASSIVE, the biggest
+## planned kick in combat. Sizes live in ShakeTuning (ADR-0040).
 
 ## Shared copy (Perfect callout text).
 const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
@@ -61,8 +54,6 @@ const REACTION_LABEL_COOLDOWN_US: int = 600_000
 
 ## Hitstop duration multiplier for heavy hits (≥15 damage).
 const HEAVY_HIT_HITSTOP_MULT: float = 2.0
-## Shake amplitude multiplier for heavy hits.
-const HEAVY_HIT_SHAKE_MULT: float = 2.0
 ## Opacity of the heavy-hit red flash at peak.
 const HEAVY_FLASH_ALPHA: float = 0.18
 ## Duration of the heavy-hit red flash fade-out (seconds).
@@ -150,13 +141,10 @@ func _ready() -> void:
 	HealthAndDamage.player_died.connect(_on_player_died)
 	HealthAndDamage.player_hp_zone_changed.connect(_on_hp_zone_changed)
 	_audio = get_node_or_null("/root/AudioSystem")
-	# Camera is looked up lazily on first shake — autoload _ready() fires before
-	# the game scene (and player) exist, so get_first_node_in_group would return null here.
 
 
 func _process(_delta: float) -> void:
 	_tick_hitstop()
-	_tick_shake()
 	_tick_death()
 	_tick_desperate_vignette()
 
@@ -228,6 +216,7 @@ func _on_cast_started(spell_effect: SpellEffect) -> void:
 	if pc != null:
 		pc.play_cast(_FX_TUNING.fayde_cast_sec)
 		pc.flash(pulse_color, _FX_TUNING.cast_flash_sec, _FX_TUNING.cast_flash_strength)
+		pc.squash(PixelCharacter.squash_peak(_FX_TUNING.cast_squash), _FX_TUNING.cast_squash_sec)
 	else:
 		var overbright: Color = pulse_color * 2.2
 		overbright.a = 1.0
@@ -249,7 +238,7 @@ func _on_spell_hit_element(target: Node, prana_type_id: int) -> void:
 	if target is Node2D:
 		_spawn_impact_vfx((target as Node2D).global_position, type_data.color)
 	_start_hitstop(amplify)
-	_start_shake(amplify)
+	_start_shake(amplify, _blow_direction(target))
 	_audio_play(&"sfx_spell_hit")
 
 
@@ -337,7 +326,7 @@ func _on_combo_resolved(spell_effect: SpellEffect) -> void:
 		return
 	if spell_effect.active_cascade != null:
 		_audio_play(&"sfx_combo_ender")
-		_start_shake(CASCADE_SHAKE_MULT)
+		ScreenShake.impact(ShakeState.Strength.MEDIUM)
 
 
 ## Floats the reaction's name at the spot it fired, in its element colour, so the
@@ -372,7 +361,7 @@ func _on_cascade_burst(lead_type: int, world_pos: Vector2, radius: float) -> voi
 	get_tree().root.add_child(ring)
 	ring.global_position = world_pos
 	_audio_play(&"sfx_combo_ender")
-	_start_shake(CASCADE_SHAKE_MULT)
+	ScreenShake.impact(ShakeState.Strength.MEDIUM)
 
 
 ## Floats "PERFECT" (or "PERFECT ×N" on a streak) where the Perfect hit landed.
@@ -402,7 +391,7 @@ func _on_special_fired(prana_type_id: int, world_pos: Vector2, radius: float) ->
 	get_tree().root.add_child(ring)
 	ring.global_position = world_pos
 	_audio_play(&"sfx_special_fire")
-	_start_shake(SPECIAL_SHAKE_MULT)
+	ScreenShake.impact(ShakeState.Strength.MASSIVE)
 
 
 ## Frees the active combo window ring if one exists. Idempotent.
@@ -455,11 +444,12 @@ func _on_damage_taken(target: Node, _final_damage: int, _current_hp: int) -> voi
 # ── Heavy hit ──────────────────────────────────────────────────────────────────
 
 ## Handles heavy_hit from HealthAndDamage (≥15 damage).
-## Amplifies hitstop 2×, shake 2×, and shows a brief red screen flash.
+## Amplifies hitstop 2× and shows a brief red screen flash.
 ## Audio: sfx_heavy_hit for both player and enemy hits.
 func _on_heavy_hit(target: Node, _final_damage: int) -> void:
+	# The shake itself comes from PlayerController._on_heavy_hit (scaled by damage,
+	# with rumble and a kick along the blow), so the two no longer stack.
 	_start_hitstop(HEAVY_HIT_HITSTOP_MULT)
-	_start_shake(HEAVY_HIT_SHAKE_MULT)
 	_show_heavy_flash()
 	_audio_play(&"sfx_heavy_hit")
 
@@ -807,26 +797,22 @@ func _tick_hitstop() -> void:
 
 # ── Screen shake ──────────────────────────────────────────────────────────────
 
-func _start_shake(amplify: float = 1.0) -> void:
-	_shake_end_us = Time.get_ticks_usec() + int(SHAKE_DURATION_US * amplify)
+## Adds the LIGHT preset × [param amplify] to the shared ScreenShake (ADR-0040),
+## kicking along [param direction] when given. Settings scaling happens there.
+func _start_shake(amplify: float = 1.0, direction: Vector2 = Vector2.ZERO) -> void:
+	ScreenShake.add_trauma(
+		ShakeState.DEFAULT_TUNING.preset(ShakeState.Strength.LIGHT) * amplify, direction)
 
 
-func _tick_shake() -> void:
-	if _camera == null:
-		# Lazy lookup — autoload _ready() fires before the player exists.
-		if get_tree() != null:
-			var player: Node = get_tree().get_first_node_in_group(&"player")
-			if player != null and player is Node2D:
-				_camera = (player as Node2D).get_node_or_null("Camera2D") as Camera2D
-	if _camera == null:
-		return
-	var now: int = Time.get_ticks_usec()
-	if now < _shake_end_us:
-		var progress: float = float(_shake_end_us - now) / float(SHAKE_DURATION_US)
-		var strength: float = SHAKE_AMPLITUDE * progress * GameSettings.shake_multiplier()
-		_camera.offset = Vector2(randf_range(-strength, strength), randf_range(-strength, strength))
-	elif _camera.offset != Vector2.ZERO:
-		_camera.offset = Vector2.ZERO
+## Direction a blow on [param target] travels: from Fayde to the target. ZERO (no
+## kick) when Fayde is the target, since the attacker is not known here.
+func _blow_direction(target: Node) -> Vector2:
+	if get_tree() == null or not target is Node2D or target.is_in_group(&"player"):
+		return Vector2.ZERO
+	var player: Node2D = get_tree().get_first_node_in_group(&"player") as Node2D
+	if player == null:
+		return Vector2.ZERO
+	return (target as Node2D).global_position - player.global_position
 
 
 # ── Impact VFX ────────────────────────────────────────────────────────────────

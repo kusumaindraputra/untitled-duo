@@ -3,7 +3,7 @@
 ## Coverage:
 ##   Hitstop: _start_hitstop() changes Engine.time_scale; _tick_hitstop() restores it.
 ##   Hitstop: rapid hits reset/extend the timer (no early-return guard).
-##   Screen shake: _tick_shake() does not crash when _camera is null.
+##   Screen shake: _start_shake() feeds the ScreenShake autoload (ADR-0040).
 ##   Enemy flash: request_hit_flash() sets overbright modulate instantly.
 ##   Enemy flash: request_hit_flash() kills any active _vfx_tween.
 ##
@@ -83,22 +83,23 @@ func test_hitstop_duration_constant_is_at_least_80ms() -> void:
 
 # ── Screen shake tests ────────────────────────────────────────────────────────
 
-## GIVEN _camera is null (autoload startup race condition)
-## WHEN _tick_shake() is called with an active shake timer
-## THEN no crash occurs
-func test_tick_shake_does_not_crash_when_camera_null() -> void:
+## GIVEN SpellVFX's shake goes through ScreenShake (ADR-0040)
+## WHEN _start_shake() is called with no camera in the tree
+## THEN ScreenShake gains trauma and nothing crashes
+func test_start_shake_feeds_screen_shake() -> void:
 	var vfx: Node = get_node_or_null("/root/SpellVFX")
+	var shake: Node = get_node_or_null("/root/ScreenShake")
 	assert_object(vfx).is_not_null()
+	assert_object(shake).is_not_null()
+	var prev_settings: GameSettings = GameSettings.current
+	GameSettings.current = null
+	shake.reset()
 
-	var prev_camera: Camera2D = vfx._camera
-	vfx._camera = null
-	vfx._shake_end_us = Time.get_ticks_usec() + 100_000
+	vfx._start_shake(1.0)
 
-	vfx._tick_shake()  # must not crash
-
-	vfx._camera = prev_camera
-	vfx._shake_end_us = 0
-	assert_bool(true).is_true()
+	assert_float(shake.get_trauma()).is_greater(0.0)
+	shake.reset()
+	GameSettings.current = prev_settings
 
 
 # ── Enemy hit flash tests ─────────────────────────────────────────────────────
