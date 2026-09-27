@@ -19,6 +19,8 @@ const BULLET_HELL_TUNING: BulletHellTuning = preload("res://assets/data/bullet_h
 const AWARENESS_TUNING: EnemyAwarenessTuning = preload("res://assets/data/enemy_awareness_tuning.tres")
 ## ADR-0034 — sprite hit flash, wind-up pose and death dissolve timings.
 const FX_TUNING: CharacterFxTuning = preload("res://assets/data/character_fx_tuning.tres")
+## ADR-0041 — a boss dissolves slower, inside its death cinematic.
+const MOMENT_TUNING: BigMomentTuning = preload("res://assets/data/big_moment_tuning.tres")
 
 ## Emitted once when a dormant enemy notices Fayde (ADR-0024).
 signal alerted()
@@ -1003,7 +1005,9 @@ func _on_death_animation_finished(_anim_name: StringName) -> void:
 ## Arms the float-accumulator fallback timer when no "death" animation is available (AC-EAI-29).
 func _start_death_fallback_timer() -> void:
 	_death_fallback_active = true
-	_death_fallback_timer = BASE_DEATH_DURATION
+	# A boss stays until its longer dissolve has finished (ADR-0041).
+	_death_fallback_timer = maxf(BASE_DEATH_DURATION, dissolve_seconds() + 0.1) \
+		if is_boss() else BASE_DEATH_DURATION
 
 
 ## Fires the initial contact hit and arms the repeat timer (AC-EAI-10).
@@ -1262,6 +1266,12 @@ func _spawn_death_burst(prana_affiliation: GameEnums.DamageClass) -> void:
 ## ADR-0034 — breaks the sprite apart while the body waits to be freed. The rim
 ## takes the enemy's Prana colour, like the death burst; neutral enemies and
 ## bosses use the tuning's neutral colour.
+## Seconds this enemy's death dissolve lasts: the boss dissolve for a boss (ADR-0041),
+## the shared CharacterFxTuning value otherwise.
+func dissolve_seconds() -> float:
+	return MOMENT_TUNING.boss_dissolve_sec if is_boss() else FX_TUNING.dissolve_sec
+
+
 func _dissolve_sprite(affiliation: GameEnums.DamageClass) -> void:
 	var pc: PixelCharacter = get_node_or_null(^"PixelCharacter") as PixelCharacter
 	if pc == null or not pc.visible:
@@ -1271,7 +1281,7 @@ func _dissolve_sprite(affiliation: GameEnums.DamageClass) -> void:
 		var type_data: PranaType = PranaCatalog.get_type(affiliation)
 		if type_data != null:
 			rim = type_data.color
-	pc.dissolve(FX_TUNING.dissolve_sec, rim)
+	pc.dissolve(dissolve_seconds(), rim)
 
 
 ## Shows [param et]'s pixel-art sheet (ADR-0022), creating the PixelCharacter child

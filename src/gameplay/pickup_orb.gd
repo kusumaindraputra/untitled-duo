@@ -10,6 +10,10 @@ enum Kind { HP = 0, METER = 1 }
 ## Every live orb is in this group — room clear and preparation query it.
 const GROUP: StringName = &"pickup_orb"
 const TUNING: PaceTuning = preload("res://assets/data/pace_tuning.tres")
+## Room clear pull ramp and streak length (ADR-0041).
+const MOMENT: BigMomentTuning = preload("res://assets/data/big_moment_tuning.tres")
+## Pull speed a room clear pull starts at, as a fraction of full speed.
+const PULL_START: float = 0.3
 const HP_COLOR: Color = Color(0.45, 1.0, 0.55, 1.0)
 const METER_COLOR: Color = Color(1.0, 0.85, 0.35, 1.0)
 ## Seconds of outward pop before the magnet can take over.
@@ -28,6 +32,12 @@ var _magnet: bool = false
 var _speed_mult: float = 1.0
 var _collected: bool = false
 var _player: Node2D = null
+## True after a room clear pull (magnetize); the pull eases in and draws a streak.
+var _pulled: bool = false
+## Game seconds since the room clear pull began.
+var _pull_age: float = 0.0
+## Last frame's flight velocity (px/s), for the streak.
+var _velocity: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
@@ -55,6 +65,11 @@ func _draw() -> void:
 	var fade: float = clampf((TUNING.orb_lifetime_sec - _age) / FADE_SEC, 0.0, 1.0)
 	var pulse: float = 1.0 + 0.15 * sin(_age * 12.0)
 	var r: float = (4.5 if kind == Kind.HP else 3.0) * pulse
+	if _pulled and _velocity.length_squared() > 1.0:
+		# ADR-0041: a streak back along the flight line sells the pull.
+		var tail: Vector2 = -_velocity * MOMENT.orb_trail_sec
+		draw_line(tail, Vector2.ZERO, Color(c.r, c.g, c.b, 0.35 * fade), r * 1.6)
+		draw_line(tail * 0.5, Vector2.ZERO, Color(1.0, 1.0, 1.0, 0.5 * fade), r * 0.7)
 	draw_circle(Vector2.ZERO, r * 2.4, Color(c.r, c.g, c.b, 0.18 * fade))
 	draw_circle(Vector2.ZERO, r + 1.2, Color(0.05, 0.03, 0.08, 0.8 * fade))
 	draw_circle(Vector2.ZERO, r, Color(c.r, c.g, c.b, fade))
@@ -86,8 +101,13 @@ func step(delta: float, target: Vector2, has_target: bool = true) -> bool:
 	if dist <= TUNING.orb_pickup_radius:
 		_collected = true
 		return true
-	var step_len: float = minf(TUNING.orb_magnet_speed * _speed_mult * delta, dist)
+	var speed: float = TUNING.orb_magnet_speed * _speed_mult
+	if _pulled:
+		_pull_age += delta
+		speed *= pull_ramp(_pull_age)
+	var step_len: float = minf(speed * delta, dist)
 	global_position += to / dist * step_len
+	_velocity = to / dist * (step_len / delta) if delta > 0.0 else Vector2.ZERO
 	if dist - step_len <= TUNING.orb_pickup_radius:
 		_collected = true
 		return true
@@ -97,9 +117,22 @@ func step(delta: float, target: Vector2, has_target: bool = true) -> bool:
 ## Forces the orb to fly to Fayde from anywhere (room cleared) at [param speed_mult]
 ## times the magnet speed. Also keeps it alive until it arrives.
 func magnetize(speed_mult: float = 1.0) -> void:
+	if not _pulled:
+		_pulled = true
+		_pull_age = 0.0
 	_magnet = true
 	_speed_mult = maxf(_speed_mult, speed_mult)
 	_age = minf(_age, TUNING.orb_lifetime_sec - FADE_SEC - 1.0)
+
+
+## Speed factor of a room clear pull [param age] game seconds in: starts at
+## PULL_START and eases up to 1.0 over BigMomentTuning.orb_pull_ramp_sec, so the orbs
+## gather for a beat and then whip into Fayde (ADR-0041).
+static func pull_ramp(age: float) -> float:
+	if MOMENT.orb_pull_ramp_sec <= 0.0:
+		return 1.0
+	var x: float = clampf(age / MOMENT.orb_pull_ramp_sec, 0.0, 1.0)
+	return lerpf(PULL_START, 1.0, x * x)
 
 
 ## True once the orb is flying to Fayde.

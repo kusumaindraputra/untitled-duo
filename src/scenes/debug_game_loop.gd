@@ -100,6 +100,10 @@ var _sigil_manager: SigilManager = null
 
 ## Fast-pace layer (ADR-0019). Created in _ready(), wired to the player and HUD there.
 var _pace_director: PaceDirector = null
+## ADR-0041 — boss death beat; reward screens wait for it.
+var _boss_cinematic: BossDeathCinematic = null
+## ADR-0041 — CLEAR banner and slow-mo when a room is cleared.
+var _room_clear_moment: RoomClearMoment = null
 var _sigil_effects: SigilEffects = null
 var _boss_director: BossDirector = null
 ## ADR-0028 — seed of this run; picks each floor boss's variant.
@@ -225,6 +229,16 @@ func _ready() -> void:
 	_pace_director.perfect_dodge_triggered.connect(Rumble.on_perfect_dodge)
 	if not SpellCastingEffects.special_fired.is_connected(Rumble.on_special_fired):
 		SpellCastingEffects.special_fired.connect(Rumble.on_special_fired)
+	# ADR-0041 big moments: the boss death cinematic and the room clear payoff.
+	# Wired here because the room clear needs the WaveManager and the HUD layer.
+	_boss_cinematic = BossDeathCinematic.new()
+	_boss_cinematic.name = "BossDeathCinematic"
+	add_child(_boss_cinematic)
+	_room_clear_moment = RoomClearMoment.new()
+	_room_clear_moment.name = "RoomClearMoment"
+	_room_clear_moment.wave_manager = $WaveManager
+	_room_clear_moment.banner_layer = $CanvasLayer
+	add_child(_room_clear_moment)
 	# ADR-0026 behaviour sigils: effects hang off gameplay signals; SigilManager adds stacks.
 	_sigil_effects = SigilEffects.new()
 	_sigil_effects.name = "SigilEffects"
@@ -851,6 +865,7 @@ func _register_input_actions() -> void:
 ## Generates the next floor and loads it via RTM — _on_room_transitioned handles
 ## spawn rewiring + restart_preparation() when load_floor() completes.
 func _on_floor_completed() -> void:
+	await _await_boss_cinematic()
 	# ADR-0027: a cleared floor recovers the next memory before the next floor loads.
 	var card: MemoryFragmentModal = _recover_memory(StoryRules.Beat.FLOOR_CLEAR, 0)
 	if card != null:
@@ -911,6 +926,8 @@ func _apply_floor_pool_config() -> void:
 ## board state before the overlay appears (Gamefeel Audit Issue 5.1).
 ## Uses ignore_time_scale=true so the timer ticks in real seconds regardless of time_scale.
 func _on_run_ended(win: bool) -> void:
+	if win:
+		await _await_boss_cinematic()
 	if not win and not _in_death_sequence:
 		_in_death_sequence = true
 		_crumple_fayde()
@@ -950,6 +967,12 @@ func _on_run_ended(win: bool) -> void:
 	panel.run_again_pressed.connect(_restart_from_pause)
 	panel.main_menu_pressed.connect(_to_main_menu)
 	panel.run_again_button.grab_focus()
+
+
+## ADR-0041: lets a running boss death cinematic finish before any reward screen.
+func _await_boss_cinematic() -> void:
+	if is_instance_valid(_boss_cinematic) and _boss_cinematic.is_playing():
+		await _boss_cinematic.finished
 
 
 ## ADR-0042 (art bible §5.3): Fayde's sprite gives way to the crumple pose where she
@@ -1121,7 +1144,8 @@ func _on_wave_ended() -> void:
 			_bonus_shards += bonus
 			$CanvasLayer/CombatHUD.show_room_banner(_COPY.challenge_won_format % bonus,
 				UIPalette.ACCENT)
-		await get_tree().create_timer(0.5).timeout
+		# ADR-0041: the sigil offer waits until the CLEAR banner has had its beat.
+		await get_tree().create_timer(RoomClearMoment.reward_delay_sec(), true, false, true).timeout
 		_sigil_manager.offer_sigils(picks)
 	elif _sigil_manager != null and rtype == DungeonGraph.ROOM_TYPE_REST:
 		await get_tree().create_timer(0.5).timeout

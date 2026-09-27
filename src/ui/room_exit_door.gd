@@ -27,6 +27,8 @@ const _PLAYER_LAYER: int = 2
 ## Display names for each DungeonGraph.ROOM_TYPE_* value (same order as enum).
 const _ROOM_TYPE_NAMES: Array[String] = ["⚔ Combat", "💀 Elite", "♥ Rest", "👑 Boss"]
 const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
+## Unlock burst timing (ADR-0041).
+const MOMENT: BigMomentTuning = preload("res://assets/data/big_moment_tuning.tres")
 
 ## Emitted when an unlocked door is entered by the player.
 signal player_entered(destination_idx: int)
@@ -45,6 +47,11 @@ var _locked: bool = true
 
 var _label: Label = null
 var _beacon: _DoorBeacon = null
+
+
+## True while the unlock burst is showing (for tests).
+func is_bursting() -> bool:
+	return is_instance_valid(_beacon) and _beacon.is_bursting()
 
 
 func _ready() -> void:
@@ -102,6 +109,7 @@ func _on_room_cleared() -> void:
 	monitoring = true
 	if is_instance_valid(_beacon):
 		_beacon.unlocked = true
+		_beacon.burst()
 	_update_label()
 	# Godot 4 does not emit body_entered for bodies already overlapping when monitoring
 	# is re-enabled (e.g. Fayde standing at the door when the last enemy dies, or
@@ -150,6 +158,9 @@ class _DoorBeacon extends Node2D:
 	var unlocked: bool = false
 
 	var _t: float = 0.0
+	## Seconds since the unlock burst started; < 0 = no burst (ADR-0041).
+	var _burst_t: float = -1.0
+	var _burst_reduced: bool = false
 
 	## Matches debug_game_loop._on_wave_ended gold wash (Art Bible §2.4).
 	const GOLD: Color        = Color(1.0,  0.85, 0.4,  1.0)
@@ -173,7 +184,23 @@ class _DoorBeacon extends Node2D:
 
 	func _process(delta: float) -> void:
 		_t += delta
+		if _burst_t >= 0.0:
+			_burst_t += delta
+			if _burst_t >= RoomExitDoor.MOMENT.door_burst_sec:
+				_burst_t = -1.0
 		queue_redraw()
+
+
+	## ADR-0041 — one-shot pulse when the door unlocks: a bright flare and a ring
+	## that races out to door_burst_radius. Reduce motion keeps only the flare.
+	func burst() -> void:
+		_burst_t = 0.0
+		_burst_reduced = GameSettings.motion_reduced()
+
+
+	## True while the unlock burst is showing.
+	func is_bursting() -> bool:
+		return _burst_t >= 0.0
 
 
 	func _draw() -> void:
@@ -181,6 +208,19 @@ class _DoorBeacon extends Node2D:
 			_draw_unlocked()
 		else:
 			_draw_locked()
+		if _burst_t >= 0.0:
+			_draw_burst()
+
+
+	func _draw_burst() -> void:
+		var p: float = clampf(_burst_t / maxf(RoomExitDoor.MOMENT.door_burst_sec, 0.01), 0.0, 1.0)
+		var fade: float = (1.0 - p) * (1.0 - p)
+		draw_circle(Vector2.ZERO, RING_R_MIN * 0.9, Color(GOLD.r, GOLD.g, GOLD.b, 0.45 * fade))
+		if _burst_reduced:
+			return
+		var ease_out: float = 1.0 - (1.0 - p) * (1.0 - p) * (1.0 - p)
+		var r: float = lerpf(RING_R_MIN * 0.5, RoomExitDoor.MOMENT.door_burst_radius, ease_out)
+		draw_arc(Vector2.ZERO, r, 0.0, TAU, 48, Color(1.0, 0.97, 0.85, fade), 4.0 * (1.0 - p) + 1.0, true)
 
 
 	## Dim gray static ring + slow-pulsing downward chevron.
