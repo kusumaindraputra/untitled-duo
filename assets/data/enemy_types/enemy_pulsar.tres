@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="EnemyType" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_type.gd" id="1_enemy_type"]
+[ext_resource type="PackedScene" path="res://src/gameplay/EnemyInstance.tscn" id="2_scene"]
+[ext_resource type="Script" path="res://src/data/bullet_pattern.gd" id="3_bp"]
+[ext_resource type="Resource" path="res://assets/data/bullet_patterns/pulsar_ring.tres" id="p_pulsar_ring"]
+[ext_resource type="Texture2D" path="res://assets/art/characters/pulsar.png" id="sprite_sheet"]
+
+[resource]
+script = ExtResource("1_enemy_type")
+id = 12
+name = "Pulsar"
+archetype = 0
+prana_affiliation = 3
+base_hp = 45
+base_damage = 10.0
+base_move_speed = 40.0
+drop_prana_type = 3
+drop_rate = 0.4
+wave_threat_value = 1
+sprite_size = Vector2i(18, 16)
+debug_color = Color(0.5, 0.9, 1, 1)
+status = 0
+scene = ExtResource("2_scene")
+pattern_layers = Array[ExtResource("3_bp")]([ExtResource("p_pulsar_ring")])
+sprite_sheet = ExtResource("sprite_sheet")

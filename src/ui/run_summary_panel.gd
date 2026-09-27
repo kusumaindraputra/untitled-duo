@@ -9,7 +9,8 @@
 ## Data keys: win (bool), floor (int), rooms (int), time_sec (float), enemies (int),
 ## best_combo (int), bosses (int), ranks (Array[String]), shards (int),
 ## sigils (Array[String] titles), memories_new (int), memories_found (int),
-## memories_total (int), hard_unlocked (bool), assist (bool), records (Array[String]
+## memories_total (int), hard_unlocked (bool), ascension_unlocked (int: level a win just
+## opened, 0 = none), ascension (int: level played), assist (bool), records (Array[String]
 ## lines for records set this run), death (String: the DeathRecap line; shown on a loss),
 ## prana_color (Color: the last Prana in Fayde's hands; tints the crumple on a loss).
 class_name RunSummaryPanel
@@ -168,6 +169,13 @@ func setup(data: Dictionary) -> void:
 		var unlock := _label(_COPY.hard_mode_unlocked_banner, 18, UIPalette.ACCENT)
 		unlock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		root.add_child(unlock)
+
+	# ADR-0052: a Hard Mode win at the top Ascension opens the next one.
+	if int(data.get("ascension_unlocked", 0)) > 0:
+		var asc := _label(_COPY.ascension_unlocked_format % int(data["ascension_unlocked"]),
+			18, UIPalette.ACCENT)
+		asc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		root.add_child(asc)
 
 	root.add_child(_spacer(8))
 	var buttons := HBoxContainer.new()

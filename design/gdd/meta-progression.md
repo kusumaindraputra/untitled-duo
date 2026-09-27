@@ -27,6 +27,13 @@ next Heirloom, and a win opens a harder version of the dungeon to master.
    the core Prana pick, and named on the core-pick screen.
 5. Hard Mode shows as a toggle once `wins >= hard_mode_wins_required`; before that
    the menu says how to unlock it. The first time it unlocks, the end screen says so.
+6. **Ascension** (ADR-0052) is a ladder of 8 levels above Hard Mode. A win with Hard
+   Mode on at the highest unlocked level opens the next one (the first Hard Mode win
+   opens Ascension 1). While Hard Mode is on, the main menu shows an Ascension button
+   that steps 0 → 1 → … → highest unlocked → 0, with the picked level's changes listed
+   under it. Levels stack: Ascension N applies levels 1..N on top of Hard Mode.
+   Ascension does nothing while Hard Mode is off. The end screen names a newly opened
+   level.
 
 ## 4. Formulas
 
@@ -41,11 +48,26 @@ with 18 rooms and 90 kills pays 30 + 54 + 18 + 60 = 162.
 Hard Mode per pool: bullet speed ×1.15, fire rate ×1.2, telegraph ×0.85,
 threat budget +2 (and `enemy_count_max` +2 when the pool is capped), elite chance +0.1.
 
+Ascension N: multipliers are the product of levels 1..N, bonuses the sum. On Hard Mode
+`shards = round(shards × (hard_mode_shard_mult + Σ shard_bonus))`, so Ascension 8 pays
+×2.3. The shipped ladder:
+
+| Level | Adds | Level | Adds |
+|---|---|---|---|
+| 1 | enemy HP ×1.1 | 5 | healing ×0.75 |
+| 2 | bullet speed ×1.08 | 6 | +1 enemy per wave |
+| 3 | elite chance +0.08 | 7 | fire rate ×1.1, telegraph ×0.9 |
+| 4 | boss HP ×1.15 | 8 | enemy HP ×1.1, boss HP ×1.1 |
+
+Every level also adds +0.1 to the shard multiplier.
+
 ## 5. Edge Cases
 
 - Missing or corrupt save: fresh progress, no error.
 - Negative values in a hand-edited save are clamped to 0.
 - An equipped id that is not unlocked is ignored at run start.
+- A save that picks an Ascension above its unlocked level loads at the unlocked level;
+  saves from before ADR-0052 load at 0 / 0.
 - An Heirloom id missing from the sigil catalog shows its raw id and applies nothing
   (SigilManager warns); a unit test keeps the shipped list in sync.
 
@@ -58,7 +80,8 @@ EnemyPoolConfig (Hard Mode), main menu and debug_game_loop (UI and flow).
 
 All in `meta_tuning.tres`: shard rates, win bonus, Hard Mode multiplier, the Heirloom
 list and costs (30, 45, 50, 70, 90), wins required for Hard Mode, and the Hard Mode
-enemy multipliers.
+enemy multipliers. The Ascension ladder is `assets/data/ascension/ascension_config.tres`
+(one `AscensionLevel` per level); its text is `UICopy.ascension_level_descs`.
 
 ## 8. Acceptance Criteria
 
@@ -68,3 +91,5 @@ enemy multipliers.
 - AC-MP-04: Hard Mode cannot be enabled before the first win.
 - AC-MP-05: Hard Mode scales pool copies; the shipped `.tres` pools are unchanged.
 - AC-MP-06: Progress survives a restart (save/load round trip).
+- AC-MP-07: Ascension opens one level per Hard Mode win at the top level, never past
+  the last, and has no effect with Hard Mode off.

@@ -457,6 +457,15 @@ func apply_difficulty(bullet_speed_mult: float, fire_rate_mult: float, telegraph
 		runner.rate_mult = _fire_rate_mult
 
 
+## ADR-0052 — scales max and current HP by the pool's Ascension multiplier. Call after
+## init() / make_elite(); the H&D pool must be registered with the same multiplier.
+func apply_hp_mult(mult: float) -> void:
+	if is_equal_approx(mult, 1.0):
+		return
+	_max_hp = maxi(roundi(float(_max_hp) * mult), 1)
+	_current_hp = _max_hp
+
+
 ## Difficulty multipliers as [bullet_speed, fire_rate, telegraph] (test / debug hook).
 func get_difficulty() -> Vector3:
 	return Vector3(_bullet_speed_mult, _fire_rate_mult, _telegraph_mult)

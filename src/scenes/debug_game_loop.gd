@@ -723,6 +723,8 @@ func _apply_assist() -> void:
 	# ADR-0033: the Core's damage-taken share stacks with the Assist share.
 	var core_share: float = _core.damage_taken_mult if _core != null else 1.0
 	HealthAndDamage.player_damage_mult = s.effective_damage() * core_share
+	# ADR-0052: Ascension can cut healing.
+	HealthAndDamage.player_heal_mult = _ascension_level().heal_mult
 	var pc: Node = get_node_or_null(^"PlayerController")
 	if pc != null and &"auto_dash" in pc:
 		pc.set(&"auto_dash", s.effective_auto_dash())
@@ -929,15 +931,26 @@ func _load_pool_configs() -> void:
 ## Sets WaveManager pool configs for the current floor (combat + boss).
 func _apply_floor_pool_config() -> void:
 	var floor_idx: int = clampi(_current_floor - 1, 0, _floor_pool_configs.size() - 1)
-	var hard: bool = _meta != null and _meta.hard_mode_active(_META)
 	if not _floor_pool_configs.is_empty():
-		var cfg: EnemyPoolConfig = _floor_pool_configs[floor_idx]
-		_base_combat_cfg = MetaProgress.apply_hard_mode(cfg, _META) if hard else cfg
+		_base_combat_cfg = _run_pool(_floor_pool_configs[floor_idx])
 		$WaveManager.enemy_pool_config = _base_combat_cfg
 	if not _boss_pool_configs.is_empty():
 		var boss_idx: int = clampi(_current_floor - 1, 0, _boss_pool_configs.size() - 1)
-		var boss_cfg: EnemyPoolConfig = _boss_pool_configs[boss_idx]
-		$WaveManager.boss_pool_config = MetaProgress.apply_hard_mode(boss_cfg, _META) if hard else boss_cfg
+		$WaveManager.boss_pool_config = _run_pool(_boss_pool_configs[boss_idx])
+
+
+## [param cfg] with this run's Hard Mode and Ascension (ADR-0052) applied, as a copy.
+func _run_pool(cfg: EnemyPoolConfig) -> EnemyPoolConfig:
+	if _meta == null or not _meta.hard_mode_active(_META):
+		return cfg
+	return _meta.apply_ascension(MetaProgress.apply_hard_mode(cfg, _META), _META)
+
+
+## The stacked Ascension changes in effect this run (neutral values when none).
+func _ascension_level() -> AscensionLevel:
+	if _meta == null or _META.ascension == null:
+		return AscensionLevel.new()
+	return _META.ascension.stacked(_meta.active_ascension(_META))
 
 
 ## Death slow-mo: brief 0.15× time-scale window so the player can read the final
@@ -963,12 +976,16 @@ func _on_run_ended(win: bool) -> void:
 	# ADR-0025: pay Cipher Shards once per run and save before building the overlay.
 	var shards_earned: int = 0
 	var hard_newly_unlocked: bool = false
+	var ascension_opened: int = 0
 	if _meta != null and not _run_recorded:
 		_run_recorded = true
 		var was_unlocked: bool = _meta.is_hard_mode_unlocked(_META)
+		var was_ascension: int = _meta.ascension_unlocked
 		run_data["bonus_shards"] = _bonus_shards
 		shards_earned = _meta.record_run(_META, run_data, win)
 		hard_newly_unlocked = not was_unlocked and _meta.is_hard_mode_unlocked(_META)
+		if _meta.ascension_unlocked > was_ascension:
+			ascension_opened = _meta.ascension_unlocked
 		var run_sec: float = float(run_data.get("run_time_sec", 0.0))
 		if win and not _assist_used and _meta.record_win_time(run_sec):
 			_new_records.push_front(Records.new_run_line(run_sec))
@@ -981,7 +998,10 @@ func _on_run_ended(win: bool) -> void:
 	var panel := RunSummaryPanel.new()
 	overlay.add_child(panel)
 	add_child(overlay)
-	panel.setup(_build_summary_data(win, run_data, shards_earned, hard_newly_unlocked))
+	var summary: Dictionary = _build_summary_data(win, run_data, shards_earned, hard_newly_unlocked)
+	summary["ascension_unlocked"] = ascension_opened
+	summary["ascension"] = _meta.active_ascension(_META) if _meta != null else 0
+	panel.setup(summary)
 	panel.run_again_pressed.connect(_restart_from_pause)
 	panel.main_menu_pressed.connect(_to_main_menu)
 	panel.run_again_button.grab_focus()

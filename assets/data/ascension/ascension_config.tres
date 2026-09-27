@@ -1,0 +1,50 @@
+[gd_resource type="Resource" script_class="AscensionConfig" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://src/data/ascension_config.gd" id="1_cfg"]
+[ext_resource type="Script" path="res://src/data/ascension_level.gd" id="2_lvl"]
+
+[sub_resource type="Resource" id="a1"]
+script = ExtResource("2_lvl")
+enemy_hp_mult = 1.1
+shard_bonus = 0.1
+
+[sub_resource type="Resource" id="a2"]
+script = ExtResource("2_lvl")
+bullet_speed_mult = 1.08
+shard_bonus = 0.1
+
+[sub_resource type="Resource" id="a3"]
+script = ExtResource("2_lvl")
+elite_chance_bonus = 0.08
+shard_bonus = 0.1
+
+[sub_resource type="Resource" id="a4"]
+script = ExtResource("2_lvl")
+boss_hp_mult = 1.15
+shard_bonus = 0.1
+
+[sub_resource type="Resource" id="a5"]
+script = ExtResource("2_lvl")
+heal_mult = 0.75
+shard_bonus = 0.1
+
+[sub_resource type="Resource" id="a6"]
+script = ExtResource("2_lvl")
+extra_enemies = 1
+shard_bonus = 0.1
+
+[sub_resource type="Resource" id="a7"]
+script = ExtResource("2_lvl")
+fire_rate_mult = 1.1
+telegraph_mult = 0.9
+shard_bonus = 0.1
+
+[sub_resource type="Resource" id="a8"]
+script = ExtResource("2_lvl")
+enemy_hp_mult = 1.1
+boss_hp_mult = 1.1
+shard_bonus = 0.1
+
+[resource]
+script = ExtResource("1_cfg")
+levels = Array[ExtResource("2_lvl")]([SubResource("a1"), SubResource("a2"), SubResource("a3"), SubResource("a4"), SubResource("a5"), SubResource("a6"), SubResource("a7"), SubResource("a8")])
