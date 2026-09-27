@@ -69,6 +69,8 @@ Every room contains at least one non-interactive background detail — drifting 
 - **Mood-Carrying Element:** Multiple jewel-tone Prana colors firing simultaneously create a stained-glass burst effect against the low-saturation environment. Enemy defeat = color bloom outward from center, never violent impact.
 
 > **Prep→Combat transition:** A 0.3s ambient-dim at wave start marks the threshold from "thinking" to "fighting."
+>
+> **Implemented (ADR-0042):** the floor, its edge, ground decor and backdrop dim by 18 % over 0.3 s on `combat_started` and lift over 0.8 s when the wave or room ends. Characters, spells, hazards, doors and cover stay at full brightness.
 
 **2.4 Victory / Room Clear**
 - **Primary Emotion:** The exhale — relief with a warm tail of satisfaction, not triumph
@@ -181,6 +183,8 @@ UI uses **regularized polygons** — derived from dungeon shapes but smoothed. L
 - **Slots:** Perfect circles. Empty slot = potential. Filled slot = Prana type within arc slot. Shapes nest naturally.
 - **Slot spacing:** Minimum 3–4 px gap between slots — each slot reads as a discrete unit.
 - **Frame accents:** Four small Prana-fragment ornaments at octagonal corners (non-functional, reinforce "sacred instrument" read).
+
+**Implemented (ADR-0042):** `PranaGridFrame` draws the octagon (E6 fill, E7 edge, four muted Prana diamonds on the diagonal edges) and `PranaGridSlot` draws circular slots with an E7 rim. The square cell stays the hit area.
 
 Hexagonal/honeycomb association signals precision and expertise — appropriate for *Power is Earned Through Understanding*.
 
@@ -437,7 +441,7 @@ At 20×32 only the big shapes survive: hood peak, coat against trousers, the sat
 
 At 32–48px native (isometric dimetric angle), anatomical realism is still limited. Every pose must read in silhouette alone — exaggeration is the tool.
 
-> **Shipped so far (ADR-0034):** idle, move and cast rows for Fayde; idle, move and attack wind-up rows for every enemy; a solid white hit flash on every character (never a red tint); and the bloom + dissolve for defeated enemies (death burst ring plus a shader dissolve in 2×2 clusters, top first, rim in the enemy's Prana colour or warm white for bosses). The hit contraction pose and the crumple stage are not drawn yet.
+> **Shipped so far (ADR-0034):** idle, move and cast rows for Fayde; idle, move and attack wind-up rows for every enemy; a solid white hit flash on every character (never a red tint); and the bloom + dissolve for defeated enemies (death burst ring plus a shader dissolve in 2×2 clusters, top first, rim in the enemy's Prana colour or warm white for bosses). The hit contraction pose is not drawn yet. The crumple stage for Fayde ships in ADR-0042 as `fayde_crumple.png` (4 frames, played in real time during the death slow-mo) and also appears on the defeat screen, cool-tinted with the last Prana in her hands.
 
 **Fayde state poses:**
 
