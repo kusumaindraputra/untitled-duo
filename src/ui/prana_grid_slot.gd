@@ -4,6 +4,10 @@
 ## can_drop_data / drop_data), right-click-to-clear via _gui_input(), and hover
 ## highlight via StyleBoxFlat swap (no grab_focus() in the mouse path — ADR-0013).
 ##
+## ADR-0042 (art bible §3.4): the slot draws itself as a circle — "empty slot =
+## potential, filled slot = Prana type within arc slot". The hit area stays the full
+## square cell, so drag-and-drop and clicks behave exactly as before.
+##
 ## Parent contract: PranaGridSlot calls back to PranaGrid via the _prana_grid
 ## reference set by PranaGrid._create_ui_nodes() after instantiation. Do NOT use
 ## get_parent() — slots live inside a GridContainer, not directly under PranaGrid.
@@ -17,8 +21,13 @@
 class_name PranaGridSlot
 extends Panel  # Panel so add_theme_stylebox_override("panel", ...) renders correctly
 
-## Background color for an empty slot.
-const EMPTY_COLOR := Color(0.13, 0.13, 0.13, 0.92)
+## Background color for an empty slot (E6 Atmosphere Haze, art bible §4.4).
+const EMPTY_COLOR := Color(UIPalette.VOID, 0.92)
+## Slot rim (E7) and its hover highlight.
+const RIM_COLOR := UIPalette.BORDER
+const RIM_HOVER_COLOR := UIPalette.ACCENT
+## Rim width in px.
+const RIM_WIDTH: float = 2.0
 
 ## Index of this slot in the parent PranaGrid's _slots array (0–8).
 ## Set by PranaGrid._create_ui_nodes() immediately after instantiation.
@@ -40,9 +49,10 @@ var _hover_stylebox: StyleBoxFlat = null
 ## Assigned by PranaGrid._ready().
 var _default_stylebox: StyleBoxFlat = null
 
-## ColorRect child that shows the Prana type color (or empty state).
-## Created in _ready(); null until the node enters the scene tree.
-var _color_rect: ColorRect = null
+## Circle fill: the Prana type colour, or EMPTY_COLOR. Drawn in _draw().
+var _fill_color: Color = EMPTY_COLOR
+## True while the mouse is over the slot (brightens the rim).
+var _hovered: bool = false
 
 ## Shape icon over the colour so the type reads without colour (ADR-0036).
 ## Created in _ready(); hidden while the slot is empty.
@@ -53,11 +63,9 @@ const ICON_SCALE: int = 3
 
 
 func _ready() -> void:
-	_color_rect = ColorRect.new()
-	_color_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_color_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_color_rect.color = EMPTY_COLOR
-	add_child(_color_rect)
+	# The circle is drawn in _draw(); the square Panel box is kept only as a hit area.
+	if _default_stylebox == null:
+		add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	_icon_rect = PranaIcon.make_rect(0, ICON_SCALE)
 	_icon_rect.visible = false
 	add_child(_icon_rect)
@@ -129,14 +137,39 @@ func _gui_input(event: InputEvent) -> void:
 
 ## Applies hover StyleBoxFlat — no grab_focus() (ADR-0013 hard constraint).
 func _on_mouse_entered() -> void:
+	_hovered = true
+	queue_redraw()
 	if _hover_stylebox != null:
 		add_theme_stylebox_override("panel", _hover_stylebox)
 
 
 ## Restores default StyleBoxFlat on mouse exit.
 func _on_mouse_exited() -> void:
+	_hovered = false
+	queue_redraw()
 	if _default_stylebox != null:
 		add_theme_stylebox_override("panel", _default_stylebox)
+
+
+## Draws the circular slot: fill, then the E7 rim (brighter on hover).
+func _draw() -> void:
+	var r: float = circle_radius(size)
+	if r <= 0.0:
+		return
+	var c: Vector2 = size * 0.5
+	draw_circle(c, r, _fill_color, true, -1.0, true)
+	draw_arc(c, r - RIM_WIDTH * 0.5, 0.0, TAU, 48, RIM_HOVER_COLOR if _hovered else RIM_COLOR,
+		RIM_WIDTH, true)
+
+
+## Pure: the slot circle's radius for a cell of [param cell_size] (inscribed, 1 px in).
+static func circle_radius(cell_size: Vector2) -> float:
+	return maxf(minf(cell_size.x, cell_size.y) * 0.5 - 1.0, 0.0)
+
+
+## The colour the circle is filled with now (tests).
+func get_fill_color() -> Color:
+	return _fill_color
 
 
 ## Updates _displayed_type_id and the ColorRect background color.
@@ -144,8 +177,8 @@ func _on_mouse_exited() -> void:
 ## [param type_id] is -1 for empty, 0–4 for a placed fragment type.
 func refresh(type_id: int) -> void:
 	_displayed_type_id = type_id
-	if _color_rect != null:
-		_color_rect.color = EMPTY_COLOR if type_id == -1 else PranaTypeToken.type_color(type_id)
+	_fill_color = EMPTY_COLOR if type_id == -1 else PranaTypeToken.type_color(type_id)
+	queue_redraw()
 	if _icon_rect != null:
 		_icon_rect.visible = type_id != -1
 		if type_id != -1:
