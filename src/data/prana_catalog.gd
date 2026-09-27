@@ -20,6 +20,9 @@
 ##   Access in tests: preload("res://src/data/prana_catalog.gd").new()
 extends Node
 
+## The palette in effect changed (ADR-0047). UI that caches Prana colours redraws.
+signal palette_changed
+
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 ## Path to the directory that holds the five PranaType .tres files (Story 004).
@@ -43,12 +46,16 @@ var _initialized: bool = false
 ## Catalog entries indexed by id. Never exposed directly; always duplicated on read.
 var _types: Array[PranaType] = []
 
+## Colour-blind palette in effect, or null for the PranaType colours (ADR-0047).
+var _palette: PranaPalette = null
+
 # ── Built-in virtual methods ──────────────────────────────────────────────────
 
 func _ready() -> void:
 	_load_types()
 	_validate_all()
 	_initialized = true
+	_palette = GameSettings.active().prana_palette()
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -70,7 +77,9 @@ func get_type(id: int) -> PranaType:
 			"PranaCatalog.get_type(): invalid ID %d (catalog has %d types)" % [id, _types.size()]
 		)
 		return null
-	return _types[id].duplicate_deep()
+	var copy: PranaType = _types[id].duplicate_deep()
+	copy.color = get_type_color(id)
+	return copy
 
 
 ## Returns the number of loaded Prana types without copying any resource.
@@ -81,7 +90,8 @@ func type_count() -> int:
 	return _types.size()
 
 
-## Returns just the display [Color] of the type with the given [param id].
+## Returns just the display [Color] of the type with the given [param id], from the
+## colour-blind palette when one is set (ADR-0047). get_type() copies carry it too.
 ##
 ## Cheap accessor for UI tints (grid slots, tokens, reward cards) that avoids the
 ## duplicate_deep() cost of get_type(). Returns a neutral grey for an out-of-range
@@ -89,7 +99,16 @@ func type_count() -> int:
 func get_type_color(id: int) -> Color:
 	if not _initialized or id < 0 or id >= _types.size():
 		return Color(0.3, 0.3, 0.3)
+	if _palette != null:
+		return _palette.color_for(id, _types[id].color)
 	return _types[id].color
+
+
+## Serves [param palette]'s colours in place of the PranaType ones from now on
+## (ADR-0047); null restores the PranaType colours. Emits [signal palette_changed].
+func set_palette(palette: PranaPalette) -> void:
+	_palette = palette
+	palette_changed.emit()
 
 
 ## Returns the shape icon of the type with the given [param id] (ADR-0036).
@@ -112,8 +131,10 @@ func get_all_types() -> Array[PranaType]:
 		push_error("PranaCatalog.get_all_types() called before _ready() — check Autoload order (ADR-0002)")
 		return []
 	var result: Array[PranaType] = []
-	for t: PranaType in _types:
-		result.append(t.duplicate_deep())
+	for i: int in range(_types.size()):
+		var copy: PranaType = _types[i].duplicate_deep()
+		copy.color = get_type_color(i)
+		result.append(copy)
 	return result
 
 

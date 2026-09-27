@@ -614,3 +614,8 @@ extends Resource
 ## Settings rows.
 @export var settings_text_size: String = "Text size"
 @export var settings_bullet_outline: String = "High-contrast bullets"
+## Colour-blind Prana palette row (ADR-0047) and its choices by GameSettings.ColorMode.
+@export var settings_color_mode: String = "Prana colours"
+@export var settings_color_modes: Array[String] = [
+	"Default", "Deuteranopia", "Protanopia", "Tritanopia",
+]

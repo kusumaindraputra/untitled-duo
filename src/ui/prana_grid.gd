@@ -137,6 +137,7 @@ func _ready() -> void:
 	GameStateManager.grid_hidden.connect(_on_grid_hidden)
 	arrangement_confirmed.connect(GameStateManager.receive_arrangement_confirmed)
 	InputPrompts.device_changed.connect(_on_device_changed)
+	PranaCatalog.palette_changed.connect(_on_palette_changed)
 	_create_ui_nodes()
 	visible = false
 	# Initialize gamepad cursor position after first layout pass. (ADR-0013: must defer
@@ -157,6 +158,18 @@ func _exit_tree() -> void:
 		GameStateManager.grid_locked.disconnect(_on_grid_locked)
 	if GameStateManager.grid_hidden.is_connected(_on_grid_hidden):
 		GameStateManager.grid_hidden.disconnect(_on_grid_hidden)
+	if PranaCatalog.palette_changed.is_connected(_on_palette_changed):
+		PranaCatalog.palette_changed.disconnect(_on_palette_changed)
+
+
+## Recolours slots, bag tokens and dots when the colour-blind palette changes in
+## the pause menu's Settings (ADR-0047).
+func _on_palette_changed() -> void:
+	for i: int in _slot_nodes.size():
+		var slot := _slot_nodes[i] as PranaGridSlot
+		slot.refresh(-1 if _slots[i] == null else int(_slots[i]))
+	_refresh_bag_tray()
+	_update_compact_dots()
 
 
 ## Detects input mode switch (gamepad ↔ mouse/keyboard) and dispatches d-pad navigation
