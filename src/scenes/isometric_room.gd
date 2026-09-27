@@ -111,6 +111,7 @@ func _ready() -> void:
 		_place_anchor_object(anchor_object_data)
 	_spawn_exit_door()
 	_build_decor()
+	_add_floor_lighting()
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
@@ -841,6 +842,23 @@ static func ambience_tint(base: Color, color: Color, weight: float) -> Color:
 	var out: Color = base.lerp(base * color, clampf(weight, 0.0, 1.0))
 	out.a = base.a
 	return out
+
+
+## Adds the FloorLighting node that dims the floor in combat and lights it around Fayde,
+## spells and bullets (ADR-0043). Only the floor tiles take the light.
+func _add_floor_lighting() -> void:
+	var old: Node = get_node_or_null(^"FloorLighting")
+	if old != null:
+		old.free()
+	var lighting := FloorLighting.new()
+	lighting.name = "FloorLighting"
+	lighting.floor_item = _tile_map
+	add_child(lighting)
+
+
+## The room's FloorLighting node (null before _ready()).
+func get_floor_lighting() -> FloorLighting:
+	return get_node_or_null(^"FloorLighting") as FloorLighting
 
 
 ## Adds the screen-space backdrop and vignette for this floor's look (ADR-0021).

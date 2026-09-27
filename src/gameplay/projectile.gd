@@ -168,6 +168,11 @@ func is_live() -> bool:
 	return not _freed
 
 
+## Core colour from the pattern accent (ADR-0037). FloorLighting tints bullet lights with it.
+func core_color() -> Color:
+	return _color
+
+
 ## Pool hook: restores a spent bullet to its launch defaults before reuse.
 func reset_for_reuse() -> void:
 	_freed = false

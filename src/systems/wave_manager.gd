@@ -73,6 +73,8 @@ const REST_HEAL_VISUAL_DELAY: float = 0.5
 
 ## Elite multipliers, reinforcement warning time and bullet-cancel radii (ADR-0018).
 const BULLET_HELL_TUNING: BulletHellTuning = preload("res://assets/data/bullet_hell_tuning.tres")
+## Spawn glyph timeline and rise look (ADR-0043).
+const SPAWN_GLYPH_TUNING: SpawnGlyphTuning = preload("res://assets/data/spawn_glyph_tuning.tres")
 ## Height of a preview threat icon above its enemy, px before the enemy's scale (ADR-0032).
 const ICON_OFFSET_Y: float = 26.0
 ## Bullet-cancel meter gain (ADR-0019).
@@ -561,25 +563,7 @@ func _spawn_entries(entries: Array, reinforcement: bool) -> int:
 			enemy.apply_boss_variant(variant)
 		if enemy.is_boss():
 			boss_spawned.emit(enemy)
-		# Spawn VFX: pop-in scale tween (0→final_scale, BACK ease for slight overshoot).
-		# Boss enemies use base_scale > 1.0 from EnemyType so they spawn visually large.
-		var final_scale: float = entry.get("base_scale", 1.0)
-		if elite:
-			final_scale *= BULLET_HELL_TUNING.elite_scale_mult
-		enemy.scale = Vector2.ZERO
-		# Spawn stagger: pop-in tween 0→scale (0.18s) then hold 0.12s before activating
-		# physics so enemies appear before their AI engages (Gamefeel Audit Issue 3.1).
-		enemy.set_physics_process(false)
-		var tw: Tween = enemy.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		if hold > 0.0:
-			_spawn_reinforcement_warning(final_pos, hold)
-			tw.tween_interval(hold)
-		tw.tween_property(enemy, "scale", Vector2(final_scale, final_scale), 0.18)
-		tw.tween_interval(0.12)
-		var captured_enemy := enemy
-		tw.tween_callback(func() -> void:
-			if is_instance_valid(captured_enemy):
-				captured_enemy.set_physics_process(true))
+		_rise_from_glyph(enemy, final_pos, final_scale_of(entry, elite), hold)
 		total_spawned += 1
 	return total_spawned
 
@@ -598,14 +582,70 @@ func _markers_far_from_player(markers: Array[Node2D]) -> Array[Node2D]:
 	return sorted
 
 
-## Shows a pulsing ring where a reinforcement is about to appear.
-func _spawn_reinforcement_warning(pos: Vector2, duration: float) -> void:
+## ADR-0043 — drops a SpawnGlyph at [param pos] and raises [param enemy] out of it:
+## the glyph draws (plus [param hold] for a reinforcement warning), the enemy grows from
+## flat to [param final_scale] with its feet on the floor while its tint fades in, then
+## it settles and its physics start. Replaces the old scale pop-in (Gamefeel Audit 3.1)
+## and the red reinforcement ring.
+func _rise_from_glyph(enemy: EnemyInstance, pos: Vector2, final_scale: float, hold: float) -> void:
+	var t: SpawnGlyphTuning = SPAWN_GLYPH_TUNING
+	enemy.set_physics_process(false)
+	var target_mod: Color = enemy.modulate
+	enemy.scale = Vector2(final_scale * t.rise_start_width, 0.0)
+	enemy.modulate = Color(t.rise_tint.r, t.rise_tint.g, t.rise_tint.b, target_mod.a)
+	var size_mult: float = maxf(final_scale, 1.0)
+	_spawn_glyph(pos, hold, size_mult)
+	var reduced: bool = GameSettings.motion_reduced()
+	var tw: Tween = enemy.create_tween()
+	tw.tween_interval(SpawnGlyph.rise_delay(t, hold))
+	var wm: WaveManager = self
+	tw.tween_callback(func() -> void:
+		if is_instance_valid(wm):
+			wm._spawn_light(pos, size_mult))
+	tw.tween_property(enemy, "scale", Vector2(final_scale, final_scale), t.rise_sec) \
+		.set_trans(Tween.TRANS_SINE if reduced else Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(enemy, "modulate", target_mod, t.rise_sec)
+	tw.tween_interval(t.settle_sec)
+	var captured_enemy := enemy
+	tw.tween_callback(func() -> void:
+		if is_instance_valid(captured_enemy):
+			captured_enemy.set_physics_process(true))
+
+
+## Final visual scale of a spawn entry: its EnemyType base_scale, times the elite mult.
+static func final_scale_of(entry: Dictionary, elite: bool) -> float:
+	var s: float = float(entry.get("base_scale", 1.0))
+	if elite:
+		s *= BULLET_HELL_TUNING.elite_scale_mult
+	return s
+
+
+## Adds a SpawnGlyph on the floor at [param pos] (ADR-0043).
+func _spawn_glyph(pos: Vector2, hold: float, size_mult: float) -> void:
 	if not is_inside_tree():
 		return
-	var w := _ReinforcementWarning.new()
-	w.duration = duration
-	add_child(w)
-	w.global_position = pos
+	var g := SpawnGlyph.new()
+	g.hold = hold
+	g.size_mult = size_mult
+	_glyph_parent().add_child(g)
+	g.global_position = pos
+
+
+## Glyphs live in the room that holds the spawn markers, so they go with it on a room
+## transition and never count as WaveManager children (enemies). Falls back to self.
+func _glyph_parent() -> Node:
+	if spawn_points_container != null and spawn_points_container.get_parent() != null:
+		return spawn_points_container.get_parent()
+	return self
+
+
+## Asks the room's FloorLighting for a rim-coloured light as an enemy rises.
+func _spawn_light(pos: Vector2, size_mult: float) -> void:
+	if not is_inside_tree():
+		return
+	var fl: FloorLighting = get_tree().get_first_node_in_group(FloorLighting.GROUP) as FloorLighting
+	if fl != null:
+		fl.pulse_spawn(pos, SpawnGlyph.PALETTE.rim, size_mult)
 
 
 ## ADR-0018 — a Perfect Cast wipes enemy bullets around Fayde. ADR-0019 — each wiped
@@ -740,27 +780,3 @@ func _clear_wave_preview() -> void:
 			remove_child(node)
 			node.free()
 	_preview_nodes.clear()
-
-
-## Inner class: pulsing ring marking where a reinforcement enemy is about to appear.
-class _ReinforcementWarning extends Node2D:
-	var duration: float = 0.6
-	var _elapsed: float = 0.0
-
-	func _ready() -> void:
-		process_mode = PROCESS_MODE_PAUSABLE
-		z_index = 2
-
-	func _process(delta: float) -> void:
-		_elapsed += delta
-		if _elapsed >= duration:
-			queue_free()
-		else:
-			queue_redraw()
-
-	func _draw() -> void:
-		var p: float = clampf(_elapsed / maxf(duration, 0.01), 0.0, 1.0)
-		var pulse: float = 0.5 + 0.5 * sin(p * TAU * 3.0)
-		var c: Color = Color(1.0, 0.3, 0.3, 0.35 + 0.4 * pulse)
-		draw_arc(Vector2.ZERO, lerpf(26.0, 12.0, p), 0.0, TAU, 24, c, 2.0, true)
-		draw_circle(Vector2.ZERO, 10.0, Color(c.r, c.g, c.b, 0.15))
