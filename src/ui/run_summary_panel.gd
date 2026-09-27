@@ -36,6 +36,8 @@ const _JUICE: HudJuiceTuning = preload("res://assets/data/hud_juice_tuning.tres"
 
 ## The Run Again button (focused on open so Enter / A replays). Null until setup().
 var run_again_button: Button = null
+## Opens the feedback form (ADR-0045). Null when no form URL is configured.
+var feedback_button: Button = null
 ## The death recap line (null on a win or without one). For tests.
 var death_label: Label = null
 ## The crumple portrait beside the stat cards (null on a win). For tests.
@@ -178,6 +180,12 @@ func setup(data: Dictionary) -> void:
 	var menu := _button(_COPY.summary_main_menu)
 	menu.pressed.connect(func() -> void: main_menu_pressed.emit())
 	buttons.add_child(menu)
+	# ADR-0045 / beta plan 5.2: the run just ended, the best moment to ask.
+	if FeedbackLink.is_available():
+		feedback_button = _button(_COPY.summary_feedback)
+		feedback_button.pressed.connect(func() -> void:
+			FeedbackLink.open(str(ProjectSettings.get_setting("application/config/version", "dev"))))
+		buttons.add_child(feedback_button)
 
 
 ## A box holding Fayde's crumple pose at the portrait scale, feet on its bottom edge.

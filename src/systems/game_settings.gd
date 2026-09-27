@@ -4,7 +4,8 @@
 ## "audio" section; this class owns "game" and "keys" and keeps the others intact).
 ##   display  — fullscreen, window size, vsync
 ##   comfort  — screen shake strength (0–100 %), reduced screen flashes, text size and
-##              high-contrast bullet outlines (ADR-0032)
+##              high-contrast bullet outlines (ADR-0032), colour-blind Prana palette
+##              (ADR-0047)
 ##   controls — keyboard key per remappable action, gamepad button per combat action
 ##   feel     — gamepad rumble strength (0–100 %)
 ##   hud      — HUD scale, HUD card opacity and the optional run timer (ADR-0046)
@@ -71,6 +72,14 @@ const HUD_SCALES: Array[float] = [0.85, 1.0, 1.15, 1.3]
 const HUD_SCALE_DEFAULT_IDX: int = 1
 ## Lowest HUD card opacity offered, so the card never vanishes behind its text.
 const HUD_CARD_OPACITY_MIN: float = 0.3
+## Colour-vision modes for the Prana palette (ADR-0047), in menu order.
+enum ColorMode { OFF, DEUTERANOPIA, PROTANOPIA, TRITANOPIA }
+## Palette file per ColorMode; OFF keeps the PranaType colours.
+const PRANA_PALETTES: Dictionary[int, String] = {
+	ColorMode.DEUTERANOPIA: "res://assets/data/prana_palettes/prana_palette_deuteranopia.tres",
+	ColorMode.PROTANOPIA: "res://assets/data/prana_palettes/prana_palette_protanopia.tres",
+	ColorMode.TRITANOPIA: "res://assets/data/prana_palettes/prana_palette_tritanopia.tres",
+}
 
 ## The settings in effect. Loaded on first use of active().
 static var current: GameSettings = null
@@ -90,6 +99,8 @@ var reduce_motion: bool = false
 var text_scale_idx: int = 0
 ## Draws enemy bullets with a thick white-and-black outline (ADR-0032).
 var bullet_outline: bool = false
+## Prana colour palette for colour-blind players, a ColorMode value (ADR-0047).
+var color_mode: int = ColorMode.OFF
 ## Assist (F2) master switch. When off, the options below keep their values but
 ## have no effect.
 var assist_enabled: bool = false
@@ -197,6 +208,13 @@ static func bullet_outline_on() -> bool:
 ## Multiplier for full-screen flash opacity (1.0, or REDUCED_FLASH_SCALE).
 static func flash_multiplier() -> float:
 	return REDUCED_FLASH_SCALE if current != null and current.reduce_flashes else 1.0
+
+
+## The Prana palette for this instance's color_mode, or null for OFF (ADR-0047).
+func prana_palette() -> PranaPalette:
+	if not PRANA_PALETTES.has(color_mode):
+		return null
+	return load(PRANA_PALETTES[color_mode]) as PranaPalette
 
 
 # ── Display ───────────────────────────────────────────────────────────────────
@@ -404,6 +422,8 @@ static func load_from(path: String = DEFAULT_PATH) -> GameSettings:
 	s.reduce_motion = bool(cfg.get_value(_SECTION, "reduce_motion", false))
 	s.text_scale_idx = clampi(int(cfg.get_value(_SECTION, "text_scale_idx", 0)), 0, TEXT_SCALES.size() - 1)
 	s.bullet_outline = bool(cfg.get_value(_SECTION, "bullet_outline", false))
+	s.color_mode = clampi(int(cfg.get_value(_SECTION, "color_mode", ColorMode.OFF)),
+			ColorMode.OFF, ColorMode.TRITANOPIA)
 	s.assist_enabled = bool(cfg.get_value(_SECTION, "assist_enabled", false))
 	s.assist_damage = clampf(float(cfg.get_value(_SECTION, "assist_damage", 1.0)), ASSIST_DAMAGE_MIN, 1.0)
 	s.assist_speed = clampf(float(cfg.get_value(_SECTION, "assist_speed", 1.0)), ASSIST_SPEED_MIN, 1.0)
@@ -468,6 +488,7 @@ func save_to(path: String = DEFAULT_PATH) -> Error:
 	cfg.set_value(_SECTION, "reduce_motion", reduce_motion)
 	cfg.set_value(_SECTION, "text_scale_idx", text_scale_idx)
 	cfg.set_value(_SECTION, "bullet_outline", bullet_outline)
+	cfg.set_value(_SECTION, "color_mode", color_mode)
 	cfg.set_value(_SECTION, "assist_enabled", assist_enabled)
 	cfg.set_value(_SECTION, "assist_damage", assist_damage)
 	cfg.set_value(_SECTION, "assist_speed", assist_speed)

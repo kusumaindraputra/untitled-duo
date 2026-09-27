@@ -1,8 +1,8 @@
 ## enemy_spawn_vfx_test.gd — Unit tests for WaveManager enemy spawn scale tween.
 ##
 ## Coverage:
-##   _spawn_wave() sets enemy.scale = Vector2.ZERO before starting pop-in tween.
-##   Enemies receive a Tween after init().
+##   _spawn_wave() starts each enemy flat (scale.y = 0) so it rises out of its spawn
+##   glyph (ADR-0043), and drops a SpawnGlyph on the floor.
 ##
 ## GdUnit4 v6.1.3 | Godot 4.6
 extends GdUnitTestSuite
@@ -10,8 +10,8 @@ extends GdUnitTestSuite
 
 ## GIVEN a WaveManager with pre-set _wave_composition and markers
 ## WHEN _spawn_wave() is called
-## THEN spawned enemies start at scale (0, 0)
-func test_spawn_wave_sets_enemy_scale_to_zero() -> void:
+## THEN spawned enemies start flat (zero height) and a spawn glyph is on the floor
+func test_spawn_wave_starts_enemy_flat_with_glyph() -> void:
 	var wm := WaveManager.new()
 	add_child(wm)
 	auto_free(wm)
@@ -43,9 +43,15 @@ func test_spawn_wave_sets_enemy_scale_to_zero() -> void:
 
 	assert_object(enemy).is_not_null()
 	if enemy != null:
-		# Scale should start at 0 before the tween begins.
-		assert_float(enemy.scale.x).is_less_equal(0.01)
+		# Zero height before the rise tween begins; width starts at rise_start_width.
 		assert_float(enemy.scale.y).is_less_equal(0.01)
+		assert_float(enemy.scale.x).is_equal_approx(WaveManager.SPAWN_GLYPH_TUNING.rise_start_width, 0.001)
+		assert_bool(enemy.is_physics_processing()).is_false()
+	var glyphs: int = 0
+	for child: Node in wm.get_children():
+		if child is SpawnGlyph:
+			glyphs += 1
+	assert_int(glyphs).is_equal(1)
 
 
 ## GIVEN a WaveManager with empty _wave_composition

@@ -98,6 +98,9 @@ extends Resource
 ## Room-clear rank banner; %s is the rank letter.
 @export var room_rank_format: String = "RANK %s"
 
+## Big word that punches in when the last enemy of a room falls (ADR-0041).
+@export var room_clear_banner: String = "CLEAR"
+
 @export_group("Floors (ADR-0020)")
 
 ## Floor names, in floor order (floor 1 first). Shown in the HUD and the floor intro.
@@ -444,6 +447,8 @@ extends Resource
 ## Buttons.
 @export var summary_run_again: String = "Run Again  (R)"
 @export var summary_main_menu: String = "Main Menu"
+## Opens the beta feedback form (ADR-0045). Hidden while no form URL is set.
+@export var summary_feedback: String = "Send Feedback"
 ## Shown under the title when the run used any Assist option (F2).
 @export var summary_assist_note: String = "Assist on"
 
@@ -472,6 +477,8 @@ extends Resource
 @export var menu_play: String = "PLAY"
 @export var menu_heirlooms: String = "HEIRLOOMS"
 @export var menu_quit: String = "QUIT"
+## Opens the beta feedback form (ADR-0045). Hidden while no form URL is set.
+@export var menu_feedback: String = "SEND FEEDBACK"
 ## Heirloom screen heading, shard line and back button.
 @export var heirloom_screen_title: String = "HEIRLOOMS"
 @export var heirloom_shards_format: String = "Cipher Shards  %d"
@@ -625,3 +632,8 @@ extends Resource
 @export var toast_sigil_format: String = "Sigil gained · %s"
 @export var toast_memory_format: String = "Memory found · %d/%d"
 @export var toast_shards_format: String = "+%d Cipher Shards · %d this run"
+## Colour-blind Prana palette row (ADR-0047) and its choices by GameSettings.ColorMode.
+@export var settings_color_mode: String = "Prana colours"
+@export var settings_color_modes: Array[String] = [
+	"Default", "Deuteranopia", "Protanopia", "Tritanopia",
+]

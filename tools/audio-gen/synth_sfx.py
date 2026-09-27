@@ -230,6 +230,17 @@ def sfx_vent_ignite():
     return 0.45, mix((1.0, whoosh), (0.3, env(tone(90, 120, 0.4, "saw"), 0.08, 1.0, hold=0.3)))
 
 
+def sfx_boss_felled():
+    # ADR-0041: the music cuts to this while the boss dissolves — a deep impact,
+    # a long falling air tail and a high ring that hangs over the silence.
+    boom = env(tone(110, 28, 1.6, "sine", curve=0.4), 0.002, 1.1)
+    crack = env(noise(0.5, 19, 0.45), 0.001, 2.4)
+    air = env(noise(1.8, 20, 0.08), 0.15, 1.3, hold=0.3)
+    ring = env(mix((0.6, tone(1319, 1300, 1.8, "triangle")), (0.4, tone(1976, 1950, 1.8, "sine"))),
+               0.01, 1.4)
+    return 0.85, mix((1.0, boom), (0.6, crack), (0.35, air), (0.22, ring))
+
+
 def sfx_ui_focus():
     return 0.22, note(1760, 0.03, "triangle", 2.5)
 
@@ -246,7 +257,7 @@ CUES = [
     sfx_bullet_fire, sfx_enemy_windup, sfx_laser_charge, sfx_laser_fire, sfx_mortar_whistle,
     sfx_mortar_blast, sfx_enemy_alert, sfx_boss_phase, sfx_perfect_dodge, sfx_perfect_cast,
     sfx_special_ready, sfx_special_fire, sfx_graze, sfx_orb_pickup, sfx_dash_ready, sfx_rank_up,
-    sfx_room_rank, sfx_pillar_break, sfx_reaction, sfx_vent_ignite,
+    sfx_room_rank, sfx_pillar_break, sfx_reaction, sfx_vent_ignite, sfx_boss_felled,
     sfx_ui_focus, sfx_ui_confirm, sfx_ui_back,
 ]
 

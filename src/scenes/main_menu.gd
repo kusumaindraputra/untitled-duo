@@ -58,8 +58,8 @@ func _fit_column() -> void:
 
 
 ## Builds the menu (U7): the vault backdrop with Fayde on the right; on the left the
-## title, progress line, buttons (Play / Heirlooms / Memories / Settings / Quit) and
-## the Hard Mode toggle, with the controls line underneath.
+## title, progress line, buttons (Play / Heirlooms / Memories / Settings / Feedback when a
+## form URL is set / Quit) and the Hard Mode toggle, with the controls line underneath.
 func _build_ui() -> void:
 	var backdrop := MenuBackdrop.new()
 	backdrop.animate = not GameSettings.motion_reduced()
@@ -98,6 +98,10 @@ func _build_ui() -> void:
 	# Volume, display, comfort and key bindings live in the Settings panel (ADR-0026).
 	var settings := _menu_button(column, _COPY.settings_button, 22)
 	settings.pressed.connect(_on_settings_pressed.bind(settings))
+	# ADR-0045 / beta plan 5.2: only when a feedback form URL is configured.
+	if FeedbackLink.is_available():
+		var feedback := _menu_button(column, _COPY.menu_feedback, 22)
+		feedback.pressed.connect(func() -> void: FeedbackLink.open(version_string()))
 	var quit := _menu_button(column, _COPY.menu_quit, 22)
 	quit.pressed.connect(_on_quit_pressed)
 
