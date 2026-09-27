@@ -504,6 +504,15 @@ func get_pattern_layer_count() -> int:
 	return _pattern_runners.size()
 
 
+## HP ratios at which a pattern layer switches on (one per layer, may repeat; 1.0 =
+## always on). The boss bar turns these into phase notches (ADR-0045).
+func get_phase_thresholds() -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	for runner: BulletPatternRunner in _pattern_runners:
+		out.append(runner.pattern.hp_threshold)
+	return out
+
+
 ## Required by ADR-0011 (StatusEffectsManager API Contract).
 ## SEM calls this on Freeze/Chill apply and on status expiry to restore full speed.
 func apply_speed_modifier(multiplier: float) -> void:

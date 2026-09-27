@@ -243,7 +243,7 @@ var _vignette_tween: Tween = null
 ## boss spawns (WaveManager.boss_spawned). _boss_ref tracks the live boss so
 ## _on_damage_taken can drain the bar; cleared when the boss dies.
 var _boss_name_label: Label = null
-var _boss_bar: ProgressBar = null
+var _boss_bar: BossHealthBar = null
 var _boss_ref: Node = null
 var _boss_intro_tween: Tween = null
 
@@ -274,6 +274,8 @@ var _left_layout_queued: bool = false
 const STYLE_BADGE_SIZE: float = 34.0
 ## U3 — card behind the left column. Null in headless tests.
 var _left_panel: Panel = null
+## ADR-0045 — Core + sigil chips under the left card. Fed by the game loop.
+var _sigil_strip: SigilStrip = null
 ## Style rank badge (frame tinted by rank; _style_label is its child). Null headless.
 var _style_badge: Panel = null
 ## "STYLE" caption beside the badge. Null headless.
@@ -425,6 +427,11 @@ func _create_ui_nodes() -> void:
 	_left_panel.size = Vector2(LEFT_COLUMN_WIDTH, HP_BAR_MIN_HEIGHT + LEFT_PAD * 2.0)  # re-stacked below
 	_left_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_left_panel)
+	# ADR-0045 — the run's Core and sigils as chips under the left card.
+	_sigil_strip = SigilStrip.new()
+	_sigil_strip.max_width = LEFT_COLUMN_WIDTH
+	_sigil_strip.layout_changed.connect(_queue_left_layout)
+	add_child(_sigil_strip)
 
 	hp_bar = ProgressBar.new()
 	hp_bar.max_value = FAYDE_MAX_HP
@@ -569,23 +576,10 @@ func _create_ui_nodes() -> void:
 	_vignette.z_index = -1
 	add_child(_vignette)
 
-	# Boss HP bar — wide, anchored top-centre. Hidden until a boss spawns.
-	_boss_bar = ProgressBar.new()
-	_boss_bar.show_percentage = false
-	_boss_bar.anchor_left = 0.5
-	_boss_bar.anchor_right = 0.5
-	_boss_bar.offset_left = -BOSS_BAR_WIDTH * 0.5
-	_boss_bar.offset_right = BOSS_BAR_WIDTH * 0.5
-	_boss_bar.offset_top = 24.0
-	_boss_bar.offset_bottom = 24.0 + BOSS_BAR_HEIGHT
-	_boss_bar.add_theme_color_override(&"font_color", Color(1, 1, 1, 1))
-	var bar_fill := StyleBoxFlat.new()
-	bar_fill.bg_color = Color(0.78, 0.16, 0.18)
-	var bar_bg := StyleBoxFlat.new()
-	bar_bg.bg_color = Color(0.12, 0.04, 0.05, 0.85)
-	_boss_bar.add_theme_stylebox_override(&"fill", bar_fill)
-	_boss_bar.add_theme_stylebox_override(&"background", bar_bg)
-	_boss_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Boss HP bar — top-centre, hidden until a boss spawns. ADR-0045: phase notches,
+	# ghost chunk and phase flash are drawn by BossHealthBar.
+	_boss_bar = BossHealthBar.new()
+	_boss_bar.size = Vector2(BOSS_BAR_WIDTH, BOSS_BAR_HEIGHT)
 	_boss_bar.visible = false
 	add_child(_boss_bar)
 
@@ -701,6 +695,11 @@ func _layout_boss_ui() -> void:
 	_boss_name_label.size = Vector2(width, 40.0)
 
 
+## ADR-0045 — the Core / sigil chip strip, wired by the game loop.
+func get_sigil_strip() -> SigilStrip:
+	return _sigil_strip
+
+
 ## Boss bar rect in HUD pixels (test / QA hook).
 func get_boss_bar_rect() -> Rect2:
 	return Rect2(_boss_bar.position, _boss_bar.size) if _boss_bar != null else Rect2()
@@ -758,7 +757,12 @@ func _layout_left_column(combat: bool) -> void:
 		_room_label.size = Vector2(LEFT_INNER_WIDTH, room_h)
 		y += room_h + LEFT_PAD * 0.5
 	_left_panel.size = Vector2(LEFT_COLUMN_WIDTH, y)
-	_combo_counter_label.position.y = _left_panel.position.y + y + 8.0
+	var below: float = _left_panel.position.y + y + 8.0
+	if _sigil_strip != null:  # ADR-0045 — chips sit between the card and the combo count.
+		_sigil_strip.position = Vector2(_left_panel.position.x, below - 2.0)
+		if _sigil_strip.chip_count() > 0:
+			below += _sigil_strip.strip_height() + 6.0
+	_combo_counter_label.position.y = below
 
 
 ## Re-stacks the left card once at the end of the frame (text size changed).
@@ -1098,7 +1102,8 @@ func _on_boss_spawned(boss: Node) -> void:
 	_boss_ref = boss
 	var max_hp: float = float(boss.get_max_hp()) if boss.has_method(&"get_max_hp") else 100.0
 	_boss_bar.max_value = max_hp
-	_boss_bar.value = max_hp
+	_boss_bar.set_thresholds(boss.get_phase_thresholds() if boss.has_method(&"get_phase_thresholds") \
+		else PackedFloat32Array())
 	_boss_bar.visible = true
 
 	_boss_name_label.text = boss_title(boss)
@@ -1139,6 +1144,7 @@ func _on_boss_phase_changed(phase: int) -> void:
 	if not is_instance_valid(_boss_ref) or not is_instance_valid(_boss_name_label):
 		return
 	_boss_name_label.text = "%s — %s %d" % [boss_title(_boss_ref), _COPY.boss_phase_label, phase + 1]
+	_boss_bar.flash_phase()
 	if _boss_intro_tween:
 		_boss_intro_tween.kill()
 	_boss_name_label.modulate = Color(1.6, 0.6, 0.6, 1.0)

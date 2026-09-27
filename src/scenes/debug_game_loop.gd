@@ -228,6 +228,9 @@ func _ready() -> void:
 	add_child(_sigil_effects)
 	_sigil_manager.effects = _sigil_effects
 	_sigil_manager.sigil_applied.connect(_log_sigil)
+	# ADR-0045: a behaviour sigil's chip lights up on the HUD when it fires.
+	_sigil_effects.effect_fired.connect(func(id: StringName, _pos: Vector2) -> void:
+		hud.get_sigil_strip().pulse(id))
 	# F1 Spellbook: the build cast each room and every enemy type defeated.
 	GameStateManager.combat_started.connect(_log_build_discoveries)
 	HealthAndDamage.enemy_killed.connect(_log_enemy_discovery)
@@ -554,6 +557,9 @@ func _start_core() -> void:
 		return
 	_core.apply($PlayerController, SpellCastingEffects, _sigil_manager)
 	_apply_assist()
+	var strip: SigilStrip = ($CanvasLayer/CombatHUD as CombatHUD).get_sigil_strip()
+	strip.reset()  # ADR-0045: the Core heads the HUD chip strip.
+	strip.set_core(_core.id, _core_title(_core), _core.accent)
 	if _meta != null and _meta.last_core != _core.id:
 		_meta.last_core = _core.id
 		_meta.save_to(progress_path)
@@ -968,6 +974,10 @@ func _log_sigil(sigil_id: StringName) -> void:
 	for sigil: Dictionary in _sigil_manager.get_catalog():
 		if sigil.get("id", &"") == sigil_id:
 			_run_sigils.append({"title": str(sigil.get("title", sigil_id)), "desc": str(sigil.get("desc", ""))})
+			var hud: CombatHUD = get_node_or_null(^"CanvasLayer/CombatHUD") as CombatHUD
+			if hud != null:  # ADR-0045 chip strip
+				hud.get_sigil_strip().add_sigil(sigil_id, str(sigil.get("title", sigil_id)),
+					bool(sigil.get("behaviour", false)))
 			return
 
 
