@@ -105,6 +105,25 @@ func get_run_data() -> Dictionary:
 		"run_time_sec": _run_elapsed_sec,
 	}.duplicate()
 
+## Live copy of the run's counters for a run save (ADR-0048): get_run_data() with
+## run_time_sec measured up to now instead of at run end.
+func snapshot() -> Dictionary:
+	var d: Dictionary = get_run_data()
+	if _run_active:
+		d["run_time_sec"] = float(Time.get_ticks_msec() - _run_start_msec) / 1000.0
+	return d
+
+
+## Puts back the counters of [param d] (a [method snapshot]) after run_started, so a
+## resumed run keeps its rooms, kills, best combo, floor and clock.
+func restore_snapshot(d: Dictionary) -> void:
+	_waves_completed = int(d.get("waves_completed", 0))
+	_rooms_cleared = int(d.get("rooms_cleared", 0))
+	_current_floor = int(d.get("current_floor", 1))
+	_enemies_killed = int(d.get("enemies_killed", 0))
+	_best_combo = int(d.get("best_combo", 0))
+	_run_start_msec = Time.get_ticks_msec() - roundi(float(d.get("run_time_sec", 0.0)) * 1000.0)
+
 # ── Signal callbacks ───────────────────────────────────────────────────────────
 
 ## Resets all run state when a new run begins.

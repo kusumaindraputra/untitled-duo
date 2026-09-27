@@ -194,3 +194,42 @@ func is_acyclic() -> bool:
 			if int(in_degree[nb]) == 0:
 				queue.append(nb)
 	return visited_count == _rooms.size()
+
+
+# ── Save / restore (ADR-0048) ──────────────────────────────────────────────────
+
+## Plain-data copy of the graph for a run save: each room's type, state, template
+## path and room modifier, plus the edges. Templates are stored by resource path.
+func to_data() -> Dictionary:
+	var rooms: Array[Dictionary] = []
+	for room: Dictionary in _rooms:
+		var tmpl: RoomTemplate = room.get("template", null) as RoomTemplate
+		rooms.append({
+			"type": int(room.get("type", ROOM_TYPE_COMBAT)),
+			"state": int(room.get("state", ROOM_STATE_UNVISITED)),
+			"template": tmpl.resource_path if tmpl != null else "",
+			"modifier": int(room.get(RoomModifiers.KEY, RoomModifiers.NONE)),
+		})
+	var edges: Array[Vector2i] = []
+	for e: Dictionary in _edges:
+		edges.append(Vector2i(int(e["from"]), int(e["to"])))
+	return {"rooms": rooms, "edges": edges}
+
+
+## Rebuilds a graph written by [method to_data]. Templates that no longer load come
+## back as null (the room then uses the default layout).
+static func from_data(data: Dictionary) -> DungeonGraph:
+	var g := DungeonGraph.new()
+	for v: Variant in data.get("rooms", []):
+		var room: Dictionary = v as Dictionary
+		var path: String = str(room.get("template", ""))
+		var tmpl: RoomTemplate = null
+		if path != "" and ResourceLoader.exists(path):
+			tmpl = load(path) as RoomTemplate
+		var idx: int = g.add_room(int(room.get("type", ROOM_TYPE_COMBAT)), tmpl)
+		g._rooms[idx]["state"] = int(room.get("state", ROOM_STATE_UNVISITED))
+		g._rooms[idx][RoomModifiers.KEY] = int(room.get("modifier", RoomModifiers.NONE))
+	for v: Variant in data.get("edges", []):
+		var e: Vector2i = v as Vector2i
+		g.add_edge(e.x, e.y)
+	return g

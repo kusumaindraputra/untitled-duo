@@ -18,6 +18,8 @@ const _META: MetaTuning = preload("res://assets/data/meta_tuning.tres")
 
 ## Where progress is read and written. Tests point this at a temp file.
 var progress_path: String = MetaProgress.DEFAULT_PATH
+## Where a run in progress is saved (ADR-0048). Tests point this at a temp file.
+var run_save_path: String = RunSave.DEFAULT_PATH
 ## Between-run progress, loaded in _ready() (ADR-0025).
 var progress: MetaProgress = null
 
@@ -28,6 +30,8 @@ const BUTTON_WIDTH: float = 280.0
 
 var _progress_label: Label = null
 var _play_button: Button = null
+## Shown above Play when a saved run can be continued (ADR-0048); null otherwise.
+var _continue_button: Button = null
 var _records_label: Label = null
 ## Controls line at the bottom; follows the last-used device (U8).
 var _controls_label: Label = null
@@ -84,6 +88,11 @@ func _build_ui() -> void:
 	column.add_child(_records_label)
 	column.add_child(_make_spacer(10))
 
+	var saved: Dictionary = RunSave.read(run_save_path)
+	if not saved.is_empty():
+		var at: Vector2i = RunSave.progress_of(saved)
+		_continue_button = _menu_button(column, _COPY.menu_continue_format % [at.x, at.y], 24)
+		_continue_button.pressed.connect(_on_continue_pressed)
 	_play_button = _menu_button(column, _COPY.menu_play, 28)
 	_play_button.pressed.connect(_on_play_pressed)
 	var heirlooms := _menu_button(column, _COPY.menu_heirlooms, 22)
@@ -132,8 +141,12 @@ func _build_ui() -> void:
 	add_child(version)
 
 	_refresh_progress()
-	# Focus Play so keyboard (Enter/Space) and gamepad (ui_accept) work immediately.
-	_play_button.grab_focus()
+	# Focus Continue (else Play) so keyboard (Enter/Space) and gamepad (ui_accept) work
+	# immediately.
+	if _continue_button != null:
+		_continue_button.grab_focus()
+	else:
+		_play_button.grab_focus()
 
 
 func _on_device_changed(_using_pad: bool) -> void:
@@ -218,6 +231,12 @@ func _make_label(text: String, size: int, color: Color) -> Label:
 ## Loads the demo scene. Autoloads persist across the swap, so AudioSystem and game
 ## state carry over; the demo's own _ready() resets state and shows its intro flow.
 func _on_play_pressed() -> void:
+	get_tree().change_scene_to_file(_RUN_SCENE_PATH)
+
+
+## Loads the run scene and asks it to resume the saved run (ADR-0048).
+func _on_continue_pressed() -> void:
+	RunSave.resume_requested = true
 	get_tree().change_scene_to_file(_RUN_SCENE_PATH)
 
 
