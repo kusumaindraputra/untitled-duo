@@ -12,6 +12,8 @@
 ## ADR-0034 effects, all driven from _process and the pixel_character shader:
 ## flash() turns every opaque pixel one colour for a moment (hit flash), play_cast()
 ## plays the cast row once, and dissolve() breaks the sprite apart in 2×2 clusters.
+## ADR-0040: squash() deforms the sprite around its feet and springs it back (dash,
+## cast, hit bounce). It scales the sprites, not this node, so callers' scale is kept.
 class_name PixelCharacter
 extends Node2D
 
@@ -64,6 +66,9 @@ var _cast_sec: float = 0.0
 var _cast_elapsed: float = 0.0
 var _dissolve_sec: float = 0.0
 var _dissolve_elapsed: float = 0.0
+var _squash_peak: Vector2 = Vector2.ONE
+var _squash_sec: float = 0.0
+var _squash_elapsed: float = 0.0
 
 
 func _init() -> void:
@@ -136,6 +141,23 @@ func is_casting() -> bool:
 	return _cast_elapsed < _cast_sec
 
 
+## Deforms the sprite to [param peak] scale (e.g. Vector2(1.2, 0.8)) and springs it
+## back to normal over [param duration] seconds, pivoting on the feet. A new squash
+## replaces one in progress. No-op with Reduce motion on.
+func squash(peak: Vector2, duration: float) -> void:
+	if duration <= 0.0 or peak == Vector2.ONE or GameSettings.motion_reduced():
+		return
+	_squash_peak = peak
+	_squash_sec = duration
+	_squash_elapsed = 0.0
+	_apply_squash()
+
+
+## Current squash multiplier on the sprite scale (Vector2.ONE at rest).
+func get_squash() -> Vector2:
+	return squash_at(_squash_elapsed, _squash_sec, _squash_peak, FX_TUNING.squash_wobbles)
+
+
 ## Breaks the sprite apart over [param duration] seconds, with a [param rim] colour
 ## at the dissolve front. Emits [signal dissolved] when it is gone.
 func dissolve(duration: float, rim: Color) -> void:
@@ -165,6 +187,9 @@ func advance_fx(delta: float) -> void:
 		_cast_elapsed += delta
 	if _flash_elapsed < _flash_sec:
 		_flash_elapsed += delta
+	if _squash_elapsed < _squash_sec:
+		_squash_elapsed += delta
+		_apply_squash()
 	var was_dissolving: bool = _dissolve_sec > 0.0 and _dissolve_elapsed < _dissolve_sec
 	if was_dissolving:
 		_dissolve_elapsed += delta
@@ -184,6 +209,32 @@ func make_ghost() -> Sprite2D:
 	g.offset = _body.offset
 	g.scale = _body.scale * scale
 	return g
+
+
+## Squash multiplier [param elapsed] seconds into a squash of [param duration]
+## seconds peaking at [param peak]: starts at the peak, springs past rest
+## [param wobbles] times with a shrinking swing, ends exactly at Vector2.ONE. Pure.
+static func squash_at(elapsed: float, duration: float, peak: Vector2, wobbles: float = 1.0) -> Vector2:
+	if duration <= 0.0 or elapsed >= duration:
+		return Vector2.ONE
+	var u: float = clampf(elapsed / duration, 0.0, 1.0)
+	var envelope: float = (1.0 - u) * (1.0 - u) * cos(u * PI * (wobbles + 0.5))
+	return Vector2.ONE + (peak - Vector2.ONE) * envelope
+
+
+## Peak scale for a squash of [param amount]: wide and short when positive, tall
+## and thin when negative. Pure.
+static func squash_peak(amount: float) -> Vector2:
+	return Vector2(1.0 + amount, 1.0 - amount)
+
+
+## Peak scale that stretches [param amount] along [param direction] (and thins the
+## other axis); a negative amount squashes along it instead. Diagonals blend. Pure.
+static func stretch_along(direction: Vector2, amount: float) -> Vector2:
+	if direction == Vector2.ZERO:
+		return squash_peak(amount)
+	var horizontal: float = absf(direction.normalized().x)
+	return squash_peak(-amount).lerp(squash_peak(amount), horizontal)
 
 
 ## Returns the size of one frame in sheet pixels.
@@ -230,6 +281,14 @@ func _update_frame() -> void:
 		_glow.frame = f
 
 
+func _apply_squash() -> void:
+	if _body == null:
+		return
+	var sc: Vector2 = Vector2(pixel_scale, pixel_scale) * get_squash()
+	_body.scale = sc
+	_glow.scale = sc
+
+
 func _ensure_material() -> void:
 	if _material != null:
 		return
@@ -253,7 +312,7 @@ func _apply_sheet() -> void:
 	for s: Sprite2D in [_body, _glow]:
 		s.hframes = FRAMES
 		s.vframes = ROWS
-		s.scale = Vector2(pixel_scale, pixel_scale)
+	_apply_squash()
 	_body.texture = sheet
 	_glow.texture = glow_sheet
 	_glow.visible = glow_sheet != null
