@@ -43,6 +43,10 @@ var _door_frames: int = 0
 var _door_best_dist: float = INF
 ## Per-chain roll for landing the Perfect window (-1 = not rolled yet).
 var _perfect_roll: float = -1.0
+## Boss fight timing: spawn time of the live boss (-1 = none), damage taken since.
+var _boss_start: float = -1.0
+var _boss_damage: int = 0
+var _bosses: Array = []
 ## Stall guard state (see _stalled) and how often it fired this run.
 var _stall_hp: int = -1
 var _stall_frames: int = 0
@@ -87,6 +91,11 @@ func _ready() -> void:
 	GameStateManager.run_ended.connect(_on_run_ended)
 	GameStateManager.preparation_started.connect(_on_prep_started)
 	_hp_low = HealthAndDamage.get_fayde_hp()
+	var wm: Node = _game.get_node(^"WaveManager")
+	wm.boss_spawned.connect(func(_boss: Node) -> void:
+		_boss_start = _now()
+		_boss_damage = 0)
+	wm.boss_defeated.connect(_on_boss_defeated)
 
 
 func _parse_args() -> void:
@@ -427,11 +436,22 @@ func _on_room_cleared() -> void:
 	_rooms.append(_room)
 
 
+## Boss fights are timed from the boss spawning to its death, not from the room's
+## combat start (the boss room also holds the pre-boss wave).
+func _on_boss_defeated() -> void:
+	if _boss_start >= 0.0:
+		_bosses.append({"floor": int(_game.get(&"_current_floor")),
+			"combat_sec": snappedf(_now() - _boss_start, 0.1), "damage": _boss_damage})
+	_boss_start = -1.0
+
+
 func _on_damage_taken(target: Node, final_damage: int, current_hp: int) -> void:
 	if target == null or not target.is_in_group(&"player"):
 		return
 	_damage_total += final_damage
 	_room["damage"] = int(_room.get("damage", 0)) + final_damage
+	if _boss_start >= 0.0:
+		_boss_damage += final_damage
 	_hp_low = mini(_hp_low, current_hp)
 
 
@@ -460,15 +480,13 @@ func _finish(win: bool, reason: String) -> void:
 func _build_report(win: bool, reason: String) -> Dictionary:
 	var rooms: Array = []
 	var combat_sec: float = 0.0
-	var boss_fights: Array = []
+	var boss_fights: Array = _bosses
 	for r: Dictionary in _rooms:
 		var c: float = float(r.get("clear_at", _now())) - float(r.get("combat_start", r.get("prep_start", 0.0)))
 		combat_sec += c
 		var row: Dictionary = {"floor": r.get("floor", 0), "type": r.get("type", 0),
 			"combat_sec": snappedf(c, 0.1), "damage": r.get("damage", 0)}
 		rooms.append(row)
-		if int(r.get("type", 0)) == DungeonGraph.ROOM_TYPE_BOSS:
-			boss_fights.append(row)
 	var sim_sec: float = _now()
 	var overhead: float = _CFG.human_prep_sec * _rooms.size() \
 		+ _CFG.human_screen_sec * _screens + _CFG.human_sigil_sec * _sigils
