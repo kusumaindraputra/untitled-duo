@@ -68,7 +68,8 @@ script = ExtResource("2_profile")
 boss_type_id = 5
 events = Array[ExtResource("3_event")]([SubResource("E_s_1"), SubResource("E_s_2")])
 banner_copy_key = &"sentinel_phase_banners"
-banner_color = Color(0.55, 0.85, 1, 1)
+banner_color = Color(0.49, 0.85, 0.78, 1)
+reserved_color = Color(0.137255, 0.701961, 0.603922, 1)
 phase_trauma = 0.4
 variants = Array[ExtResource("4_variant")]([SubResource("V_bulwark"), SubResource("V_overclocked"), SubResource("V_lockdown")])
 
@@ -162,7 +163,8 @@ script = ExtResource("2_profile")
 boss_type_id = 3
 events = Array[ExtResource("3_event")]([SubResource("E_w_1"), SubResource("E_w_3")])
 banner_copy_key = &"warden_phase_banners"
-banner_color = Color(0.45, 1, 0.85, 1)
+banner_color = Color(0.78, 0.6, 0.93, 1)
+reserved_color = Color(0.607843, 0.180392, 0.831373, 1)
 phase_trauma = 0.45
 variants = Array[ExtResource("4_variant")]([SubResource("V_mirrored"), SubResource("V_hunting"), SubResource("V_unstable")])
 
@@ -258,7 +260,8 @@ script = ExtResource("2_profile")
 boss_type_id = 11
 events = Array[ExtResource("3_event")]([SubResource("E_k_1"), SubResource("E_k_2"), SubResource("E_k_3")])
 banner_copy_key = &"keeper_phase_banners"
-banner_color = Color(0.85, 0.65, 1, 1)
+banner_color = Color(0.93, 0.56, 0.66, 1)
+reserved_color = Color(0.831373, 0.180392, 0.368627, 1)
 phase_trauma = 0.5
 variants = Array[ExtResource("4_variant")]([SubResource("V_gilded"), SubResource("V_fractured"), SubResource("V_tempest")])
 

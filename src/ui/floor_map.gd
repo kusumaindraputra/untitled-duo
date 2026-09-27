@@ -21,10 +21,10 @@ const GLYPH_FONT_SIZE: int = 13
 ## Outer padding of the map's backing card, in px.
 const PAD: float = 8.0
 ## Colours for the backing card, edges and the "you are here" ring.
-const CARD_BG := Color(0.04, 0.04, 0.06, 0.62)
+const CARD_BG := UIPalette.CARD
 const EDGE_DIM := Color(1.0, 1.0, 1.0, 0.3)
-const EDGE_WALKED := Color(1.0, 0.84, 0.3, 0.85)
-const CURRENT_RING := Color(1.0, 0.84, 0.3)
+const EDGE_WALKED := Color(UIPalette.ACCENT, 0.85)
+const CURRENT_RING := UIPalette.ACCENT
 const GLYPH_COLOR := Color(0.06, 0.05, 0.08)
 
 ## Room fill colours by DungeonGraph room type (Combat / Elite / Rest / Boss).

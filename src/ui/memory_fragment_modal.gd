@@ -71,7 +71,7 @@ func setup_fragment(fragment: MemoryFragment, index: int, total: int) -> void:
 ## partial ending adds a line saying how many are still missing.
 func setup_ending(ending: MemoryFragment, is_true: bool, found: int, total: int) -> void:
 	_header = _COPY.ending_true_header if is_true else _COPY.ending_header
-	_accent = Color(1.0, 0.85, 0.3)
+	_accent = UIPalette.ACCENT
 	if ending != null:
 		_memory_id = ending.id
 		_voice = ending.voice
@@ -182,7 +182,7 @@ func _build_ui() -> void:
 
 	vbox.add_child(_make_label(_header, 16, _accent.darkened(0.15)))
 	if not _voice.is_empty():
-		vbox.add_child(_make_label(_voice.to_upper(), 15, Color(0.6, 0.62, 0.7)))
+		vbox.add_child(_make_label(_voice.to_upper(), 15, UIPalette.TEXT_DIM))
 
 	var title := _make_label(_title, 40, _accent)
 	vbox.add_child(title)
@@ -207,12 +207,12 @@ func _build_ui() -> void:
 		body.visible_characters = 0
 
 	if not _footnote.is_empty():
-		var foot := _make_label(_footnote, 16, Color(0.75, 0.7, 0.55))
+		var foot := _make_label(_footnote, 16, UIPalette.ACCENT_DIM)
 		foot.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		foot.theme_type_variation = UIFeel.BODY_TEXT
 		vbox.add_child(foot)
 
-	vbox.add_child(_make_label(_COPY.memory_continue_hint, 15, Color(0.5, 0.5, 0.56)))
+	vbox.add_child(_make_label(_COPY.memory_continue_hint, 15, UIPalette.TEXT_FAINT))
 
 	# Fade in so the card reads as a memory surfacing, not a menu popping.
 	# Reduce motion shows it at once (UIFeel.fade_in).

@@ -16,7 +16,7 @@ enum Kind { CHASER = 0, CHARGER = 1, SWARM = 2, SHOOTER = 3, LASER = 4, MORTAR =
 const RADIUS: float = 11.0
 const DISC_COLOR := Color(0.04, 0.03, 0.07, 0.88)
 const GLYPH_COLOR := Color(1.0, 1.0, 1.0)
-const ELITE_RING := Color(1.0, 0.84, 0.3)
+const ELITE_RING := UIPalette.ACCENT
 const COUNT_FONT_SIZE: int = 10
 
 var kind: Kind = Kind.CHASER

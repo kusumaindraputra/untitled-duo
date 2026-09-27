@@ -129,11 +129,11 @@ func _build() -> void:
 	detail.add_theme_constant_override(&"separation", 12)
 	row.add_child(detail)
 
-	_detail_voice = _make_label(15, Color(0.6, 0.62, 0.7))
+	_detail_voice = _make_label(15, UIPalette.TEXT_DIM)
 	detail.add_child(_detail_voice)
 	_detail_title = _make_label(32, Color(0.55, 0.85, 1.0))
 	detail.add_child(_detail_title)
-	_detail_body = _make_label(20, Color(0.88, 0.88, 0.92))
+	_detail_body = _make_label(20, UIPalette.TEXT)
 	_detail_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_detail_body.theme_type_variation = UIFeel.BODY_TEXT
 	_detail_body.size_flags_vertical = Control.SIZE_EXPAND_FILL

@@ -71,13 +71,14 @@ func _build_ui() -> void:
 	add_child(column)
 	_column = column
 
-	var title := _make_label(_COPY.menu_title, 50, Color(1.0, 0.85, 0.3))
+	var title := _make_label(_COPY.menu_title, 50, UIPalette.ACCENT)
+	title.add_child(TitleGlow.new())
 	column.add_child(title)
-	column.add_child(_make_label(_COPY.menu_subtitle, 18, Color(0.7, 0.7, 0.78)))
-	_progress_label = _make_label("", 16, Color(1.0, 0.85, 0.4))
+	column.add_child(_make_label(_COPY.menu_subtitle, 18, UIPalette.TEXT_DIM))
+	_progress_label = _make_label("", 16, UIPalette.ACCENT)
 	column.add_child(_progress_label)
 	# F3: best run, fastest kill per boss, memories found.
-	_records_label = _make_label(Records.menu_line(progress, StoryRules.total()), 14, Color(0.7, 0.7, 0.78))
+	_records_label = _make_label(Records.menu_line(progress, StoryRules.total()), 14, UIPalette.TEXT_DIM)
 	_records_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_records_label.custom_minimum_size = Vector2(COLUMN_WIDTH, 0)
 	column.add_child(_records_label)
@@ -106,10 +107,10 @@ func _build_ui() -> void:
 	_hard_toggle.add_theme_font_size_override(&"font_size", 15)
 	_hard_toggle.toggled.connect(_on_hard_mode_toggled)
 	column.add_child(_hard_toggle)
-	_hard_locked_label = _make_label(_COPY.hard_mode_locked, 15, Color(0.5, 0.5, 0.56))
+	_hard_locked_label = _make_label(_COPY.hard_mode_locked, 15, UIPalette.TEXT_FAINT)
 	column.add_child(_hard_locked_label)
 
-	var controls := _make_label(InputPrompts.controls_line(), 14, Color(0.55, 0.55, 0.62))
+	var controls := _make_label(InputPrompts.controls_line(), 14, UIPalette.TEXT_FAINT)
 	_controls_label = controls
 	InputPrompts.device_changed.connect(_on_device_changed)
 	controls.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
@@ -118,7 +119,7 @@ func _build_ui() -> void:
 	controls.offset_bottom = -10.0
 	add_child(controls)
 
-	var version := _make_label(_COPY.version_format % version_string(), 14, Color(0.45, 0.45, 0.52))
+	var version := _make_label(_COPY.version_format % version_string(), 14, UIPalette.TEXT_FAINT)
 	version.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
 	version.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	version.grow_vertical = Control.GROW_DIRECTION_BEGIN

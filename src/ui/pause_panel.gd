@@ -24,10 +24,10 @@ signal quit_pressed
 
 const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
 const BG_COLOR := Color(0.04, 0.03, 0.06, 0.9)
-const TITLE_COLOR := Color(1.0, 0.85, 0.3)
-const CARD_BG := Color(0.05, 0.05, 0.07, 0.92)
+const TITLE_COLOR := UIPalette.ACCENT
+const CARD_BG := UIPalette.CARD_SOLID
 const CARD_BORDER := Color(1.0, 1.0, 1.0, 0.12)
-const LABEL_COLOR := Color(0.62, 0.62, 0.68)
+const LABEL_COLOR := UIPalette.TEXT_DIM
 const EMPTY_SLOT := Color(0.14, 0.14, 0.18)
 const BUTTON_SIZE := Vector2(240, 48)
 const CARD_WIDTH: float = 360.0
@@ -193,9 +193,9 @@ func _build_map_card(map: Dictionary) -> Control:
 	for i in range(1, _COPY.map_mod_names.size()):
 		var ring: Color = mod_colors[i] if i < mod_colors.size() else Color.WHITE
 		var letter: String = str(mod_letters[i]) if i < mod_letters.size() else "?"
-		_legend_row(rooms, _COPY.map_mod_names[i], _Swatch.room(Color(0.35, 0.35, 0.4), letter, ring))
-	_legend_row(rooms, _COPY.map_you_are_here, _Swatch.room(Color(0.35, 0.35, 0.4), "", FloorMap.CURRENT_RING))
-	_legend_row(rooms, _COPY.map_visited, _Swatch.room(Color(0.35, 0.35, 0.4), "", FloorMap.EDGE_WALKED, true))
+		_legend_row(rooms, _COPY.map_mod_names[i], _Swatch.room(UIPalette.SWATCH, letter, ring))
+	_legend_row(rooms, _COPY.map_you_are_here, _Swatch.room(UIPalette.SWATCH, "", FloorMap.CURRENT_RING))
+	_legend_row(rooms, _COPY.map_visited, _Swatch.room(UIPalette.SWATCH, "", FloorMap.EDGE_WALKED, true))
 
 	box.add_child(_label(_COPY.map_threats_title, 14, LABEL_COLOR))
 	var threats := _legend_grid(box)
@@ -313,12 +313,12 @@ class _Swatch extends Control:
 		var c: Vector2 = size * 0.5
 		var r: float = minf(size.x, size.y) * 0.5 - 1.0
 		if threat_kind >= 0:
-			ThreatIcon.draw_icon(self, threat_kind as ThreatIcon.Kind, c, r, Color(0.7, 0.7, 0.75), false)
+			ThreatIcon.draw_icon(self, threat_kind as ThreatIcon.Kind, c, r, UIPalette.TEXT_DIM, false)
 			return
 		if dim_pair:
 			# A bright node joined to a dim one: visited vs. not yet.
 			draw_line(c + Vector2(-r, 0), c + Vector2(r, 0), ring, 2.0, true)
-			draw_circle(c + Vector2(-r * 0.55, 0), r * 0.5, Color(0.85, 0.85, 0.9))
+			draw_circle(c + Vector2(-r * 0.55, 0), r * 0.5, UIPalette.TEXT)
 			draw_circle(c + Vector2(r * 0.55, 0), r * 0.5, Color(0.85, 0.85, 0.9, 0.4))
 			return
 		if ring.a > 0.0:

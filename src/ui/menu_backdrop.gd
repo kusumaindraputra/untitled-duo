@@ -14,7 +14,8 @@ const FAYDE_FRAME := Rect2(0, 0, 20, 32)
 const FAYDE_SCALE: float = 7.0
 const SKY_TOP := Color(0.03, 0.025, 0.05)
 const SKY_BOTTOM := Color(0.09, 0.06, 0.1)
-const ARCH_COLOR := Color(1.0, 0.8, 0.35)
+## Lantern-warm, not jewel gold (art bible §4.1 E7, ADR-0039).
+const ARCH_COLOR := UIPalette.ACCENT
 const FLOOR_GLOW := Color(1.0, 0.75, 0.35, 0.16)
 const MOTE_COLORS: Array[Color] = [
 	Color(1.0, 0.45, 0.2), Color(0.45, 0.45, 1.0), Color(1.0, 0.85, 0.3),
@@ -96,12 +97,17 @@ func _draw() -> void:
 		var base_y: float = centre.y + size.y * 0.18 * s
 		var col := ARCH_COLOR
 		col.a = 0.2 - float(k) * 0.028
-		var top := Vector2(centre.x, base_y - w * 1.25)
-		draw_line(Vector2(centre.x - w * 0.5, base_y), Vector2(centre.x - w * 0.5, base_y - w * 0.75), col, 2.0)
-		draw_line(Vector2(centre.x + w * 0.5, base_y), Vector2(centre.x + w * 0.5, base_y - w * 0.75), col, 2.0)
-		draw_arc(Vector2(centre.x, base_y - w * 0.75), w * 0.5, PI, TAU, 32, col, 2.0, true)
+		# Ogival (pointed) arch, never round-topped (art bible §3.3): two arcs of
+		# radius = span, each centred on the opposite springing point.
+		var a: float = w * 0.5
+		var spring_y: float = base_y - w * 0.75
+		var apex := Vector2(centre.x, spring_y - a * sqrt(3.0))
+		draw_line(Vector2(centre.x - a, base_y), Vector2(centre.x - a, spring_y), col, 2.0)
+		draw_line(Vector2(centre.x + a, base_y), Vector2(centre.x + a, spring_y), col, 2.0)
+		draw_arc(Vector2(centre.x + a, spring_y), 2.0 * a, PI, PI + PI / 3.0, 24, col, 2.0, false)
+		draw_arc(Vector2(centre.x - a, spring_y), 2.0 * a, -PI / 3.0, 0.0, 24, col, 2.0, false)
 		if k == 0:
-			draw_line(top, top + Vector2(0, 6), col, 2.0)
+			draw_line(apex, apex + Vector2(0, 6), col, 2.0)
 	# Lit floor where Fayde stands.
 	var floor_c: Vector2 = centre + Vector2(0, size.y * 0.18)
 	for r in 5:

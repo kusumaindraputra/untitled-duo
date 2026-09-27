@@ -288,7 +288,7 @@ func _open_overlay() -> void:
 	if _picks_total > 1:
 		heading.text += _COPY.sigil_pick_format % [_picks_total - _picks_left + 1, _picks_total]
 	heading.add_theme_font_size_override(&"font_size", 32)
-	heading.add_theme_color_override(&"font_color", Color(1.0, 0.85, 0.4))
+	heading.add_theme_color_override(&"font_color", UIPalette.ACCENT)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(heading)
 

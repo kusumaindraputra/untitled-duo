@@ -12,7 +12,7 @@ signal closed
 
 const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
 const TITLE_COLOR := Color(0.75, 0.6, 1.0)
-const LOCKED_COLOR := Color(0.5, 0.5, 0.56)
+const LOCKED_COLOR := UIPalette.TEXT_FAINT
 
 ## Progress to read. The menu / game loop passes its loaded copy; tests inject their own.
 var progress: MetaProgress = null
@@ -75,7 +75,7 @@ func show_section(section: Spellbook.Section) -> void:
 	_section = section
 	_entries = Spellbook.entries(section, progress)
 	for i in _tabs.size():
-		_tabs[i].modulate = Color.WHITE if i == int(section) else Color(0.6, 0.6, 0.66)
+		_tabs[i].modulate = Color.WHITE if i == int(section) else UIPalette.TEXT_DIM
 	for c: Node in _list.get_children():
 		_list.remove_child(c)
 		c.queue_free()
@@ -151,7 +151,7 @@ func _build() -> void:
 		t.pressed.connect(func() -> void: show_section(i as Spellbook.Section))
 		tabs.add_child(t)
 		_tabs.append(t)
-	var hint := _label(14, Color(0.5, 0.5, 0.56))
+	var hint := _label(14, UIPalette.TEXT_FAINT)
 	hint.text = InputPrompts.pick(_COPY.spellbook_tabs_hint, _COPY.spellbook_tabs_hint_pad)
 	hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	tabs.add_child(hint)
@@ -176,9 +176,9 @@ func _build() -> void:
 	row.add_child(detail)
 	_detail_title = _label(30, TITLE_COLOR)
 	detail.add_child(_detail_title)
-	_detail_sub = _label(16, Color(0.62, 0.62, 0.7))
+	_detail_sub = _label(16, UIPalette.TEXT_DIM)
 	detail.add_child(_detail_sub)
-	_detail_body = _label(19, Color(0.88, 0.88, 0.92))
+	_detail_body = _label(19, UIPalette.TEXT)
 	_detail_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_detail_body.theme_type_variation = UIFeel.BODY_TEXT
 	_detail_body.size_flags_vertical = Control.SIZE_EXPAND_FILL

@@ -26,6 +26,11 @@ const CRACK_STAGES: int = 3
 const HIT_FLASH_SEC: float = 0.08
 ## Visual column height above the footprint, in pixels.
 const COLUMN_HEIGHT: float = 52.0
+## Default rune band colour: E7 Warm Lantern Bleed (art bible §4.1). Environment
+## glows never use a jewel tone, so the band is lantern-warm, not Prana cyan.
+const RUNE_COLOR: Color = Color(0.659, 0.525, 0.376, 1.0)
+## Outline tone for the column silhouette (art bible §5.4 outline colour).
+const OUTLINE_COLOR: Color = Color(0.09, 0.07, 0.1, 1.0)
 
 ## Hits absorbed before crumbling. Set by setup() from ObstacleConfig.pillar_hits.
 var max_hits: int = 14
@@ -33,6 +38,8 @@ var max_hits: int = 14
 var radius: float = 20.0
 ## Stone colour; floor themes tint it.
 var color: Color = Color(0.46, 0.44, 0.52, 1.0)
+## Rune band colour; the room passes its RoomLook.prop_glow (ADR-0039).
+var rune_color: Color = RUNE_COLOR
 
 var _hits_left: int = 14
 var _flash: float = 0.0
@@ -44,8 +51,10 @@ func _init() -> void:
 	collision_mask = 0
 
 
-## Configures durability, size and colour. Call before add_child().
-func setup(hits: int, pillar_radius: float, pillar_color: Color = Color(0.46, 0.44, 0.52, 1.0)) -> void:
+## Configures durability, size, stone colour and rune band colour. Call before add_child().
+func setup(hits: int, pillar_radius: float, pillar_color: Color = Color(0.46, 0.44, 0.52, 1.0),
+		band_color: Color = RUNE_COLOR) -> void:
+	rune_color = band_color
 	max_hits = maxi(hits, 1)
 	_hits_left = max_hits
 	radius = maxf(pillar_radius, 4.0)
@@ -164,19 +173,24 @@ func _draw() -> void:
 	draw_colored_polygon(PackedVector2Array([
 		Vector2(-r, -h), Vector2(0, r * 0.5 - h), Vector2(r, -h), Vector2(0, -r * 0.5 - h),
 	]), light)
+	# Silhouette outline, hard-edged like the pixel sprites (art bible §5.4).
+	draw_polyline(PackedVector2Array([
+		Vector2(-r, 0), Vector2(0, r * 0.5), Vector2(r, 0), Vector2(r, -h),
+		Vector2(0, -r * 0.5 - h), Vector2(-r, -h), Vector2(-r, 0),
+	]), OUTLINE_COLOR, 1.0, false)
 	# Rune band — reads as "this blocks shots", distinct from plain rock debris.
 	var band_y: float = -h * 0.55
-	draw_line(Vector2(-r, band_y), Vector2(0, band_y + r * 0.5), Color(0.55, 0.85, 1.0, 0.8), 2.0, true)
-	draw_line(Vector2(0, band_y + r * 0.5), Vector2(r, band_y), Color(0.55, 0.85, 1.0, 0.8), 2.0, true)
+	draw_line(Vector2(-r, band_y), Vector2(0, band_y + r * 0.5), rune_color, 2.0, false)
+	draw_line(Vector2(0, band_y + r * 0.5), Vector2(r, band_y), rune_color, 2.0, false)
 	# Cracks grow with wear.
 	var stage: int = crack_stage()
 	var crack: Color = Color(0.08, 0.06, 0.08, 0.9)
 	if stage >= 1:
-		draw_polyline(PackedVector2Array([Vector2(-r * 0.6, -h * 0.9), Vector2(-r * 0.4, -h * 0.65), Vector2(-r * 0.65, -h * 0.4)]), crack, 1.5, true)
+		draw_polyline(PackedVector2Array([Vector2(-r * 0.6, -h * 0.9), Vector2(-r * 0.4, -h * 0.65), Vector2(-r * 0.65, -h * 0.4)]), crack, 1.0, false)
 	if stage >= 2:
-		draw_polyline(PackedVector2Array([Vector2(r * 0.5, -h * 0.95), Vector2(r * 0.3, -h * 0.6), Vector2(r * 0.55, -h * 0.35), Vector2(r * 0.35, -h * 0.1)]), crack, 1.5, true)
+		draw_polyline(PackedVector2Array([Vector2(r * 0.5, -h * 0.95), Vector2(r * 0.3, -h * 0.6), Vector2(r * 0.55, -h * 0.35), Vector2(r * 0.35, -h * 0.1)]), crack, 1.0, false)
 	if stage >= 3:
-		draw_polyline(PackedVector2Array([Vector2(-r * 0.2, -h * 0.3), Vector2(0, -h * 0.15), Vector2(-r * 0.15, r * 0.2)]), crack, 2.0, true)
+		draw_polyline(PackedVector2Array([Vector2(-r * 0.2, -h * 0.3), Vector2(0, -h * 0.15), Vector2(-r * 0.15, r * 0.2)]), crack, 2.0, false)
 
 
 static func _ellipse(center: Vector2, rx: float, ry: float) -> PackedVector2Array:

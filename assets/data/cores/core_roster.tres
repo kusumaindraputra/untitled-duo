@@ -6,14 +6,14 @@
 [sub_resource type="Resource" id="C_steady"]
 script = ExtResource("2_core")
 id = &"steady"
-accent = Color(0.85, 0.85, 0.9, 1)
+accent = Color(0.831, 0.788, 0.722, 1)
 
 [sub_resource type="Resource" id="C_glass"]
 script = ExtResource("2_core")
 id = &"glass"
 spell_damage_mult = 1.3
 damage_taken_mult = 1.25
-accent = Color(1, 0.55, 0.45, 1)
+accent = Color(0.769, 0.541, 0.51, 1)
 
 [sub_resource type="Resource" id="C_gale"]
 script = ExtResource("2_core")
@@ -21,7 +21,7 @@ id = &"gale"
 spell_damage_mult = 0.85
 move_speed_mult = 1.1
 bonus_dash_charges = 1
-accent = Color(0.55, 0.9, 1, 1)
+accent = Color(0.616, 0.714, 0.784, 1)
 
 [sub_resource type="Resource" id="C_echo"]
 script = ExtResource("2_core")
@@ -29,7 +29,7 @@ id = &"echo"
 spell_damage_mult = 0.9
 offer_cards = 4
 free_rerolls_per_offer = 1
-accent = Color(0.8, 0.65, 1, 1)
+accent = Color(0.659, 0.596, 0.722, 1)
 
 [resource]
 script = ExtResource("1_roster")

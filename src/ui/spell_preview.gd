@@ -17,9 +17,9 @@ const _CR := preload("res://src/systems/combination_resolution.gd")
 const MAX_TIER: int = 3
 
 ## Muted colour for hint lines (next tier, empty grid).
-const HINT_COLOR := Color(0.6, 0.6, 0.66)
+const HINT_COLOR := UIPalette.TEXT_DIM
 ## Colour of reaction and cascade lines.
-const REACTION_COLOR := Color(1.0, 0.84, 0.4)
+const REACTION_COLOR := UIPalette.ACCENT
 
 
 ## Returns how many more core-type Prana are needed for the next primary tier, or 0 when
