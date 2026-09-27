@@ -165,6 +165,21 @@ var _tint_timer: float = 0.0
 ## Defaults to FULL; updated by _on_hp_zone_changed.
 var _current_zone: GameEnums.HPZone = GameEnums.HPZone.FULL
 
+## ADR-0042 — the pale "lost HP" chunk behind the fill. It holds at the old value for
+## ghost_hold_sec, then drains to the real HP. Null only before _create_ui_nodes().
+var _ghost_bar: ProgressBar = null
+## Seconds left before the ghost starts draining.
+var _ghost_hold: float = 0.0
+## Seconds left in the ghost drain, and the value it drains from.
+var _ghost_drain: float = 0.0
+var _ghost_from: float = FAYDE_MAX_HP
+
+## ADR-0042 — the HP bar jolt on a hit: seconds left and peak offset in px.
+var _jolt_timer: float = 0.0
+var _jolt_amp: float = 0.0
+## Where the HP row sits when it is not jolting (set by _layout_left_column).
+var _hp_row_pos: Vector2 = Vector2(LEFT_PAD, LEFT_PAD)
+
 ## Looping Tween that scales hp_bar between 1.0 and 1.03 while zone is DESPERATE (AC-HUD-24).
 ## Null when no pulse is running. Killed and set to null in _stop_pulse().
 var _pulse_tween: Tween = null
@@ -283,6 +298,8 @@ var _dash_ring: DashRing = null
 ## HP bar flash on a hit (U3): the white fill shows through untinted.
 const HIT_FLASH_COLOR: Color = Color(1.0, 1.0, 1.0, 1.0)
 const HIT_FLASH_DURATION: float = 0.12
+## ADR-0042 HP bar juice: ghost chunk and jolt timings.
+const _JUICE: HudJuiceTuning = preload("res://assets/data/hud_juice_tuning.tres")
 ## Ring centre offset below Fayde's origin, in screen px.
 const DASH_RING_DROP: float = 10.0
 const STYLE_RANK_COLORS: Dictionary = {
@@ -332,6 +349,9 @@ func _process(delta: float) -> void:
 		else:
 			var t: float = 1.0 - (_hp_timer / _hp_duration)
 			hp_bar.value = lerpf(_hp_start, _hp_target, t)
+
+	_tick_ghost(delta)
+	_tick_jolt(delta)
 
 	# Heal tint float accumulator (ADR-0004)
 	if _tint_timer > 0.0:
@@ -429,17 +449,34 @@ func _create_ui_nodes() -> void:
 	_left_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_left_panel)
 
-	hp_bar = ProgressBar.new()
-	hp_bar.max_value = FAYDE_MAX_HP
-	hp_bar.value = FAYDE_MAX_HP
-	hp_bar.step = 0.01  # fractional values required during animation
-	hp_bar.show_percentage = false
+	# ADR-0042 — the ghost bar owns the track and draws the lost-HP chunk; the real
+	# bar sits on top of it with no background of its own.
+	_ghost_bar = ProgressBar.new()
+	_ghost_bar.max_value = FAYDE_MAX_HP
+	_ghost_bar.value = FAYDE_MAX_HP
+	_ghost_bar.step = 0.01
+	_ghost_bar.show_percentage = false
 	var hp_bg := StyleBoxFlat.new()
 	hp_bg.bg_color = Color(0.16, 0.16, 0.19, 1.0)
 	hp_bg.border_color = Color(1.0, 1.0, 1.0, 0.14)
 	hp_bg.set_border_width_all(1)
 	hp_bg.set_corner_radius_all(3)
-	hp_bar.add_theme_stylebox_override(&"background", hp_bg)
+	_ghost_bar.add_theme_stylebox_override(&"background", hp_bg)
+	var ghost_fill := StyleBoxFlat.new()
+	ghost_fill.bg_color = _JUICE.ghost_color
+	ghost_fill.set_corner_radius_all(3)
+	_ghost_bar.add_theme_stylebox_override(&"fill", ghost_fill)
+	_ghost_bar.position = Vector2(LEFT_PAD, LEFT_PAD)
+	_ghost_bar.size = Vector2(LEFT_INNER_WIDTH, HP_BAR_MIN_HEIGHT)
+	_ghost_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_ghost_bar)
+
+	hp_bar = ProgressBar.new()
+	hp_bar.max_value = FAYDE_MAX_HP
+	hp_bar.value = FAYDE_MAX_HP
+	hp_bar.step = 0.01  # fractional values required during animation
+	hp_bar.show_percentage = false
+	hp_bar.add_theme_stylebox_override(&"background", StyleBoxEmpty.new())
 	var hp_fill := StyleBoxFlat.new()
 	hp_fill.bg_color = Color.WHITE  # tinted by modulate (zone colour)
 	hp_fill.set_corner_radius_all(3)
@@ -720,11 +757,13 @@ func _layout_left_column(combat: bool) -> void:
 		return
 	var y: float = LEFT_PAD
 	var hp_h: float = maxf(HP_BAR_MIN_HEIGHT, hp_label.get_combined_minimum_size().y + 2.0)
-	hp_bar.position = Vector2(LEFT_PAD, y)
+	_hp_row_pos = Vector2(LEFT_PAD, y)
 	hp_bar.size = Vector2(LEFT_INNER_WIDTH, hp_h)
 	hp_bar.pivot_offset = hp_bar.size / 2.0
-	hp_label.position = Vector2(LEFT_PAD, y)
+	_ghost_bar.size = hp_bar.size
+	_ghost_bar.pivot_offset = hp_bar.pivot_offset
 	hp_label.size = Vector2(LEFT_INNER_WIDTH - 6.0, hp_h)
+	_place_hp_row(Vector2.ZERO)
 	y += hp_h + LEFT_ROW_GAP
 	_floor_label.visible = not combat
 	_room_label.visible = not combat
@@ -941,6 +980,87 @@ func _start_hp_animation(target: float, duration: float) -> void:
 	_hp_timer = duration
 
 
+## ADR-0042 — (re)starts the ghost hold. The chunk keeps its current top edge, so a
+## burst of hits reads as one growing chunk that drains once the burst ends.
+func _hold_ghost() -> void:
+	_ghost_bar.value = maxf(_ghost_bar.value, _hp_start)
+	_ghost_hold = _JUICE.ghost_hold_sec
+	_ghost_drain = 0.0
+
+
+## Advances the ghost chunk: hold, then drain to the bar's target HP.
+func _tick_ghost(delta: float) -> void:
+	if _ghost_hold > 0.0:
+		_ghost_hold -= delta
+		if _ghost_hold <= 0.0:
+			_ghost_hold = 0.0
+			_ghost_from = _ghost_bar.value
+			_ghost_drain = maxf(_JUICE.ghost_drain_sec, 0.001)
+		return
+	if _ghost_drain > 0.0:
+		_ghost_drain -= delta
+		var floor_hp: float = hp_bar.value if _dead else _hp_target
+		if _ghost_drain <= 0.0:
+			_ghost_drain = 0.0
+			_ghost_bar.value = floor_hp
+		else:
+			var t: float = 1.0 - _ghost_drain / maxf(_JUICE.ghost_drain_sec, 0.001)
+			_ghost_bar.value = lerpf(_ghost_from, floor_hp, ease_out_quad(t))
+
+
+## Starts the hit jolt, sized by [param damage] against max HP. Off with Reduce motion.
+func _start_jolt(damage: int) -> void:
+	if GameSettings.motion_reduced() or _JUICE.jolt_sec <= 0.0:
+		return
+	_jolt_amp = jolt_amplitude(damage, FAYDE_MAX_HP, _JUICE.jolt_px, _JUICE.jolt_full_share)
+	_jolt_timer = _JUICE.jolt_sec
+
+
+## Advances the jolt and moves the HP row by it.
+func _tick_jolt(delta: float) -> void:
+	if _jolt_timer <= 0.0:
+		return
+	_jolt_timer = maxf(_jolt_timer - delta, 0.0)
+	_place_hp_row(jolt_offset(_JUICE.jolt_sec - _jolt_timer, _JUICE.jolt_sec, _jolt_amp))
+
+
+## Places the HP bar, its ghost and its number at the row position plus [param offset].
+func _place_hp_row(offset: Vector2) -> void:
+	hp_bar.position = _hp_row_pos + offset
+	_ghost_bar.position = _hp_row_pos + offset
+	hp_label.position = _hp_row_pos + offset
+
+
+## Pure: quadratic ease-out for 0–1 [param t].
+static func ease_out_quad(t: float) -> float:
+	var c: float = clampf(t, 0.0, 1.0)
+	return 1.0 - (1.0 - c) * (1.0 - c)
+
+
+## Pure: peak jolt in px for [param damage] out of [param max_hp]. Reaches [param px]
+## at [param full_share] of max HP and never drops below half of it.
+static func jolt_amplitude(damage: int, max_hp: int, px: float, full_share: float) -> float:
+	var share: float = float(damage) / float(maxi(max_hp, 1))
+	return px * clampf(share / maxf(full_share, 0.001), 0.5, 1.0)
+
+
+## Pure: jolt offset [param elapsed] seconds into a [param duration] jolt of peak
+## [param amp] px. A decaying shake that snaps down-left, bounces back and settles
+## at zero, the same every time (no randomness).
+static func jolt_offset(elapsed: float, duration: float, amp: float) -> Vector2:
+	if duration <= 0.0 or elapsed >= duration:
+		return Vector2.ZERO
+	var t: float = clampf(elapsed / duration, 0.0, 1.0)
+	var decay: float = (1.0 - t) * (1.0 - t)
+	var wave: float = cos(t * TAU * 1.5)
+	return Vector2(-amp * wave * decay, amp * 0.5 * wave * decay).round()
+
+
+## Ghost chunk value in HP (test / QA hook).
+func get_ghost_value() -> float:
+	return _ghost_bar.value if _ghost_bar != null else 0.0
+
+
 ## Reverts hp_bar.modulate and hp_label font color to the color matching _current_zone.
 ## Called by the tint timer expiry and by _on_hp_zone_changed when not dead.
 func _revert_zone_color() -> void:
@@ -956,7 +1076,9 @@ func _start_pulse() -> void:
 	_pulse_tween = create_tween().set_loops()
 	_pulse_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	_pulse_tween.tween_property(hp_bar, "scale", Vector2(1.03, 1.03), 0.4)
+	_pulse_tween.parallel().tween_property(_ghost_bar, "scale", Vector2(1.03, 1.03), 0.4)
 	_pulse_tween.tween_property(hp_bar, "scale", Vector2(1.0, 1.0), 0.4)
+	_pulse_tween.parallel().tween_property(_ghost_bar, "scale", Vector2(1.0, 1.0), 0.4)
 	_start_vignette_pulse()
 
 
@@ -967,6 +1089,7 @@ func _stop_pulse() -> void:
 		_pulse_tween.kill()
 		_pulse_tween = null
 	hp_bar.scale = Vector2(1.0, 1.0)
+	_ghost_bar.scale = Vector2(1.0, 1.0)
 	_stop_vignette_pulse()
 
 
@@ -1091,6 +1214,8 @@ func _on_damage_taken(target: Node, final_damage: int, current_hp: int) -> void:
 		# U3 — brief flash on the bar so a hit registers where the player's eye goes.
 		hp_bar.modulate = HIT_FLASH_COLOR
 		_tint_timer = HIT_FLASH_DURATION
+		_start_jolt(final_damage)
+	_hold_ghost()
 
 
 ## Boss-intro handler: connected to WaveManager.boss_spawned by the game loop.
@@ -1193,6 +1318,10 @@ func _on_health_restored(target: Node, healed_amount: int, current_hp: int) -> v
 		return
 	hp_label.text = "%d / %d" % [current_hp, FAYDE_MAX_HP]
 	_start_hp_animation(float(current_hp), HP_BAR_FILL_DURATION)
+	# The ghost only ever marks lost HP: a heal lifts it with the fill.
+	_ghost_hold = 0.0
+	_ghost_drain = 0.0
+	_ghost_bar.value = maxf(_ghost_bar.value, float(current_hp))
 	hp_bar.modulate = HEAL_TINT_COLOR
 	_tint_timer = HEAL_TINT_DURATION
 	if healed_amount > 0:
@@ -1223,6 +1352,10 @@ func _on_player_died() -> void:
 	_stop_pulse()
 	hp_bar.value = 0.0
 	hp_label.text = "0 / %d" % FAYDE_MAX_HP
+	# Let the last chunk drain on its own so the killing blow still reads.
+	_hold_ghost()
+	_jolt_timer = 0.0
+	_place_hp_row(Vector2.ZERO)
 
 
 ## Handles player_hp_zone_changed from HealthAndDamage.
@@ -1265,6 +1398,11 @@ func _on_run_started() -> void:
 	_dot_tweens.clear()
 	_current_zone = GameEnums.HPZone.FULL
 	hp_bar.value = FAYDE_MAX_HP
+	_ghost_bar.value = FAYDE_MAX_HP
+	_ghost_hold = 0.0
+	_ghost_drain = 0.0
+	_jolt_timer = 0.0
+	_place_hp_row(Vector2.ZERO)
 	hp_label.text = "%d / %d" % [FAYDE_MAX_HP, FAYDE_MAX_HP]
 	hp_bar.modulate = HP_COLOR_FULL
 	hp_label.add_theme_color_override(&"font_color", HP_COLOR_LABEL_FULL)

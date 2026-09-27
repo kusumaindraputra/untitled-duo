@@ -10,7 +10,8 @@
 ## best_combo (int), bosses (int), ranks (Array[String]), shards (int),
 ## sigils (Array[String] titles), memories_new (int), memories_found (int),
 ## memories_total (int), hard_unlocked (bool), assist (bool), records (Array[String]
-## lines for records set this run), death (String: the DeathRecap line; shown on a loss).
+## lines for records set this run), death (String: the DeathRecap line; shown on a loss),
+## prana_color (Color: the last Prana in Fayde's hands; tints the crumple on a loss).
 class_name RunSummaryPanel
 extends Control
 
@@ -28,11 +29,17 @@ const LABEL_COLOR := UIPalette.TEXT_DIM
 const VALUE_COLOR := Color(1.0, 0.92, 0.7)
 const CARD_BG := UIPalette.CARD_SOLID
 const DEATH_COLOR := UIPalette.WARN
+## ADR-0042 — the defeat crumple portrait: drained of warmth (§2.5), so the last
+## Prana in Fayde's hands is the only warm colour left.
+const CRUMPLE_TINT := Color(0.7, 0.75, 0.86)
+const _JUICE: HudJuiceTuning = preload("res://assets/data/hud_juice_tuning.tres")
 
 ## The Run Again button (focused on open so Enter / A replays). Null until setup().
 var run_again_button: Button = null
 ## The death recap line (null on a win or without one). For tests.
 var death_label: Label = null
+## The crumple portrait beside the stat cards (null on a win). For tests.
+var crumple: CrumplePose = null
 
 
 ## Formats seconds as M:SS.
@@ -113,6 +120,10 @@ func setup(data: Dictionary) -> void:
 	cards.add_theme_constant_override(&"separation", 16)
 	root.add_child(cards)
 
+	# ADR-0042 (art bible §5.3): Fayde's crumple pose beside the stats on a loss.
+	if not win:
+		cards.add_child(_crumple_portrait(data.get("prana_color", UIPalette.ACCENT)))
+
 	# Left card: stats.
 	var stats := GridContainer.new()
 	stats.columns = 2
@@ -167,6 +178,23 @@ func setup(data: Dictionary) -> void:
 	var menu := _button(_COPY.summary_main_menu)
 	menu.pressed.connect(func() -> void: main_menu_pressed.emit())
 	buttons.add_child(menu)
+
+
+## A box holding Fayde's crumple pose at the portrait scale, feet on its bottom edge.
+func _crumple_portrait(glow: Color) -> Control:
+	var px: float = float(maxi(_JUICE.crumple_portrait_scale, 1))
+	var box := Control.new()
+	box.custom_minimum_size = Vector2(20.0 * px, 32.0 * px)
+	box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	crumple = CrumplePose.new()
+	crumple.scale = Vector2(px, px)
+	crumple.position = Vector2(10.0 * px, 32.0 * px)
+	crumple.setup(glow, CRUMPLE_TINT)
+	if GameSettings.motion_reduced():
+		crumple.advance(crumple.duration)
+	box.add_child(crumple)
+	return box
 
 
 func _label(text: String, font_size: int, color: Color) -> Label:
