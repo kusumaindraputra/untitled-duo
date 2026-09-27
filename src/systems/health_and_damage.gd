@@ -40,6 +40,10 @@ const HEAVY_HIT_THRESHOLD: int = 15
 ## Set by Tutorial/Onboarding via first_run_active flag. 0.5 = half damage.
 const FIRST_RUN_DAMAGE_MULTIPLIER: float = 0.5
 
+## Safety cap on debug_kill_all_enemies() passes (a debug tool, not gameplay tuning):
+## each pass kills whatever reinforcements the previous one spawned.
+const DEBUG_KILL_MAX_PASSES: int = 64
+
 # ── Signals ───────────────────────────────────────────────────────────────────
 
 ## Emitted when a target takes damage and final_damage > 0.
@@ -375,14 +379,22 @@ func pay_fayde_hp(amount: int) -> bool:
 ##
 ## DEBUG QA ONLY — instantly kills all living enemies and emits enemy_killed for each.
 ## Allows the wave to complete so the QA run can progress through all floors.
+## A kill can spawn reinforcements (ADR-0018) that register mid-loop, so each pass
+## erases only the ids it killed and the loop repeats until the registry is empty.
+## Clearing the whole registry once left those reinforcements alive but unregistered:
+## no spell could hurt them and the room never cleared.
 func debug_kill_all_enemies() -> void:
-	var ids: Array = _enemy_registry.keys()
-	for id: int in ids:
-		var rec: EnemyHPInstance = _enemy_registry[id]
-		if not rec.is_dead:
-			rec.is_dead = true
-			enemy_killed.emit(id, rec.type_id, rec.prana_affiliation)
-	_enemy_registry.clear()
+	for _pass: int in DEBUG_KILL_MAX_PASSES:
+		if _enemy_registry.is_empty():
+			return
+		for id: int in _enemy_registry.keys():
+			var rec: EnemyHPInstance = _enemy_registry.get(id)
+			if rec == null:
+				continue
+			if not rec.is_dead:
+				rec.is_dead = true
+				enemy_killed.emit(id, rec.type_id, rec.prana_affiliation)
+			_enemy_registry.erase(id)
 
 
 ## Immediately cancels the active i-frame window and resets the timer.
