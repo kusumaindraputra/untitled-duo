@@ -16,9 +16,9 @@ signal progress_changed
 
 const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
 const _META: MetaTuning = preload("res://assets/data/meta_tuning.tres")
-const TITLE_COLOR := Color(1.0, 0.85, 0.3)
+const TITLE_COLOR := UIPalette.ACCENT
 const EQUIPPED_TINT := Color(1.0, 0.9, 0.5)
-const POOR_TINT := Color(0.6, 0.6, 0.65)
+const POOR_TINT := UIPalette.TEXT_DIM
 
 ## Progress to read and write. The menu passes its loaded copy; tests inject their own.
 var progress: MetaProgress = null
@@ -136,8 +136,8 @@ func _build() -> void:
 	add_child(root)
 
 	root.add_child(_label(_COPY.heirloom_screen_title, 40, TITLE_COLOR))
-	root.add_child(_label(_COPY.heirloom_header, 16, Color(0.62, 0.62, 0.7)))
-	_shards_label = _label("", 20, Color(1.0, 0.85, 0.4))
+	root.add_child(_label(_COPY.heirloom_header, 16, UIPalette.TEXT_DIM))
+	_shards_label = _label("", 20, UIPalette.ACCENT)
 	root.add_child(_shards_label)
 
 	var grid := GridContainer.new()
@@ -158,7 +158,7 @@ func _build() -> void:
 		grid.add_child(b)
 		_buttons.append(b)
 
-	_desc_label = _label("", 17, Color(0.82, 0.82, 0.88))
+	_desc_label = _label("", 17, UIPalette.TEXT)
 	_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_desc_label.theme_type_variation = UIFeel.BODY_TEXT
 	_desc_label.custom_minimum_size = Vector2(640, 48)

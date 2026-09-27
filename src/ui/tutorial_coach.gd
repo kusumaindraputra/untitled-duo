@@ -40,9 +40,9 @@ const TICK_HOLD_SEC: float = 0.9
 const DONE_HOLD_SEC: float = 2.5
 
 const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
-const _COLOR_DONE := Color(0.45, 0.9, 0.55)
+const _COLOR_DONE := UIPalette.GOOD
 const _COLOR_HINT := Color(1.0, 0.92, 0.7)
-const _COLOR_COUNT := Color(1.0, 0.85, 0.4, 0.8)
+const _COLOR_COUNT := Color(UIPalette.ACCENT, 0.8)
 
 ## Player node, polled for movement and dashing. Set by the parent.
 var player: Node2D = null
@@ -75,7 +75,7 @@ func _ready() -> void:
 	grow_vertical = Control.GROW_DIRECTION_BEGIN
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.05, 0.04, 0.08, 0.85)
-	style.border_color = Color(1.0, 0.85, 0.4, 0.55)
+	style.border_color = Color(UIPalette.ACCENT, 0.55)
 	style.set_border_width_all(2)
 	style.set_corner_radius_all(6)
 	style.content_margin_left = 16

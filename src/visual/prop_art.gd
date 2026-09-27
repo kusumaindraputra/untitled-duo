@@ -13,6 +13,7 @@ enum Prop {
 	SCRAP_HEAP, GEAR_WHEEL, BENT_GIRDER, RUST_BARREL,
 	PIPE_STACK, VALVE_WHEEL, VENT_BOX, CABLE_COIL,
 	CRYSTAL_CLUSTER, CRYSTAL_SPIRE, SHARD_ROCK,
+	RUBBLE,
 	HANG_ROOTS, HANG_CHAIN, HANG_PIPE, HANG_CRYSTAL,
 }
 
@@ -38,6 +39,7 @@ const SIZES: Dictionary = {
 	Prop.CRYSTAL_CLUSTER: Vector2i(30, 36),
 	Prop.CRYSTAL_SPIRE: Vector2i(16, 50),
 	Prop.SHARD_ROCK: Vector2i(28, 24),
+	Prop.RUBBLE: Vector2i(24, 20),
 	Prop.HANG_ROOTS: Vector2i(20, 26),
 	Prop.HANG_CHAIN: Vector2i(10, 30),
 	Prop.HANG_PIPE: Vector2i(16, 32),
@@ -103,6 +105,7 @@ static func build_image(prop: int, look: RoomLook) -> Image:
 		Prop.CRYSTAL_CLUSTER: _crystal_cluster(c)
 		Prop.CRYSTAL_SPIRE: _crystal_spire(c)
 		Prop.SHARD_ROCK: _shard_rock(c)
+		Prop.RUBBLE: _rubble(c)
 		Prop.HANG_ROOTS: _hang_roots(c)
 		Prop.HANG_CHAIN: _hang_chain(c)
 		Prop.HANG_PIPE: _hang_pipe(c)
@@ -239,6 +242,16 @@ static func _shard_rock(c: _Canvas) -> void:
 	c.ellipse(10, 16, 6, 3, _LIGHT)
 	_shard(c, 18, 16, 3, 14, 2)
 	_shard(c, 9, 15, 2, 8, -2)
+
+
+## Half-cover debris in the arena (ADR-0039): a squat rock pile, lit from the top left.
+static func _rubble(c: _Canvas) -> void:
+	c.ellipse(12, 15, 11, 4, _DARK)
+	c.poly([Vector2(2, 15), Vector2(5, 6), Vector2(11, 2), Vector2(17, 4), Vector2(21, 10), Vector2(21, 15)], _MID)
+	c.poly([Vector2(5, 7), Vector2(11, 2), Vector2(16, 4), Vector2(12, 8), Vector2(6, 10)], _LIGHT)
+	c.poly([Vector2(14, 15), Vector2(17, 9), Vector2(21, 10), Vector2(21, 15)], _DARK)
+	c.line(Vector2(9, 10), Vector2(12, 14), _DARK)
+	c.set_px(7, 8, _GLOW)
 
 
 static func _hang_roots(c: _Canvas) -> void:

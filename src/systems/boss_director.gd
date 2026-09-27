@@ -84,7 +84,16 @@ func attach(boss: Node, room: Node2D, roster: BossRoster = ROSTER) -> bool:
 	_applied_phase = 0
 	if boss.has_signal(&"phase_changed"):
 		boss.connect(&"phase_changed", _on_phase_changed)
+	# ADR-0039: the boss's reserved colour bleeds into the arena, and drains on defeat.
+	if room != null and room.has_method(&"set_ambience"):
+		room.set_ambience(profile.reserved_color, profile.ambience_strength, profile.ambience_fade_sec)
+		boss.tree_exiting.connect(_clear_ambience.bind(room, profile.ambience_fade_sec))
 	return true
+
+
+func _clear_ambience(room: Node2D, seconds: float) -> void:
+	if is_instance_valid(room) and room.is_inside_tree():
+		room.set_ambience(Color.WHITE, 0.0, seconds)
 
 
 func _detach() -> void:

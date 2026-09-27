@@ -21,12 +21,13 @@ signal main_menu_pressed
 const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
 ## Rank display order, best first.
 const RANK_ORDER: Array[String] = ["S", "A", "B", "C", "D"]
-const WIN_COLOR := Color(1.0, 0.85, 0.3)
-const LOSS_COLOR := Color(0.9, 0.25, 0.25)
-const LABEL_COLOR := Color(0.62, 0.62, 0.68)
+const WIN_COLOR := UIPalette.ACCENT
+## Defeat is "a story cut short", not punishment (art bible §2.5): cool, not red.
+const LOSS_COLOR := UIPalette.COOL
+const LABEL_COLOR := UIPalette.TEXT_DIM
 const VALUE_COLOR := Color(1.0, 0.92, 0.7)
-const CARD_BG := Color(0.05, 0.05, 0.07, 0.9)
-const DEATH_COLOR := Color(1.0, 0.62, 0.55)
+const CARD_BG := UIPalette.CARD_SOLID
+const DEATH_COLOR := UIPalette.WARN
 
 ## The Run Again button (focused on open so Enter / A replays). Null until setup().
 var run_again_button: Button = null
@@ -80,7 +81,7 @@ func setup(data: Dictionary) -> void:
 	var win: bool = data.get("win", false)
 
 	var bg := ColorRect.new()
-	bg.color = Color(0.08, 0.05, 0.02, 0.9) if win else Color(0.12, 0.02, 0.02, 0.9)
+	bg.color = UIPalette.VICTORY_WASH if win else UIPalette.DEFEAT_WASH
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
@@ -96,7 +97,7 @@ func setup(data: Dictionary) -> void:
 	root.add_child(title)
 
 	var sub := _label(_COPY.summary_subtitle_format % [int(data.get("floor", 1)), int(data.get("rooms", 0))],
-		22, Color(0.85, 0.85, 0.85))
+		22, UIPalette.TEXT)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(sub)
 
@@ -137,7 +138,7 @@ func setup(data: Dictionary) -> void:
 	right.add_child(list)
 	right.add_child(_spacer(6))
 	right.add_child(_label(_COPY.summary_memories_format % [int(data.get("memories_new", 0)),
-		int(data.get("memories_found", 0)), int(data.get("memories_total", 0))], 15, Color(0.8, 0.75, 0.55)))
+		int(data.get("memories_found", 0)), int(data.get("memories_total", 0))], 15, UIPalette.ACCENT_DIM))
 	cards.add_child(_card(right, 280.0))
 
 	for line: Variant in data.get("records", []):
@@ -146,12 +147,12 @@ func setup(data: Dictionary) -> void:
 		root.add_child(rec)
 
 	if data.get("assist", false):
-		var assist := _label(_COPY.summary_assist_note, 15, Color(0.55, 0.8, 0.95))
+		var assist := _label(_COPY.summary_assist_note, 15, UIPalette.COOL)
 		assist.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		root.add_child(assist)
 
 	if data.get("hard_unlocked", false):
-		var unlock := _label(_COPY.hard_mode_unlocked_banner, 18, Color(0.78, 0.45, 1.0))
+		var unlock := _label(_COPY.hard_mode_unlocked_banner, 18, UIPalette.ACCENT)
 		unlock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		root.add_child(unlock)
 

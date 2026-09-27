@@ -25,7 +25,7 @@ extends Resource
 ## Free sigil rerolls on each reward screen.
 @export var free_rerolls_per_offer: int = 0
 ## Accent colour of the Core's card on the pick screen.
-@export var accent: Color = Color(0.85, 0.85, 0.9)
+@export var accent: Color = Color(0.831, 0.788, 0.722)
 
 
 ## Applies the passive for a new run. [param player] takes move speed and dash

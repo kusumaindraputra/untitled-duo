@@ -309,16 +309,17 @@ func _show_title_screen() -> void:
 	_title_layer.add_child(vbox)
 
 	var title := Label.new()
-	title.text = "THE LAST CIPHER"
+	title.text = _COPY.menu_title
 	title.add_theme_font_size_override(&"font_size", 72)
-	title.add_theme_color_override(&"font_color", Color(1.0, 0.85, 0.3))
+	title.add_theme_color_override(&"font_color", UIPalette.ACCENT)
+	title.add_child(TitleGlow.new())
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title)
 
 	var subtitle := Label.new()
 	subtitle.text = _make_subtitle_text()
 	subtitle.add_theme_font_size_override(&"font_size", 22)
-	subtitle.add_theme_color_override(&"font_color", Color(0.7, 0.7, 0.78))
+	subtitle.add_theme_color_override(&"font_color", UIPalette.TEXT_DIM)
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(subtitle)
 
@@ -330,7 +331,7 @@ func _show_title_screen() -> void:
 		if is_instance_valid(controls):
 			controls.text = _title_controls_text())
 	controls.add_theme_font_size_override(&"font_size", 18)
-	controls.add_theme_color_override(&"font_color", Color(0.6, 0.6, 0.66))
+	controls.add_theme_color_override(&"font_color", UIPalette.TEXT_DIM)
 	controls.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(controls)
 
@@ -428,7 +429,7 @@ func _show_core_pick() -> void:
 	var title := Label.new()
 	title.text = _COPY.core_pick_heading
 	title.add_theme_font_size_override(&"font_size", 38)
-	title.add_theme_color_override(&"font_color", Color(1.0, 0.85, 0.4))
+	title.add_theme_color_override(&"font_color", UIPalette.ACCENT)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title)
 
@@ -438,7 +439,7 @@ func _show_core_pick() -> void:
 		var hl := Label.new()
 		hl.text = _COPY.heirloom_active_format % str(info.get("title", heirloom))
 		hl.add_theme_font_size_override(&"font_size", 18)
-		hl.add_theme_color_override(&"font_color", Color(1.0, 0.85, 0.4))
+		hl.add_theme_color_override(&"font_color", UIPalette.ACCENT)
 		hl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		vbox.add_child(hl)
 
@@ -449,7 +450,7 @@ func _show_core_pick() -> void:
 	vbox.add_child(core_row)
 	var core_desc := Label.new()
 	core_desc.add_theme_font_size_override(&"font_size", 18)
-	core_desc.add_theme_color_override(&"font_color", Color(0.85, 0.85, 0.9))
+	core_desc.add_theme_color_override(&"font_color", UIPalette.TEXT)
 	core_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	core_desc.custom_minimum_size = Vector2(0, 28)
 	vbox.add_child(core_desc)
@@ -512,7 +513,7 @@ func _make_pick_label(text: String) -> Label:
 	var label := Label.new()
 	label.text = text
 	label.add_theme_font_size_override(&"font_size", 18)
-	label.add_theme_color_override(&"font_color", Color(0.7, 0.7, 0.78))
+	label.add_theme_color_override(&"font_color", UIPalette.TEXT_DIM)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return label
 
@@ -772,7 +773,7 @@ func _configure_wave_manager_for_room(room_idx: int) -> void:
 		if _room_modifier == RoomModifiers.CHALLENGE:
 			hud.show_room_banner(_COPY.challenge_banner, Color(1.0, 1.0, 1.0))
 		elif _room_modifier == RoomModifiers.CURSED:
-			hud.show_room_banner(_COPY.cursed_banner, Color(0.8, 0.5, 1.0))
+			hud.show_room_banner(_COPY.cursed_banner, UIPalette.MAP_CURSED)
 
 
 ## Picks the combat-state music cue for [param rtype] via AudioSystem.
@@ -1057,7 +1058,7 @@ func _on_wave_ended() -> void:
 	if audio != null and audio.has_method(&"has_event") and audio.has_event(&"sfx_wave_clear"):
 		audio.play_event(&"sfx_wave_clear")
 	var wash := ColorRect.new()
-	wash.color = Color(1.0, 0.85, 0.4, 0.0)
+	wash.color = Color(UIPalette.ACCENT, 0.0)
 	wash.anchor_right = 1.0
 	wash.anchor_bottom = 1.0
 	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1079,7 +1080,7 @@ func _on_wave_ended() -> void:
 		if bonus > 0:
 			_bonus_shards += bonus
 			$CanvasLayer/CombatHUD.show_room_banner(_COPY.challenge_won_format % bonus,
-				Color(1.0, 0.85, 0.4))
+				UIPalette.ACCENT)
 		await get_tree().create_timer(0.5).timeout
 		_sigil_manager.offer_sigils(picks)
 	elif _sigil_manager != null and rtype == DungeonGraph.ROOM_TYPE_REST:

@@ -223,19 +223,15 @@ const _MINIMAP_MARKER_SEP: float = 8.0
 const _MINIMAP_MARGIN: float = 12.0
 
 ## Room-type marker colours (mirrors DungeonGraph.ROOM_TYPE_* ordering: Combat/Elite/Rest/Boss).
-const _MINIMAP_TYPE_COLORS: Array[Color] = [
-	Color(0.55, 0.60, 0.72),  # Combat — cool slate
-	Color(0.82, 0.46, 0.92),  # Elite  — violet
-	Color(0.40, 0.80, 0.52),  # Rest   — green
-	Color(0.92, 0.32, 0.32),  # Boss   — red
-]
+## Art bible §4.4: stone, brass, moss, rust — never a Prana or boss colour (ADR-0039).
+const _MINIMAP_TYPE_COLORS: Array[Color] = UIPalette.MAP_ROOM
 
 ## Per-type letter glyph so the minimap is readable without relying on colour alone
 ## (colorblind accessibility, ui-code.md). Parallel to _MINIMAP_TYPE_COLORS.
 const _MINIMAP_TYPE_LETTERS: Array[String] = ["C", "E", "R", "B"]
 ## ADR-0026 room modifiers, indexed by RoomModifiers value (NONE, CHALLENGE, CURSED).
 const _MINIMAP_MOD_LETTERS: Array[String] = ["", "!", "X"]
-const _MINIMAP_MOD_COLORS: Array[Color] = [Color.TRANSPARENT, Color(1.0, 1.0, 1.0), Color(0.75, 0.35, 1.0)]
+const _MINIMAP_MOD_COLORS: Array[Color] = [Color.TRANSPARENT, Color(1.0, 1.0, 1.0), UIPalette.MAP_CURSED]
 
 ## Full-screen danger vignette (DESPERATE zone only). Pulses at ≤1.25Hz per HUD
 ## seizure-safety note. Separate from hp_bar pulse so edge signal is visible while
@@ -262,8 +258,8 @@ var _style_letter: String = ""
 ## Top-left column width: the boss UI is kept clear of it (ADR-0019 HUD fix).
 const LEFT_COLUMN_WIDTH: float = 232.0
 ## U3 left HUD card colours. Its height follows the rows it shows (ADR-0035).
-const LEFT_PANEL_BG: Color = Color(0.04, 0.04, 0.06, 0.62)
-const LEFT_PANEL_BORDER: Color = Color(1.0, 1.0, 1.0, 0.08)
+const LEFT_PANEL_BG: Color = UIPalette.CARD
+const LEFT_PANEL_BORDER: Color = UIPalette.CARD_BORDER
 ## ADR-0035 left card metrics: inner padding, gap between rows, bar width and the
 ## minimum bar heights (bars grow to fit their label at larger text sizes).
 const LEFT_PAD: float = 12.0
@@ -473,7 +469,7 @@ func _create_ui_nodes() -> void:
 	_dash_hint_label = Label.new()
 	_dash_hint_label.text = InputPrompts.dash_hint()
 	_dash_hint_label.add_theme_font_size_override(&"font_size", 13)
-	_dash_hint_label.add_theme_color_override(&"font_color", Color(0.8, 0.8, 0.86))
+	_dash_hint_label.add_theme_color_override(&"font_color", UIPalette.TEXT)
 	_dash_hint_label.position = Vector2(30, 58)
 	_dash_hint_label.size = Vector2(190, 18)
 	_dash_hint_label.visible = false
@@ -548,7 +544,7 @@ func _create_ui_nodes() -> void:
 	_room_label = Label.new()
 	_room_label.text = "Room 1 / 7"
 	_room_label.add_theme_font_size_override(&"font_size", 13)
-	_room_label.add_theme_color_override(&"font_color", Color(0.7, 0.7, 0.78))
+	_room_label.add_theme_color_override(&"font_color", UIPalette.TEXT_DIM)
 	_room_label.position = Vector2(12, 98)
 	_room_label.size = Vector2(120, 18)
 	add_child(_room_label)
@@ -596,7 +592,7 @@ func _create_ui_nodes() -> void:
 	# Boss name card — centred title that fades in on spawn, sits above the bar.
 	_boss_name_label = Label.new()
 	_boss_name_label.add_theme_font_size_override(&"font_size", 30)
-	_boss_name_label.add_theme_color_override(&"font_color", Color(1.0, 0.86, 0.4))
+	_boss_name_label.add_theme_color_override(&"font_color", UIPalette.ACCENT)
 	_boss_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_boss_name_label.anchor_left = 0.0
 	_boss_name_label.anchor_right = 1.0
@@ -635,7 +631,7 @@ func _create_ui_nodes() -> void:
 	_style_caption = Label.new()
 	_style_caption.text = _COPY.style_label
 	_style_caption.add_theme_font_size_override(&"font_size", 12)
-	_style_caption.add_theme_color_override(&"font_color", Color(0.7, 0.7, 0.78))
+	_style_caption.add_theme_color_override(&"font_color", UIPalette.TEXT_DIM)
 	_style_caption.position = Vector2(20 + STYLE_BADGE_SIZE, 122)
 	_style_caption.visible = false
 	add_child(_style_caption)
@@ -860,7 +856,7 @@ func show_floor_intro(floor_num: int) -> void:
 	banner.text = _COPY.floor_intro_format % [floor_num, floor_name(floor_num)]
 	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	banner.add_theme_font_size_override(&"font_size", 30)
-	banner.add_theme_color_override(&"font_color", Color(0.85, 0.92, 1.0))
+	banner.add_theme_color_override(&"font_color", UIPalette.ACCENT)
 	banner.add_theme_color_override(&"font_outline_color", Color.BLACK)
 	banner.add_theme_constant_override(&"outline_size", 6)
 	banner.anchor_left = 0.0
@@ -1342,7 +1338,7 @@ func set_minimap(room_types: Array, room_states: Array, current_idx: int,
 		style.bg_color = fill
 		if is_current:
 			# Gold ring marks "you are here".
-			style.border_color = Color(1.0, 0.84, 0.3)
+			style.border_color = UIPalette.ACCENT
 			style.set_border_width_all(3)
 		var mod: int = int(modifiers[i]) if i < modifiers.size() else RoomModifiers.NONE
 		if mod != RoomModifiers.NONE and not is_current:

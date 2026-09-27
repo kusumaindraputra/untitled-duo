@@ -81,6 +81,7 @@ const _HAZARD_FALLBACK_CLEAR_DIST: float = 75.0
 @onready var _arena_bounds: StaticBody2D = $ArenaBounds
 
 var _look: RoomLook = null
+var _ambience_tween: Tween = null
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
@@ -425,8 +426,8 @@ func _set_floor_cell(cell: Vector2i) -> void:
 
 ## Re-skins an already built room with [param theme]'s look (ADR-0038): floor
 ## tiles, platform edge, backdrop and decor. Used for the first room, which
-## main.tscn builds before the floor theme is known. Layout, collision, debris and
-## pillars are untouched.
+## main.tscn builds before the floor theme is known. Layout and collision are
+## untouched; debris and pillars are repainted in the new palette (ADR-0039).
 func apply_floor_look(theme: FloorTheme) -> void:
 	floor_theme = theme
 	_look = null
@@ -440,6 +441,23 @@ func apply_floor_look(theme: FloorTheme) -> void:
 	_add_backdrop()
 	_apply_floor_theme()
 	_build_decor()
+	_repaint_obstacles()
+
+
+## Repaints existing debris and pillars in the current look and theme colours.
+func _repaint_obstacles() -> void:
+	var look: RoomLook = get_look()
+	for child: Node in get_children():
+		var rubble := child.get_node_or_null(^"Rubble") as Sprite2D
+		if rubble != null:
+			rubble.texture = PropArt.texture(PropArt.Prop.RUBBLE, look)
+			(child as CanvasItem).modulate = floor_theme.debris_tint if floor_theme != null else Color.WHITE
+		var pillar := child as CoverPillar
+		if pillar != null:
+			if floor_theme != null:
+				pillar.color = floor_theme.pillar_color
+			pillar.rune_color = look.prop_glow
+			pillar.queue_redraw()
 
 
 ## Returns this room's environment palette: the floor theme's look, or the
@@ -802,6 +820,29 @@ func _build_decor() -> void:
 	add_child(decor)
 
 
+## Tints the floor toward [param color] by [param weight] over [param seconds]
+## (ADR-0039, art bible §2.7 / §4.3): a boss's reserved colour bleeds into the arena.
+## Weight 0 returns to the floor theme's own tint. Characters and spells are untouched.
+func set_ambience(color: Color, weight: float, seconds: float = 1.0) -> void:
+	var base: Color = floor_theme.floor_tint if floor_theme != null else Color.WHITE
+	var target: Color = ambience_tint(base, color, weight)
+	if _ambience_tween != null:
+		_ambience_tween.kill()
+	if seconds <= 0.0 or not is_inside_tree():
+		_tile_map.modulate = target
+		return
+	_ambience_tween = create_tween()
+	_ambience_tween.tween_property(_tile_map, ^"modulate", target, seconds)
+
+
+## Pure: the floor modulate for an ambience of [param color] at [param weight] over
+## [param base]. Keeps alpha; weight is clamped to 0–1.
+static func ambience_tint(base: Color, color: Color, weight: float) -> Color:
+	var out: Color = base.lerp(base * color, clampf(weight, 0.0, 1.0))
+	out.a = base.a
+	return out
+
+
 ## Adds the screen-space backdrop and vignette for this floor's look (ADR-0021).
 func _add_backdrop() -> void:
 	var old: Node = get_node_or_null(^"RoomBackdrop")
@@ -1018,44 +1059,26 @@ func _build_debris_obstacles() -> Array[Vector2]:
 		nav_obstacle.avoidance_enabled = true
 		body.add_child(nav_obstacle)
 
-		# Isometric rock silhouette — diamond base with raised top mass.
-		# Three layered Polygon2D simulate a chunky rock in isometric view.
+		# ADR-0039: pixel-art rubble painted in the floor's prop palette, 2× pixel scale
+		# like the rim props, with a flat ground shadow (art bible §5.4, §6.3).
 		var r: float = _DEBRIS_RADIUS
-		# Shadow footprint (dark diamond on floor)
 		var shadow := Polygon2D.new()
 		shadow.polygon = PackedVector2Array([
 			Vector2(0, -r * 0.45), Vector2(r * 0.85, 0),
 			Vector2(0, r * 0.45), Vector2(-r * 0.85, 0),
 		])
-		shadow.color = Color(0.10, 0.08, 0.07, 0.60)
+		shadow.color = Color(0.05, 0.04, 0.06, 0.5)
 		shadow.z_index = 4
 		body.add_child(shadow)
-		# Main rock body (mid-grey stone mass)
-		var rock := Polygon2D.new()
-		rock.polygon = PackedVector2Array([
-			Vector2(-r * 0.30, -r * 1.10),
-			Vector2( r * 0.30, -r * 1.10),
-			Vector2( r * 0.80, -r * 0.30),
-			Vector2( r * 0.65,  r * 0.20),
-			Vector2( r * 0.00,  r * 0.42),
-			Vector2(-r * 0.65,  r * 0.20),
-			Vector2(-r * 0.80, -r * 0.30),
-		])
-		rock.color = Color(0.42, 0.38, 0.34, 1.0)
+		var rock := Sprite2D.new()
+		rock.name = "Rubble"
+		rock.texture = PropArt.texture(PropArt.Prop.RUBBLE, get_look())
+		rock.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		rock.scale = Vector2(RoomDecor.PIXEL_SCALE, RoomDecor.PIXEL_SCALE)
+		rock.offset = Vector2(0.0, -float(rock.texture.get_height()) * 0.5 + 4.0)
+		rock.flip_h = (int(pos.x) + int(pos.y)) % 2 == 0
 		rock.z_index = 5
 		body.add_child(rock)
-		# Top face highlight (lighter patch on top of rock)
-		var top := Polygon2D.new()
-		top.polygon = PackedVector2Array([
-			Vector2(-r * 0.20, -r * 1.05),
-			Vector2( r * 0.20, -r * 1.05),
-			Vector2( r * 0.45, -r * 0.55),
-			Vector2( r * 0.00, -r * 0.40),
-			Vector2(-r * 0.45, -r * 0.55),
-		])
-		top.color = Color(0.62, 0.57, 0.51, 1.0)
-		top.z_index = 6
-		body.add_child(top)
 		if floor_theme != null:
 			body.modulate = floor_theme.debris_tint
 
@@ -1161,7 +1184,7 @@ func _build_pillars(taken: Array[Vector2]) -> void:
 	for pos: Vector2 in positions:
 		var pillar := CoverPillar.new()
 		pillar.name = "Pillar"
-		pillar.setup(cfg.pillar_hits, cfg.pillar_radius, col)
+		pillar.setup(cfg.pillar_hits, cfg.pillar_radius, col, get_look().prop_glow)
 		pillar.position = pos
 		add_child(pillar)
 

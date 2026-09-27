@@ -76,7 +76,7 @@ func _build() -> void:
 	add_child(root)
 	_root = root
 
-	var title := _label(_COPY.settings_title, 40, Color(1.0, 0.85, 0.3))
+	var title := _label(_COPY.settings_title, 40, UIPalette.ACCENT)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(title)
 
@@ -109,7 +109,7 @@ func _build() -> void:
 	shake.value = settings.screen_shake * 100.0
 	shake.custom_minimum_size = Vector2(160, 0)
 	shake.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_shake_value = _label("%d%%" % roundi(shake.value), 16, Color(0.8, 0.8, 0.86))
+	_shake_value = _label("%d%%" % roundi(shake.value), 16, UIPalette.TEXT)
 	shake.value_changed.connect(_on_shake_changed)
 	var shake_box := HBoxContainer.new()
 	shake_box.add_child(shake)
@@ -160,7 +160,7 @@ func _build() -> void:
 		_save())
 	_assist_controls.append(ad)
 	_refresh_assist()
-	middle.add_child(_label(_COPY.settings_assist_note, 14, Color(0.55, 0.55, 0.62)))
+	middle.add_child(_label(_COPY.settings_assist_note, 14, UIPalette.TEXT_FAINT))
 
 	# Keyboard key and gamepad button side by side (ADR-0031). Movement stays on
 	# the left stick, so only dash / cast / special get a pad button.
@@ -173,13 +173,13 @@ func _build() -> void:
 	grid.add_theme_constant_override(&"h_separation", 10)
 	grid.add_theme_constant_override(&"v_separation", 8)
 	grid.add_child(_sized(_label("", 14, Color.WHITE), 104))
-	grid.add_child(_sized(_label(_COPY.settings_keyboard_column, 14, Color(0.6, 0.6, 0.68)), 120))
-	grid.add_child(_sized(_label(_COPY.settings_gamepad_heading, 14, Color(0.6, 0.6, 0.68)), 90))
+	grid.add_child(_sized(_label(_COPY.settings_keyboard_column, 14, UIPalette.TEXT_DIM), 120))
+	grid.add_child(_sized(_label(_COPY.settings_gamepad_heading, 14, UIPalette.TEXT_DIM), 90))
 	for i: int in GameSettings.REMAPPABLE.size():
 		var action: StringName = GameSettings.REMAPPABLE[i]
 		var name_text: String = _COPY.settings_action_names[i] \
 			if i < _COPY.settings_action_names.size() else String(action)
-		grid.add_child(_sized(_label(name_text, 16, Color(0.82, 0.82, 0.88)), 104))
+		grid.add_child(_sized(_label(name_text, 16, UIPalette.TEXT), 104))
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(120, 32)
 		b.pressed.connect(_start_listening.bind(action))
@@ -192,7 +192,7 @@ func _build() -> void:
 			_pad_buttons[action] = pb
 			grid.add_child(pb)
 		else:
-			grid.add_child(_sized(_label(_COPY.settings_pad_stick, 14, Color(0.5, 0.5, 0.58)), 90))
+			grid.add_child(_sized(_label(_COPY.settings_pad_stick, 14, UIPalette.TEXT_FAINT), 90))
 	right.add_child(grid)
 	_controls_grid = grid
 	var resets := HBoxContainer.new()
@@ -208,7 +208,7 @@ func _build() -> void:
 	right.add_child(resets)
 	_percent_slider(right, _COPY.settings_rumble, 0.0, settings.rumble,
 		func(v: float) -> void: settings.rumble = v)
-	right.add_child(_label(_COPY.settings_gamepad_note, 14, Color(0.55, 0.55, 0.62)))
+	right.add_child(_label(_COPY.settings_gamepad_note, 14, UIPalette.TEXT_FAINT))
 
 	_refresh_keys()
 
@@ -409,7 +409,7 @@ func _column(parent: Node) -> VBoxContainer:
 func _row(text: String, control: Control) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override(&"separation", 12)
-	var l := _label(text, 16, Color(0.82, 0.82, 0.88))
+	var l := _label(text, 16, UIPalette.TEXT)
 	l.custom_minimum_size = Vector2(150, 0)
 	row.add_child(l)
 	row.add_child(control)
@@ -442,7 +442,7 @@ func _percent_slider(parent: Node, text: String, min_value: float, current: floa
 	slider.value = clampf(current, min_value, 1.0) * 100.0
 	slider.custom_minimum_size = Vector2(120, 0)
 	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var value := _label("%d%%" % roundi(slider.value), 16, Color(0.8, 0.8, 0.86))
+	var value := _label("%d%%" % roundi(slider.value), 16, UIPalette.TEXT)
 	slider.value_changed.connect(func(v: float) -> void:
 		value.text = "%d%%" % roundi(v)
 		setter.call(v / 100.0)

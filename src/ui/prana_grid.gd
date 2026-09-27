@@ -617,7 +617,7 @@ func _create_ui_nodes() -> void:
 	_full_grid_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_full_grid_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_full_grid_hint.add_theme_font_size_override(&"font_size", 14)
-	_full_grid_hint.add_theme_color_override(&"font_color", Color(1.0, 0.78, 0.3))
+	_full_grid_hint.add_theme_color_override(&"font_color", UIPalette.ACCENT)
 	_full_grid_hint.visible = false
 	layout.add_child(_full_grid_hint)
 
@@ -639,7 +639,7 @@ func _create_ui_nodes() -> void:
 	_quick_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_quick_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_quick_hint.add_theme_font_size_override(&"font_size", 14)
-	_quick_hint.add_theme_color_override(&"font_color", Color(0.55, 1.0, 0.7))
+	_quick_hint.add_theme_color_override(&"font_color", UIPalette.GOOD)
 	_quick_hint.visible = false
 	layout.add_child(_quick_hint)
 
@@ -673,7 +673,7 @@ func _create_ui_nodes() -> void:
 
 	_type_indicator_label = Label.new()
 	_type_indicator_label.text = _COPY.bag_empty
-	_type_indicator_label.add_theme_color_override(&"font_color", Color(0.6, 0.6, 0.66))
+	_type_indicator_label.add_theme_color_override(&"font_color", UIPalette.TEXT_DIM)
 	gp_strip.add_child(_type_indicator_label)
 
 	# Compact 3×3 dot indicator shown during LOCKED state (AC-CG-04).
@@ -935,7 +935,7 @@ func _update_type_indicator() -> void:
 		var b: Node = _get_bag()
 		var has_items: bool = b != null and b.has_method(&"is_empty") and not b.is_empty()
 		_type_indicator_label.text = _COPY.select_prana if has_items else _COPY.bag_empty
-		_type_indicator_label.add_theme_color_override(&"font_color", Color(0.6, 0.6, 0.66))
+		_type_indicator_label.add_theme_color_override(&"font_color", UIPalette.TEXT_DIM)
 		return
 	var bag: Node = _get_bag()
 	var count: int = 0

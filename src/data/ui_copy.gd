@@ -468,7 +468,7 @@ extends Resource
 ## Title, tagline and the main buttons, top to bottom (Memories and Settings use
 ## memories_button_format and settings_button).
 @export var menu_title: String = "THE LAST CIPHER"
-@export var menu_subtitle: String = "Arrange Prana. Cast. Defeat the floor boss."
+@export var menu_subtitle: String = "Arrange Prana. Cast. Survive three floors."
 @export var menu_play: String = "PLAY"
 @export var menu_heirlooms: String = "HEIRLOOMS"
 @export var menu_quit: String = "QUIT"

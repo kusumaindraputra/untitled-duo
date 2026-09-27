@@ -28,7 +28,9 @@ const DORMANT_ALPHA: float = 0.25
 
 const COLOR_NORMAL := Color(1.0, 0.32, 0.28)
 const COLOR_ELITE := Color(1.0, 0.8, 0.25)
-const COLOR_BOSS := Color(0.78, 0.45, 1.0)
+## Same hue as a normal enemy: boss colours never appear on UI (art bible §4.3);
+## MAJOR_SCALE makes the boss arrow stand out.
+const COLOR_BOSS := Color(1.0, 0.32, 0.28)
 const COLOR_WINDUP := Color(1.0, 1.0, 1.0)
 
 ## Player node; arrows fade by world distance to it. Set by the parent.
