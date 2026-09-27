@@ -348,6 +348,15 @@ func get_fayde_hp() -> int:
 	return _fayde_current_hp
 
 
+## Sets Fayde's HP when a saved run resumes (ADR-0048). Clamped to [1, FAYDE_MAX_HP];
+## not a heal or a hit, so it emits only the zone change. The HUD syncs separately.
+func restore_fayde_hp(hp: int) -> void:
+	if _fayde_dead:
+		return
+	_fayde_current_hp = clampi(hp, 1, FAYDE_MAX_HP)
+	_check_hp_zone_change()
+
+
 ## Spends [param amount] of Fayde's HP as a price (Wayshrine trade, ADR-0026). Never
 ## kills: refused (returns false) unless Fayde keeps at least 1 HP. Not an attack, so
 ## no i-frames and no damage modifiers; emits damage_taken so the HUD bar updates.

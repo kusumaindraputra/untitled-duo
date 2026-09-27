@@ -102,6 +102,7 @@ func test_main_menu_buttons_in_order() -> void:
 	var menu: Control = MainMenuScript.new()
 	menu.progress = MetaProgress.new()
 	menu.progress_path = PATH
+	menu.run_save_path = "user://test_no_run_save.cfg"  # ADR-0048: no Continue button
 	add_child(menu)
 	# _ready() loads progress from progress_path (empty) and builds the layout.
 
