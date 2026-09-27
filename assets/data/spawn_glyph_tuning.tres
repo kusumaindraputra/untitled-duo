@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="SpawnGlyphTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/spawn_glyph_tuning.gd" id="1_sg"]
+
+[resource]
+script = ExtResource("1_sg")
+draw_sec = 0.16
+rise_sec = 0.2
+settle_sec = 0.08
+fade_sec = 0.3
+radius = 15.0
+inner_ratio = 0.62
+iso_ratio = 0.5
+rune_count = 6
+spin_speed = 1.4
+alpha = 0.9
+hold_pulse_hz = 3.0
+rise_start_width = 0.6
+rise_tint = Color(0.55, 0.2, 0.45, 1)

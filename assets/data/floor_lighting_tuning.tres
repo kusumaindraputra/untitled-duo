@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="FloorLightingTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/floor_lighting_tuning.gd" id="1_fl"]
+
+[resource]
+script = ExtResource("1_fl")
+enabled = true
+texture_size = 64
+texture_bands = 5
+fayde_color = Color(0.556863, 0.45098, 0.345098, 1)
+fayde_energy = 1.0
+fayde_radius = 128.0
+pulse_pool_size = 6
+cast_energy = 0.9
+cast_radius = 80.0
+cast_sec = 0.18
+hit_energy = 0.8
+hit_radius = 64.0
+hit_sec = 0.22
+burst_energy = 1.3
+burst_radius_mult = 1.1
+burst_fallback_radius = 120.0
+burst_sec = 0.45
+spawn_energy = 0.6
+spawn_radius = 48.0
+spawn_sec = 0.35
+bullet_light_cap = 8
+bullet_energy = 0.35
+bullet_radius = 32.0
+bullet_refresh_sec = 0.1
