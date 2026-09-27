@@ -95,6 +95,9 @@ var _panel_layout: VBoxContainer = null
 var _gp_strip: HBoxContainer = null
 ## Prep hint under the header; its controls line follows the last-used device (U8).
 var _hint_label: Label = null
+## ADR-0057: the hand labels beside the grid's left (Ayden) and right (Faith) columns.
+var _ayden_label: Label = null
+var _faith_label: Label = null
 
 ## Compact 3×3 indicator shown in LOCKED state instead of the full grid panel.
 ## Null in headless tests. mouse_filter = MOUSE_FILTER_IGNORE (AC-CG-07).
@@ -585,8 +588,17 @@ func _create_ui_nodes() -> void:
 	grid.add_theme_constant_override(&"v_separation", 4)
 	# ADR-0042 (art bible §3.4): the grid sits in an octagonal frame, slots are circles.
 	var frame := PranaGridFrame.new()
-	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	layout.add_child(frame)
+	# ADR-0057: the left column is Ayden's hand, the right column Faith's.
+	var hands_row := HBoxContainer.new()
+	hands_row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	hands_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	hands_row.add_theme_constant_override(&"separation", 6)
+	layout.add_child(hands_row)
+	_ayden_label = _hand_label(_COPY.hand_ayden_label)
+	hands_row.add_child(_ayden_label)
+	hands_row.add_child(frame)
+	_faith_label = _hand_label(_COPY.hand_faith_label)
+	hands_row.add_child(_faith_label)
 	frame.add_child(grid)
 
 	for i in GRID_SIZE:
@@ -753,7 +765,32 @@ func _update_build_readout() -> void:
 	if _build_readout_label == null:
 		return
 	_build_readout_label.text = SpellPreview.to_bbcode(build_spell_card(), _type_colors(), _COPY.type_abbrevs)
+	_update_hand_labels()
 	_queue_fit_panel()
+
+
+## A hand label beside the grid (ADR-0057): dim until that hand holds Prana.
+func _hand_label(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	l.add_theme_font_size_override(&"font_size", 11)
+	l.add_theme_color_override(&"font_color", UIPalette.TEXT_FAINT)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return l
+
+
+## Brightens each hand label while its column holds Prana.
+func _update_hand_labels() -> void:
+	if _ayden_label == null or _faith_label == null:
+		return
+	var hands: Dictionary = PranaHands.read(_slots)
+	_ayden_label.add_theme_color_override(&"font_color",
+		UIPalette.TEXT if int(hands["ayden"]) > 0 else UIPalette.TEXT_FAINT)
+	_faith_label.add_theme_color_override(&"font_color",
+		UIPalette.TEXT if int(hands["faith"]) > 0 else UIPalette.TEXT_FAINT)
 
 
 ## The spell card for the current arrangement (U1), using the same CombinationResolution

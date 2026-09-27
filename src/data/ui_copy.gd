@@ -386,6 +386,15 @@ extends Resource
 	"Close range, low damage. Heals you over time.",
 ]
 
+## Two hands (ADR-0057): labels beside the grid's left and right columns.
+@export var hand_ayden_label: String = "AYDEN\npower"
+@export var hand_faith_label: String = "FAITH\ncontrol"
+## Preview lines for the hands: bonus percent for Ayden (damage) and Faith (status time).
+@export var hand_power_format: String = "Ayden's hand  +%d%% damage"
+@export var hand_control_format: String = "Faith's hand  +%d%% status time"
+## Appended when both hands hold the same number of Prana: the touch multiplier.
+@export var hands_touch_format: String = "Hands touch  ×%.1f"
+
 ## Next-tier hint: how many more of the core element, its name, the tier reached.
 @export var spell_preview_next_tier_format: String = "Add %d more %s for Tier %d"
 
@@ -473,7 +482,7 @@ extends Resource
 ## Title, tagline and the main buttons, top to bottom (Memories and Settings use
 ## memories_button_format and settings_button).
 @export var menu_title: String = "THE LAST CIPHER"
-@export var menu_subtitle: String = "Arrange Prana. Cast. Survive three floors."
+@export var menu_subtitle: String = "Two brothers' Prana. One pair of hands."
 @export var menu_play: String = "PLAY"
 @export var menu_heirlooms: String = "HEIRLOOMS"
 @export var menu_quit: String = "QUIT"
