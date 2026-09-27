@@ -833,11 +833,13 @@ func _configure_wave_manager_for_room(room_idx: int) -> void:
 
 ## Picks the combat-state music cue for [param rtype] via AudioSystem.
 ## Boss/elite/rest rooms each get a dedicated track; all other rooms reset to the
-## default floor track. No-op if AudioSystem is unavailable (e.g. headless tests).
+## current floor's own loop (ADR-0049). No-op if AudioSystem is unavailable (e.g. headless tests).
 func _select_room_music(rtype: int) -> void:
 	var audio: Node = get_node_or_null("/root/AudioSystem")
 	if audio == null or not audio.has_method(&"override_combat_cue"):
 		return
+	if audio.has_method(&"set_music_floor"):
+		audio.set_music_floor(_current_floor)
 	match rtype:
 		DungeonGraph.ROOM_TYPE_BOSS:
 			audio.override_combat_cue(&"mus_combat_boss")

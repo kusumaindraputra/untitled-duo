@@ -23,6 +23,10 @@
 ## pause menu is open and while Fayde is in the DESPERATE HP zone. Tuning lives in
 ## assets/data/audio_filter_tuning.tres.
 ##
+## Playlist (ADR-0049): which cue plays on the menu, in preparation, per floor in combat
+## and at run end comes from assets/data/music_playlist.tres. Each floor has its own
+## default combat loop; elite, boss and rest rooms still override it per room.
+##
 ## ADR: adr-0012-audio-system-implementation-contract.md
 extends Node
 
@@ -151,6 +155,15 @@ var _music_pre_stinger_volume: float = 0.0
 var _current_stinger_priority: int = -1
 ## Last stinger event played — provides restore_duration_sec for _restore_music_after_stinger().
 var _last_stinger_event: AudioEventData = null
+
+# ── Playlist — per-floor, menu and ending cues (ADR-0049) ───────────────────
+
+const _PLAYLIST: MusicPlaylist = preload("res://assets/data/music_playlist.tres")
+
+## Cue map for every music state. Swappable in tests; defaults to music_playlist.tres.
+var playlist: MusicPlaylist = _PLAYLIST
+## 1-based floor whose combat loop reset_combat_cue() restores. Set by the run scene.
+var _music_floor: int = 1
 
 # ── Low-pass muffle — pause + critical HP (ADR-0044) ─────────────────────────
 
@@ -349,11 +362,44 @@ func override_combat_cue(event_name: StringName) -> void:
 	_music_cues[MusicState.COMBAT as int] = _validated_events[event_name].stream
 
 
-## Resets the COMBAT music cue to the default floor track (mus_combat_floor).
-## Call this after a room is cleared so the next normal room uses the default cue.
+## Resets the COMBAT music cue to the current floor's default track (ADR-0049).
+## Call this before a normal room so it plays its floor loop, not a boss/elite override.
+## Falls back to mus_combat_floor when the playlist entry is not registered.
 func reset_combat_cue() -> void:
-	if _validated_events.has(&"mus_combat_floor"):
-		_music_cues[MusicState.COMBAT as int] = _validated_events[&"mus_combat_floor"].stream
+	var event_name: StringName = playlist.combat_cue_for_floor(_music_floor)
+	if not _validated_events.has(event_name):
+		event_name = &"mus_combat_floor"
+	if _validated_events.has(event_name):
+		_music_cues[MusicState.COMBAT as int] = _validated_events[event_name].stream
+
+
+## Sets the 1-based floor whose combat loop [method reset_combat_cue] restores (ADR-0049).
+## Values below 1 count as floor 1. Does not change a track already playing.
+func set_music_floor(floor_number: int) -> void:
+	_music_floor = maxi(1, floor_number)
+
+
+## Returns the floor set by [method set_music_floor].
+func get_music_floor() -> int:
+	return _music_floor
+
+
+## Fades the title/menu loop in (ADR-0049). Call from the main menu's _ready().
+## Clears any muffle a quit-from-pause left behind (ADR-0044) and ends an ending or
+## defeat cue early, so a run started from the menu always gets its preparation music.
+## No-op while the menu loop is already playing. Safe to call before the music
+## players enter the tree: it retries on the next idle frame.
+func play_menu_music() -> void:
+	clear_muffle()
+	_pending_defeat_transition = false
+	var active: AudioStreamPlayer = _music_players[_active_music_idx]
+	if not active.is_inside_tree():
+		play_menu_music.call_deferred()
+		return
+	var cue: AudioStream = _get_cue_for_state(MusicState.MAIN_MENU)
+	if _music_state == MusicState.MAIN_MENU and active.playing and active.stream == cue:
+		return
+	_crossfade_to(MusicState.MAIN_MENU, CROSSFADE_DURATION_TO_MAIN_MENU)
 
 
 ## Starts crossfade from the current ambient player to [param event_name]'s stream.
@@ -608,21 +654,25 @@ func _find_eviction_target(_incoming_priority: int) -> int:
 
 # ── Music state machine — implementation (Story 003) ─────────────────────────
 
-## Populates [member _music_cues] from the validated event registry.
-## PREPARATION → mus_rest (calming loop for rest/prep floors).
-## COMBAT → mus_combat_floor (default; overridable via override_combat_cue() for elite/boss rooms).
-## END_VICTORY / END_DEFEAT reuse the SFX stings already in the registry.
-## MAIN_MENU and DYING intentionally omitted — silent until menu cue is authored.
+## Populates [member _music_cues] from [member playlist] and the validated registry.
+## MAIN_MENU → title loop; PREPARATION → preparation loop; COMBAT → the current floor's
+## loop (overridable via override_combat_cue() for elite/boss/rest rooms);
+## END_VICTORY → the ending track; END_DEFEAT → the defeat sting (ADR-0049).
+## DYING is intentionally omitted — silence is its cue. An empty playlist entry
+## leaves that state silent without a warning.
 func _load_music_cues() -> void:
 	var pairs: Array = [
-		[MusicState.PREPARATION, &"mus_preparation"],
-		[MusicState.COMBAT,      &"mus_combat_floor"],
-		[MusicState.END_VICTORY, &"sfx_run_win"],
-		[MusicState.END_DEFEAT,  &"sfx_run_lose"],
+		[MusicState.MAIN_MENU,   playlist.menu_cue],
+		[MusicState.PREPARATION, playlist.preparation_cue],
+		[MusicState.COMBAT,      playlist.combat_cue_for_floor(_music_floor)],
+		[MusicState.END_VICTORY, playlist.victory_cue],
+		[MusicState.END_DEFEAT,  playlist.defeat_cue],
 	]
 	for pair: Array in pairs:
 		var state: MusicState = pair[0] as MusicState
 		var event_name: StringName = pair[1]
+		if event_name == &"":
+			continue
 		if _validated_events.has(event_name):
 			_music_cues[state as int] = _validated_events[event_name].stream
 		else:
@@ -680,8 +730,12 @@ func _crossfade_to(new_state: MusicState, fade_duration: float) -> void:
 
 	# Step 2: pre-set incoming volume BEFORE play() — prevents single-frame pop.
 	incoming.stream = cue
+	# Loops loop; END_* cues play once so their finished signal returns to the menu.
+	var is_end: bool = new_state == MusicState.END_DEFEAT or new_state == MusicState.END_VICTORY
 	if incoming.stream is AudioStreamMP3:
-		(incoming.stream as AudioStreamMP3).loop = true
+		(incoming.stream as AudioStreamMP3).loop = not is_end
+	elif incoming.stream is AudioStreamOggVorbis:
+		(incoming.stream as AudioStreamOggVorbis).loop = not is_end
 	incoming.volume_db = -80.0
 
 	# Step 3: start incoming player.
