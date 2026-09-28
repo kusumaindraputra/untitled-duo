@@ -67,6 +67,12 @@ extends Resource
 @export var style_perfect_cast: float = 5.0
 ## Style gained per Perfect Dodge.
 @export var style_perfect_dodge: float = 12.0
+## ADR-0058 duo style: a swap in combat, a Link Reaction, a Resonance, a Link Burst.
+## Swapping often keeps the meter alive; linking the brothers' elements drives it up.
+@export var style_swap: float = 2.0
+@export var style_link: float = 9.0
+@export var style_resonance: float = 7.0
+@export var style_link_burst: float = 14.0
 ## Style lost when Fayde takes damage.
 @export var style_hit_penalty: float = 30.0
 ## Seconds without a style event before the meter starts decaying.

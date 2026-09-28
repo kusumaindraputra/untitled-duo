@@ -33,6 +33,10 @@ var _perfect_counted: bool = false
 var _beat_clock: float = 0.0
 ## True when the last swap landed on a beat (a Resonance).
 var _last_resonant: bool = false
+## Run-wide heartbeat stretch (Deep Heartbeat sigil): the beat and its window scale.
+var _beat_mult: float = 1.0
+## Hits still needed to reconnect a link a boss severed; 0 = linked.
+var _sever_hits_left: int = 0
 
 
 func _init(tuning: DuoTuning = TUNING) -> void:
@@ -55,7 +59,45 @@ func tick(delta: float) -> void:
 
 ## True when a swap is allowed now.
 func can_swap() -> bool:
-	return _cooldown <= 0.0
+	return _cooldown <= 0.0 and not is_severed()
+
+
+## A boss cut the brothers' link: no swaps until [param hits] hits land.
+func sever(hits: int) -> void:
+	_sever_hits_left = maxi(hits, 1)
+
+
+## True while a severed link waits to be reconnected.
+func is_severed() -> bool:
+	return _sever_hits_left > 0
+
+
+## Hits still needed to reconnect the link (0 when linked).
+func sever_hits_left() -> int:
+	return _sever_hits_left
+
+
+## Counts a landed hit toward reconnecting. Returns true on the hit that reconnects.
+func note_hit() -> bool:
+	if _sever_hits_left <= 0:
+		return false
+	_sever_hits_left -= 1
+	return _sever_hits_left == 0
+
+
+## Deep Heartbeat sigil: stretches the beat and its Resonance window by [param factor].
+## Stacks multiplicatively; set_beat_mult(1.0) resets it.
+func apply_beat_mult(factor: float) -> void:
+	_beat_mult *= maxf(factor, 0.01)
+
+
+func set_beat_mult(value: float) -> void:
+	_beat_mult = maxf(value, 0.01)
+
+
+## Seconds between beats with the run's sigils.
+func heartbeat_period() -> float:
+	return _tuning.heartbeat_sec * _beat_mult
 
 
 ## Swaps to the other brother when the cooldown allows. [param hands_touching] shortens
@@ -83,6 +125,7 @@ func reset_timers() -> void:
 	_perfect_counted = false
 	_beat_clock = 0.0
 	_last_resonant = false
+	_sever_hits_left = 0
 
 
 ## Seconds until the next swap is allowed.
@@ -110,20 +153,24 @@ func last_swap_resonant() -> bool:
 
 ## True within DuoTuning.resonance_window_sec of a heartbeat.
 func is_on_beat() -> bool:
-	return beat_distance(_beat_clock, _tuning) <= _tuning.resonance_window_sec
+	return beat_distance(_beat_clock, _tuning, heartbeat_period()) \
+		<= _tuning.resonance_window_sec * _beat_mult
 
 
 ## Heartbeat phase, 0 on a beat rising to 1 just before the next (for the HUD pulse).
 func beat_phase() -> float:
-	return fposmod(_beat_clock, _tuning.heartbeat_sec) / _tuning.heartbeat_sec
+	var period: float = heartbeat_period()
+	return fposmod(_beat_clock, period) / period
 
 
 # ── Rules ────────────────────────────────────────────────────────────────────
 
 ## Seconds from [param clock] to the nearest heartbeat.
-static func beat_distance(clock: float, t: DuoTuning = TUNING) -> float:
-	var into: float = fposmod(clock, t.heartbeat_sec)
-	return minf(into, t.heartbeat_sec - into)
+## [param period] overrides the tuning's beat length when positive.
+static func beat_distance(clock: float, t: DuoTuning = TUNING, period: float = -1.0) -> float:
+	var p: float = period if period > 0.0 else t.heartbeat_sec
+	var into: float = fposmod(clock, p)
+	return minf(into, p - into)
 
 
 ## Grid slot of [param c]'s palm.

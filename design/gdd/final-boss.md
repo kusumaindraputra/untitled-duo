@@ -24,7 +24,7 @@ read: a named banner, a camera kick, and a new rule for the room each time.
 |----|---------------|--------------|--------|
 | 100 % | Laser lattice (4 beams, rotating 22° per volley), aimed 5-bullet fan | — | Boss name card |
 | 70 % | Homing ring (8) | Beam pylon rises in the room centre | "The first lock breaks — a beam pylon rises" |
-| 45 % | Sine spiral | Closing ring shrinks the arena to 50 % | "The vault closes in" |
+| 45 % | Sine spiral | Closing ring shrinks the arena to 50 %; the brothers' link is severed until the player lands 6 hits (duo-swap.md Rule 6d) | "SEPARATION IS THE WEAPON — land hits to find each other" |
 | 20 % | Mortar with splash | Every enemy bullet is wiped once | "THE LAST CIPHER — hold on" |
 
 - A hit that crosses two thresholds applies every phase in between.

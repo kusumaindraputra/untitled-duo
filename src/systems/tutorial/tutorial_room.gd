@@ -1,8 +1,9 @@
 ## TutorialRoom — the guided lessons of the first run's first room (ADR-0055).
 ##
-## Six lessons, shown one at a time in order on a TutorialRoomPanel: two while the grid
-## is open (place a Prana from the bag, lock the grid) and four once the fight starts
-## (move, dash, cast at a training target, Perfect Dodge a slow shot from a pylon).
+## Ten lessons, shown one at a time in order on a TutorialRoomPanel: three while the grid
+## is open (place a Prana from the bag, put one in Ayden's palm, lock the grid) and seven
+## once the fight starts (move, dash, cast at a training target, Perfect Dodge a slow
+## shot from a pylon, then the duo: swap, a Link Reaction, a Resonance, ADR-0058).
 ## The room's real wave is held back by WaveManager.hold_wave until the lessons end;
 ## [signal finished] tells the parent to release it. Holding the skip action ends the
 ## lessons at once, from either phase.
@@ -24,15 +25,18 @@ enum Phase { NONE, PREP, COMBAT }
 
 ## Lesson ids, in display order. Copy for each is UICopy.tutorial_steps_kb/_pad[i].
 const STEPS: Array[StringName] = [
-	&"place", &"confirm", &"move", &"dash", &"cast", &"perfect_dodge",
+	&"place", &"palm", &"confirm", &"move", &"dash", &"cast", &"perfect_dodge",
+	&"swap", &"link", &"resonance",
 ]
 ## Phase in which each lesson is shown (same order as STEPS).
 const STEP_PHASES: Array[Phase] = [
-	Phase.PREP, Phase.PREP, Phase.COMBAT, Phase.COMBAT, Phase.COMBAT, Phase.COMBAT,
+	Phase.PREP, Phase.PREP, Phase.PREP, Phase.COMBAT, Phase.COMBAT, Phase.COMBAT,
+	Phase.COMBAT, Phase.COMBAT, Phase.COMBAT, Phase.COMBAT,
 ]
 ## Action whose key/button fills the lesson's %s (&"" = none; "move" uses the move keys).
 const STEP_ACTIONS: Array[StringName] = [
-	&"", &"prana_confirm", &"move", &"dash", &"cast", &"dash",
+	&"", &"", &"prana_confirm", &"move", &"dash", &"cast", &"dash",
+	&"swap", &"swap", &"swap",
 ]
 ## Input action held to skip the lessons (registered by the game loop).
 const SKIP_ACTION: StringName = &"tutorial_skip"
@@ -48,6 +52,9 @@ var panel: TutorialRoomPanel = null
 var arena: Node2D = null
 ## Candidate world positions for targets and the pylon (the room's spawn markers).
 var spots: Array[Vector2] = []
+## The prep grid, polled for a Prana in Ayden's palm (needs get_slot_types()). Set by
+## the parent; null in headless tests.
+var grid: Node = null
 
 var _done: Dictionary[StringName, bool] = {}
 var _shown: StringName = &""
@@ -64,6 +71,9 @@ var _turret: TutorialTurret = null
 ## Seconds left before each destroyed target returns, and where it returns to.
 var _respawn_timers: Array[float] = []
 var _respawn_spots: Array[Vector2] = []
+## Swaps made in the fight; the Link and Resonance lessons tick on their own after
+## enough of them, so a missing palm or a hard beat never traps a young player.
+var _swaps: int = 0
 
 
 func _init() -> void:
@@ -92,6 +102,8 @@ func _process(delta: float) -> void:
 		_track_moves()
 	else:
 		_last_player_pos = Vector2.INF
+		if phase == Phase.PREP:
+			_track_palm()
 	if _tick_hold > 0.0:
 		_tick_hold -= delta
 		return
@@ -252,6 +264,7 @@ static func pick_spots(origin: Vector2, candidates: Array[Vector2], count: int,
 ## training targets and the pylon in the room.
 func on_combat_started(_is_boss: bool) -> void:
 	notify(&"place")
+	notify(&"palm")
 	notify(&"confirm")
 	if not _finished:
 		_spawn_training()
@@ -274,6 +287,28 @@ func on_perfect_dodge(_world_pos: Vector2) -> void:
 	notify(&"perfect_dodge")
 
 
+## PlayerController.character_swapped: a real swap (cooldown > 0, not the combat-start
+## announcement) ticks the swap lesson and counts toward the duo fallbacks.
+func on_character_swapped(_character: int, cooldown: float) -> void:
+	if cooldown <= 0.0:
+		return
+	notify(&"swap")
+	_swaps += 1
+	if _swaps >= TUNING.duo_fallback_swaps:
+		notify(&"link")
+		notify(&"resonance")
+
+
+## SpellCastingEffects.link_reaction.
+func on_link_reaction(_reaction_name: String, _world_pos: Vector2, _character: int) -> void:
+	notify(&"link")
+
+
+## PlayerController.resonated.
+func on_resonated(_world_pos: Vector2) -> void:
+	notify(&"resonance")
+
+
 # ── Private ───────────────────────────────────────────────────────────────────
 
 func _track_moves() -> void:
@@ -287,6 +322,15 @@ func _track_moves() -> void:
 		_last_player_pos = player.global_position
 	if not _done[&"dash"] and player.has_method(&"is_dashing") and player.is_dashing():
 		notify(&"dash")
+
+
+## Ticks the palm lesson once the grid holds a Prana in Ayden's palm.
+func _track_palm() -> void:
+	if _done[&"palm"] or not is_instance_valid(grid) or not grid.has_method(&"get_slot_types"):
+		return
+	var types: Array = grid.get_slot_types()
+	if types.size() > DuoSwap.AYDEN_PALM and types[DuoSwap.AYDEN_PALM] != null:
+		notify(&"palm")
 
 
 func _tick_skip(delta: float) -> void:

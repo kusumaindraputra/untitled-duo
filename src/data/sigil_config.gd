@@ -88,6 +88,17 @@ extends Resource
 ## Metronome: a Perfect Cast at streak >= metronome_streak heals this much per stack.
 @export var metronome_streak: int = 3
 @export var metronome_heal: float = 3.0
+## Duo sigils (ADR-0058).
+## Wide Link: multiplier on the Link Reaction and Link Burst radius per stack.
+@export var wide_link_mult: float = 1.5
+## Deep Heartbeat: the shared heartbeat and its Resonance window stretch by this per
+## stack, and a Resonance pays deep_heart_meter_mult × its Special meter.
+@export var deep_heart_mult: float = 1.4
+@export var deep_heart_meter_mult: float = 2.0
+## Echo Brother: on each swap the benched brother's afterimage strikes the nearest enemy
+## within echo_range px for echo_damage × stacks, leaving his Link mark.
+@export var echo_damage: float = 14.0
+@export var echo_range: float = 220.0
 ## Text colour of behaviour-sigil cards in the reward overlay.
 @export var behaviour_card_color: Color = Color(1.0, 0.78, 0.35)
 
@@ -121,4 +132,7 @@ extends Resource
 	{"id": &"siphon",      "title": "Siphon",           "desc": "Every 8 kills restore 6 HP", "behaviour": true},
 	{"id": &"riposte",     "title": "Riposte",          "desc": "A Perfect Dodge blasts enemies around you", "behaviour": true},
 	{"id": &"metronome",   "title": "Metronome",        "desc": "Perfect Casts on a 3+ streak restore HP", "behaviour": true},
+	{"id": &"wide_link",   "title": "Wide Link",        "desc": "+50% LINK and Link Burst reach"},
+	{"id": &"deep_heart",  "title": "Deep Heartbeat",   "desc": "A slower heartbeat, easier RESONANCE, double its meter"},
+	{"id": &"echo_brother", "title": "Echo Brother",    "desc": "Each swap, the brother leaving strikes once and marks the foe for LINK", "behaviour": true},
 ]

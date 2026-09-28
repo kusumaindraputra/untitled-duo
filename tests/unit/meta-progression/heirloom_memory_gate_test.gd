@@ -31,8 +31,8 @@ func _rich(found: int) -> MetaProgress:
 
 # ── HG-01 / HG-02: shipped data ───────────────────────────────────────────────
 
-func test_heirloom_data_arrays_parallel_and_ten() -> void:
-	assert_int(META.heirloom_ids.size()).is_equal(10)
+func test_heirloom_data_arrays_parallel_and_twelve() -> void:
+	assert_int(META.heirloom_ids.size()).is_equal(12)
 	assert_int(META.heirloom_costs.size()).is_equal(META.heirloom_ids.size())
 	assert_int(META.heirloom_memory_gates.size()).is_equal(META.heirloom_ids.size())
 	for i: int in range(1, META.heirloom_memory_gates.size()):

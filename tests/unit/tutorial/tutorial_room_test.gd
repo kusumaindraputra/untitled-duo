@@ -24,6 +24,8 @@ func test_tutorial_room_starts_on_the_grid_lesson() -> void:
 func test_tutorial_room_lessons_show_in_order() -> void:
 	var t := TutorialRoom.new()
 	t.notify(&"place")
+	assert_str(String(t.current_step())).is_equal("palm")
+	t.notify(&"palm")
 	assert_str(String(t.current_step())).is_equal("confirm")
 	t.notify(&"confirm")
 	t.notify(&"move")
@@ -206,3 +208,41 @@ func test_tutorial_room_cancel_ends_quietly() -> void:
 	t.skip()
 	assert_array(calls).is_empty()
 	t.free()
+
+
+# ── ADR-0058: duo lessons ─────────────────────────────────────────────────────
+
+func test_tutorial_room_swap_lesson_ignores_the_combat_start_announcement() -> void:
+	var t := TutorialRoom.new()
+	t.on_character_swapped(DuoSwap.Character.AYDEN, 0.0)
+	assert_bool(t.is_step_done(&"swap")).is_false()
+	t.on_character_swapped(DuoSwap.Character.AYDEN, 0.6)
+	assert_bool(t.is_step_done(&"swap")).is_true()
+	t.free()
+
+
+func test_tutorial_room_link_and_resonance_signals_tick_their_lessons() -> void:
+	var t := TutorialRoom.new()
+	t.on_link_reaction("Steam", Vector2.ZERO, DuoSwap.Character.AYDEN)
+	t.on_resonated(Vector2.ZERO)
+	assert_bool(t.is_step_done(&"link")).is_true()
+	assert_bool(t.is_step_done(&"resonance")).is_true()
+	t.free()
+
+
+func test_tutorial_room_many_swaps_pass_the_duo_lessons_for_a_stuck_player() -> void:
+	var t := TutorialRoom.new()
+	for i: int in TutorialRoom.TUNING.duo_fallback_swaps - 1:
+		t.on_character_swapped(i % 2, 0.6)
+	assert_bool(t.is_step_done(&"link")).is_false()
+	t.on_character_swapped(DuoSwap.Character.AYDEN, 0.6)
+	assert_bool(t.is_step_done(&"link")).is_true()
+	assert_bool(t.is_step_done(&"resonance")).is_true()
+	t.free()
+
+
+func test_tutorial_room_palm_marker_sits_on_both_palms_only() -> void:
+	assert_int(PranaGridSlot.palm_owner_of(DuoSwap.AYDEN_PALM)).is_equal(DuoSwap.Character.AYDEN)
+	assert_int(PranaGridSlot.palm_owner_of(DuoSwap.FAITH_PALM)).is_equal(DuoSwap.Character.FAITH)
+	assert_int(PranaGridSlot.palm_owner_of(DuoSwap.CENTRE)).is_equal(DuoSwap.NONE)
+	assert_int(PranaGridSlot.palm_owner_of(0)).is_equal(DuoSwap.NONE)

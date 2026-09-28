@@ -129,6 +129,11 @@ signal face_changed(spell_effect: SpellEffect)
 ## enemy still carrying the other brother's element, or cashed in a Resonance.
 ## [param reaction_name] is the Reaction Matrix name of the two elements.
 signal link_reaction(reaction_name: String, world_pos: Vector2, character: int)
+## ADR-0058: the Special fired a Link Burst of both brothers' cores at [param world_pos]
+## with [param radius] px reach. [param character] is the brother in the arena.
+signal link_burst(reaction_name: String, world_pos: Vector2, radius: float, character: int)
+## ADR-0058: [param character] tagged in with a swap (duo sigils listen).
+signal brother_tagged_in(character: int)
 
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -344,6 +349,9 @@ var _active_character: int = DuoSwap.NONE
 var _base_spell_effect: SpellEffect = null
 ## Combat clock (s) used to age Link marks. Advances in _process.
 var _duo_clock: float = 0.0
+## Run-wide duo sigil multipliers (Wide Link, Deep Heartbeat). Reset at run start.
+var _link_radius_mult: float = 1.0
+var _resonance_meter_mult: float = 1.0
 ## Enemy instance id → { c: brother, pt: element, t: _duo_clock } of the last duo hit
 ## on it. The other brother hitting it with another element sets off a Link Reaction.
 var _link_marks: Dictionary = {}
@@ -1112,6 +1120,7 @@ func _trigger_special() -> void:
 		_status_effects.apply_status(_fayde_ref, GameEnums.BaseStatus.REGENERATE, t.sanctuary_regen_duration)
 
 	_apply_special_infusions(se, origin, hit)
+	_try_link_burst(origin, damage)
 
 	special_fired.emit(pt, origin, 0.0 if pt == GameEnums.DamageClass.LIGHTNING else radius)
 	cast_hit_started.emit(t.special_lock_duration)
@@ -1319,6 +1328,7 @@ func set_active_character(character: int, tagged_in: bool = false, resonant: boo
 		_arm_reactions(face)
 		face_changed.emit(face)
 	if tagged_in:
+		brother_tagged_in.emit(character)
 		_combo_index = 0
 		_perfect_streak = 0
 		if _state == SCEState.CHAINING:
@@ -1326,7 +1336,7 @@ func set_active_character(character: int, tagged_in: bool = false, resonant: boo
 			chain_index_changed.emit(0, _current_spell_effect.combo_attack_count if _current_spell_effect else 0)
 	if resonant:
 		grant_perfect_cast(DUO_TUNING.resonance_perfect_sec)
-		_add_special_meter(DUO_TUNING.resonance_meter_gain)
+		_add_special_meter(DUO_TUNING.resonance_meter_gain * _resonance_meter_mult)
 		_resonance_pending = true
 
 
@@ -1379,7 +1389,7 @@ func _fire_link_reaction(target: Node, a: int, b: int) -> void:
 	var t: DuoTuning = DUO_TUNING
 	var pos: Vector2 = _pos_of(target)
 	var hit: Array[Node] = [target]
-	for e: Node2D in _enemies_within(pos, t.link_radius):
+	for e: Node2D in _enemies_within(pos, get_link_radius()):
 		if e != target:
 			hit.append(e)
 	var dmg: float = BASE_SPELL_DAMAGE * t.link_damage_mult
@@ -1399,10 +1409,79 @@ func _fire_link_reaction(target: Node, a: int, b: int) -> void:
 		reaction_triggered.emit(reaction_name, pos, b)
 
 
-## One element's status from a Link Reaction on [param enemy]. Plain statuses: they
-## never set off the grid's own reactions (Witchfire, Short Circuit...).
-func _link_status(enemy: Node, pt: int) -> void:
-	var dur: float = DUO_TUNING.link_status_sec
+## The two brothers' core elements (active first) when both are known and differ, else
+## an empty array. Pure over their faces of the grid.
+func duo_cores() -> Array[int]:
+	if _active_character == DuoSwap.NONE:
+		return []
+	var mine: SpellEffect = _face_for(_active_character)
+	var theirs: SpellEffect = _face_for(DuoSwap.other(_active_character))
+	if mine == null or theirs == null or mine.primary_type == theirs.primary_type \
+			or mine.primary_type < 0 or theirs.primary_type < 0:
+		return []
+	return [mine.primary_type, theirs.primary_type]
+
+
+## ADR-0058 Link Burst: after the Special, when the brothers' cores differ, both appear
+## and their two elements react at full Special size. [param special_damage] is the
+## Special's per-enemy damage. The pair sets the shape: Voidblue pulls enemies in,
+## Verdant heals Fayde, Stormgold stuns; every enemy takes both elements' statuses.
+func _try_link_burst(origin: Vector2, special_damage: float) -> void:
+	var t: DuoTuning = DUO_TUNING
+	if not t.link_burst:
+		return
+	var cores: Array[int] = duo_cores()
+	if cores.is_empty():
+		return
+	var a: int = cores[1]  # the benched brother's element leads, like a Link mark
+	var b: int = cores[0]
+	var radius: float = link_burst_radius()
+	var dur: float = t.link_status_sec * t.link_burst_status_mult
+	for enemy: Node2D in _enemies_within(origin, radius):
+		_deal_bonus_damage(enemy, special_damage * t.link_burst_damage_mult, b)
+		if not _is_live(enemy):
+			continue
+		_link_status(enemy, a, dur)
+		_link_status(enemy, b, dur)
+		if a == GameEnums.DamageClass.SHADOW or b == GameEnums.DamageClass.SHADOW:
+			_pull_toward(enemy, origin, t.link_burst_pull)
+	if (a == GameEnums.DamageClass.NATURE or b == GameEnums.DamageClass.NATURE) and _fayde_ref != null:
+		_status_effects.apply_status(_fayde_ref, GameEnums.BaseStatus.REGENERATE, dur)
+	var rdef: ReactionDef = CombinationResolution.get_reaction(a, b)
+	var reaction_name: String = rdef.name if rdef != null else ""
+	link_burst.emit(reaction_name, origin, radius, _active_character)
+	if reaction_name != "":
+		reaction_triggered.emit(reaction_name, origin, b)
+
+
+## Link Burst radius (px) with the run's sigils.
+func link_burst_radius() -> float:
+	return ATTACK_TUNING.special_radius * DUO_TUNING.link_burst_radius_mult * _link_radius_mult
+
+
+## ADR-0058 Echo sigil: the benched brother [param character]'s afterimage strikes the
+## nearest enemy within [param max_range] for [param damage] with his element, leaving
+## his Link mark so the brother in the arena can react with it. Returns the enemy hit,
+## or null when there is none (or no duo, or no face yet).
+func echo_strike(character: int, damage: float, max_range: float) -> Node2D:
+	var face: SpellEffect = _face_for(character)
+	if character == DuoSwap.NONE or face == null or face.primary_type < 0:
+		return null
+	var near: Array[Node2D] = _nearest_enemies(_pos_of(_fayde_ref), [], 1, max_range)
+	if near.is_empty():
+		return null
+	var enemy: Node2D = near[0]
+	_deal_bonus_damage(enemy, damage, face.primary_type)
+	if _is_live(enemy):
+		_link_marks[enemy.get_instance_id()] = {"c": character, "pt": face.primary_type, "t": _duo_clock}
+	return enemy
+
+
+## One element's status from a Link Reaction on [param enemy] for [param seconds]
+## (link_status_sec when negative). Plain statuses: they never set off the grid's own
+## reactions (Witchfire, Short Circuit...).
+func _link_status(enemy: Node, pt: int, seconds: float = -1.0) -> void:
+	var dur: float = DUO_TUNING.link_status_sec if seconds < 0.0 else seconds
 	match pt:
 		GameEnums.DamageClass.FIRE:
 			_status_effects.apply_status(enemy, GameEnums.BaseStatus.BURN, dur, BASE_SPELL_DAMAGE)
@@ -1457,6 +1536,23 @@ func apply_damage_mult(factor: float) -> void:
 ## without it sigil and Core multipliers leaked into the next run (ADR-0033).
 func reset_run_damage_mult() -> void:
 	_run_damage_mult = 1.0
+	_link_radius_mult = 1.0
+	_resonance_meter_mult = 1.0
+
+
+## Sigil (Wide Link): multiplies the Link Reaction and Link Burst radius. Stacks.
+func apply_link_radius_mult(factor: float) -> void:
+	_link_radius_mult *= factor
+
+
+## Link Reaction radius (px) with the run's sigils.
+func get_link_radius() -> float:
+	return DUO_TUNING.link_radius * _link_radius_mult
+
+
+## Sigil (Deep Heartbeat): multiplies the Special meter a Resonance pays. Stacks.
+func apply_resonance_meter_mult(factor: float) -> void:
+	_resonance_meter_mult *= factor
 
 
 ## Returns the current run-wide damage multiplier. Exposed for tests and sigil UI.

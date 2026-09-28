@@ -130,10 +130,59 @@ bridge between the kits.
   with the benched brother's element even if the enemy carries no mark.
 - The window is generous on purpose (young players); it is a skill layer, not a gate.
 
+### Rule 6c — Link Burst (the duo Special, 2026-09-28)
+- When the Special fires and the two brothers' cores differ (palm faces, Rule 6), it
+  becomes a **Link Burst**: the benched brother appears beside Fayde, casting, and the
+  two elements react around Fayde after the active brother's own Special.
+- Every enemy within `special_radius × link_burst_radius_mult` takes
+  `special_damage × link_burst_damage_mult` and both elements' statuses for
+  `link_status_sec × link_burst_status_mult`.
+- The pair sets the shape: Voidblue in the pair pulls enemies toward Fayde
+  (`link_burst_pull`), Verdant gives Fayde Regenerate, Stormgold stuns through its status.
+  The name comes from the Reaction Matrix ("LINK BURST!" callout).
+- Same core on both brothers (or no palm Prana): a plain Special, which is the hint to
+  fill a palm. This resolves the "brother-specific Specials" item: the Special is the
+  brothers' shared move, not two separate ones.
+
+### Rule 6d — Severed link (Cipher Keeper, fragment 6)
+- The Cipher Keeper's second phase **severs** the link ("SEPARATION IS THE WEAPON"):
+  no swaps until the player lands `sever_reconnect_hits` spell hits. The duo row reads
+  "AYDEN ✂ FAITH (hit N more)".
+- The hit that reconnects pops "RELINKED!", flashes the brother and pays
+  `relink_meter_gain` Special meter. A preparation phase always heals the link.
+- Story: fragment 6 "Separation" is the Kingdom's weapon; the fight makes the player
+  feel it and win it back. Other bosses can use `BossPhaseEvent.sever_link`.
+
+### Rule 6e — Duo sigils and Heirlooms
+- **Wide Link** (stat, Heirloom): Link Reaction and Link Burst reach × `wide_link_mult`.
+- **Deep Heartbeat** (stat): the heartbeat and its Resonance window stretch by
+  `deep_heart_mult`, and a Resonance pays `deep_heart_meter_mult` × its meter.
+- **Echo Brother** (behaviour, Heirloom): on each swap the brother leaving strikes the
+  nearest enemy within `echo_range` for `echo_damage × stacks` with his element and
+  leaves his Link mark, so the brother tagging in can LINK on his first hit.
+- Values live in `SigilConfig`. A Wayshrine that changes the palm element was dropped:
+  the grid is rebuilt every preparation, so the player already picks each palm freely.
+
+### Rule 6f — Style and run log
+- Duo moves feed the style rank (S–D): a swap `style_swap` (only when a hit landed
+  since the last swap, so mashing Q does not farm the rank), a Link Reaction
+  `style_link`, a Resonance `style_resonance`, a Link Burst `style_link_burst`
+  (`PaceTuning`).
+- Each fight's build in the run log carries `duo: {swaps, links, resonances,
+  link_bursts}`, and each run entry sums them, for tuning the duo from playtests.
+
+### Rule 6g — Tutorial
+- The guided first room teaches the duo after the dash lessons: put a Prana in Ayden's
+  palm (prep), swap, LINK, RESONANCE. The bag gets one Prana of a second element so a
+  LINK is possible. A player who swaps `duo_fallback_swaps` times passes LINK and
+  RESONANCE anyway, so no one gets stuck. Both palm slots carry an inner ring in their
+  brother's colour on the prep grid.
+
 ### Rule 7 — Shared resources
 - **HP**: one shared bar, carried by the Prana link that binds them (if one falls, the
   link breaks and both fall). See Open Question 2.
-- **Special meter**: one shared meter. The Special fires as the active character's version.
+- **Special meter**: one shared meter. The Special fires as the active character's version,
+  joined by the benched brother as a Link Burst when their cores differ (Rule 6c).
 - **Dash charges**: Faith's. They keep recharging while Ayden is out, so a swap to Faith
   usually finds a charge ready. The HUD dash ring hides while Ayden is out.
 - **Assist auto-dash (F2)**: as Ayden it swaps to Faith instead (tag-in i-frames let the
@@ -150,7 +199,13 @@ bridge between the kits.
 `link_burst = 20 × link_damage_mult × run_damage_mult` on the reacting enemy,
 `× link_splash_mult` on others within `link_radius`
 
-`resonant(swap) = distance(combat_clock, nearest multiple of heartbeat_sec) ≤ resonance_window_sec`
+`resonant(swap) = distance(combat_clock, nearest multiple of heartbeat_sec × beat_mult) ≤ resonance_window_sec × beat_mult`
+(`beat_mult` = `deep_heart_mult` per Deep Heartbeat stack, else 1)
+
+`link_burst_damage = special_damage × link_burst_damage_mult` (0.8) per enemy within
+`special_radius × link_burst_radius_mult × wide_link_mult^stacks` (120 × 1.3 = 156 px)
+
+`echo_damage = echo_damage × stacks` (14 per stack) × run_damage_mult
 
 `hands_power_mult`, `hands_control_mult` come from `PranaHands.read()` (ADR-0057),
 but each now applies only to its own character.
@@ -202,7 +257,14 @@ Memory Fragments (lore framing, Section 9).
 
 ## 7. Tuning Knobs
 `DuoTuning` resource (`assets/data/duo_tuning.tres`) with every value in Section 4, plus
-`faith_dash_cut_radius` (24 px), `breach_knockback` (60 px) and `palm_faces` (on).
+`faith_dash_cut_radius` (24 px), `breach_knockback` (60 px), `palm_faces` (on), the Link
+Burst group (`link_burst` on, `link_burst_damage_mult` 0.8, `link_burst_radius_mult` 1.3,
+`link_burst_status_mult` 2.0, `link_burst_pull` 40, `partner_show_sec` 0.6) and the
+severed-link group (`sever_reconnect_hits` 6, `relink_meter_gain` 25). Duo sigils:
+`SigilConfig` (`wide_link_mult` 1.5, `deep_heart_mult` 1.4, `deep_heart_meter_mult` 2.0,
+`echo_damage` 14, `echo_range` 220). Duo style: `PaceTuning` (`style_swap` 2,
+`style_link` 9, `style_resonance` 7, `style_link_burst` 14). Tutorial fallback:
+`TutorialRoomTuning.duo_fallback_swaps` (8).
 Safe ranges are on each export in `src/data/duo_tuning.gd`.
 
 ## 8. Acceptance Criteria
@@ -225,6 +287,17 @@ Safe ranges are on each export in `src/data/duo_tuning.gd`.
 - Ayden takes ×`ayden_damage_taken_mult` damage and no knock-back; Faith takes both in
   full (unit test).
 - Assist auto-dash swaps Ayden out instead of dashing (unit test).
+- A Special with different cores fires one Link Burst named by the Reaction Matrix at
+  `special_radius × link_burst_radius_mult`; same cores fire none (unit tests,
+  `duo_link_test.gd`).
+- The Cipher Keeper's phase 2 severs the link; swaps fail until `sever_reconnect_hits`
+  hits land, then `relinked` fires and pays meter (unit tests).
+- Wide Link, Deep Heartbeat and Echo Brother change their numbers as listed; Echo's
+  strike sets up a LINK for the brother tagging in (unit tests).
+- Swaps (hit-gated), Links, Resonances and Link Bursts raise style, and each fight's
+  tally reaches the run log (unit tests).
+- The tutorial's palm, swap, LINK and Resonance lessons tick from their signals, with
+  the swap-count fallback (unit tests).
 
 ## 9. Lore — Ayden and Faith as two separate beings (chosen 2026-09-28)
 

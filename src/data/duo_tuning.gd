@@ -83,3 +83,26 @@ extends Resource
 @export_range(0.0, 5.0, 0.1) var resonance_perfect_sec: float = 1.5
 ## Special meter a Resonance pays.
 @export_range(0.0, 100.0, 1.0) var resonance_meter_gain: float = 10.0
+
+@export_group("Link Burst")
+
+## The Special also fires a Link Burst when the two brothers' cores differ: both
+## brothers appear and their two elements react at full Special size. Off = plain Special.
+@export var link_burst: bool = true
+## Burst damage per enemy, as a multiple of the Special's own damage.
+@export_range(0.0, 3.0, 0.05) var link_burst_damage_mult: float = 0.8
+## Burst radius, as a multiple of AttackTuning.special_radius.
+@export_range(0.5, 3.0, 0.05) var link_burst_radius_mult: float = 1.3
+## Status seconds, as a multiple of link_status_sec.
+@export_range(0.0, 5.0, 0.1) var link_burst_status_mult: float = 2.0
+## Pull (px) toward the burst when Voidblue is in the pair.
+@export_range(0.0, 200.0, 1.0) var link_burst_pull: float = 40.0
+## Seconds the benched brother stands beside Fayde for the burst.
+@export_range(0.1, 3.0, 0.05) var partner_show_sec: float = 0.6
+
+@export_group("Severed link")
+
+## Hits the player lands to reconnect a link a boss severed (floor-bosses.md).
+@export_range(1, 30, 1) var sever_reconnect_hits: int = 6
+## Special meter the reconnection pays (the brothers find each other again).
+@export_range(0.0, 100.0, 1.0) var relink_meter_gain: float = 25.0
