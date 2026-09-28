@@ -19,6 +19,15 @@ signal dash_charges_changed(charges: int, max_charges: int)
 ## (ADR-0019 Perfect Dodge). At most once per dash, gated by a cooldown.
 signal perfect_dodged(world_pos: Vector2)
 
+## ADR-0058 — the brother in the arena changed (or was set at combat start).
+## [param character] is a DuoSwap.Character; [param cooldown] the seconds until the
+## next swap (0 at combat start).
+signal character_swapped(character: int, cooldown: float)
+
+## ADR-0058 — a swap's tag-in i-frames took a hit that would have landed. Also emits
+## perfect_dodged, so it pays the same rewards and shares its cooldown.
+signal perfect_swapped(world_pos: Vector2)
+
 # ── Enums ─────────────────────────────────────────────────────────────────────
 
 enum ControllerState { DISABLED, ENABLED, DASHING }
@@ -35,6 +44,8 @@ const DASH_DURATION: float = 0.15
 ## 2.0 s DASH_COOLDOWN is now BULLET_HELL_TUNING.dash_charges × dash_recharge_sec.
 const BULLET_HELL_TUNING: BulletHellTuning = preload("res://assets/data/bullet_hell_tuning.tres")
 const PACE_TUNING: PaceTuning = preload("res://assets/data/pace_tuning.tres")
+## Ayden / Faith duo knobs (ADR-0058).
+const DUO_TUNING: DuoTuning = preload("res://assets/data/duo_tuning.tres")
 const FOOTSTEP_INTERVAL_SEC: float = 0.38           # activated: Story PC-004
 const FOOTSTEP_VELOCITY_THRESHOLD: float = 10.0     # activated: Story PC-004
 
@@ -105,6 +116,12 @@ var _dash_cut_radius: float = 0.0
 ## real-time cooldown before another dash can count.
 var _perfect_dodged_this_dash: bool = false
 var _perfect_dodge_cd: float = 0.0
+## ADR-0058 — which brother is out, the swap cooldown and tag-in i-frames.
+var _duo: DuoSwap = DuoSwap.new()
+## True when the resolved grid's hands touch (ADR-0057): shortens the swap cooldown.
+var _hands_touching: bool = false
+## Enemy instance ids Ayden's current dash already hit (once per enemy per dash).
+var _dash_hit_ids: Dictionary = {}
 var _cast_beam_timer: float = 0.0     # countdown; > 0.0 means cast beam visible (debug)
 var _cast_prana_type: int = -1        # primary type of last resolved spell; -1 = none
 var _blink_timer: float = 0.0         # counts up; toggles modulate.a every BLINK_INTERVAL
@@ -172,6 +189,8 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	# ADR-0058: with no player in the tree, combat has no duo.
+	SpellCastingEffects.set_active_character(DuoSwap.NONE, false)
 	if GameStateManager.combat_started.is_connected(_on_combat_started):
 		GameStateManager.combat_started.disconnect(_on_combat_started)
 	if GameStateManager.preparation_started.is_connected(_on_preparation_started):
@@ -227,6 +246,11 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector2.ZERO
 		return
 
+	# ── Duo swap (ADR-0058): allowed while moving or dashing ───────────────────
+	_duo.tick(delta)
+	if InputMap.has_action(&"swap") and Input.is_action_just_pressed(&"swap"):
+		try_swap()
+
 	# ── ENABLED: movement + dash trigger ────────────────────────────────────────
 	if _controller_state == ControllerState.ENABLED:
 		# Knockback override: suppress movement input so the push-away reads
@@ -243,7 +267,8 @@ func _physics_process(delta: float) -> void:
 			var move_factor: float = 1.0 - pow(1.0 - MOVE_ACCELERATION, delta * 60.0)
 			var friction_factor: float = 1.0 - pow(1.0 - MOVE_FRICTION, delta * 60.0)
 			if input_dir != Vector2.ZERO:
-				velocity = velocity.lerp(input_dir.normalized() * MOVE_SPEED * _move_speed_mult, move_factor)
+				velocity = velocity.lerp(input_dir.normalized() * MOVE_SPEED * _move_speed_mult \
+					* DuoSwap.speed_mult(_duo.active()), move_factor)
 				_last_facing_dir = _snap_to_8dir(input_dir)
 			else:
 				velocity = velocity.lerp(Vector2.ZERO, friction_factor)
@@ -260,8 +285,10 @@ func _physics_process(delta: float) -> void:
 	if _perfect_dodge_cd > 0.0:
 		_perfect_dodge_cd = maxf(_perfect_dodge_cd - delta, 0.0)
 	if _controller_state == ControllerState.DASHING:
-		if _dash_cut_radius > 0.0 and is_inside_tree():
+		if get_dash_cut_radius() > 0.0 and is_inside_tree():
 			_cut_bullets()
+		if _duo.active() == DuoSwap.Character.AYDEN and is_inside_tree():
+			_ayden_dash_hits()
 		_dash_duration_timer -= delta
 		if _dash_duration_timer <= 0.0:
 			_controller_state = ControllerState.ENABLED
@@ -338,6 +365,7 @@ func _start_dash(input_dir: Vector2) -> void:
 	_controller_state = ControllerState.DASHING
 	_dash_duration_timer = DASH_DURATION
 	_perfect_dodged_this_dash = false
+	_dash_hit_ids.clear()
 	_is_invincible = true
 	collision_mask = COLLISION_MASK_DASHING
 	_cast_lock_timer = 0.0  # dash cancels cast lock (GDD Rule 6)
@@ -367,7 +395,7 @@ func try_auto_dash() -> bool:
 ## Returns true when the player is currently invincible (e.g. during a dash).
 ## Queried by HealthAndDamage at apply_damage step 1a (ADR-0007).
 func is_invincible() -> bool:
-	return _is_invincible
+	return _is_invincible or _duo.is_tagging_in()
 
 
 ## Returns true when the player is alive (W-1 fix).
@@ -419,6 +447,8 @@ func is_dashing() -> bool:
 ## Fayde's hurtbox. Counts only during a dash, once per dash, and not again until
 ## PaceTuning.perfect_dodge_cooldown_sec has passed. Returns true when it counted.
 func register_perfect_dodge(world_pos: Vector2) -> bool:
+	if _perfect_dodge_cd <= 0.0 and not is_dashing() and _duo.try_count_perfect():
+		return _perfect_swap(world_pos)
 	if not is_dashing() or _perfect_dodged_this_dash or _perfect_dodge_cd > 0.0:
 		return false
 	_perfect_dodged_this_dash = true
@@ -432,9 +462,111 @@ func get_graze_radius() -> float:
 	return BULLET_HELL_TUNING.graze_radius * _graze_radius_mult
 
 
-## Radius (px) of bullets a dash cuts through, 0 without the dash-cut sigil.
+## Radius (px) of bullets a dash cuts through: the dash-cut sigil, or Faith's own
+## dash (ADR-0058), whichever is larger. 0 when neither applies.
 func get_dash_cut_radius() -> float:
+	if _duo.active() == DuoSwap.Character.FAITH:
+		return maxf(_dash_cut_radius, DUO_TUNING.faith_dash_cut_radius)
 	return _dash_cut_radius
+
+
+# ── Duo swap (ADR-0058) ───────────────────────────────────────────────────────
+
+## Swaps to the other brother when in combat and off cooldown. The one tagging in gets
+## short i-frames and a tag-in effect (Ayden: Breach push, Faith: Anchor bullet wipe),
+## and his next attack can cash in the other's setup. Returns true when it swapped.
+func try_swap() -> bool:
+	if _controller_state == ControllerState.DISABLED or not _duo.try_swap(_hands_touching):
+		return false
+	var c: DuoSwap.Character = _duo.active()
+	SpellCastingEffects.set_active_character(c, true)
+	_apply_character_look(true)
+	_tag_in(1.0)
+	Sfx.play(&"sfx_dash_ready")
+	character_swapped.emit(c, _duo.cooldown_remaining())
+	return true
+
+
+## The brother in the arena (DuoSwap.Character).
+func get_active_character() -> int:
+	return _duo.active()
+
+
+## True during a swap's tag-in i-frames.
+func is_tagging_in() -> bool:
+	return _duo.is_tagging_in()
+
+
+## Seconds until the next swap is allowed.
+func get_swap_cooldown_remaining() -> float:
+	return _duo.cooldown_remaining()
+
+
+## Full swap cooldown right now (shorter while the grid's hands touch).
+func get_swap_cooldown_duration() -> float:
+	return DuoSwap.cooldown_for(_hands_touching)
+
+
+## Test seam and new-run hook: puts [param c] in the arena with no cooldown.
+func set_active_character(c: DuoSwap.Character) -> void:
+	_duo.set_active(c)
+	_apply_character_look(false)
+	if _controller_state != ControllerState.DISABLED:
+		SpellCastingEffects.set_active_character(c, false)
+
+
+## A hit that would have landed during the tag-in i-frames: Perfect Swap. Pays the
+## Perfect Dodge rewards (shared cooldown) and fires a stronger tag-in effect.
+func _perfect_swap(world_pos: Vector2) -> bool:
+	_perfect_dodge_cd = PACE_TUNING.perfect_dodge_cooldown_sec
+	_tag_in(DUO_TUNING.perfect_swap_tag_in_mult)
+	perfect_swapped.emit(world_pos)
+	perfect_dodged.emit(world_pos)
+	return true
+
+
+## Tag-in effect around Fayde, scaled by [param mult]. Ayden's Breach pushes nearby
+## enemies away; Faith's Anchor wipes nearby enemy bullets.
+func _tag_in(mult: float) -> void:
+	if not is_inside_tree():
+		return
+	var radius: float = DUO_TUNING.tag_in_radius * mult
+	if _duo.active() == DuoSwap.Character.AYDEN:
+		for enemy: Node in get_tree().get_nodes_in_group(&"enemy"):
+			if not (enemy is Node2D) or not enemy.has_method(&"apply_knockback"):
+				continue
+			var e: Node2D = enemy as Node2D
+			if global_position.distance_to(e.global_position) <= radius:
+				e.apply_knockback(global_position.direction_to(e.global_position),
+					DUO_TUNING.breach_knockback * mult)
+		add_camera_trauma(0.2)
+	else:
+		Projectile.cancel_in_radius(get_tree(), global_position, radius)
+
+
+## Ayden's dash hits each enemy it passes through once.
+func _ayden_dash_hits() -> void:
+	if DUO_TUNING.ayden_dash_damage <= 0.0:
+		return
+	for enemy: Node in get_tree().get_nodes_in_group(&"enemy"):
+		if not (enemy is Node2D) or _dash_hit_ids.has(enemy.get_instance_id()):
+			continue
+		if enemy.has_method(&"is_alive") and not enemy.is_alive():
+			continue
+		if global_position.distance_to((enemy as Node2D).global_position) <= DUO_TUNING.ayden_dash_hit_radius:
+			_dash_hit_ids[enemy.get_instance_id()] = true
+			HealthAndDamage.apply_damage(enemy, DUO_TUNING.ayden_dash_damage,
+				GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
+
+
+## Shows the active brother's sprite sheets; [param flash] adds a short swap flash.
+func _apply_character_look(flash: bool) -> void:
+	var pixel: PixelCharacter = get_node_or_null(^"PixelCharacter") as PixelCharacter
+	if pixel == null:
+		return
+	DuoLooks.apply(pixel, _duo.active())
+	if flash:
+		pixel.flash(Color.WHITE, 0.12, 0.8)
 
 
 ## Sigil: adds [param count] dash charges (granted immediately).
@@ -550,6 +682,9 @@ func _compute_steps_per_second() -> float:
 
 func _on_combat_started(_is_boss: bool = false) -> void:
 	_controller_state = ControllerState.ENABLED
+	SpellCastingEffects.set_active_character(_duo.active(), false)
+	_apply_character_look(false)
+	character_swapped.emit(_duo.active(), 0.0)
 	if is_instance_valid(_hurt_dot):
 		_hurt_dot.visible = BULLET_HELL_TUNING.show_hurtbox_dot
 	# TRANS_BACK punch-in replaces the old snap+flash (Gamefeel Audit Issue 4.1).
@@ -575,6 +710,7 @@ func _on_preparation_started(_wave_index: int = 0, _waves_remaining: int = 0) ->
 	_dash_charges = _max_dash_charges()
 	_perfect_dodged_this_dash = false
 	_perfect_dodge_cd = 0.0
+	_duo.reset_timers()
 	_cast_lock_timer = 0.0
 	_knockback_timer = 0.0
 	if is_instance_valid(_hurt_dot):
@@ -633,6 +769,7 @@ func _on_cast_hit_started(lock_duration: float = 0.12) -> void:
 
 func _on_combo_resolved(spell_effect: SpellEffect) -> void:
 	_cast_prana_type = spell_effect.primary_type
+	_hands_touching = spell_effect.hands_touching
 
 
 ## Graze feedback (ADR-0018): the graze ring flashes when a bullet skims past.

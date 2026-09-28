@@ -45,6 +45,13 @@ func _process(_delta: float) -> void:
 	_last_usec = now
 
 
+## ADR-0058: shows [param character]'s crumple (a DuoSwap.Character; NONE = Fayde).
+func set_character(character: int) -> void:
+	var look: Dictionary = DuoLooks.for_character(character)
+	_body.texture = look["crumple"]
+	_glow.texture = look["crumple_glow"]
+
+
 ## Sets the colours: [param body_tint] on the sprite, [param glow_color] on the hands
 ## and lens, and [param face_left] mirrors it.
 func setup(glow_color: Color, body_tint: Color = Color.WHITE, face_left: bool = false) -> void:

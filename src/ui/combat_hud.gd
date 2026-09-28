@@ -134,6 +134,10 @@ var _special_bar: ProgressBar = null
 ## Text over the Special meter: "SPECIAL" while charging, the ready prompt when full.
 var _special_label: Label = null
 
+## ADR-0058 — duo row: the brother in the arena, the swap key and the other brother
+## (or the swap cooldown). Tinted in the active brother's colour. Combat only.
+var _duo_label: Label = null
+
 ## ColorRect icon dimmed when dash is on cooldown (AC-DH-04, AC-DH-05).
 ## Null in headless tests.
 var _dash_cooldown_icon: ColorRect = null
@@ -382,6 +386,27 @@ func _process(delta: float) -> void:
 		chain_dots_container.position = Vector2(dot_x, dot_y)
 
 	_update_dash_ring()
+	_update_duo_row()
+
+
+## ADR-0058 — refreshes the duo row from the PlayerController each combat frame.
+func _update_duo_row() -> void:
+	if _duo_label == null or not _duo_label.visible or not is_instance_valid(player_controller):
+		return
+	_duo_label.text = duo_row_text(player_controller.get_active_character(),
+		player_controller.get_swap_cooldown_remaining(), InputPrompts.swap_key())
+	_duo_label.add_theme_color_override(&"font_color",
+		DuoSwap.hud_color(player_controller.get_active_character()))
+
+
+## Duo row text for [param active] with [param cooldown] seconds left on the swap and
+## [param key] as the swap prompt. Static so tests can check it without a HUD.
+static func duo_row_text(active: int, cooldown: float, key: String) -> String:
+	var here: String = DuoSwap.display_name(active)
+	var other: String = DuoSwap.display_name(DuoSwap.other(active))
+	if cooldown > 0.0:
+		return _COPY.duo_row_cooldown_format % [here, other, cooldown]
+	return _COPY.duo_row_format % [here, key, other]
 
 
 ## U3 — keeps the dash ring under Fayde during combat, fed from the PlayerController.
@@ -521,6 +546,14 @@ func _create_ui_nodes() -> void:
 	_dash_hint_label.size = Vector2(190, 18)
 	_dash_hint_label.visible = false
 	add_child(_dash_hint_label)
+
+	_duo_label = Label.new()
+	_duo_label.add_theme_font_size_override(&"font_size", 13)
+	_duo_label.add_theme_color_override(&"font_outline_color", Color.BLACK)
+	_duo_label.add_theme_constant_override(&"outline_size", 4)
+	_duo_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_duo_label.visible = false
+	add_child(_duo_label)
 
 	_dash_cooldown_icon = ColorRect.new()
 	_dash_cooldown_icon.custom_minimum_size = Vector2(12, 12)
@@ -713,7 +746,7 @@ func _create_ui_nodes() -> void:
 
 	# ADR-0035: rows are stacked from their measured heights, so re-stack whenever a
 	# text size changes (the Text size setting is applied a frame after creation).
-	for l: Label in [hp_label, _special_label, _dash_hint_label, _floor_label, _room_label, _style_caption]:
+	for l: Label in [hp_label, _special_label, _dash_hint_label, _duo_label, _floor_label, _room_label, _style_caption]:
 		l.minimum_size_changed.connect(_queue_left_layout)
 	_layout_left_column(false)
 
@@ -778,6 +811,10 @@ func _layout_left_column(combat: bool) -> void:
 		_dash_hint_label.position = Vector2(LEFT_PAD + _dash_cooldown_icon.size.x + 6.0, y)
 		_dash_hint_label.size = Vector2(LEFT_INNER_WIDTH - _dash_cooldown_icon.size.x - 6.0, dash_h)
 		y += dash_h + LEFT_ROW_GAP
+		var duo_h: float = _duo_label.get_combined_minimum_size().y
+		_duo_label.position = Vector2(LEFT_PAD, y)
+		_duo_label.size = Vector2(LEFT_INNER_WIDTH, duo_h)
+		y += duo_h + LEFT_ROW_GAP
 		var cap_h: float = _style_caption.get_combined_minimum_size().y
 		var badge: float = maxf(STYLE_BADGE_SIZE, cap_h + 12.0)
 		_style_badge.position = Vector2(LEFT_PAD, y)
@@ -950,14 +987,27 @@ func show_room_banner(text: String, color: Color) -> void:
 	tw.tween_callback(banner.queue_free)
 
 
-## ADR-0019 — "PERFECT DODGE" pops above Fayde and floats up.
+## ADR-0019 — "PERFECT DODGE" pops above Fayde and floats up. A Perfect Swap
+## (ADR-0058) pays through the same signal and reads "PERFECT SWAP" instead.
 func show_perfect_dodge(world_pos: Vector2) -> void:
+	var swap: bool = is_instance_valid(player_controller) and player_controller.is_tagging_in()
+	show_callout(world_pos, _COPY.perfect_swap_label if swap else _COPY.perfect_dodge_label,
+		Color(0.7, 0.95, 1.0))
+
+
+## ADR-0058 — "HAND-OFF" pops above the enemy that paid the hand-off bonus.
+func show_handoff(world_pos: Vector2, character: int) -> void:
+	show_callout(world_pos, _COPY.handoff_label, DuoSwap.hud_color(character))
+
+
+## Pops [param text] above [param world_pos] in [param color]; it floats up and fades.
+func show_callout(world_pos: Vector2, text: String, color: Color) -> void:
 	if not is_inside_tree():
 		return
 	var label := Label.new()
-	label.text = _COPY.perfect_dodge_label
+	label.text = text
 	label.add_theme_font_size_override(&"font_size", 18)
-	label.add_theme_color_override(&"font_color", Color(0.7, 0.95, 1.0))
+	label.add_theme_color_override(&"font_color", color)
 	label.add_theme_color_override(&"font_outline_color", Color.BLACK)
 	label.add_theme_constant_override(&"outline_size", 5)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1586,6 +1636,8 @@ func _on_preparation_started(_idx: int, _rem: int) -> void:
 	if _special_bar != null:
 		_special_bar.visible = false
 		_special_label.visible = false
+	if _duo_label != null:
+		_duo_label.visible = false
 	if _style_label != null:
 		_set_style_visible(false)
 	if _floor_label != null:
@@ -1603,6 +1655,9 @@ func _on_combat_started(_is_boss: bool = false) -> void:
 	if _special_bar != null:
 		_special_bar.visible = true
 		_special_label.visible = true
+	if _duo_label != null:
+		_duo_label.visible = is_instance_valid(player_controller)
+		_update_duo_row()
 	if _style_label != null:
 		_set_style_visible(true)
 	# Show the chain dots immediately so the cast-flash is visible on the first cast.
@@ -1836,7 +1891,7 @@ func _group_left_card() -> void:
 	add_child(_left_group)
 	move_child(_left_group, _left_panel.get_index())
 	var rows: Array[Control] = [_left_panel, _ghost_bar, hp_bar, hp_label, _dash_hint_label,
-		_dash_cooldown_icon, _special_bar, _special_label, _combo_counter_label,
+		_dash_cooldown_icon, _special_bar, _special_label, _duo_label, _combo_counter_label,
 		_floor_label, _room_label, _style_badge, _style_caption, _style_bar, _sigil_strip]
 	rows.sort_custom(func(a: Control, b: Control) -> bool: return a.get_index() < b.get_index())
 	for row: Control in rows:

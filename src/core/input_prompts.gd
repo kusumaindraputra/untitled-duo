@@ -113,6 +113,11 @@ func dash_hint() -> String:
 		_COPY.dash_hint_pad % pad_label(&"dash", "X"))
 
 
+## Key or button that swaps Ayden and Faith (ADR-0058).
+func swap_key() -> String:
+	return pick(key_label(&"swap", "Q"), pad_label(&"swap", "LB"))
+
+
 ## Special meter label when full.
 func special_ready() -> String:
 	return pick(_COPY.special_ready_format % key_label(&"special", "F"),

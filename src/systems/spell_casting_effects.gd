@@ -120,6 +120,10 @@ signal special_fired(prana_type_id: int, world_pos: Vector2, radius: float)
 ## is the Special meter it added. SpellVFX / CombatHUD may flash on it.
 signal grazed(world_pos: Vector2, meter_gain: float)
 
+## A hand-off hit landed (ADR-0058): the brother who just tagged in cashed in the
+## other's setup. [param character] is a DuoSwap.Character.
+signal handoff_hit(world_pos: Vector2, character: int)
+
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -194,6 +198,15 @@ const ATTACK_TUNING: AttackTuning = preload("res://assets/data/attack_tuning.tre
 
 ## Graze gain and bullet-cancel knobs (ADR-0018).
 const BULLET_HELL_TUNING: BulletHellTuning = preload("res://assets/data/bullet_hell_tuning.tres")
+
+## Ayden / Faith duo knobs (ADR-0058).
+const DUO_TUNING: DuoTuning = preload("res://assets/data/duo_tuning.tres")
+
+## Statuses Ayden's hand-off counts as Faith's setup.
+const HANDOFF_STATUSES: Array[GameEnums.BaseStatus] = [
+	GameEnums.BaseStatus.BURN, GameEnums.BaseStatus.BLIND, GameEnums.BaseStatus.STUN,
+	GameEnums.BaseStatus.FREEZE, GameEnums.BaseStatus.CHILL,
+]
 
 ## Attack data per [primary_type][primary_tier][attack_index].
 ## Key "modifier" = tier_attack_modifier used in Formula 3 Step 4.
@@ -323,6 +336,18 @@ var _free_perfect_timer: float = 0.0
 ## Special meter, 0..ATTACK_TUNING.special_meter_max. Resets each preparation phase.
 var _special_meter: float = 0.0
 
+## ADR-0058 — the brother in the arena (DuoSwap.Character), or DuoSwap.NONE when no
+## duo is wired (tools, older tests): then every duo multiplier is 1.0.
+var _active_character: int = DuoSwap.NONE
+## Seconds left in which the next landed attack earns the hand-off bonus.
+var _handoff_timer: float = 0.0
+## Combat clock (s) used to age Ayden's marks. Advances in _process.
+var _duo_clock: float = 0.0
+## Enemy instance id → _duo_clock of Ayden's last hit on it (Faith's hand-off).
+var _ayden_marks: Dictionary = {}
+## True once the attack firing now has already paid a hand-off bonus.
+var _handoff_paid: bool = false
+
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
@@ -377,6 +402,9 @@ func _exit_tree() -> void:
 ## Drives all SC&E float accumulator timers per ADR-0004.
 ## Handles CAST_LOCKED expiry, combo window expiry, input buffer, and cast input polling. (TR-SC-002)
 func _process(delta: float) -> void:
+	_duo_clock += delta
+	if _handoff_timer > 0.0:
+		_handoff_timer = maxf(_handoff_timer - delta, 0.0)
 	if _free_perfect_timer > 0.0:
 		_free_perfect_timer = maxf(_free_perfect_timer - delta, 0.0)
 	# ── Input buffer countdown ─────────────────────────────────────────────────
@@ -464,8 +492,12 @@ func _trigger_cast() -> void:
 	var rushed: bool = timing == CastTiming.RUSHED
 	_perfect_mult = ATTACK_TUNING.perfect_damage_mult if perfect \
 		else (ATTACK_TUNING.rushed_damage_mult if rushed else 1.0)
+	_handoff_paid = false
 	_fire_attack(current_index)
 	_perfect_mult = 1.0
+	# ADR-0058 — the first attack that lands after a swap spends the hand-off window.
+	if _last_attack_hit_count > 0:
+		_handoff_timer = 0.0
 	_apply_surge_heal()
 	var is_secondary: bool = ATTACK_DATA[_current_spell_effect.primary_type][_current_spell_effect.primary_tier][current_index]["modifier"] == 0.0
 	var landed: bool = _last_attack_hit_count > 0 or is_secondary
@@ -604,7 +636,17 @@ func _apply_hit(target: Node, pt: int, tier_mod: float, se: SpellEffect,
 	raw *= _perfect_mult
 
 	# Step 8d — Ayden's hand (ADR-0057): Prana in the grid's left column add power.
-	raw *= se.hand_power_mult
+	# With the duo (ADR-0058) it powers Ayden only, and each brother has his own weight.
+	raw *= DuoSwap.power_hand(_active_character, se.hand_power_mult)
+	raw *= DuoSwap.damage_mult(_active_character)
+
+	# Step 8e — Ayden's hand-off: his first attack after tagging in hits harder on an
+	# enemy carrying a status (Faith's setup). Marks the enemy for Faith's hand-off.
+	if _active_character == DuoSwap.Character.AYDEN:
+		if _handoff_timer > 0.0 and _has_any_status(target):
+			raw *= DUO_TUNING.handoff_damage_mult
+			_pay_handoff(target)
+		_ayden_marks[target_id] = _duo_clock
 
 	# Step 9 — deliver damage (element-neutral; affiliation cut 2026-06-21).
 	_health_and_damage.apply_damage(target, raw, GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
@@ -649,7 +691,14 @@ func _apply_knockback(target: Node, tier_mod: float) -> void:
 ## Verdant Regen targets _fayde_ref (not the enemy); guarded for null in tests.
 func _apply_status_effects(target: Node, pt: int, se: SpellEffect, step4_raw: float) -> void:
 	# Faith's hand (ADR-0057): Prana in the grid's right column lengthen the core status.
-	var hold: float = se.hand_control_mult
+	# With the duo (ADR-0058) it holds for Faith only.
+	var hold: float = DuoSwap.control_hand(_active_character, se.hand_control_mult)
+	# Faith's hand-off: her first attack after tagging in holds longer on an enemy
+	# Ayden hit moments ago.
+	if _active_character == DuoSwap.Character.FAITH and _handoff_timer > 0.0 \
+			and _marked_by_ayden(target):
+		hold *= DUO_TUNING.handoff_status_mult
+		_pay_handoff(target)
 	match pt:
 		0:  # Ashfire — Burn DoT; step4_raw drives tick magnitude.
 			_apply_burn(target, 2.0 * hold, step4_raw)
@@ -736,6 +785,7 @@ func _select_primary_target() -> Node:
 		_:
 			cast_range = 150.0
 			cone_angle = CONE_ANGLE_RANGED
+	cast_range *= DuoSwap.range_mult(_active_character)  # ADR-0058 — Ayden short, Faith long
 
 	# Build a ConvexPolygonShape2D approximating a cone sector in the facing direction.
 	# Points: origin (0,0) + arc points spread across cone_angle, centred on facing.
@@ -800,6 +850,7 @@ func _select_all_targets_in_cone() -> Array[Node]:
 		_:
 			cast_range = 150.0
 			cone_angle = CONE_ANGLE_RANGED
+	cast_range *= DuoSwap.range_mult(_active_character)  # ADR-0058
 
 	var half_angle: float = deg_to_rad(cone_angle * 0.5)
 	var base_angle: float = facing.angle()
@@ -1269,6 +1320,52 @@ func add_special_meter(amount: float) -> void:
 		_add_special_meter(amount)
 
 
+## ADR-0058 — tells combat which brother is in the arena. [param tagged_in] is true on
+## a swap: it opens the hand-off window for the next attack. Ends the current chain,
+## since the other brother starts his own.
+func set_active_character(character: int, tagged_in: bool = false) -> void:
+	_active_character = character
+	if tagged_in:
+		_handoff_timer = DUO_TUNING.handoff_window_sec
+		_combo_index = 0
+		_perfect_streak = 0
+		if _state == SCEState.CHAINING:
+			_state = SCEState.READY
+			chain_index_changed.emit(0, _current_spell_effect.combo_attack_count if _current_spell_effect else 0)
+
+
+## The brother in the arena (DuoSwap.Character), or DuoSwap.NONE without a duo.
+func get_active_character() -> int:
+	return _active_character
+
+
+## True while the next landed attack still earns the hand-off bonus.
+func is_handoff_open() -> bool:
+	return _handoff_timer > 0.0
+
+
+## True when [param target] carries any status Ayden's hand-off counts.
+func _has_any_status(target: Node) -> bool:
+	for st: GameEnums.BaseStatus in HANDOFF_STATUSES:
+		if _status_effects.has_status(target, st):
+			return true
+	return false
+
+
+## True when Ayden hit [param target] within DuoTuning.ayden_mark_sec.
+func _marked_by_ayden(target: Node) -> bool:
+	var id: int = target.get_instance_id()
+	return _ayden_marks.has(id) and _duo_clock - float(_ayden_marks[id]) <= DUO_TUNING.ayden_mark_sec
+
+
+## Emits the hand-off callout once per attack.
+func _pay_handoff(target: Node) -> void:
+	if _handoff_paid:
+		return
+	_handoff_paid = true
+	handoff_hit.emit(_pos_of(target), _active_character)
+
+
 ## ADR-0019 — the next basic cast within [param window_sec] counts as Perfect whatever
 ## its timing (Perfect Dodge reward). A new grant refreshes the window.
 func grant_perfect_cast(window_sec: float) -> void:
@@ -1349,6 +1446,8 @@ func _on_preparation_started(_idx: int, _rem: int) -> void:
 	_reset_chain_reaction_state()
 	_perfect_streak = 0
 	_free_perfect_timer = 0.0
+	_handoff_timer = 0.0
+	_ayden_marks.clear()
 	_special_meter = 0.0
 	special_meter_changed.emit(_special_meter, ATTACK_TUNING.special_meter_max)
 
