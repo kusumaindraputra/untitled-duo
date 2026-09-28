@@ -188,6 +188,8 @@ func unregister_enemy(instance_id: int) -> void:
 ##   3.  Elemental multiplier lookup (element == null → multiplier = 1.0)
 ##   4.  final_damage = clamp(roundi(base_damage × multiplier), 0, target.max_hp)
 ##   5.  First-run mercy     (Fayde + CONTACT + first_run_active only)
+##   5b. Damage share        (Fayde: Assist / Glass Core)
+##   5c. Duo armour          (Fayde: Ayden takes less, ADR-0058)
 ##   6.  Apply HP delta
 ##   7.  Emit damage_taken   (only if final_damage > 0)
 ##   8.  Emit heavy_hit      (only if final_damage >= HEAVY_HIT_THRESHOLD)
@@ -254,6 +256,12 @@ func apply_damage(
 	# Step 5b — damage share (Fayde only): Assist (F2) lowers it, a Glass Core (ADR-0033) raises it
 	if is_player and not is_equal_approx(player_damage_mult, 1.0):
 		final_damage = clampi(roundi(float(final_damage) * player_damage_mult), 0, target_max_hp)
+
+	# Step 5c — the brother in the arena (ADR-0058): Ayden takes less
+	if is_player and target.has_method(&"get_incoming_damage_mult"):
+		var duo_mult: float = target.get_incoming_damage_mult()
+		if not is_equal_approx(duo_mult, 1.0):
+			final_damage = clampi(roundi(float(final_damage) * duo_mult), 0, target_max_hp)
 
 	# Step 6 — Apply HP delta
 	if is_player:

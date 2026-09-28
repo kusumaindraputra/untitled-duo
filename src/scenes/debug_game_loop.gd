@@ -259,9 +259,6 @@ func _ready() -> void:
 	_pace_director.room_ranked.connect(hud.show_room_rank)
 	_pace_director.room_ranked.connect(_log_room_rank)
 	_pace_director.perfect_dodge_triggered.connect(hud.show_perfect_dodge)
-	# ADR-0058: the duo's hand-off callout.
-	if not SpellCastingEffects.handoff_hit.is_connected(hud.show_handoff):
-		SpellCastingEffects.handoff_hit.connect(hud.show_handoff)
 	# ADR-0031 rumble for big moves (impacts rumble through camera trauma).
 	_pace_director.perfect_dodge_triggered.connect(Rumble.on_perfect_dodge)
 	if not SpellCastingEffects.special_fired.is_connected(Rumble.on_special_fired):
@@ -673,6 +670,8 @@ func _start_tutorial_room(core_type_id: int) -> void:
 	_tutorial_room = TutorialRoom.new()
 	_tutorial_room.name = "TutorialRoom"
 	_tutorial_room.player = $PlayerController
+	# ADR-0058: only Faith dashes, and the lessons teach the dash, so she starts.
+	$PlayerController.set_active_character(DuoSwap.Character.FAITH)
 	if room != null:
 		var entities: Node2D = room.get_node_or_null(^"EntityLayer") as Node2D
 		_tutorial_room.arena = entities if entities != null else room

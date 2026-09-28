@@ -39,6 +39,7 @@ var _temp_actions: Array[StringName] = []
 
 func before_test() -> void:
 	_pc = PlayerControllerScript.new() as PlayerController
+	_pc.set_active_character(DuoSwap.Character.FAITH)  # only Faith dashes (ADR-0058)
 	_temp_actions.clear()
 	for action: StringName in _ALL_ACTIONS:
 		if not InputMap.has_action(action):

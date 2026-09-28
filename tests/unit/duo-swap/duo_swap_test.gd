@@ -2,12 +2,13 @@
 ## design/gdd/duo-swap.md).
 ##
 ## Covers the swap state (cooldown, tag-in i-frames, Perfect Swap once per swap), the
-## per-brother rules (grid hands, damage, range), the hand-off bonuses in
-## SpellCastingEffects, PlayerController's swap, and the HUD duo row. Expected values
+## per-brother rules (grid hands, damage, range), palm faces, Link Reactions and the
+## heartbeat Resonance in SpellCastingEffects, PlayerController's swap, and the HUD duo row. Expected values
 ## come from assets/data/duo_tuning.tres so the tests follow the knobs.
 extends GdUnitTestSuite
 
 const SCEScript = preload("res://src/systems/spell_casting_effects.gd")
+const HealthAndDamageScript = preload("res://src/systems/health_and_damage.gd")
 const PlayerControllerScript: GDScript = preload("res://src/gameplay/player_controller.gd")
 const T: DuoTuning = preload("res://assets/data/duo_tuning.tres")
 const COPY: UICopy = preload("res://assets/data/ui_copy.tres")
@@ -39,6 +40,14 @@ class MockStatusEffects:
 
 	func check_and_apply_shatter(_target: Node, base_damage: float) -> float:
 		return base_damage
+
+
+## A player stand-in that reports Ayden's or Faith's incoming damage multiplier.
+class MockBrother extends Node:
+	var character: int = DuoSwap.Character.AYDEN
+
+	func get_incoming_damage_mult() -> float:
+		return DuoSwap.damage_taken_mult(character)
 
 
 class MockEnemy extends Node2D:
@@ -197,60 +206,192 @@ func test_faith_gets_her_hand_but_not_ayden_power_hand() -> void:
 	assert_float(faith[1]).is_equal_approx(plain[1], 0.001)
 
 
-func test_ayden_handoff_hits_harder_on_a_status_and_only_once() -> void:
+## Gives the wave two faces: Ayden casts Deepfrost (palm), Faith the Voidblue grid.
+func _give_faces() -> void:
+	var base: SpellEffect = _sce._base_spell_effect
+	var ayden := SpellEffect.new()
+	ayden.primary_type = 3  # Deepfrost
+	ayden.primary_tier = 1
+	ayden.combo_attack_count = 1
+	ayden.base_damage_modifier = 1.0
+	base.faces = {AYDEN: ayden, FAITH: base}
+
+
+func test_swap_switches_to_the_brothers_face() -> void:
 	_make_sce()
-	_sem.has_any = true
-	_sce.set_active_character(AYDEN, true)
-	assert_bool(_sce.is_handoff_open()).is_true()
-	var paid: Array = []
-	_sce.handoff_hit.connect(func(_p: Vector2, c: int) -> void: paid.append(c))
-	_sce._trigger_cast()
+	_give_faces()
+	var faces: Array = []
+	_sce.face_changed.connect(func(se: SpellEffect) -> void: faces.append(se.primary_type))
+	_sce.set_active_character(AYDEN, false)
+	assert_int(_sce.get_cached_spell_effect().primary_type).is_equal(3)
+	_sce.set_active_character(FAITH, true)
+	assert_int(_sce.get_cached_spell_effect().primary_type).is_equal(1)
+	assert_array(faces).contains_exactly([3, 1])
+
+
+func test_link_reaction_fires_when_the_other_brother_hits_a_marked_enemy() -> void:
+	_make_sce()
+	_give_faces()
+	var links: Array = []
+	_sce.link_reaction.connect(func(n: String, _p: Vector2, c: int) -> void: links.append([n, c]))
+	_sce.set_active_character(AYDEN, false)
+	_sce._trigger_cast()  # leaves Deepfrost
+	assert_array(links).is_empty()
 	_sce._cast_lock_timer = 0.0
-	_sce._trigger_cast()
-	assert_float(_hd.amounts[0]).is_equal_approx(_hd.amounts[1] * T.handoff_damage_mult, 0.001)
-	assert_bool(_sce.is_handoff_open()).is_false()
-	assert_array(paid).contains_exactly([AYDEN])
+	_sce.set_active_character(FAITH, true)
+	var hits_before: int = _hd.amounts.size()
+	_sce._trigger_cast()  # Voidblue on Deepfrost
+	var expected: ReactionDef = CombinationResolution.get_reaction(3, 1)
+	assert_array(links).contains_exactly([[expected.name, FAITH]])
+	# The cast's own hit plus the burst on the target.
+	assert_int(_hd.amounts.size()).is_equal(hits_before + 2)
+	assert_float(_hd.amounts[hits_before + 1]).is_equal_approx(
+		SCEScript.BASE_SPELL_DAMAGE * T.link_damage_mult, 0.001)
 
 
-func test_ayden_without_a_status_gets_no_handoff_bonus() -> void:
-	_make_sce()
-	_sce.set_active_character(AYDEN, true)
-	_sce._trigger_cast()
-	_sce._cast_lock_timer = 0.0
-	_sce._trigger_cast()
-	assert_float(_hd.amounts[0]).is_equal_approx(_hd.amounts[1], 0.001)
-
-
-func test_faith_handoff_holds_longer_on_an_enemy_ayden_just_hit() -> void:
-	_make_sce()
+func test_same_element_on_both_brothers_does_not_react() -> void:
+	_make_sce()  # no faces: both brothers cast Voidblue
+	var links: Array = []
+	_sce.link_reaction.connect(func(n: String, _p: Vector2, _c: int) -> void: links.append(n))
 	_sce.set_active_character(AYDEN, false)
 	_sce._trigger_cast()
 	_sce._cast_lock_timer = 0.0
 	_sce.set_active_character(FAITH, true)
-	_sce._trigger_cast()  # hand-off: marked by Ayden
-	_sce._cast_lock_timer = 0.0
-	_sce._trigger_cast()  # window spent
-	assert_float(_sem.durations[1]).is_equal_approx(_sem.durations[2] * T.handoff_status_mult, 0.001)
+	_sce._trigger_cast()
+	assert_array(links).is_empty()
 
 
-func test_ayden_mark_expires_after_ayden_mark_sec() -> void:
+func test_the_same_brother_hitting_again_does_not_react() -> void:
 	_make_sce()
+	_give_faces()
+	var links: Array = []
+	_sce.link_reaction.connect(func(n: String, _p: Vector2, _c: int) -> void: links.append(n))
 	_sce.set_active_character(AYDEN, false)
 	_sce._trigger_cast()
 	_sce._cast_lock_timer = 0.0
-	_sce._duo_clock += T.ayden_mark_sec + 0.1
-	_sce.set_active_character(FAITH, true)
+	_sce._trigger_cast()
+	assert_array(links).is_empty()
+
+
+func test_link_mark_expires_after_link_mark_sec() -> void:
+	_make_sce()
+	_give_faces()
+	var links: Array = []
+	_sce.link_reaction.connect(func(n: String, _p: Vector2, _c: int) -> void: links.append(n))
+	_sce.set_active_character(AYDEN, false)
 	_sce._trigger_cast()
 	_sce._cast_lock_timer = 0.0
+	_sce._duo_clock += T.link_mark_sec + 0.1
+	_sce.set_active_character(FAITH, true)
 	_sce._trigger_cast()
-	assert_float(_sem.durations[1]).is_equal_approx(_sem.durations[2], 0.001)
+	assert_array(links).is_empty()
 
 
-func test_preparation_closes_the_handoff_window() -> void:
+func test_resonance_makes_the_next_hit_react_with_the_benched_element() -> void:
 	_make_sce()
-	_sce.set_active_character(AYDEN, true)
+	_give_faces()
+	var links: Array = []
+	_sce.link_reaction.connect(func(n: String, _p: Vector2, _c: int) -> void: links.append(n))
+	_sce.set_active_character(AYDEN, false)
+	_sce.set_active_character(FAITH, true, true)
+	assert_bool(_sce.has_free_perfect()).is_true()
+	assert_bool(_sce.is_resonance_pending()).is_true()
+	assert_float(_sce.get_special_meter()).is_equal_approx(T.resonance_meter_gain, 0.001)
+	_sce._trigger_cast()  # no mark yet: reacts with Ayden's Deepfrost
+	assert_array(links).contains_exactly([CombinationResolution.get_reaction(3, 1).name])
+	assert_bool(_sce.is_resonance_pending()).is_false()
+
+
+func test_preparation_clears_link_marks_and_resonance() -> void:
+	_make_sce()
+	_give_faces()
+	_sce.set_active_character(AYDEN, false)
+	_sce._trigger_cast()
+	_sce.set_active_character(FAITH, true, true)
 	_sce._on_preparation_started(0, 0)
-	assert_bool(_sce.is_handoff_open()).is_false()
+	assert_bool(_sce.is_resonance_pending()).is_false()
+	assert_int(_sce._link_marks.size()).is_equal(0)
+	assert_object(_sce.get_cached_spell_effect()).is_null()
+
+
+# ── Palm faces ───────────────────────────────────────────────────────────────
+
+func test_face_puts_the_palm_prana_in_the_centre() -> void:
+	var grid: Array = [null, null, null, 0, 1, 3, null, null, null]
+	assert_array(DuoSwap.face(grid, AYDEN)).is_equal([null, null, null, 1, 0, 3, null, null, null])
+	assert_array(DuoSwap.face(grid, FAITH)).is_equal([null, null, null, 0, 3, 1, null, null, null])
+	assert_array(grid).is_equal([null, null, null, 0, 1, 3, null, null, null])  # untouched
+
+
+func test_empty_palm_keeps_the_centre() -> void:
+	var grid: Array = [null, null, null, null, 1, 3, null, null, null]
+	assert_array(DuoSwap.face(grid, AYDEN)).is_equal(grid)
+	assert_int(DuoSwap.core_type(grid, AYDEN)).is_equal(1)
+	assert_int(DuoSwap.core_type(grid, FAITH)).is_equal(3)
+	assert_int(DuoSwap.core_type(grid, DuoSwap.NONE)).is_equal(1)
+
+
+func test_combat_resolution_gives_each_brother_his_face() -> void:
+	var fragments: Array = []
+	fragments.resize(9)
+	for pair: Array in [[3, 3], [4, 1]]:  # Deepfrost in Ayden's palm, Voidblue centre
+		var f := PranaFragment.new()
+		f.type_id = pair[1]
+		fragments[pair[0]] = f
+	var effect: SpellEffect = CombinationResolution._resolve(fragments)
+	CombinationResolution._attach_faces(effect, fragments)
+	assert_int(effect.primary_type).is_equal(1)
+	assert_int((effect.faces[AYDEN] as SpellEffect).primary_type).is_equal(3)
+	assert_object(effect.faces[FAITH]).is_same(effect)
+
+
+func test_prep_preview_names_both_cores_and_their_link() -> void:
+	var names: Array = ["Ashfire", "Voidblue", "Stormgold", "Deepfrost", "Verdant"]
+	var line: String = SpellPreview.duo_line(3, 1, "Whiteout", names, COPY)
+	assert_str(line).is_equal(COPY.duo_cores_format % ["Deepfrost", "Voidblue"]
+		+ COPY.duo_link_format % "Whiteout")
+	assert_str(SpellPreview.duo_line(1, 1, "", names, COPY)).is_equal(
+		COPY.duo_cores_format % ["Voidblue", "Voidblue"])
+	assert_str(SpellPreview.duo_line(-1, -1, "", names, COPY)).is_empty()
+
+
+# ── Heartbeat ────────────────────────────────────────────────────────────────
+
+func test_swap_on_the_heartbeat_resonates() -> void:
+	var duo := DuoSwap.new()
+	duo.tick(T.heartbeat_sec)
+	assert_bool(duo.try_swap()).is_true()
+	assert_bool(duo.last_swap_resonant()).is_true()
+
+
+func test_swap_between_beats_does_not_resonate() -> void:
+	var duo := DuoSwap.new()
+	duo.tick(T.heartbeat_sec * 0.5)
+	assert_bool(duo.try_swap()).is_true()
+	assert_bool(duo.last_swap_resonant()).is_false()
+
+
+func test_beat_distance_is_symmetric_around_the_beat() -> void:
+	var early: float = T.heartbeat_sec - 0.1
+	assert_float(DuoSwap.beat_distance(early)).is_equal_approx(0.1, 0.0001)
+	assert_float(DuoSwap.beat_distance(T.heartbeat_sec + 0.1)).is_equal_approx(0.1, 0.0001)
+
+
+func test_player_resonance_signal_on_a_beat_swap() -> void:
+	var pc := _make_pc()
+	pc._on_combat_started(false)
+	var res: Array = []
+	pc.resonated.connect(func(p: Vector2) -> void: res.append(p))
+	pc._duo.tick(T.heartbeat_sec)
+	assert_bool(pc.try_swap()).is_true()
+	assert_int(res.size()).is_equal(1)
+	_free_pc(pc)
+
+
+func test_duo_row_glows_on_the_beat() -> void:
+	assert_float(CombatHUD.heartbeat_alpha(0.0)).is_equal_approx(1.0, 0.0001)
+	assert_float(CombatHUD.heartbeat_alpha(0.5)).is_equal_approx(0.55, 0.0001)
+	assert_float(CombatHUD.heartbeat_alpha(0.95)).is_greater(0.9)
 
 
 # ── PlayerController ─────────────────────────────────────────────────────────
@@ -309,6 +450,83 @@ func test_faith_dash_cuts_bullets_and_ayden_dash_does_not() -> void:
 	assert_float(pc.get_dash_cut_radius()).is_equal(0.0)
 	pc.try_swap()
 	assert_float(pc.get_dash_cut_radius()).is_equal(T.faith_dash_cut_radius)
+	_free_pc(pc)
+
+
+# ── Only Faith dashes ────────────────────────────────────────────────────────
+
+func test_only_faith_can_dash() -> void:
+	assert_bool(DuoSwap.can_dash(AYDEN)).is_false()
+	assert_bool(DuoSwap.can_dash(FAITH)).is_true()
+	assert_bool(DuoSwap.can_dash(DuoSwap.NONE)).is_true()
+
+
+func test_dash_as_ayden_is_blocked_and_as_faith_dashes() -> void:
+	var added: bool = not InputMap.has_action(&"dash")
+	if added:
+		InputMap.add_action(&"dash")
+	var pc := _make_pc()
+	pc._on_combat_started(false)
+	var blocked: Array = []
+	pc.dash_blocked.connect(func(p: Vector2) -> void: blocked.append(p))
+	Input.action_press(&"dash")
+	pc._physics_process(0.016)
+	Input.action_release(&"dash")
+	assert_int(blocked.size()).is_equal(1)
+	assert_bool(pc.is_dashing()).is_false()
+	assert_int(pc.get_dash_charges()).is_equal(pc.get_max_dash_charges())
+	pc.set_active_character(FAITH)
+	Input.action_press(&"dash")
+	pc._physics_process(0.016)
+	Input.action_release(&"dash")
+	assert_bool(pc.is_dashing()).is_true()
+	assert_int(blocked.size()).is_equal(1)
+	_free_pc(pc)
+	if added:
+		InputMap.erase_action(&"dash")
+
+
+func test_assist_auto_dash_swaps_ayden_out_instead() -> void:
+	var pc := _make_pc()
+	pc._on_combat_started(false)
+	pc.auto_dash = true
+	assert_bool(pc.try_auto_dash()).is_true()
+	assert_int(pc.get_active_character()).is_equal(FAITH)
+	assert_bool(pc.is_invincible()).is_true()
+	assert_int(pc.get_dash_charges()).is_equal(pc.get_max_dash_charges())
+	_free_pc(pc)
+
+
+# ── Ayden is sturdy ──────────────────────────────────────────────────────────
+
+func test_ayden_takes_less_damage_and_faith_takes_it_all() -> void:
+	var hd: Node = HealthAndDamageScript.new()
+	hd.set_process(false)
+	var brother := MockBrother.new()
+	brother.add_to_group(&"player")
+	add_child(hd)
+	add_child(brother)
+	hd._fayde_current_hp = 100
+	hd.apply_damage(brother, 20.0, GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
+	assert_int(hd._fayde_current_hp).is_equal(100 - roundi(20.0 * T.ayden_damage_taken_mult))
+	brother.character = FAITH
+	hd._fayde_current_hp = 100
+	hd.apply_damage(brother, 20.0, GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
+	assert_int(hd._fayde_current_hp).is_equal(80)
+	remove_child(hd)
+	remove_child(brother)
+	hd.free()
+	brother.free()
+
+
+func test_ayden_is_not_knocked_back_and_faith_is() -> void:
+	var pc := _make_pc()
+	pc._on_combat_started(false)
+	pc.request_knockback(pc.global_position + Vector2.LEFT * 10.0, 200.0)
+	assert_float(pc.velocity.length()).is_equal_approx(200.0 * T.ayden_knockback_mult, 0.001)
+	pc.set_active_character(FAITH)
+	pc.request_knockback(pc.global_position + Vector2.LEFT * 10.0, 200.0)
+	assert_float(pc.velocity.length()).is_equal_approx(200.0, 0.001)
 	_free_pc(pc)
 
 
