@@ -160,6 +160,20 @@ func _draw() -> void:
 	draw_circle(c, r, _fill_color, true, -1.0, true)
 	draw_arc(c, r - RIM_WIDTH * 0.5, 0.0, TAU, 48, RIM_HOVER_COLOR if _hovered else RIM_COLOR,
 		RIM_WIDTH, true)
+	# ADR-0058: an inner ring in the brother's colour marks each palm slot.
+	var palm_owner: int = palm_owner_of(slot_index)
+	if palm_owner != DuoSwap.NONE and DuoSwap.TUNING.palm_faces:
+		draw_arc(c, r - RIM_WIDTH * 2.5, 0.0, TAU, 48, DuoSwap.hud_color(palm_owner),
+			RIM_WIDTH, true)
+
+
+## Pure: the brother whose palm [param index] is, or DuoSwap.NONE.
+static func palm_owner_of(index: int) -> int:
+	if index == DuoSwap.AYDEN_PALM:
+		return DuoSwap.Character.AYDEN
+	if index == DuoSwap.FAITH_PALM:
+		return DuoSwap.Character.FAITH
+	return DuoSwap.NONE
 
 
 ## Pure: the slot circle's radius for a cell of [param cell_size] (inscribed, 1 px in).

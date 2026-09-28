@@ -379,28 +379,40 @@ extends Resource
 ## bound key or button (the pad "place" line takes two: cycle, then place).
 @export var tutorial_steps_kb: Array[String] = [
 	"Drag a Prana from YOUR PRANA into an empty slot.",
+	"Put a different Prana in Ayden's palm (left of the centre).",
 	"Press %s to lock the grid and fight.",
 	"Move with %s.",
 	"Press %s to dash. Only Faith can dash.",
 	"Press %s to cast at a training target.",
 	"Dash (%s) through a shot just before it hits.",
+	"Press %s to swap to Ayden.",
+	"Hit a target, swap (%s), hit it again: LINK!",
+	"Swap (%s) when the heart glows: RESONANCE!",
 ]
 @export var tutorial_steps_pad: Array[String] = [
 	"Pick a Prana with %s, then press %s on an empty slot.",
+	"Put a different Prana in Ayden's palm (left of the centre).",
 	"Press %s to lock the grid and fight.",
 	"Move with the left stick.",
 	"Press %s to dash. Only Faith can dash.",
 	"Press %s to cast at a training target.",
 	"Dash (%s) through a shot just before it hits.",
+	"Press %s to swap to Ayden.",
+	"Hit a target, swap (%s), hit it again: LINK!",
+	"Swap (%s) when the heart glows: RESONANCE!",
 ]
 ## Smaller second line under each lesson (same order).
 @export var tutorial_details: Array[String] = [
 	"Matching types make a stronger spell.",
+	"Each brother casts the Prana in his palm.",
 	"The grid decides which spell you cast.",
 	"Walk over to the training targets.",
 	"You can't be hit while dashing.",
 	"Your spell comes from the grid you built.",
 	"A Perfect Dodge slows time and fills your Special.",
+	"Ayden hits hard and can't dash. Swap back to escape.",
+	"Two brothers, two elements: they react together.",
+	"Swapping on the beat makes the next hit a Perfect.",
 ]
 ## Skip prompt on the lesson card (%s = key or button to hold).
 @export var tutorial_skip_format: String = "Hold %s to skip training"

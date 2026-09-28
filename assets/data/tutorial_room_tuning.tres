@@ -16,6 +16,7 @@ shot_telegraph_sec = 0.55
 shot_speed = 120.0
 shot_radius = 6.0
 dodge_fallback_shots = 12
+duo_fallback_swaps = 8
 skip_hold_sec = 1.0
 tick_hold_sec = 0.8
 done_hold_sec = 1.6

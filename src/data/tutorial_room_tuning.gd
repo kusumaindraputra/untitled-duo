@@ -41,6 +41,8 @@ extends Resource
 ## After this many shots the lesson ticks on its own (Assist auto-dash earns no
 ## Perfect Dodge, so the room must never soft-lock).
 @export var dodge_fallback_shots: int = 12
+## Swaps after which the Link and Resonance lessons tick on their own (ADR-0058).
+@export var duo_fallback_swaps: int = 8
 
 @export_group("Flow")
 

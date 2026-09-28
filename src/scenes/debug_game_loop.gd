@@ -690,8 +690,15 @@ func _start_tutorial_room(core_type_id: int) -> void:
 	_pace_director.perfect_dodge_triggered.connect(_tutorial_room.on_perfect_dodge)
 	_prana_bag.bag_changed.connect(_tutorial_room.on_bag_changed)
 	_tutorial_room.finished.connect(_on_tutorial_room_finished)
+	# ADR-0058: the duo lessons watch the palm slot, the swap, LINK and Resonance.
+	_tutorial_room.grid = get_tree().get_first_node_in_group(&"prana_grid")
+	$PlayerController.character_swapped.connect(_tutorial_room.on_character_swapped)
+	$PlayerController.resonated.connect(_tutorial_room.on_resonated)
+	SpellCastingEffects.link_reaction.connect(_tutorial_room.on_link_reaction)
 	for i: int in TutorialRoom.TUNING.bag_prana:
 		_prana_bag.add(core_type_id)
+	# A second element for Ayden's palm, so the two brothers can LINK.
+	_prana_bag.add((core_type_id + 1) % maxi(PranaCatalog.type_count(), 1))
 
 
 ## ADR-0055: leaving the room mid-lesson (debug room skip, perf probe, balance bot)
@@ -702,13 +709,20 @@ func _cancel_tutorial_room() -> void:
 		return
 	var tut: TutorialRoom = _tutorial_room
 	_tutorial_room = null
+	_unhook_tutorial_room(tut)
+	tut.cancel()
+	tut.queue_free()
+	$WaveManager.hold_wave = false
+
+
+## ADR-0055: drops the autoload hooks the lessons hold (node signals die with the node).
+func _unhook_tutorial_room(tut: TutorialRoom) -> void:
 	if GameStateManager.combat_started.is_connected(tut.on_combat_started):
 		GameStateManager.combat_started.disconnect(tut.on_combat_started)
 	if HealthAndDamage.damage_taken.is_connected(tut.on_damage_taken):
 		HealthAndDamage.damage_taken.disconnect(tut.on_damage_taken)
-	tut.cancel()
-	tut.queue_free()
-	$WaveManager.hold_wave = false
+	if SpellCastingEffects.link_reaction.is_connected(tut.on_link_reaction):
+		SpellCastingEffects.link_reaction.disconnect(tut.on_link_reaction)
 
 
 ## ADR-0055: the lessons ended. Saves the flags, unhooks the lessons and lets the
@@ -720,10 +734,7 @@ func _on_tutorial_room_finished(skipped: bool) -> void:
 			_meta.tutorial_done = true
 		_meta.save_to(progress_path)
 	var tut: TutorialRoom = _tutorial_room
-	if GameStateManager.combat_started.is_connected(tut.on_combat_started):
-		GameStateManager.combat_started.disconnect(tut.on_combat_started)
-	if HealthAndDamage.damage_taken.is_connected(tut.on_damage_taken):
-		HealthAndDamage.damage_taken.disconnect(tut.on_damage_taken)
+	_unhook_tutorial_room(tut)
 	tut.queue_free()
 	_tutorial_room = null
 	if skipped:
