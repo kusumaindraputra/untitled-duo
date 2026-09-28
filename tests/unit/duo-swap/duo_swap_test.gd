@@ -544,12 +544,12 @@ func test_preparation_resets_the_swap_cooldown() -> void:
 
 func test_duo_row_shows_the_swap_key_when_ready() -> void:
 	var text: String = CombatHUD.duo_row_text(AYDEN, 0.0, "Q")
-	assert_str(text).is_equal(COPY.duo_row_format % ["AYDEN", "Q", "FAITH"])
+	assert_str(text).is_equal(COPY.duo_row_format % ["AYDEN", "Q"])
 
 
 func test_duo_row_shows_the_cooldown_while_waiting() -> void:
 	var text: String = CombatHUD.duo_row_text(FAITH, 0.5, "Q")
-	assert_str(text).is_equal(COPY.duo_row_cooldown_format % ["FAITH", "AYDEN", 0.5])
+	assert_str(text).is_equal(COPY.duo_row_cooldown_format % ["FAITH", 0.5])
 
 
 # ── Sprites (DuoLooks) ───────────────────────────────────────────────────────

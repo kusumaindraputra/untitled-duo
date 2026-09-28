@@ -12,7 +12,9 @@
 ## memories_total (int), hard_unlocked (bool), ascension_unlocked (int: level a win just
 ## opened, 0 = none), ascension (int: level played), assist (bool), records (Array[String]
 ## lines for records set this run), death (String: the DeathRecap line; shown on a loss),
-## prana_color (Color: the last Prana in Fayde's hands; tints the crumple on a loss).
+## prana_color (Color: the last Prana in the fallen brother's hands; tints the crumple on
+## a loss), character (DuoSwap.Character who fell), duo (Dictionary: the run's swaps,
+## links and resonances from RunLog.duo_totals; rows shown only when present).
 class_name RunSummaryPanel
 extends Control
 
@@ -31,7 +33,7 @@ const VALUE_COLOR := Color(1.0, 0.92, 0.7)
 const CARD_BG := UIPalette.CARD_SOLID
 const DEATH_COLOR := UIPalette.WARN
 ## ADR-0042 — the defeat crumple portrait: drained of warmth (§2.5), so the last
-## Prana in Fayde's hands is the only warm colour left.
+## Prana in the fallen brother's hands is the only warm colour left.
 const CRUMPLE_TINT := Color(0.7, 0.75, 0.86)
 const _JUICE: HudJuiceTuning = preload("res://assets/data/hud_juice_tuning.tres")
 
@@ -68,16 +70,23 @@ static func rank_summary(ranks: Array, empty_text: String) -> String:
 	return "  ".join(parts)
 
 
-## The stat rows as [label, value] pairs, in display order.
+## The stat rows as [label, value] pairs, in display order. The duo rows (ADR-0058)
+## follow the room ranks when the data carries a "duo" tally.
 static func stat_rows(data: Dictionary, copy: UICopy) -> Array:
-	return [
+	var rows: Array = [
 		[copy.summary_time, format_time(float(data.get("time_sec", 0.0)))],
 		[copy.summary_enemies, str(int(data.get("enemies", 0)))],
 		[copy.summary_best_combo, "x%d" % int(data.get("best_combo", 0))],
 		[copy.summary_bosses, str(int(data.get("bosses", 0)))],
 		[copy.summary_ranks, rank_summary(data.get("ranks", []), copy.summary_no_ranks)],
-		[copy.shards_earned_label, "+%d" % int(data.get("shards", 0))],
 	]
+	var duo: Dictionary = data.get("duo", {})
+	if not duo.is_empty():
+		rows.append([copy.summary_swaps, str(int(duo.get("swaps", 0)))])
+		rows.append([copy.summary_links, str(int(duo.get("links", 0)))])
+		rows.append([copy.summary_resonances, str(int(duo.get("resonances", 0)))])
+	rows.append([copy.shards_earned_label, "+%d" % int(data.get("shards", 0))])
+	return rows
 
 
 func _ready() -> void:
@@ -111,7 +120,7 @@ func setup(data: Dictionary) -> void:
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(sub)
 
-	# ADR-0032: what killed Fayde, so a loss teaches something.
+	# ADR-0032: what killed the brothers, so a loss teaches something.
 	var death: String = str(data.get("death", ""))
 	if not win and not death.is_empty():
 		death_label = _label(death, 20, DEATH_COLOR)
@@ -123,7 +132,7 @@ func setup(data: Dictionary) -> void:
 	cards.add_theme_constant_override(&"separation", 16)
 	root.add_child(cards)
 
-	# ADR-0042 (art bible §5.3): Fayde's crumple pose beside the stats on a loss.
+	# ADR-0042 (art bible §5.3): the fallen brother's crumple pose beside the stats.
 	if not win:
 		cards.add_child(_crumple_portrait(data.get("prana_color", UIPalette.ACCENT),
 			int(data.get("character", DuoSwap.NONE))))
@@ -197,7 +206,7 @@ func setup(data: Dictionary) -> void:
 		buttons.add_child(feedback_button)
 
 
-## A box holding Fayde's crumple pose at the portrait scale, feet on its bottom edge.
+## A box holding the fallen brother's crumple pose at the portrait scale, feet on its bottom edge.
 func _crumple_portrait(glow: Color, character: int = DuoSwap.NONE) -> Control:
 	var px: float = float(maxi(_JUICE.crumple_portrait_scale, 1))
 	var box := Control.new()

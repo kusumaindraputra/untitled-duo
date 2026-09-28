@@ -10,4 +10,4 @@ type_a = 1
 type_b = 4
 effect_kind = 6
 magnitude = 0.2
-description = "Damage dealt to Blinded enemies heals Fayde for a fraction of the final damage."
+description = "Damage dealt to Blinded enemies heals the brothers for a fraction of the final damage."

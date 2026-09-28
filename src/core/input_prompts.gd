@@ -132,6 +132,7 @@ func prep_controls() -> String:
 
 ## One-line control summary for the main menu and title card.
 func controls_line() -> String:
-	return pick(_COPY.controls_format % [move_keys_label(), key_label(&"dash", "Shift"),
-		key_label(&"cast", "Space"), key_label(&"special", "F")],
-		_COPY.controls_pad % [pad_label(&"dash", "X"), pad_label(&"cast", "A"), pad_label(&"special", "Y")])
+	return pick(_COPY.controls_format % [move_keys_label(), key_label(&"swap", "Q"),
+		key_label(&"cast", "Space"), key_label(&"dash", "Shift"), key_label(&"special", "F")],
+		_COPY.controls_pad % [pad_label(&"swap", "LB"), pad_label(&"cast", "A"), pad_label(&"dash", "X"),
+			pad_label(&"special", "Y")])

@@ -227,8 +227,9 @@ func _count_duo(key: StringName) -> void:
 	_duo_counts[String(key)] = int(_duo_counts.get(String(key), 0)) + 1
 
 
-## Emits the finished fight's duo tally once.
-func _flush_duo_counts() -> void:
+## Emits the finished fight's duo tally once. Public so the game loop can close the
+## fight a run ended in (death or the final boss) before it reads the run log.
+func flush_duo_counts() -> void:
 	if not _duo_open:
 		return
 	_duo_open = false
@@ -243,7 +244,7 @@ func _on_run_started() -> void:
 
 
 func _on_preparation_started(_wave_index: int, _waves_remaining: int) -> void:
-	_flush_duo_counts()
+	flush_duo_counts()
 	_in_combat = false
 	if is_inside_tree():
 		PickupOrb.clear_all(get_tree())
@@ -273,7 +274,7 @@ func finish_room() -> void:
 	if not _in_combat:
 		return
 	_in_combat = false
-	_flush_duo_counts()
+	flush_duo_counts()
 	var rank: StyleMeter.Rank = style.end_room()
 	if TUNING.collect_all_on_clear:
 		# Deferred again so orbs the last kill queued (deferred add_child) exist first.

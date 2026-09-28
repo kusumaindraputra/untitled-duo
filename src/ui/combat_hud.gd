@@ -145,6 +145,8 @@ var _special_label: Label = null
 ## ADR-0058 — duo row: the brother in the arena, the swap key and the other brother
 ## (or the swap cooldown). Tinted in the active brother's colour. Combat only.
 var _duo_label: Label = null
+## ADR-0058 — the brothers' faces and shared heart at the head of the duo row.
+var _duo_portraits: DuoPortraits = null
 
 ## ColorRect icon dimmed when dash is on cooldown (AC-DH-04, AC-DH-05).
 ## Null in headless tests.
@@ -403,21 +405,39 @@ func _process(delta: float) -> void:
 	_update_duo_row()
 
 
-## ADR-0058 — refreshes the duo row from the PlayerController each combat frame.
+## ADR-0058 — refreshes the duo row (faces, heart, swap prompt) and the dash row from
+## the PlayerController each combat frame.
 func _update_duo_row() -> void:
 	if _duo_label == null or not _duo_label.visible or not is_instance_valid(player_controller):
 		return
-	_duo_label.text = _COPY.duo_heart + " " + duo_row_text(player_controller.get_active_character(),
-		player_controller.get_swap_cooldown_remaining(), InputPrompts.swap_key(),
-		player_controller.get_relink_hits_left())
-	_duo_label.add_theme_color_override(&"font_color",
-		DuoSwap.hud_color(player_controller.get_active_character()))
-	# The shared heartbeat: the row glows on each beat; swapping then Resonates.
-	_duo_label.modulate.a = heartbeat_alpha(player_controller.get_heartbeat_phase())
+	var active: int = player_controller.get_active_character()
+	var relink: int = player_controller.get_relink_hits_left()
+	var left: float = player_controller.get_swap_cooldown_remaining()
+	var text: String = duo_row_text(active, left, InputPrompts.swap_key(), relink)
+	if _duo_label.text != text:
+		_duo_label.text = text
+	_duo_label.add_theme_color_override(&"font_color", DuoSwap.hud_color(active))
+	# The shared heartbeat: the heart glows on each beat; swapping then Resonates.
+	var duration: float = player_controller.get_swap_cooldown_duration()
+	_duo_portraits.set_state(active, left / duration if duration > 0.0 else 0.0,
+		heartbeat_alpha(player_controller.get_heartbeat_phase()), relink > 0)
+	_update_dash_row(player_controller.can_dash())
 
 
-## Duo row opacity for heartbeat [param phase] (0 on a beat, rising to 1): full on the
-## beat, fading to 0.55 halfway between beats. Static so tests can check it.
+## ADR-0058 — only Faith dashes: while Ayden is out the dash row says so and dims.
+func _update_dash_row(can_dash: bool) -> void:
+	if _dash_hint_label == null:
+		return
+	var text: String = InputPrompts.dash_hint() if can_dash else _COPY.dash_hint_benched
+	if _dash_hint_label.text != text:
+		_dash_hint_label.text = text
+	_dash_hint_label.modulate.a = 1.0 if can_dash else DASH_COOLDOWN_DIMMED_ALPHA + 0.2
+	if _dash_cooldown_icon != null:
+		_dash_cooldown_icon.modulate.a = 1.0 if can_dash else 0.0
+
+
+## Duo heart brightness for heartbeat [param phase] (0 on a beat, rising to 1): full on
+## the beat, fading to 0.55 halfway between beats. Static so tests can check it.
 static func heartbeat_alpha(phase: float) -> float:
 	var near: float = minf(phase, 1.0 - phase) * 2.0  # 0 on a beat, 1 halfway
 	return lerpf(1.0, 0.55, clampf(near, 0.0, 1.0))
@@ -428,12 +448,11 @@ static func heartbeat_alpha(phase: float) -> float:
 ## severed. Static so tests can check it without a HUD.
 static func duo_row_text(active: int, cooldown: float, key: String, relink_hits: int = 0) -> String:
 	var here: String = DuoSwap.display_name(active)
-	var other: String = DuoSwap.display_name(DuoSwap.other(active))
 	if relink_hits > 0:
-		return _COPY.duo_row_severed_format % [here, other, relink_hits]
+		return _COPY.duo_row_severed_format % [here, relink_hits]
 	if cooldown > 0.0:
-		return _COPY.duo_row_cooldown_format % [here, other, cooldown]
-	return _COPY.duo_row_format % [here, key, other]
+		return _COPY.duo_row_cooldown_format % [here, cooldown]
+	return _COPY.duo_row_format % [here, key]
 
 
 ## U3 — keeps the dash ring under Fayde during combat, fed from the PlayerController.
@@ -592,8 +611,12 @@ func _create_ui_nodes() -> void:
 	_duo_label.add_theme_color_override(&"font_outline_color", Color.BLACK)
 	_duo_label.add_theme_constant_override(&"outline_size", 4)
 	_duo_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_duo_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_duo_label.visible = false
 	add_child(_duo_label)
+	_duo_portraits = DuoPortraits.new()
+	_duo_portraits.visible = false
+	add_child(_duo_portraits)
 
 	_dash_cooldown_icon = ColorRect.new()
 	_dash_cooldown_icon.custom_minimum_size = Vector2(12, 12)
@@ -851,9 +874,13 @@ func _layout_left_column(combat: bool) -> void:
 		_dash_hint_label.position = Vector2(LEFT_PAD + _dash_cooldown_icon.size.x + 6.0, y)
 		_dash_hint_label.size = Vector2(LEFT_INNER_WIDTH - _dash_cooldown_icon.size.x - 6.0, dash_h)
 		y += dash_h + LEFT_ROW_GAP
-		var duo_h: float = _duo_label.get_combined_minimum_size().y
-		_duo_label.position = Vector2(LEFT_PAD, y)
-		_duo_label.size = Vector2(LEFT_INNER_WIDTH, duo_h)
+		# ADR-0058: faces and heart, then the active brother's name and the swap prompt.
+		var faces: Vector2 = _duo_portraits.size
+		var duo_h: float = maxf(faces.y, _duo_label.get_combined_minimum_size().y)
+		_duo_portraits.position = Vector2(LEFT_PAD, y + (duo_h - faces.y) * 0.5)
+		var text_x: float = LEFT_PAD + faces.x + 8.0
+		_duo_label.position = Vector2(text_x, y)
+		_duo_label.size = Vector2(LEFT_PAD + LEFT_INNER_WIDTH - text_x, duo_h)
 		y += duo_h + LEFT_ROW_GAP
 		var cap_h: float = _style_caption.get_combined_minimum_size().y
 		var badge: float = maxf(STYLE_BADGE_SIZE, cap_h + 12.0)
@@ -1698,6 +1725,7 @@ func _on_preparation_started(_idx: int, _rem: int) -> void:
 		_special_label.visible = false
 	if _duo_label != null:
 		_duo_label.visible = false
+		_duo_portraits.visible = false
 	if _style_label != null:
 		_set_style_visible(false)
 	if _floor_label != null:
@@ -1717,6 +1745,7 @@ func _on_combat_started(_is_boss: bool = false) -> void:
 		_special_label.visible = true
 	if _duo_label != null:
 		_duo_label.visible = is_instance_valid(player_controller)
+		_duo_portraits.visible = _duo_label.visible
 		_update_duo_row()
 	if _style_label != null:
 		_set_style_visible(true)
@@ -1960,7 +1989,7 @@ func _group_left_card() -> void:
 	add_child(_left_group)
 	move_child(_left_group, _left_panel.get_index())
 	var rows: Array[Control] = [_left_panel, _ghost_bar, hp_bar, hp_label, _dash_hint_label,
-		_dash_cooldown_icon, _special_bar, _special_label, _duo_label, _combo_counter_label,
+		_dash_cooldown_icon, _special_bar, _special_label, _duo_label, _duo_portraits, _combo_counter_label,
 		_floor_label, _room_label, _style_badge, _style_caption, _style_bar, _sigil_strip]
 	rows.sort_custom(func(a: Control, b: Control) -> bool: return a.get_index() < b.get_index())
 	for row: Control in rows:

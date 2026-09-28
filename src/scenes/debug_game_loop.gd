@@ -451,10 +451,10 @@ func _to_main_menu() -> void:
 ## the demo (single floor) doesn't promise "three floors".
 func _make_subtitle_text() -> String:
 	if total_floors <= 1:
-		return "Arrange Prana. Cast. Defeat the floor boss."
+		return "Arrange Prana. Swap brothers. Defeat the floor boss."
 	var words: Array[String] = ["one", "two", "three", "four", "five"]
 	var count_word: String = words[total_floors - 1] if total_floors <= words.size() else str(total_floors)
-	return "Arrange Prana. Cast. Survive %s floors." % count_word
+	return "Arrange Prana. Swap brothers. Survive %s floors." % count_word
 
 
 ## Returns a fixed-height invisible spacer Control for VBox layout.
@@ -1139,6 +1139,8 @@ func _on_run_ended(win: bool) -> void:
 			audio.play_event(evt)
 
 	var run_data: Dictionary = RunManager.get_run_data()
+	# ADR-0058: the fight the run ended in counts toward the duo tally too.
+	_pace_director.flush_duo_counts()
 	_log_run(RunLog.OUTCOME_WIN if win else RunLog.OUTCOME_DEATH, run_data)
 	# ADR-0025: pay Cipher Shards once per run and save before building the overlay.
 	var shards_earned: int = 0
@@ -1222,6 +1224,7 @@ func _build_summary_data(win: bool, run_data: Dictionary, shards: int, hard_unlo
 		"death": "" if win else DeathRecap.line(HealthAndDamage.last_player_hit, _COPY),
 		"prana_color": _last_prana_color,
 		"character": _last_character,
+		"duo": RunLog.duo_totals(_log_builds),
 	}
 
 
