@@ -125,7 +125,8 @@ func setup(data: Dictionary) -> void:
 
 	# ADR-0042 (art bible §5.3): Fayde's crumple pose beside the stats on a loss.
 	if not win:
-		cards.add_child(_crumple_portrait(data.get("prana_color", UIPalette.ACCENT)))
+		cards.add_child(_crumple_portrait(data.get("prana_color", UIPalette.ACCENT),
+			int(data.get("character", DuoSwap.NONE))))
 
 	# Left card: stats.
 	var stats := GridContainer.new()
@@ -197,13 +198,14 @@ func setup(data: Dictionary) -> void:
 
 
 ## A box holding Fayde's crumple pose at the portrait scale, feet on its bottom edge.
-func _crumple_portrait(glow: Color) -> Control:
+func _crumple_portrait(glow: Color, character: int = DuoSwap.NONE) -> Control:
 	var px: float = float(maxi(_JUICE.crumple_portrait_scale, 1))
 	var box := Control.new()
 	box.custom_minimum_size = Vector2(20.0 * px, 32.0 * px)
 	box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	crumple = CrumplePose.new()
+	crumple.set_character(character)
 	crumple.scale = Vector2(px, px)
 	crumple.position = Vector2(10.0 * px, 32.0 * px)
 	crumple.setup(glow, CRUMPLE_TINT)

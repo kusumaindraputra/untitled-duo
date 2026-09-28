@@ -141,11 +141,6 @@ static func display_name(c: int) -> String:
 	return "FAITH" if c == Character.FAITH else "AYDEN"
 
 
-## Body tint of [param c]: warm for Ayden, cool for Faith.
-static func tint(c: int) -> Color:
-	return Color(0.75, 0.85, 1.0) if c == Character.FAITH else Color(1.0, 0.8, 0.7)
-
-
 ## HUD text colour of [param c]: Ayden's ember orange, Faith's sky blue.
 static func hud_color(c: int) -> Color:
 	return Color(0.55, 0.8, 1.0) if c == Character.FAITH else Color(1.0, 0.6, 0.4)

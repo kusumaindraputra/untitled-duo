@@ -103,6 +103,8 @@ var _room_rng := RandomNumberGenerator.new()
 var _in_death_sequence: bool = false
 ## ADR-0042: the Prana colour in Fayde's hands when she fell, for the defeat screen.
 var _last_prana_color: Color = UIPalette.ACCENT
+## ADR-0058: the brother who fell, for the run summary's crumple portrait.
+var _last_character: int = DuoSwap.Character.AYDEN
 
 ## Title-screen CanvasLayer shown at boot before the run starts. Freed on Begin.
 var _title_layer: CanvasLayer = null
@@ -1178,6 +1180,8 @@ func _crumple_fayde() -> void:
 	crumple.name = "CrumplePose"
 	crumple.scale = Vector2(pc.pixel_scale, pc.pixel_scale)
 	var face: Vector2 = $PlayerController.get_facing_direction()
+	_last_character = $PlayerController.get_active_character()
+	crumple.set_character(_last_character)
 	crumple.setup(pc.glow_color, Color.WHITE, face.x < 0.0)
 	pc.visible = false
 	$PlayerController.add_child(crumple)
@@ -1206,6 +1210,7 @@ func _build_summary_data(win: bool, run_data: Dictionary, shards: int, hard_unlo
 		"records": _new_records + _revealed_heirloom_lines(found),
 		"death": "" if win else DeathRecap.line(HealthAndDamage.last_player_hit, _COPY),
 		"prana_color": _last_prana_color,
+		"character": _last_character,
 	}
 
 

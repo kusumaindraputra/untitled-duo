@@ -62,8 +62,15 @@ const _MARKER_SAT: float = 0.42
 func _init() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
 	_sheet("fayde", 20, 32, _fayde, _fayde_glow, true)
-	_crumple_strip()
-	_cast_styles_sheet()
+	_crumple_strip("fayde")
+	_cast_styles_sheet("fayde")
+	# ADR-0058: the two playable brothers share Fayde's rig (cell, hands, lens, poses).
+	for look: Dictionary in [_AYDEN_LOOK, _FAITH_LOOK]:
+		_use_look(look)
+		_sheet(look["name"], 20, 32, _fayde, _fayde_glow, true)
+		_crumple_strip(look["name"])
+		_cast_styles_sheet(look["name"])
+	_use_look(_FAYDE_LOOK)
 	_sheet("drifter", 22, 18, _drifter)
 	_sheet("charger", 14, 26, _charger)
 	_sheet("cluster", 26, 24, _cluster)
@@ -184,6 +191,124 @@ const _FAYDE_COLOURS: Dictionary = {
 }
 
 
+# ── Ayden and Faith (ADR-0058) ───────────────────────────────────────────────
+# The two playable brothers use Fayde's rig: same 20×32 cell, hands on rows 21–22
+# (x 2–3 and 15–16), near eye / lens at (12, 9), clasp at (9, 14), same legs and
+# poses, so every glow, cast style and crumple frame lines up. Only the art differs.
+# Keys C / c must exist in each palette: they colour the sleeve of a reaching arm.
+
+## Ayden, raw power: spiky auburn hair and a red headband (tails blow back), padded
+## sleeveless vest over a dark shirt, wrapped forearms, a belt; no coat hem. Warm.
+const _AYDEN_UPPER: Array[String] = [
+	"......H..H..........",
+	".....HH.HH..H.......",
+	"....HHHHHHHHH.......",
+	"...HHHHHHHHHHH......",
+	"...HHHHHHHHHHHH.....",
+	"...RRRRRRRRRRRR.....",
+	"..RRHHHHHHHHHHH.....",
+	".R.HHHHHSHHSHHH.....",
+	".R.HHHSSSSSSSSs.....",
+	"...HHHSSESSSESs.....",
+	"...HHSSSSSSSSSs.....",
+	"....HsSSSsSSSs......",
+	".....sSSSSSSs.......",
+	"......sUUUs.........",
+	"...vVVVVVAUVVVVv....",
+	"..vVVVVVVUUVVVVVv...",
+	".vVVVVVVVUUVVVVVVv..",
+	".vVvVVVVVUUVVVVvVv..",
+	".WWWvVVVVUUVVVvWWW..",
+	".WWWvVVVVUUVVVvWWW..",
+	".WWWvVVVVUUVVVvWWW..",
+	"..SSvVVVVUUVVVvSS...",
+	"..SSvVVVVUUVVVvSS...",
+	"...vBBBBBBBBBBBv....",
+	"....PPPPPPPPPPP.....",
+	"....PPPPPPPPPPP.....",
+	"....PPPPPPPPPPP.....",
+]
+
+const _AYDEN_COLOURS: Dictionary = {
+	"H": Color("#5A2E26"), "R": Color("#A04A3A"), "S": SKIN, "s": Color("#C49A74"),
+	"E": Color("#1E1A28"), "U": Color("#3A3038"), "V": Color("#8A5A44"),
+	"v": Color("#5A3A2E"), "W": Color("#CDB898"), "A": E7, "B": STRAP,
+	"P": Color("#4A3A34"), "K": BOOT, "C": Color("#CDB898"), "c": Color("#8E7C62"),
+}
+
+## Faith, precise control: neat dark hair with a low ponytail and a teal clip, a lens
+## over the near eye, a high-collared long slate coat with a teal sash. Cool.
+const _FAITH_UPPER: Array[String] = [
+	"....................",
+	"......HHHH..........",
+	".....HHHHHHH........",
+	"....HHHHHHHHHH......",
+	"...HHHHHHHHHGHH.....",
+	"...HHHHHHHHHHHHH....",
+	"..HHHHHHHHHHHHHH....",
+	"...HHHHHSHHSHHH.....",
+	"..HHHHSSSSSSSSs.....",
+	"..HHHHSSESSSLSs.....",
+	"..HHHHSSSSSSSSs.....",
+	".HH.HsSSSsSSSs......",
+	".HH..sSSSSSSs.......",
+	".HH..NNNNNNN........",
+	".H..nNNNNANNNn......",
+	"...nNNNNNTTNNNn.....",
+	"...nNNNNNTTNNNNn....",
+	"..nnNNNNNTTNNNNnn...",
+	"..nNnNNNNTTNNNnNn...",
+	"..nNnNNNNTTNNNnNn...",
+	"..nNnNNNNTTNNNnNn...",
+	"..SSnNNNNTTNNNnSS...",
+	"..SSnNNNNTTNNNnSS...",
+	"...nNNNGGGGGNNNn....",
+	"...nNNNNNTTNNNNn....",
+	"..nNNNNNNTTNNNNNn...",
+	"..nnnNNNNTTNNNNnn...",
+]
+
+const _FAITH_COLOURS: Dictionary = {
+	"H": Color("#34283A"), "G": Color("#4E8A86"), "S": SKIN, "s": Color("#C49A74"),
+	"E": Color("#1E1A28"), "L": Color("#B8D4DC"), "N": Color("#5E6E86"),
+	"n": Color("#3C4658"), "T": Color("#C8C2B4"), "A": Color("#8C9098"),
+	"P": TROUSER, "K": BOOT, "C": Color("#5E6E86"), "c": Color("#3C4658"),
+}
+
+const _FAYDE_LOOK: Dictionary = {
+	"name": "fayde", "upper": _FAYDE_UPPER, "colours": _FAYDE_COLOURS,
+	"sleeve_lit": _SLEEVE_LIT, "sleeve_edge": _SLEEVE_EDGE, "hem": true,
+}
+const _AYDEN_LOOK: Dictionary = {
+	"name": "ayden", "upper": _AYDEN_UPPER, "colours": _AYDEN_COLOURS,
+	"sleeve_lit": Color("#D8C6A6"), "sleeve_edge": Color("#6E5A44"), "hem": false,
+}
+const _FAITH_LOOK: Dictionary = {
+	"name": "faith", "upper": _FAITH_UPPER, "colours": _FAITH_COLOURS,
+	"sleeve_lit": Color("#7486A0"), "sleeve_edge": Color("#2E3646"), "hem": true,
+}
+
+## The look being drawn (set by _use_look). Starts as Fayde.
+var _upper: Array[String] = _FAYDE_UPPER
+var _colours: Dictionary = _FAYDE_COLOURS
+var _sleeve_lit: Color = _SLEEVE_LIT
+var _sleeve_edge: Color = _SLEEVE_EDGE
+var _hem: bool = true
+
+
+func _use_look(look: Dictionary) -> void:
+	_upper = look["upper"]
+	_colours = look["colours"]
+	_sleeve_lit = look["sleeve_lit"]
+	_sleeve_edge = look["sleeve_edge"]
+	_hem = look["hem"]
+
+
+## A leg row for the current look: coat-hem pixels (c) drop out when it has no coat.
+func _leg_row(row: String) -> String:
+	return row if _hem else row.replace("c", ".")
+
+
 ## Returns (body drop, leg variant, hem sway) for a frame.
 func _fayde_pose(f: int, moving: bool) -> Vector3i:
 	if moving:
@@ -212,23 +337,23 @@ func _fayde(p: PixelPainter, f: int, row: int) -> void:
 	var pose: Vector3i = _fayde_pose(f, row == MOVE)
 	var legs: Array = _FAYDE_LEGS[pose.y]
 	for r: int in legs.size():
-		_ascii_row(p, legs[r], 27 + r, 0)
-	for r: int in _FAYDE_UPPER.size():
+		_ascii_row(p, _leg_row(legs[r]), 27 + r, 0)
+	for r: int in _upper.size():
 		var shift: int = pose.z if r >= 24 else 0
-		_ascii_row(p, _FAYDE_UPPER[r], r + pose.x, shift)
+		_ascii_row(p, _upper[r], r + pose.x, shift)
 
 
 func _fayde_cast(p: PixelPainter, f: int) -> void:
 	var lean: int = _FAYDE_CAST_LEAN[f]
 	var legs: Array = _FAYDE_LEGS[_FAYDE_CAST_LEGS[f]]
 	for r: int in legs.size():
-		_ascii_row(p, legs[r], 27 + r, 0)
-	for r: int in _FAYDE_UPPER.size():
+		_ascii_row(p, _leg_row(legs[r]), 27 + r, 0)
+	for r: int in _upper.size():
 		var shift: int = lean + (_FAYDE_CAST_HEM[f] if r >= 24 else 0)
 		# The hanging hands (rows 21–22) are redrawn where the pose puts them.
-		_ascii_row(p, _FAYDE_UPPER[r], r, shift, r == 21 or r == 22)
-	var sleeve: Color = _FAYDE_COLOURS["C"]
-	var fold: Color = _FAYDE_COLOURS["c"]
+		_ascii_row(p, _upper[r], r, shift, r == 21 or r == 22)
+	var sleeve: Color = _colours["C"]
+	var fold: Color = _colours["c"]
 	if f == 1 or f == 2:
 		# Front sleeve leaves the body: clear it, then draw the arm reaching forward.
 		for y: int in range(18, 23):
@@ -242,7 +367,7 @@ func _fayde_cast(p: PixelPainter, f: int) -> void:
 			p.px(a.x, a.y + 1, fold)
 	for h: Vector2i in _fayde_cast_hands(f):
 		p.rect(h.x, h.y, 2, 2, SKIN)
-		p.px(h.x + 1, h.y + 1, _FAYDE_COLOURS["s"])
+		p.px(h.x + 1, h.y + 1, _colours["s"])
 
 
 ## Top-left corner of each 2×2 hand in cast column [param f] (front hand first).
@@ -262,8 +387,8 @@ func _ascii_row(p: PixelPainter, row: String, y: int, dx: int, skip_skin: bool =
 		var k: String = row[x]
 		if skip_skin and k == "S":
 			continue
-		if _FAYDE_COLOURS.has(k):
-			p.px(x + dx, y, _FAYDE_COLOURS[k])
+		if _colours.has(k):
+			p.px(x + dx, y, _colours[k])
 
 
 func _fayde_glow(g: PixelPainter, f: int, row: int) -> void:
@@ -354,7 +479,7 @@ const _STYLE_POSES: Array = [
 ]
 
 
-func _cast_styles_sheet() -> void:
+func _cast_styles_sheet(name: String) -> void:
 	var cw: int = 20
 	var ch: int = 32
 	var img := Image.create(cw * FRAMES, ch * CAST_STYLES, false, Image.FORMAT_RGBA8)
@@ -374,8 +499,8 @@ func _cast_styles_sheet() -> void:
 				_mirror_cell(p, cw, ch)
 				_mirror_cell(g, cw, ch)
 			p.outline(OUTLINE)
-	img.save_png(ProjectSettings.globalize_path(OUT_DIR + "fayde_casts.png"))
-	gimg.save_png(ProjectSettings.globalize_path(OUT_DIR + "fayde_casts_glow.png"))
+	img.save_png(ProjectSettings.globalize_path(OUT_DIR + name + "_casts.png"))
+	gimg.save_png(ProjectSettings.globalize_path(OUT_DIR + name + "_casts_glow.png"))
 
 
 func _fayde_styled(p: PixelPainter, pose: Array) -> void:
@@ -384,11 +509,11 @@ func _fayde_styled(p: PixelPainter, pose: Array) -> void:
 	var li: int = pose[2]
 	var legs: Array = _FAYDE_LEGS[li] if li < 3 else _STYLE_LEGS[li - 3]
 	for r: int in legs.size():
-		_ascii_row(p, legs[r], 27 + r, 0)
-	for r: int in _FAYDE_UPPER.size():
+		_ascii_row(p, _leg_row(legs[r]), 27 + r, 0)
+	for r: int in _upper.size():
 		if r + drop >= 27 and li != 4:
 			break # the crouch tucks the coat hem behind the bent legs
-		_ascii_row(p, _FAYDE_UPPER[r], r + drop, lean, r == 21 or r == 22)
+		_ascii_row(p, _upper[r], r + drop, lean, r == 21 or r == 22)
 	# Both sleeves leave the body: clear them, then draw each arm to its hand.
 	for y: int in range(17 + drop, 23 + drop):
 		for x: int in [2, 3, 4, 14, 15, 16]:
@@ -403,11 +528,11 @@ func _fayde_styled(p: PixelPainter, pose: Array) -> void:
 func _style_arm(p: PixelPainter, shoulder: Vector2i, hand: Vector2i) -> void:
 	var tip: Vector2i = hand + Vector2i(0 if hand.x >= shoulder.x else 1, 0)
 	# Dark edge above and below, lit core: the arm reads even across the coat.
-	p.line(shoulder.x, shoulder.y - 1, tip.x, tip.y - 1, _SLEEVE_EDGE)
-	p.line(shoulder.x, shoulder.y + 1, tip.x, tip.y + 1, _SLEEVE_EDGE)
-	p.line(shoulder.x, shoulder.y, tip.x, tip.y, _SLEEVE_LIT)
+	p.line(shoulder.x, shoulder.y - 1, tip.x, tip.y - 1, _sleeve_edge)
+	p.line(shoulder.x, shoulder.y + 1, tip.x, tip.y + 1, _sleeve_edge)
+	p.line(shoulder.x, shoulder.y, tip.x, tip.y, _sleeve_lit)
 	p.rect(hand.x, hand.y, 2, 2, SKIN)
-	p.px(hand.x + 1, hand.y + 1, _FAYDE_COLOURS["s"])
+	p.px(hand.x + 1, hand.y + 1, _colours["s"])
 
 
 ## Glow: both hands, the lens and clasp, and one small element mark per style on the
@@ -490,7 +615,7 @@ func _crumple_legs(f: int) -> Array:
 	return _CRUMPLE_LEGS[0 if d <= 1 else (1 if d <= 3 else 2)]
 
 
-func _crumple_strip() -> void:
+func _crumple_strip(name: String) -> void:
 	var cw: int = 20
 	var ch: int = 32
 	var img := Image.create(cw * CRUMPLE_FRAMES, ch, false, Image.FORMAT_RGBA8)
@@ -505,20 +630,20 @@ func _crumple_strip() -> void:
 		_fayde_crumple(p, f)
 		p.outline(OUTLINE)
 		_fayde_crumple_glow(g, f)
-	img.save_png(ProjectSettings.globalize_path(OUT_DIR + "fayde_crumple.png"))
-	gimg.save_png(ProjectSettings.globalize_path(OUT_DIR + "fayde_crumple_glow.png"))
+	img.save_png(ProjectSettings.globalize_path(OUT_DIR + name + "_crumple.png"))
+	gimg.save_png(ProjectSettings.globalize_path(OUT_DIR + name + "_crumple_glow.png"))
 
 
 func _fayde_crumple(p: PixelPainter, f: int) -> void:
 	var d: int = _CRUMPLE_DROP[f]
 	var legs: Array = _crumple_legs(f)
 	for r: int in legs.size():
-		_ascii_row(p, legs[r], ch_bottom(legs.size()) + r, 0)
+		_ascii_row(p, _leg_row(legs[r]), ch_bottom(legs.size()) + r, 0)
 	# Torso first, then the head over it, so the dipped head sits in front of the collar.
-	for r: int in range(14, _FAYDE_UPPER.size()):
-		_ascii_row(p, _FAYDE_UPPER[r], r + d, 0)
+	for r: int in range(14, _upper.size()):
+		_ascii_row(p, _upper[r], r + d, 0)
 	for r: int in range(0, 14):
-		var row: String = _FAYDE_UPPER[r]
+		var row: String = _upper[r]
 		if f >= 2:
 			# Head down: the fringe falls over the brow and the eyes close.
 			if r == 7:

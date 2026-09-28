@@ -332,3 +332,39 @@ func test_duo_row_shows_the_swap_key_when_ready() -> void:
 func test_duo_row_shows_the_cooldown_while_waiting() -> void:
 	var text: String = CombatHUD.duo_row_text(FAITH, 0.5, "Q")
 	assert_str(text).is_equal(COPY.duo_row_cooldown_format % ["FAITH", "AYDEN", 0.5])
+
+
+# ── Sprites (DuoLooks) ───────────────────────────────────────────────────────
+
+func test_each_brother_has_his_own_sheets_on_fayde_rig() -> void:
+	var a: Dictionary = DuoLooks.for_character(AYDEN)
+	var f: Dictionary = DuoLooks.for_character(FAITH)
+	assert_object(a["sheet"]).is_not_same(f["sheet"])
+	assert_object(DuoLooks.for_character(DuoSwap.NONE)["sheet"]).is_same(DuoLooks.FAYDE["sheet"])
+	# Same cell layout as Fayde, so PixelCharacter and CrumplePose need no other change.
+	for key: String in ["sheet", "glow", "casts", "casts_glow", "crumple", "crumple_glow"]:
+		var fayde_tex: Texture2D = DuoLooks.FAYDE[key]
+		for look: Dictionary in [a, f]:
+			var tex: Texture2D = look[key]
+			assert_vector(tex.get_size()).is_equal(fayde_tex.get_size())
+
+
+func test_swap_puts_the_brothers_sprite_on_the_player() -> void:
+	var pc: PlayerController = PlayerControllerScript.new() as PlayerController
+	var pixel := PixelCharacter.new()
+	pixel.name = "PixelCharacter"
+	pc.add_child(pixel)
+	add_child(pc)
+	pc._on_combat_started(false)
+	assert_object(pixel.sheet).is_same(DuoLooks.AYDEN["sheet"])
+	pc.try_swap()
+	assert_object(pixel.sheet).is_same(DuoLooks.FAITH["sheet"])
+	assert_object(pixel.cast_sheet).is_same(DuoLooks.FAITH["casts"])
+	_free_pc(pc)
+
+
+func test_crumple_shows_the_fallen_brother() -> void:
+	var crumple := CrumplePose.new()
+	crumple.set_character(FAITH)
+	assert_object(crumple._body.texture).is_same(DuoLooks.FAITH["crumple"])
+	crumple.free()

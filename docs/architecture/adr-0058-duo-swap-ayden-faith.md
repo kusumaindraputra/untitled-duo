@@ -30,7 +30,7 @@ cash in the other brother's setup (hand-off). Design: `design/gdd/duo-swap.md`.
   tag-in i-frames through `is_invincible()`, Perfect Swap through
   `register_perfect_dodge()` (it also emits `perfect_dodged`, so PaceDirector pays the
   same rewards and the cooldown is shared), Breach / Anchor tag-in effects, Ayden's dash
-  hit, Faith's dash bullet cut, speed multiplier and body tint. Emits
+  hit, Faith's dash bullet cut, speed multiplier and the brother's sprite set. Emits
   `character_swapped` and `perfect_swapped`.
 - `SpellCastingEffects` is told the active brother with `set_active_character()`.
   Step 8d applies Ayden's hand only for Ayden and the brother's damage weight; the
@@ -60,10 +60,17 @@ cash in the other brother's setup (hand-off). Design: `design/gdd/duo-swap.md`.
 - Q is shared with the prep grid's discard key; the two never run at the same time.
 - Faith's dash wipes bullets like the dash-cut sigil (the larger radius wins), so the
   sigil is weaker on Faith. Balance pass needed.
-- Not yet done: brother-specific Specials, two full sprite sets (a tint for now), the
+- Sprites: each brother has his own sheet set on Fayde's rig (body, glow, five Prana
+  cast poses, crumple), made by `tools/art-gen/generate_character_sprites.gd`.
+  `DuoLooks` (`src/visual/duo_looks.gd`) swaps them on PixelCharacter and the crumple
+  pose. Ayden: spiky auburn hair, red headband, rust vest, wrapped forearms. Faith:
+  dark hair with a ponytail, lens, slate long coat, teal sash. The main menu still
+  shows Fayde.
+- Not yet done: brother-specific Specials, the
   story rewrite (fragments 1, 8, 9, true ending, UI text naming "Fayde").
 - Tests: `tests/unit/duo-swap/duo_swap_test.gd`.
 
 ## Evidence
 
-`production/qa/evidence/adr0058-duo-ayden.png` and `adr0058-duo-faith.png`.
+`production/qa/evidence/adr0058-duo-ayden.png`, `adr0058-duo-faith.png` and
+`adr0058-duo-sprites-closeup.png` (own sprite sets).

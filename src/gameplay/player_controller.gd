@@ -559,12 +559,12 @@ func _ayden_dash_hits() -> void:
 				GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
 
 
-## Tints the sprite for the active brother; [param flash] adds a short swap flash.
+## Shows the active brother's sprite sheets; [param flash] adds a short swap flash.
 func _apply_character_look(flash: bool) -> void:
 	var pixel: PixelCharacter = get_node_or_null(^"PixelCharacter") as PixelCharacter
 	if pixel == null:
 		return
-	pixel.set_body_tint(DuoSwap.tint(_duo.active()))
+	DuoLooks.apply(pixel, _duo.active())
 	if flash:
 		pixel.flash(Color.WHITE, 0.12, 0.8)
 

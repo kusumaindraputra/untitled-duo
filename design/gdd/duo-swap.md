@@ -181,7 +181,7 @@ content work. Proposed default, open to change:
 | `design/gdd/game-concept.md` | Premise: two android brothers linked as Fayde, not one boy |
 | `design/gdd/memory-fragments.md` + `assets/data/story/story_config.tres` | Rewrite fragments 1, 8, 9 and the true ending (TE); voices "Fayde" become Ayden or Faith. Fragments 2–7 and 10 mostly keep their content |
 | UI text (`combat_hud.gd`, `tutorial_coach.gd`, `run_summary_panel.gd` and others) | "Fayde" as the player's name becomes the active brother's name |
-| Art | Two character sprite sets (first playable can use one base sprite with a red Ayden / blue Faith palette) |
+| Art | Done 2026-09-28: two sprite sets on Fayde's rig (ADR-0058). Main menu backdrop still shows Fayde |
 | Main menu tagline | "Two brothers' Prana. One pair of hands." becomes e.g. "Two brothers. One link." |
 
 ## 10. Open Questions
@@ -189,5 +189,4 @@ content work. Proposed default, open to change:
    beings (Section 9).
 2. **HP**: shared (this proposal, simplest, explained by the link) or one bar each, where the
    resting character heals slowly (closer to Cloak & Dagger, more tactical, more UI).
-3. **Art budget**: two full sprite sets, or one Fayde sprite with a colour/outline swap
-   (red Ayden, blue Faith) for the first playable.
+3. ~~**Art budget**~~ Decided 2026-09-28: two full sprite sets, generated on Fayde's rig.
