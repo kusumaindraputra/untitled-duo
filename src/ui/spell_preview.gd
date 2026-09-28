@@ -122,6 +122,15 @@ static func duo_line(ayden_core: int, faith_core: int, link_name: String, names:
 	return line
 
 
+## ADR-0058 — [param text] with each brother's name in his HUD colour (bbcode), so the
+## duo line reads like the HUD's faces: Ayden ember, Faith sky. Pure.
+static func tint_brothers(text: String) -> String:
+	for c: int in [DuoSwap.Character.AYDEN, DuoSwap.Character.FAITH]:
+		var name: String = DuoSwap.display_name(c)
+		text = text.replace(name, "[b][color=#%s]%s[/color][/b]" % [DuoSwap.hud_color(c).to_html(false), name])
+	return text
+
+
 ## Renders a [method build] result as bbcode for the panel's RichTextLabel.
 ## [param colors] are element colours and [param abbrevs] short element names, both in
 ## type_id order.
@@ -137,7 +146,7 @@ static func to_bbcode(card: Dictionary, colors: Array, abbrevs: Array) -> String
 	if card.get("hands", "") != "":
 		lines.append("[color=#%s]%s[/color]" % [UIPalette.TEXT.to_html(false), card["hands"]])
 	if card.get("duo", "") != "":
-		lines.append("[color=#%s]%s[/color]" % [UIPalette.TEXT.to_html(false), card["duo"]])
+		lines.append("[color=#%s]%s[/color]" % [UIPalette.TEXT.to_html(false), tint_brothers(card["duo"])])
 	for m: Dictionary in card["modifiers"]:
 		var t: int = m["type"]
 		lines.append("[color=#%s]+ %s[/color]  %s" % [_color_hex(t, colors), _entry(abbrevs, t), m["text"]])

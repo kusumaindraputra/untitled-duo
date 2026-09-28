@@ -97,20 +97,21 @@ extends Resource
 @export var link_label: String = "LINK!"
 ## Callout when a swap lands on the shared heartbeat.
 @export var resonance_label: String = "RESONANCE"
-## Heart shown at the start of the duo row; the row glows on each heartbeat.
-@export var duo_heart: String = "♥"
 ## Prep preview line for the duo: Ayden's core, Faith's core (palm faces).
 @export var duo_cores_format: String = "AYDEN %s · FAITH %s"
 ## Prep preview suffix naming the Link Reaction of the two cores.
 @export var duo_link_format: String = "  → LINK: %s"
 ## Callout when dash is pressed as Ayden: only Faith dashes.
 @export var dash_blocked_label: String = "SWAP TO DASH"
-## HUD duo row when a swap is ready: active brother, swap key, the other brother.
-@export var duo_row_format: String = "%s   [%s] %s"
-## HUD duo row on cooldown: active brother, the other brother, seconds left.
-@export var duo_row_cooldown_format: String = "%s   %s in %.1fs"
-## HUD duo row while a boss has the link severed: active brother, the other, hits left.
-@export var duo_row_severed_format: String = "%s  ✂  %s  (hit %d more)"
+## HUD duo row beside the brothers' faces (which show who waits in the link), when a
+## swap is ready: active brother, then the swap key on the second line.
+@export var duo_row_format: String = "%s\n[%s] swap"
+## HUD duo row on cooldown: active brother, seconds left on the swap.
+@export var duo_row_cooldown_format: String = "%s\nswap in %.1fs"
+## HUD duo row while a boss has the link severed: active brother, hits left to relink.
+@export var duo_row_severed_format: String = "%s\nlink cut: hit %d more"
+## Dash row while Ayden is in the arena: only Faith dashes (ADR-0058).
+@export var dash_hint_benched: String = "No dash: swap to Faith"
 ## Callout when the Special becomes a Link Burst (both brothers join it).
 @export var link_burst_label: String = "LINK BURST!"
 ## Callout when a severed link reconnects.
@@ -549,6 +550,10 @@ extends Resource
 @export var summary_ranks: String = "Room ranks"
 ## Shown in the ranks row when no room was ranked.
 @export var summary_no_ranks: String = "—"
+## ADR-0058: the duo's run, under the other stats.
+@export var summary_swaps: String = "Swaps"
+@export var summary_links: String = "Link Reactions"
+@export var summary_resonances: String = "Resonances"
 ## Heading of the sigil list, and the text when none were taken.
 @export var summary_sigils_title: String = "SIGILS THIS RUN"
 @export var summary_no_sigils: String = "None this run"
@@ -583,7 +588,7 @@ extends Resource
 ## Title, tagline and the main buttons, top to bottom (Memories and Settings use
 ## memories_button_format and settings_button).
 @export var menu_title: String = "THE LAST CIPHER"
-@export var menu_subtitle: String = "Two brothers' Prana. One pair of hands."
+@export var menu_subtitle: String = "Two brothers. One link."
 @export var menu_play: String = "PLAY"
 ## ADR-0048: shown above Play when a run was saved mid-way (%d = floor, %d = room).
 @export var menu_continue_format: String = "CONTINUE  (FLOOR %d, ROOM %d)"
@@ -600,10 +605,11 @@ extends Resource
 
 @export_group("Button prompts (U8)")
 
-## Control summary on the main menu and the title card: move keys, dash, cast, special.
-@export var controls_format: String = "%s  Move      %s  Dash      %s  Cast      %s  Special      Enter  Confirm"
-## Pad variant: dash, cast and special buttons (rebindable, ADR-0031).
-@export var controls_pad: String = "Stick  Move      %s  Dash      %s  Cast      %s  Special      Y  Confirm"
+## Control summary on the main menu and the title card: move keys, swap, cast, dash,
+## special. Only Faith dashes (ADR-0058), so the dash names her.
+@export var controls_format: String = "%s  Move      %s  Swap      %s  Cast      %s  Dash (Faith)      %s  Special      Enter  Confirm"
+## Pad variant: swap, cast, dash and special buttons (rebindable, ADR-0031).
+@export var controls_pad: String = "Stick  Move      %s  Swap      %s  Cast      %s  Dash (Faith)      %s  Special      Y  Confirm"
 ## Grid controls line on the title card.
 @export var grid_controls_kb: String = "Arrows select a grid slot · E places · Q clears · C cycles Prana"
 @export var grid_controls_pad: String = "D-pad selects a grid slot · A places · B clears · RB cycles Prana"
@@ -696,7 +702,7 @@ extends Resource
 ## Run summary death recap: attacker, then attacker and attack.
 @export var death_by_format: String = "Killed by %s"
 @export var death_by_attack_format: String = "Killed by %s  ·  %s"
-@export var death_unknown: String = "Fayde fell."
+@export var death_unknown: String = "The brothers fell."
 ## Attack names by DeathRecap.ATTACK_* id.
 @export var death_attack_names: Dictionary = {
 	"contact": "up close",

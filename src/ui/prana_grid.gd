@@ -790,15 +790,24 @@ func _hand_label(text: String) -> Label:
 	return l
 
 
-## Brightens each hand label while its column holds Prana.
+## Colours each hand label in its brother's HUD colour (ADR-0058), faint until its
+## column holds Prana.
 func _update_hand_labels() -> void:
 	if _ayden_label == null or _faith_label == null:
 		return
 	var hands: Dictionary = PranaHands.read(_slots)
 	_ayden_label.add_theme_color_override(&"font_color",
-		UIPalette.TEXT if int(hands["ayden"]) > 0 else UIPalette.TEXT_FAINT)
+		hand_label_color(DuoSwap.Character.AYDEN, int(hands["ayden"]) > 0))
 	_faith_label.add_theme_color_override(&"font_color",
-		UIPalette.TEXT if int(hands["faith"]) > 0 else UIPalette.TEXT_FAINT)
+		hand_label_color(DuoSwap.Character.FAITH, int(hands["faith"]) > 0))
+
+
+## Hand label colour for [param character]: his HUD colour, dimmed while [param held]
+## is false (his column is empty). Pure.
+static func hand_label_color(character: int, held: bool) -> Color:
+	var c: Color = DuoSwap.hud_color(character)
+	c.a = 1.0 if held else 0.5
+	return c
 
 
 ## The spell card for the current arrangement (U1), using the same CombinationResolution

@@ -3,7 +3,7 @@
 ## Coverage:
 ##   U5-01: time formats as M:SS
 ##   U5-02: room ranks are counted best-first; empty uses the placeholder
-##   U5-03: stat rows follow the data, in order, with UICopy labels
+##   U5-03: stat rows follow the data, in order, with UICopy labels (duo rows, ADR-0058)
 ##   U5-04: setup builds a win and a loss screen with focusable Run Again
 ##   U5-05: buttons emit their signals
 ##   U5-06: the sigil list shows titles, or the "none" text
@@ -53,6 +53,19 @@ func test_run_summary_stat_rows_follow_data() -> void:
 	assert_array(rows[2]).contains_exactly([COPY.summary_best_combo, "x7"])
 	assert_array(rows[3]).contains_exactly([COPY.summary_bosses, "1"])
 	assert_array(rows[5]).contains_exactly([COPY.shards_earned_label, "+42"])
+
+
+func test_run_summary_stat_rows_add_the_duo_before_shards() -> void:
+	var data: Dictionary = _data()
+	data["duo"] = {"swaps": 31, "links": 12, "resonances": 4, "link_bursts": 2}
+
+	var rows: Array = RunSummaryPanel.stat_rows(data, COPY)
+
+	assert_int(rows.size()).is_equal(9)
+	assert_array(rows[5]).contains_exactly([COPY.summary_swaps, "31"])
+	assert_array(rows[6]).contains_exactly([COPY.summary_links, "12"])
+	assert_array(rows[7]).contains_exactly([COPY.summary_resonances, "4"])
+	assert_array(rows[8]).contains_exactly([COPY.shards_earned_label, "+42"])
 
 
 func test_run_summary_setup_win_and_loss_titles() -> void:

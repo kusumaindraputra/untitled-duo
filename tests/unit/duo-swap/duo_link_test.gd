@@ -287,7 +287,7 @@ func test_player_reconnects_after_the_hits_and_gets_meter() -> void:
 
 func test_duo_row_shows_the_hits_left_while_severed() -> void:
 	var text: String = CombatHUD.duo_row_text(AYDEN, 0.0, "Q", 4)
-	assert_str(text).is_equal(COPY.duo_row_severed_format % ["AYDEN", "FAITH", 4])
+	assert_str(text).is_equal(COPY.duo_row_severed_format % ["AYDEN", 4])
 
 
 func test_partner_appears_beside_fayde_and_fades() -> void:

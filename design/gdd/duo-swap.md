@@ -123,7 +123,8 @@ bridge between the kits.
 
 ### Rule 6b — Shared heartbeat (Resonance)
 - The brothers' shared core beats every `heartbeat_sec` from the start of combat. The
-  HUD duo row ("♥ AYDEN [Q] FAITH") glows on each beat.
+  HUD duo row (the two faces with the heart between them, then "AYDEN / [Q] swap") glows
+  on each beat.
 - A swap within `resonance_window_sec` of a beat **Resonates**: "RESONANCE" pops up, the
   next basic cast is Perfect whatever its timing (`resonance_perfect_sec`), the Special
   meter gains `resonance_meter_gain`, and the next landed hit sets off a Link Reaction
@@ -324,9 +325,9 @@ content work. Proposed default, open to change:
 |------|--------|
 | `design/gdd/game-concept.md` | Premise: two android brothers linked as Fayde, not one boy |
 | `design/gdd/memory-fragments.md` + `assets/data/story/story_config.tres` | Rewrite fragments 1, 8, 9 and the true ending (TE); voices "Fayde" become Ayden or Faith. Fragments 2–7 and 10 mostly keep their content |
-| UI text (`combat_hud.gd`, `tutorial_coach.gd`, `run_summary_panel.gd` and others) | "Fayde" as the player's name becomes the active brother's name |
-| Art | Done 2026-09-28: two sprite sets on Fayde's rig (ADR-0058). Main menu backdrop still shows Fayde |
-| Main menu tagline | "Two brothers' Prana. One pair of hands." becomes e.g. "Two brothers. One link." |
+| UI text (`combat_hud.gd`, `tutorial_coach.gd`, `run_summary_panel.gd` and others) | Done 2026-09-28 (UI pass): no player-facing UI text calls the player "Fayde"; the defeat fallback reads "The brothers fell.", reaction text heals "the brothers" |
+| Art | Done 2026-09-28: two sprite sets on Fayde's rig (ADR-0058). Main menu backdrop shows Ayden and Faith side by side with a Prana link and a beating heart between them |
+| Main menu tagline | Done 2026-09-28: "Two brothers. One link." |
 
 ## 10. Open Questions
 1. ~~Who are the two characters?~~ Decided 2026-09-28: Ayden and Faith as two separate
@@ -334,3 +335,27 @@ content work. Proposed default, open to change:
 2. **HP**: shared (this proposal, simplest, explained by the link) or one bar each, where the
    resting character heals slowly (closer to Cloak & Dagger, more tactical, more UI).
 3. ~~**Art budget**~~ Decided 2026-09-28: two full sprite sets, generated on Fayde's rig.
+
+## 11. UI pass (2026-09-28)
+
+What the screens show now that the player is two brothers:
+
+- **Main menu**: Ayden (left) and Faith (right) stand in the vault, joined by a thread of
+  Prana in their two colours with a heart that beats (`MenuBackdrop`). Tagline "Two
+  brothers. One link.". The controls line names the swap and says the dash is Faith's.
+- **Title card**: "Arrange Prana. Swap brothers. Survive three floors." and the same
+  controls line.
+- **Combat HUD**: the duo row leads with both faces (`DuoPortraits`): the brother in the
+  arena framed in his colour, the other dimmed with a shade that drains as the swap
+  cools down, the shared heart between them glowing on each beat. Beside them: the
+  active name and "[Q] swap", "swap in 0.3s", or "link cut: hit N more" while a boss
+  severs the link (the waiting face is struck through and the heart goes grey). While
+  Ayden is out the dash row reads "No dash: swap to Faith" and its icon hides.
+- **Preparation and pause**: the "AYDEN / FAITH" hand labels and the duo line's names
+  use each brother's colour; the pause mini-grid frames the two palm slots in their
+  colours, as the prep grid does.
+- **Run summary**: Swaps, Link Reactions and Resonances rows (the fight the run ended
+  in is counted too), and the crumple portrait is the brother who fell.
+
+Still open: the story voices in `story_config.tres` (fragments 1, 8, 9, TE) wait for the
+lore rewrite in Section 9.

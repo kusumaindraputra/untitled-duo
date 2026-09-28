@@ -89,8 +89,8 @@ func test_input_prompts_pad_uses_pad_copy() -> void:
 
 	assert_str(t.dash_hint()).is_equal(COPY.dash_hint_pad % Tracker.pad_label(&"dash", "X"))
 	assert_str(t.special_ready()).is_equal(COPY.special_ready_pad % Tracker.pad_label(&"special", "Y"))
-	assert_str(t.controls_line()).is_equal(COPY.controls_pad % [Tracker.pad_label(&"dash", "X"),
-		Tracker.pad_label(&"cast", "A"), Tracker.pad_label(&"special", "Y")])
+	assert_str(t.controls_line()).is_equal(COPY.controls_pad % [Tracker.pad_label(&"swap", "LB"),
+		Tracker.pad_label(&"cast", "A"), Tracker.pad_label(&"dash", "X"), Tracker.pad_label(&"special", "Y")])
 	t.using_pad = false
 	assert_str(t.dash_hint()).is_equal(COPY.dash_hint_format % Tracker.key_label(&"dash", "Shift"))
 	t.free()

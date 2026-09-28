@@ -256,6 +256,11 @@ func _mini_grid(grid: Array, colors: Array, abbrevs: Array) -> Control:
 		if i == 4:
 			sb.border_color = TITLE_COLOR
 			sb.set_border_width_all(2)
+		# ADR-0058: each brother's palm, framed in his colour as on the prep grid.
+		var palm: int = PranaGridSlot.palm_owner_of(i)
+		if palm != DuoSwap.NONE and DuoSwap.TUNING.palm_faces:
+			sb.border_color = DuoSwap.hud_color(palm)
+			sb.set_border_width_all(2)
 		cell.add_theme_stylebox_override(&"panel", sb)
 		if t != null and int(t) >= 0 and int(t) < abbrevs.size():
 			var icon: Texture2D = PranaIcon.texture(int(t), MINI_ICON_SCALE)
