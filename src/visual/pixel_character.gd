@@ -137,6 +137,17 @@ func flash(color: Color, duration: float, strength: float = 1.0) -> void:
 	_push_fx()
 
 
+## Tints the body sprite (not the glow) by [param color]; WHITE clears it. Used for
+## the Ayden / Faith duo look (ADR-0058).
+func set_body_tint(color: Color) -> void:
+	_body.modulate = color
+
+
+## Current body tint.
+func get_body_tint() -> Color:
+	return _body.modulate
+
+
 ## Plays the cast row once over [param duration] seconds (wind-up, release, hold,
 ## recover). Idle and moving rows resume afterwards. [param style] picks a row of
 ## [member cast_sheet] (a GameEnums.CastAnimation value); -1, an out-of-range style

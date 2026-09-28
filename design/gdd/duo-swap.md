@@ -1,6 +1,6 @@
 # Duo Swap — Ayden and Faith
 
-> **Status**: Proposal (2026-09-28) — design only, no code yet
+> **Status**: Implemented, first pass (2026-09-28, ADR-0058) — needs playtest tuning
 > **Author**: Kusuma Putra + Claude Code Game Studios
 > **Extends**: player-controller.md, spell-casting-effects.md, special-attack.md,
 > bullet-hell.md, fast-pace.md, ADR-0057 (two hands on the grid)
@@ -44,20 +44,22 @@ and every swap is them trusting each other with the fight.
   fast-pace.md). Tuning differences are in Rule 4.
 
 ### Rule 2 — Swap
-- `swap` action: **Q**, gamepad **LB**. Allowed in COMBAT_PHASE while ENABLED or DASHING.
+- `swap` action: **Q**, gamepad **LB** (rebindable). Allowed in COMBAT_PHASE while ENABLED
+  or DASHING. Q also discards a grid slot, but only during Preparation.
 - Swap is instant and keeps position, velocity and facing. The current basic chain ends.
 - Cooldown `swap_cooldown_sec` (default 1.2 s). The HUD shows it on the portrait.
 - **Tag-in**: the character swapping in grants `swap_iframe_sec` (0.2 s) of i-frames and
   fires a small tag-in effect (Rule 5).
 - Swapping during the Special's lock is allowed but does not cancel the Special.
+- Swapping mid-dash keeps the dash; the tag-in i-frames start on top of it.
 
 ### Rule 3 — Perfect Swap
 - Counts when an enemy bullet, laser or mortar would hit during the tag-in i-frames
   (same test as Perfect Dodge; post-hit grace does not count).
-- Effects: `perfect_swap_meter_gain` Special meter, `style_perfect_swap` style, the
-  "PERFECT SWAP" callout, and the tag-in effect is upgraded (Rule 5).
+- Effects: the tag-in effect fires again at ×`perfect_swap_tag_in_mult` radius and push.
 - Shares `perfect_dodge_cooldown_sec` with Perfect Dodge so the two can't be chained
-  for free meter.
+  for free meter. It pays the Perfect Dodge rewards (meter, free Perfect Cast, slow-mo,
+  style) and shows "PERFECT SWAP".
 
 ### Rule 4 — Two kits
 
@@ -67,20 +69,21 @@ and every swap is them trusting each other with the fight.
 | Basic chain | Core Prana as a short-range arc / slam, ×`ayden_damage_mult` damage | Core Prana as a long-range bolt, ×`faith_damage_mult` damage |
 | Reads grid column | Left column (Ayden's hand) adds damage | Right column (Faith's hand) adds status duration |
 | Move speed | ×`ayden_speed_mult` (slightly slower) | ×`faith_speed_mult` (baseline) |
-| Dash | Dash hits enemies it passes through (`ayden_dash_damage`) | Dash leaves a short slow-field for bullets (`faith_dash_field_sec`) |
-| Perfect Cast bonus | Bigger hit, knock-back | Bigger bullet-cancel radius |
-| Special flavour | Special detonates at a point in front (focused) | Special pulses around Faith (wide, longer status) |
-| Tag-in effect | **Breach**: short shockwave, pushes enemies back | **Anchor**: slows bullets near Fayde for 1 s |
+| Dash | Dash hits each enemy it passes through once (`ayden_dash_damage`) | Dash wipes bullets it passes (`faith_dash_cut_radius`) |
+| Special flavour | *Not yet: the Special is shared for now* | *Not yet* |
+| Tag-in effect | **Breach**: pushes enemies within `tag_in_radius` back | **Anchor**: wipes enemy bullets within `tag_in_radius` |
 
 Status effects applied by either character stay on the enemy after a swap; that is the
 bridge between the kits.
 
 ### Rule 5 — Hand-off combos
-- **Tag-in on a status**: Ayden's first hit after swapping in deals
-  ×`handoff_damage_mult` against an enemy carrying a status Faith applied.
-- **Tag-in on damage**: Faith's first status after swapping in lasts
-  ×`handoff_status_mult` on an enemy Ayden hit in the last 2 s.
-- **Perfect Swap** doubles the tag-in effect's radius and duration.
+- **Tag-in on a status**: Ayden's first landed attack within `handoff_window_sec` of
+  swapping in deals ×`handoff_damage_mult` against an enemy carrying Burn, Blind, Stun,
+  Freeze or Chill.
+- **Tag-in on damage**: Faith's first landed attack within `handoff_window_sec` of
+  swapping in holds its status ×`handoff_status_mult` on an enemy Ayden hit within
+  `ayden_mark_sec`.
+- The first attack that lands after a swap closes the window, bonus or not.
 
 ### Rule 6 — The grid (Preparation)
 - The grid is shared. Centre slot = core Prana for **both** characters (their basic chain
@@ -108,10 +111,16 @@ but each now applies only to its own character.
 
 `effective_swap_cooldown = swap_cooldown_sec × (touch_swap_cooldown_mult if hands touching else 1)`
 
+`cast_range = type_range × (ayden_range_mult | faith_range_mult)`
+
 Starting values (to tune after playtest):
-`ayden_damage_mult` 1.25, `faith_damage_mult` 0.85, `ayden_speed_mult` 0.92,
-`handoff_damage_mult` 1.5, `handoff_status_mult` 1.5, `swap_cooldown_sec` 1.2,
-`touch_swap_cooldown_mult` 0.7, `swap_iframe_sec` 0.2, `perfect_swap_meter_gain` 15.
+`ayden_damage_mult` 1.25, `faith_damage_mult` 0.85, `ayden_range_mult` 0.85,
+`faith_range_mult` 1.45, `ayden_speed_mult` 0.92, `handoff_damage_mult` 1.5,
+`handoff_status_mult` 1.5, `swap_cooldown_sec` 1.2, `touch_swap_cooldown_mult` 0.7,
+`swap_iframe_sec` 0.2, `tag_in_radius` 70, `perfect_swap_tag_in_mult` 2.0.
+
+Example: Voidblue T1, Ayden, one Prana in his hand: `20 × 0.9 × 1.0 × 1.06 × 1.25 = 23.85`.
+The same cast as Faith: `20 × 0.9 × 0.85 = 15.3`, but Blind lasts `2.0 × control_mult`.
 
 ## 5. Edge Cases
 - Swap pressed on cooldown: ignored, portrait flashes.
@@ -130,9 +139,10 @@ cooldown), Audio (swap and tag-in SFX), Art (a second character sprite set),
 Memory Fragments (lore framing, Section 9).
 
 ## 7. Tuning Knobs
-New `DuoTuning` resource (`assets/data/duo_tuning.tres`) with every value in Section 4,
-plus `ayden_dash_damage`, `faith_dash_field_sec`, `perfect_swap_meter_gain`,
-`style_perfect_swap`.
+`DuoTuning` resource (`assets/data/duo_tuning.tres`) with every value in Section 4, plus
+`ayden_dash_damage` (8), `ayden_dash_hit_radius` (22 px), `faith_dash_cut_radius`
+(24 px), `breach_knockback` (60 px), `handoff_window_sec` (2 s), `ayden_mark_sec` (2 s).
+Safe ranges are on each export in `src/data/duo_tuning.gd`.
 
 ## 8. Acceptance Criteria
 - Pressing Q in combat switches the active character, sprite and HUD portrait within one
@@ -141,7 +151,7 @@ plus `ayden_dash_damage`, `faith_dash_field_sec`, `perfect_swap_meter_gain`,
   longer status, using the same grid.
 - Left-column Prana changes only Ayden's numbers; right-column only Faith's (unit tests on
   PranaHands + resolution).
-- A bullet overlapping during tag-in i-frames counts as a Perfect Swap and adds meter.
+- A bullet overlapping during tag-in i-frames counts as a Perfect Swap, once per swap.
 - Ayden hitting an enemy Faith froze deals the hand-off bonus (unit test).
 - HP, Special meter and dash charges are shared and survive swaps.
 

@@ -197,6 +197,7 @@ This makes SC&E the single stat broker for the wave. No system reads `aggregate_
 - **18d. Tuning.** `assets/data/hands_tuning.tres`: `power_per_prana` 0.06, `control_per_prana` 0.12, `touch_mult` 1.5, and the slot lists. At most: +27 % damage and +54 % status time (3 + 3, touching).
 - **18e. Preview.** The prep panel labels the columns AYDEN / FAITH (brightened while that hand holds Prana) and prints one line under the core with the active bonuses and the touch.
 - **18f. Spatial language.** Slots 3 and 5 are both cardinal neighbours of the core (reactions, Cascade) and part of a hand, so placement now trades reaction value against hand balance. Corners feed the hands and primary tier only.
+- **18g. Duo swap (ADR-0058, 2026-09-28).** With Ayden and Faith playable as separate brothers, Ayden's hand powers only Ayden's hits and Faith's hand holds status only for Faith's casts; touching hands also shorten the swap cooldown. See `design/gdd/duo-swap.md`.
 
 ---
 

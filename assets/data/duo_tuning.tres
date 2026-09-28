@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="DuoTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/duo_tuning.gd" id="1_duo"]
+
+[resource]
+script = ExtResource("1_duo")
+swap_cooldown_sec = 1.2
+touch_swap_cooldown_mult = 0.7
+swap_iframe_sec = 0.2
+tag_in_radius = 70.0
+breach_knockback = 60.0
+perfect_swap_tag_in_mult = 2.0
+ayden_damage_mult = 1.25
+ayden_range_mult = 0.85
+ayden_speed_mult = 0.92
+ayden_dash_damage = 8.0
+ayden_dash_hit_radius = 22.0
+faith_damage_mult = 0.85
+faith_range_mult = 1.45
+faith_speed_mult = 1.0
+faith_dash_cut_radius = 24.0
+handoff_window_sec = 2.0
+handoff_damage_mult = 1.5
+handoff_status_mult = 1.5
+ayden_mark_sec = 2.0

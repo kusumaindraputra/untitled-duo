@@ -37,20 +37,22 @@ const RESOLUTIONS: Array[Vector2i] = [
 ## Actions the player can rebind on the keyboard, in menu order.
 const REMAPPABLE: Array[StringName] = [
 	&"move_up", &"move_down", &"move_left", &"move_right", &"dash", &"cast", &"special",
+	&"swap",
 ]
 ## Default keyboard keys for remappable actions the run scene registers itself
 ## (cast / special come from SpellCastingEffects). Lets the main menu's Settings show
 ## and rebind them before a run has started.
 const DEFAULT_KEYS: Dictionary[StringName, Key] = {
 	&"move_up": KEY_W, &"move_down": KEY_S, &"move_left": KEY_A, &"move_right": KEY_D,
-	&"dash": KEY_SHIFT,
+	&"dash": KEY_SHIFT, &"swap": KEY_Q,
 }
 ## Actions the player can rebind on the gamepad, in menu order. Movement stays on
 ## the left stick; the grid keeps its own buttons (it only runs between fights).
-const PAD_REMAPPABLE: Array[StringName] = [&"dash", &"cast", &"special"]
+const PAD_REMAPPABLE: Array[StringName] = [&"dash", &"cast", &"special", &"swap"]
 ## Default gamepad button per PAD_REMAPPABLE action (Xbox layout names).
 const DEFAULT_PAD: Dictionary[StringName, JoyButton] = {
 	&"dash": JOY_BUTTON_X, &"cast": JOY_BUTTON_A, &"special": JOY_BUTTON_Y,
+	&"swap": JOY_BUTTON_LEFT_SHOULDER,
 }
 ## Buttons a combat action may use. Start pauses, Back/Guide belong to the system
 ## and the D-pad drives menus, so those are never offered.

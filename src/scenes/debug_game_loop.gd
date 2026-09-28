@@ -257,6 +257,9 @@ func _ready() -> void:
 	_pace_director.room_ranked.connect(hud.show_room_rank)
 	_pace_director.room_ranked.connect(_log_room_rank)
 	_pace_director.perfect_dodge_triggered.connect(hud.show_perfect_dodge)
+	# ADR-0058: the duo's hand-off callout.
+	if not SpellCastingEffects.handoff_hit.is_connected(hud.show_handoff):
+		SpellCastingEffects.handoff_hit.connect(hud.show_handoff)
 	# ADR-0031 rumble for big moves (impacts rumble through camera trauma).
 	_pace_director.perfect_dodge_triggered.connect(Rumble.on_perfect_dodge)
 	if not SpellCastingEffects.special_fired.is_connected(Rumble.on_special_fired):
@@ -999,6 +1002,9 @@ func _register_input_actions() -> void:
 	_ensure_joypad_action(&"cast", JOY_BUTTON_A)
 	# Gamepad: Y / Triangle = Special (free during combat; prana_confirm is prep-only)
 	_ensure_joypad_action(&"special", JOY_BUTTON_Y)
+	# Q / LB = swap Ayden and Faith (ADR-0058; combat only, Q discards a slot in prep)
+	_ensure_key_action(&"swap", KEY_Q)
+	_ensure_joypad_action(&"swap", JOY_BUTTON_LEFT_SHOULDER)
 	# Gamepad: left analog stick for movement (JOY_AXIS_LEFT_X/Y)
 	_ensure_joypad_motion_action(&"move_left",  JOY_AXIS_LEFT_X, -1.0)
 	_ensure_joypad_motion_action(&"move_right", JOY_AXIS_LEFT_X,  1.0)

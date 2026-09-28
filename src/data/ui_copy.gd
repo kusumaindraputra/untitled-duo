@@ -91,6 +91,14 @@ extends Resource
 
 ## Callout floated on a Perfect Dodge.
 @export var perfect_dodge_label: String = "PERFECT DODGE"
+## ADR-0058 duo swap. Callout when the tag-in i-frames take a hit.
+@export var perfect_swap_label: String = "PERFECT SWAP"
+## Callout when the brother who tagged in cashes in the other's setup.
+@export var handoff_label: String = "HAND-OFF"
+## HUD duo row when a swap is ready: active brother, swap key, the other brother.
+@export var duo_row_format: String = "%s   [%s] %s"
+## HUD duo row on cooldown: active brother, the other brother, seconds left.
+@export var duo_row_cooldown_format: String = "%s   %s in %.1fs"
 
 ## Label beside the style meter. The live rank letter follows it.
 @export var style_label: String = "STYLE"
@@ -305,6 +313,7 @@ extends Resource
 ## Names of GameSettings.REMAPPABLE actions, same order.
 @export var settings_action_names: Array[String] = [
 	"Move up", "Move down", "Move left", "Move right", "Dash", "Cast", "Special",
+	"Swap brother",
 ]
 @export var settings_press_key: String = "Press a key…"
 @export var settings_reset_keys: String = "Reset keys"
