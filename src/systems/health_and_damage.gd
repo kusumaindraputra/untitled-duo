@@ -76,6 +76,10 @@ signal heavy_hit(target: Node, final_damage: int)
 ## Audio System and Combat HUD listen to update their danger-state presentation.
 signal player_hp_zone_changed(zone: GameEnums.HPZone)
 
+## ADR-0058 — a spell hit a duo foe: [param broke] when Ayden broke its ward, otherwise
+## the brother [param character] was resisted (throttled per foe) and the HUD hints a swap.
+signal duo_foe_hit(target: Node, character: int, broke: bool)
+
 # ── Public variables ──────────────────────────────────────────────────────────
 
 ## Set to true by Tutorial/Onboarding for the player's first lifetime run.
@@ -106,6 +110,11 @@ var _fayde_dead: bool = false
 
 ## DEBUG QA ONLY — blocks all incoming damage to Fayde. Remove before ship.
 var _debug_god_mode: bool = false
+
+## ADR-0058 — which brother a spell hit comes from (DuoSwap.Character or NONE).
+## Overridable in tests; defaults to the brother SpellCastingEffects has in the arena.
+var _duo_character_provider: Callable = func() -> int:
+	return SpellCastingEffects.get_active_character()
 
 ## Whether a CONTACT i-frame window is currently active for Fayde.
 var _iframe_active: bool = false
@@ -189,6 +198,7 @@ func unregister_enemy(instance_id: int) -> void:
 ##   4.  final_damage = clamp(roundi(base_damage × multiplier), 0, target.max_hp)
 ##   5.  First-run mercy     (Fayde + CONTACT + first_run_active only)
 ##   5b. Damage share        (Fayde: Assist / Glass Core)
+##   5d. Duo foe             (enemy + DIRECT: the resisted brother deals less, ADR-0058)
 ##   5c. Duo armour          (Fayde: Ayden takes less, ADR-0058)
 ##   6.  Apply HP delta
 ##   7.  Emit damage_taken   (only if final_damage > 0)
@@ -262,6 +272,16 @@ func apply_damage(
 		var duo_mult: float = target.get_incoming_damage_mult()
 		if not is_equal_approx(duo_mult, 1.0):
 			final_damage = clampi(roundi(float(final_damage) * duo_mult), 0, target_max_hp)
+
+	# Step 5d — duo foes (ADR-0058): the brother a foe resists barely scratches it
+	if not is_player and source == GameEnums.DamageSource.DIRECT and target.has_method(&"take_duo_hit"):
+		var duo_hit: Dictionary = target.take_duo_hit(_duo_character_provider.call())
+		var foe_mult: float = float(duo_hit.get("mult", 1.0))
+		if not is_equal_approx(foe_mult, 1.0) and final_damage > 0:
+			final_damage = clampi(roundi(float(final_damage) * foe_mult), 1, target_max_hp)
+		if bool(duo_hit.get("broke", false)) or bool(duo_hit.get("hint", false)):
+			duo_foe_hit.emit(target, int(duo_hit.get("character", -1)),
+				bool(duo_hit.get("broke", false)))
 
 	# Step 6 — Apply HP delta
 	if is_player:

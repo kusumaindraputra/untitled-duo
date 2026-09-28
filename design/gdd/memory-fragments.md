@@ -6,15 +6,16 @@
 
 ## Overview
 
-Fayde recovers his past one memory at a time. Ten fragments unlock in story order
-across runs, from the old man pushing him into the dark back to who Ayden and Faith
-were and why Fayde exists. Beating the Cipher Keeper plays an ending; recovering all
+Ayden and Faith recover their past one memory at a time. Ten fragments unlock in
+story order across runs, from the old man pushing them into the dark back to who the
+two boys were, why they were rebuilt as two small frames sharing one core, and why
+that link is called Fayde (rewritten 2026-09-28 for the duo, ADR-0058). Beating the Cipher Keeper plays an ending; recovering all
 ten first unlocks the true ending.
 
 ## Player Fantasy
 
 "I remembered something, and it changed everything." Every floor cleared, and even
-a hard-fought death, gives back a piece of who Fayde is, so each run moves the story
+a hard-fought death, gives back a piece of who the brothers are, so each run moves the story
 forward.
 
 ## Detailed Rules
@@ -37,18 +38,18 @@ forward.
 
 | # | Title | Voice | What it reveals |
 |---|-------|-------|-----------------|
-| 1 | The Push | Fayde | The only memory he woke with |
+| 1 | The Push | Faith | The only memory they woke with; a hand found hers in the dark |
 | 2 | Don't Be Lonely | Memo | Memo's handwritten panel and the man who wrote it |
 | 3 | Two Pairs of Hands | ? | Two boys whose Prana works only together |
 | 4 | Each Symbol Is a Breath | Father | The 3×3 grid lesson (ties to the Prana grid) |
 | 5 | The Kind Stranger | Faith | The robot disguised as a human |
 | 6 | Separation | Ayden | Separation is the weapon |
 | 7 | Signatures Extinguished | Kingdom Record | The final touch and transmission |
-| 8 | Faith and Ayden | Father | Building something new from both |
-| 9 | Father | Fayde | Fayde's first word |
+| 8 | Faith and Ayden | Father | Two frames, one core; FAITH + AYDEN crossed down to FAYDE, "the link" |
+| 9 | Father | Ayden | The brothers' first word, one heartbeat between two chests |
 | 10 | The Hatch | Father | The raid; loops back to fragment 1 |
-| E | The Surface | Fayde | Partial ending: keep climbing |
-| TE | Fayde | Fayde | True ending: "You're both of them. And you're you." |
+| E | The Surface | Faith | Partial ending: keep climbing, together |
+| TE | Fayde | Ayden and Faith | True ending: separation was the Kingdom's weapon; "Two of you, one heartbeat." Fayde is the link, and it means help |
 
 ## Formulas
 

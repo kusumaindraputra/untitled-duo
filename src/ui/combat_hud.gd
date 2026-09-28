@@ -358,6 +358,7 @@ func _ready() -> void:
 		player_controller.relinked.connect(show_relinked)
 	SpellCastingEffects.link_reaction.connect(show_link_reaction)
 	SpellCastingEffects.link_burst.connect(show_link_burst)
+	HealthAndDamage.duo_foe_hit.connect(show_duo_foe_hit)
 	SpellCastingEffects.face_changed.connect(_on_face_changed)
 
 
@@ -511,6 +512,8 @@ func _exit_tree() -> void:
 		SpellCastingEffects.link_reaction.disconnect(show_link_reaction)
 	if SpellCastingEffects.link_burst.is_connected(show_link_burst):
 		SpellCastingEffects.link_burst.disconnect(show_link_burst)
+	if HealthAndDamage.duo_foe_hit.is_connected(show_duo_foe_hit):
+		HealthAndDamage.duo_foe_hit.disconnect(show_duo_foe_hit)
 	if SpellCastingEffects.face_changed.is_connected(_on_face_changed):
 		SpellCastingEffects.face_changed.disconnect(_on_face_changed)
 
@@ -1070,6 +1073,24 @@ func show_link_reaction(_reaction_name: String, world_pos: Vector2, character: i
 ## ADR-0058 — "LINK BURST" pops over the Special when both brothers join it.
 func show_link_burst(_reaction_name: String, world_pos: Vector2, _radius: float, character: int) -> void:
 	show_callout(world_pos + Vector2(0.0, -22.0), _COPY.link_burst_label, DuoSwap.hud_color(character))
+
+
+## ADR-0058 — duo foes: "BROKEN!" when Ayden cracks a ward, otherwise "SWAP TO <brother>"
+## in the colour of the brother who beats the foe.
+func show_duo_foe_hit(target: Node, character: int, broke: bool) -> void:
+	if not (target is Node2D):
+		return
+	var pos: Vector2 = (target as Node2D).global_position + Vector2(0.0, -18.0)
+	var text: String = duo_foe_callout(character, broke)
+	var who: int = character if broke else DuoSwap.other(character)
+	show_callout(pos, text, DuoSwap.hud_color(who))
+
+
+## Callout text for a duo foe hit by [param character]. Static so tests can check it.
+static func duo_foe_callout(character: int, broke: bool) -> String:
+	if broke:
+		return _COPY.foe_broken_label
+	return _COPY.foe_swap_format % DuoSwap.display_name(DuoSwap.other(character))
 
 
 ## ADR-0058 — "RELINKED" pops over Fayde when a severed link reconnects.

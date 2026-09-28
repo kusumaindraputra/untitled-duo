@@ -179,6 +179,34 @@ bridge between the kits.
   RESONANCE anyway, so no one gets stuck. Both palm slots carry an inner ring in their
   brother's colour on the prep grid.
 
+### Rule 6h — Duo foes (enemies that pick a brother, 2026-09-28)
+- Each non-boss enemy has a `duo_foe_chance` to spawn as a duo foe, marked by a ring in
+  the colour of the brother who beats it (rolled on its own RNG, so seeded waves and
+  elite rolls do not change).
+- **Warded** (Ayden's foe, solid double ring): Faith's hits deal ×`wrong_brother_mult`.
+  `ward_hits` Ayden hits break the ward ("BROKEN!"), stun it for
+  `ward_break_stun_sec`, and make it a plain enemy.
+- **Flitting** (Faith's foe, spinning dashed ring): Ayden's hits deal
+  ×`wrong_brother_mult`, and it hops `flit_distance` away whenever Ayden comes within
+  `flit_radius` (every `flit_cooldown_sec`). Faith's reach pins it.
+- A resisted hit pops "SWAP TO AYDEN" or "SWAP TO FAITH" over the foe, at most every
+  `foe_hint_sec`. Status damage over time is not resisted.
+
+### Rule 6i — Duo music
+- Two shelf filters on the Music bus: a low shelf for Ayden (`ayden_shelf_hz`) and a
+  high shelf for Faith (`faith_shelf_hz`). The brother in the arena gets `voice_gain`,
+  fading over `voice_fade_sec` on each swap; a Link Burst swells both for
+  `link_burst_music_sec`.
+- Every shared heartbeat in combat plays a soft synthesised thump (`thump_db`), low for
+  Ayden and pitched up (`faith_thump_pitch`) for Faith, so a Resonance can be timed by
+  ear. The existing tracks are reused; true per-brother stems need new music.
+
+### Rule 6j — Duo Cipher Cores
+- **Anvil Core**: Ayden hits ×1.3, Faith hits ×0.8.
+- **Kite Core**: Faith hits ×1.3, Ayden hits ×0.8.
+- **Tether Core**: swap cooldown ×0.6 and Link reach ×1.3, spell damage ×0.9.
+- The Core pick row wraps onto two rows (seven Cores).
+
 ### Rule 7 — Shared resources
 - **HP**: one shared bar, carried by the Prana link that binds them (if one falls, the
   link breaks and both fall). See Open Question 2.
@@ -265,7 +293,13 @@ severed-link group (`sever_reconnect_hits` 6, `relink_meter_gain` 25). Duo sigil
 `SigilConfig` (`wide_link_mult` 1.5, `deep_heart_mult` 1.4, `deep_heart_meter_mult` 2.0,
 `echo_damage` 14, `echo_range` 220). Duo style: `PaceTuning` (`style_swap` 2,
 `style_link` 9, `style_resonance` 7, `style_link_burst` 14). Tutorial fallback:
-`TutorialRoomTuning.duo_fallback_swaps` (8).
+`TutorialRoomTuning.duo_fallback_swaps` (8). Duo foes: `duo_foe_chance` 0.22,
+`warded_share` 0.5, `wrong_brother_mult` 0.35, `ward_hits` 3, `ward_break_stun_sec` 1.0,
+`flit_radius` 80, `flit_distance` 90, `flit_cooldown_sec` 1.4, `foe_hint_sec` 1.5.
+Duo music: `duo_music` on, `voice_gain` 1.6, `ayden_shelf_hz` 220, `faith_shelf_hz`
+3200, `voice_fade_sec` 0.25, `link_burst_music_sec` 1.2, `heartbeat_thump` on,
+`thump_db` -12, `faith_thump_pitch` 1.5. Duo Cores: `CoreFrame.ayden_damage_mult`,
+`faith_damage_mult`, `swap_cooldown_mult`, `link_radius_mult` in `core_roster.tres`.
 Safe ranges are on each export in `src/data/duo_tuning.gd`.
 
 ## 8. Acceptance Criteria
@@ -299,6 +333,15 @@ Safe ranges are on each export in `src/data/duo_tuning.gd`.
   tally reaches the run log (unit tests).
 - The tutorial's palm, swap, LINK and Resonance lessons tick from their signals, with
   the swap-count fallback (unit tests).
+- A warded foe takes ×`wrong_brother_mult` from Faith and breaks after `ward_hits`
+  Ayden hits; a flitting foe takes ×`wrong_brother_mult` from Ayden and hops away from
+  him (unit tests, `duo_world_test.gd`).
+- The music's shelf gains follow the brother in the arena and go flat when DuoMusic
+  leaves; one thump per heartbeat (unit tests).
+- Anvil, Kite and Tether Cores change each brother's damage, the swap cooldown and the
+  Link reach; the brother multipliers reset with the run (unit tests).
+- No story fragment or ending is voiced by "Fayde"; the true ending names separation
+  (unit test).
 
 ## 9. Lore — Ayden and Faith as two separate beings (chosen 2026-09-28)
 
@@ -316,15 +359,16 @@ content work. Proposed default, open to change:
   the swap button and the shared HP and Special meter.
 - **Memo** stays the companion and caretaker (their original caretaker in the backstory).
 - **Grid**: unchanged meaning from ADR-0057, left hand Ayden, right hand Faith.
-- **Ending**: the true ending line "You're both of them. And you're you." no longer fits.
-  A replacement in the same spirit: the brothers learn the link is what the First King
-  wanted to break ("Separation is the weapon", fragment 6), and they choose to stay linked.
+- **Ending** (written 2026-09-28): the brothers learn the Kingdom split them because
+  together they were too much for it ("Separation is the weapon", fragment 6, and the
+  Cipher Keeper's severing phase). Memo: "Two of you, one heartbeat." Fayde is the link,
+  and it means help.
 
 ### What has to change
 | Area | Change |
 |------|--------|
-| `design/gdd/game-concept.md` | Premise: two android brothers linked as Fayde, not one boy |
-| `design/gdd/memory-fragments.md` + `assets/data/story/story_config.tres` | Rewrite fragments 1, 8, 9 and the true ending (TE); voices "Fayde" become Ayden or Faith. Fragments 2–7 and 10 mostly keep their content |
+| `design/gdd/game-concept.md` | Done 2026-09-28: premise note at the top; the old "Fayde" section is marked superseded |
+| `design/gdd/memory-fragments.md` + `assets/data/story/story_config.tres` | Done 2026-09-28: fragments 1, 8, 9, both endings rewritten for two brothers and one core; 2, 3, 4 and 10 reworded to "we"; no voice reads "Fayde" |
 | UI text (`combat_hud.gd`, `tutorial_coach.gd`, `run_summary_panel.gd` and others) | Done 2026-09-28 (UI pass): no player-facing UI text calls the player "Fayde"; the defeat fallback reads "The brothers fell.", reaction text heals "the brothers" |
 | Art | Done 2026-09-28: two sprite sets on Fayde's rig (ADR-0058). Main menu backdrop shows Ayden and Faith side by side with a Prana link and a beating heart between them |
 | Main menu tagline | Done 2026-09-28: "Two brothers. One link." |

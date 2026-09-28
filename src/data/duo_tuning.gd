@@ -106,3 +106,43 @@ extends Resource
 @export_range(1, 30, 1) var sever_reconnect_hits: int = 6
 ## Special meter the reconnection pays (the brothers find each other again).
 @export_range(0.0, 100.0, 1.0) var relink_meter_gain: float = 25.0
+
+@export_group("Duo foes")
+
+## Chance a non-boss enemy spawns as a duo foe (warded or flitting). 0 = off.
+@export_range(0.0, 1.0, 0.01) var duo_foe_chance: float = 0.22
+## Share of duo foes that are warded (Ayden's foes); the rest flit (Faith's foes).
+@export_range(0.0, 1.0, 0.05) var warded_share: float = 0.5
+## Damage multiplier for a hit from the brother the foe resists.
+@export_range(0.0, 1.0, 0.05) var wrong_brother_mult: float = 0.35
+## Ayden hits that break a ward; the foe is then a plain enemy.
+@export_range(1, 20, 1) var ward_hits: int = 3
+## Seconds a broken ward stuns its enemy.
+@export_range(0.0, 3.0, 0.05) var ward_break_stun_sec: float = 1.0
+## A flitting foe hops away when Ayden comes within this many px.
+@export_range(0.0, 300.0, 1.0) var flit_radius: float = 80.0
+## Hop distance (px) of a flitting foe.
+@export_range(0.0, 300.0, 1.0) var flit_distance: float = 90.0
+## Seconds between hops.
+@export_range(0.1, 10.0, 0.1) var flit_cooldown_sec: float = 1.4
+## Seconds between "swap" hints over the same foe.
+@export_range(0.1, 10.0, 0.1) var foe_hint_sec: float = 1.5
+
+@export_group("Duo music")
+
+## The music leans toward the brother in the arena: Ayden's low end, Faith's highs.
+@export var duo_music: bool = true
+## Shelf gain (linear, 1 = flat) of the brother's band. Safe range 1.2–2.0.
+@export_range(1.0, 4.0, 0.05) var voice_gain: float = 1.6
+## Low shelf (Ayden) and high shelf (Faith) cutoffs in Hz.
+@export_range(40.0, 1000.0, 5.0) var ayden_shelf_hz: float = 220.0
+@export_range(1000.0, 12000.0, 50.0) var faith_shelf_hz: float = 3200.0
+## Seconds the music takes to lean to the new brother after a swap.
+@export_range(0.0, 2.0, 0.05) var voice_fade_sec: float = 0.25
+## Seconds both bands swell together after a Link Burst.
+@export_range(0.0, 5.0, 0.1) var link_burst_music_sec: float = 1.2
+## A soft heart thump on every shared heartbeat, so a Resonance can be heard.
+@export var heartbeat_thump: bool = true
+## Volume (dB) of the thump. Ayden's is low, Faith's pitched up.
+@export_range(-40.0, 0.0, 0.5) var thump_db: float = -12.0
+@export_range(0.5, 3.0, 0.05) var faith_thump_pitch: float = 1.5

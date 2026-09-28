@@ -24,6 +24,14 @@ extends Resource
 @export var offer_cards: int = 0
 ## Free sigil rerolls on each reward screen.
 @export var free_rerolls_per_offer: int = 0
+## ADR-0058 duo Cores: Ayden's and Faith's own hit damage (SpellCastingEffects
+## .apply_brother_damage_mult) and the swap cooldown (PlayerController
+## .apply_swap_cooldown_mult). A duo Core leans the run toward one brother or the swap.
+@export var ayden_damage_mult: float = 1.0
+@export var faith_damage_mult: float = 1.0
+@export var swap_cooldown_mult: float = 1.0
+## Multiplies the Link Reaction and Link Burst reach (SpellCastingEffects.apply_link_radius_mult).
+@export var link_radius_mult: float = 1.0
 ## Accent colour of the Core's card on the pick screen.
 @export var accent: Color = Color(0.831, 0.788, 0.722)
 
@@ -36,11 +44,20 @@ extends Resource
 func apply(player: Node, spells: Object, sigils: SigilManager) -> void:
 	if spells != null and not is_equal_approx(spell_damage_mult, 1.0):
 		spells.call(&"apply_damage_mult", spell_damage_mult)
+	if spells != null and spells.has_method(&"apply_brother_damage_mult"):
+		if not is_equal_approx(ayden_damage_mult, 1.0):
+			spells.call(&"apply_brother_damage_mult", DuoSwap.Character.AYDEN, ayden_damage_mult)
+		if not is_equal_approx(faith_damage_mult, 1.0):
+			spells.call(&"apply_brother_damage_mult", DuoSwap.Character.FAITH, faith_damage_mult)
+	if spells != null and not is_equal_approx(link_radius_mult, 1.0) and spells.has_method(&"apply_link_radius_mult"):
+		spells.call(&"apply_link_radius_mult", link_radius_mult)
 	if is_instance_valid(player):
 		if not is_equal_approx(move_speed_mult, 1.0) and player.has_method(&"apply_move_speed_mult"):
 			player.call(&"apply_move_speed_mult", move_speed_mult)
 		if bonus_dash_charges > 0 and player.has_method(&"add_dash_charges"):
 			player.call(&"add_dash_charges", bonus_dash_charges)
+		if not is_equal_approx(swap_cooldown_mult, 1.0) and player.has_method(&"apply_swap_cooldown_mult"):
+			player.call(&"apply_swap_cooldown_mult", swap_cooldown_mult)
 	if sigils != null:
 		if offer_cards > 0:
 			sigils.offer_cards = offer_cards

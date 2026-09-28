@@ -7,6 +7,11 @@
 
 ## Elevator Pitch
 
+> **Premise update (2026-09-28, ADR-0058):** Ayden and Faith are now two playable
+> android brothers, one small frame each, sharing one Prana core. **Fayde** is the name
+> of their link, not a boy. The story text follows `design/gdd/memory-fragments.md`
+> and `design/gdd/duo-swap.md` Section 9; the pitch and "Fayde" section below predate it.
+
 > A 2D isometric roguelike where you play as Fayde — an amnesiac child who can
 > use Prana, an ability believed lost with humanity. Trapped in an underground
 > scrap yard in a world ruled by AI, you fight your way to the surface, gradually
@@ -126,6 +131,9 @@ A small panel on Memo's chest — original, handwritten by Father, fading now �
 reads: *"Jangan kesepian."* (Don't be lonely.)
 
 ### Fayde
+
+> Superseded 2026-09-28: Father rebuilt Ayden and Faith as two frames sharing one core;
+> Fayde is the link between them (duo-swap.md Section 9). Original text kept below.
 
 Father built him from everything Ayden and Faith had transmitted: their memories,
 their personalities, their Prana. An android. Appearing as an 11-year-old boy —

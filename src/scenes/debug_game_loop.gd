@@ -264,6 +264,16 @@ func _ready() -> void:
 	_pace_director.perfect_dodge_triggered.connect(Rumble.on_perfect_dodge)
 	if not SpellCastingEffects.special_fired.is_connected(Rumble.on_special_fired):
 		SpellCastingEffects.special_fired.connect(Rumble.on_special_fired)
+	# ADR-0058: the music leans toward the brother in the arena and thumps on the heartbeat.
+	var duo_music := DuoMusic.new()
+	duo_music.name = "DuoMusic"
+	add_child(duo_music)
+	$PlayerController.character_swapped.connect(duo_music.on_character_swapped)
+	$PlayerController.heartbeat.connect(duo_music.on_heartbeat)
+	SpellCastingEffects.link_burst.connect(duo_music.on_link_burst)
+	tree_exiting.connect(func() -> void:
+		if SpellCastingEffects.link_burst.is_connected(duo_music.on_link_burst):
+			SpellCastingEffects.link_burst.disconnect(duo_music.on_link_burst))
 	# ADR-0041 big moments: the boss death cinematic and the room clear payoff.
 	# Wired here because the room clear needs the WaveManager and the HUD layer.
 	_boss_cinematic = BossDeathCinematic.new()
@@ -515,9 +525,11 @@ func _show_core_pick() -> void:
 		vbox.add_child(hl)
 
 	vbox.add_child(_make_pick_label(_COPY.core_pick_core_label))
-	var core_row := HBoxContainer.new()
-	core_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	core_row.add_theme_constant_override(&"separation", 12)
+	# ADR-0058: seven Cores wrap onto two rows.
+	var core_row := HFlowContainer.new()
+	core_row.alignment = FlowContainer.ALIGNMENT_CENTER
+	core_row.add_theme_constant_override(&"h_separation", 12)
+	core_row.add_theme_constant_override(&"v_separation", 10)
 	vbox.add_child(core_row)
 	var core_desc := Label.new()
 	core_desc.add_theme_font_size_override(&"font_size", 18)
