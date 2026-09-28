@@ -673,6 +673,8 @@ func _start_tutorial_room(core_type_id: int) -> void:
 	_tutorial_room = TutorialRoom.new()
 	_tutorial_room.name = "TutorialRoom"
 	_tutorial_room.player = $PlayerController
+	# ADR-0058: only Faith dashes, and the lessons teach the dash, so she starts.
+	$PlayerController.set_active_character(DuoSwap.Character.FAITH)
 	if room != null:
 		var entities: Node2D = room.get_node_or_null(^"EntityLayer") as Node2D
 		_tutorial_room.arena = entities if entities != null else room

@@ -103,6 +103,7 @@ func test_assist_damage_share_scales_fayde_only() -> void:
 
 func test_assist_auto_dash_rules() -> void:
 	var pc: PlayerController = PlayerControllerScript.new()
+	pc.set_active_character(DuoSwap.Character.FAITH)  # only Faith dashes (ADR-0058)
 	pc._controller_state = PlayerController.ControllerState.ENABLED
 	pc._dash_charges = 1
 

@@ -4,17 +4,17 @@
 
 [resource]
 script = ExtResource("1_duo")
-swap_cooldown_sec = 1.2
+swap_cooldown_sec = 0.6
 touch_swap_cooldown_mult = 0.7
 swap_iframe_sec = 0.2
 tag_in_radius = 70.0
 breach_knockback = 60.0
 perfect_swap_tag_in_mult = 2.0
-ayden_damage_mult = 1.25
+ayden_damage_mult = 1.15
 ayden_range_mult = 0.85
 ayden_speed_mult = 0.92
-ayden_dash_damage = 8.0
-ayden_dash_hit_radius = 22.0
+ayden_damage_taken_mult = 0.75
+ayden_knockback_mult = 0.0
 faith_damage_mult = 0.85
 faith_range_mult = 1.45
 faith_speed_mult = 1.0

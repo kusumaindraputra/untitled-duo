@@ -8,6 +8,7 @@
 extends GdUnitTestSuite
 
 const SCEScript = preload("res://src/systems/spell_casting_effects.gd")
+const HealthAndDamageScript = preload("res://src/systems/health_and_damage.gd")
 const PlayerControllerScript: GDScript = preload("res://src/gameplay/player_controller.gd")
 const T: DuoTuning = preload("res://assets/data/duo_tuning.tres")
 const COPY: UICopy = preload("res://assets/data/ui_copy.tres")
@@ -39,6 +40,14 @@ class MockStatusEffects:
 
 	func check_and_apply_shatter(_target: Node, base_damage: float) -> float:
 		return base_damage
+
+
+## A player stand-in that reports Ayden's or Faith's incoming damage multiplier.
+class MockBrother extends Node:
+	var character: int = DuoSwap.Character.AYDEN
+
+	func get_incoming_damage_mult() -> float:
+		return DuoSwap.damage_taken_mult(character)
 
 
 class MockEnemy extends Node2D:
@@ -309,6 +318,83 @@ func test_faith_dash_cuts_bullets_and_ayden_dash_does_not() -> void:
 	assert_float(pc.get_dash_cut_radius()).is_equal(0.0)
 	pc.try_swap()
 	assert_float(pc.get_dash_cut_radius()).is_equal(T.faith_dash_cut_radius)
+	_free_pc(pc)
+
+
+# ── Only Faith dashes ────────────────────────────────────────────────────────
+
+func test_only_faith_can_dash() -> void:
+	assert_bool(DuoSwap.can_dash(AYDEN)).is_false()
+	assert_bool(DuoSwap.can_dash(FAITH)).is_true()
+	assert_bool(DuoSwap.can_dash(DuoSwap.NONE)).is_true()
+
+
+func test_dash_as_ayden_is_blocked_and_as_faith_dashes() -> void:
+	var added: bool = not InputMap.has_action(&"dash")
+	if added:
+		InputMap.add_action(&"dash")
+	var pc := _make_pc()
+	pc._on_combat_started(false)
+	var blocked: Array = []
+	pc.dash_blocked.connect(func(p: Vector2) -> void: blocked.append(p))
+	Input.action_press(&"dash")
+	pc._physics_process(0.016)
+	Input.action_release(&"dash")
+	assert_int(blocked.size()).is_equal(1)
+	assert_bool(pc.is_dashing()).is_false()
+	assert_int(pc.get_dash_charges()).is_equal(pc.get_max_dash_charges())
+	pc.set_active_character(FAITH)
+	Input.action_press(&"dash")
+	pc._physics_process(0.016)
+	Input.action_release(&"dash")
+	assert_bool(pc.is_dashing()).is_true()
+	assert_int(blocked.size()).is_equal(1)
+	_free_pc(pc)
+	if added:
+		InputMap.erase_action(&"dash")
+
+
+func test_assist_auto_dash_swaps_ayden_out_instead() -> void:
+	var pc := _make_pc()
+	pc._on_combat_started(false)
+	pc.auto_dash = true
+	assert_bool(pc.try_auto_dash()).is_true()
+	assert_int(pc.get_active_character()).is_equal(FAITH)
+	assert_bool(pc.is_invincible()).is_true()
+	assert_int(pc.get_dash_charges()).is_equal(pc.get_max_dash_charges())
+	_free_pc(pc)
+
+
+# ── Ayden is sturdy ──────────────────────────────────────────────────────────
+
+func test_ayden_takes_less_damage_and_faith_takes_it_all() -> void:
+	var hd: Node = HealthAndDamageScript.new()
+	hd.set_process(false)
+	var brother := MockBrother.new()
+	brother.add_to_group(&"player")
+	add_child(hd)
+	add_child(brother)
+	hd._fayde_current_hp = 100
+	hd.apply_damage(brother, 20.0, GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
+	assert_int(hd._fayde_current_hp).is_equal(100 - roundi(20.0 * T.ayden_damage_taken_mult))
+	brother.character = FAITH
+	hd._fayde_current_hp = 100
+	hd.apply_damage(brother, 20.0, GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
+	assert_int(hd._fayde_current_hp).is_equal(80)
+	remove_child(hd)
+	remove_child(brother)
+	hd.free()
+	brother.free()
+
+
+func test_ayden_is_not_knocked_back_and_faith_is() -> void:
+	var pc := _make_pc()
+	pc._on_combat_started(false)
+	pc.request_knockback(pc.global_position + Vector2.LEFT * 10.0, 200.0)
+	assert_float(pc.velocity.length()).is_equal_approx(200.0 * T.ayden_knockback_mult, 0.001)
+	pc.set_active_character(FAITH)
+	pc.request_knockback(pc.global_position + Vector2.LEFT * 10.0, 200.0)
+	assert_float(pc.velocity.length()).is_equal_approx(200.0, 0.001)
 	_free_pc(pc)
 
 

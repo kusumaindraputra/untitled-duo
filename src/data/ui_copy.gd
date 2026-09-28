@@ -95,6 +95,8 @@ extends Resource
 @export var perfect_swap_label: String = "PERFECT SWAP"
 ## Callout when the brother who tagged in cashes in the other's setup.
 @export var handoff_label: String = "HAND-OFF"
+## Callout when dash is pressed as Ayden: only Faith dashes.
+@export var dash_blocked_label: String = "SWAP TO DASH"
 ## HUD duo row when a swap is ready: active brother, swap key, the other brother.
 @export var duo_row_format: String = "%s   [%s] %s"
 ## HUD duo row on cooldown: active brother, the other brother, seconds left.
@@ -337,7 +339,7 @@ extends Resource
 	"Arrange your Prana, then press %s to fight.",
 	"Move with %s.",
 	"Press %s to cast. Your grid picks the spell.",
-	"Press %s to dash. You can't be hit mid-dash.",
+	"Faith can dash: press %s. Ayden can't, so swap to her.",
 	"3+ Prana of one type make a stronger spell.",
 	"Perfect Dodge: dash (%s) right through a bullet.",
 	"Perfect Cast: press %s again as the ring closes.",
@@ -347,7 +349,7 @@ extends Resource
 	"Arrange your Prana, then press %s to fight.",
 	"Move with the left stick.",
 	"Press %s to cast. Your grid picks the spell.",
-	"Press %s to dash. You can't be hit mid-dash.",
+	"Faith can dash: press %s. Ayden can't, so swap to her.",
 	"3+ Prana of one type make a stronger spell.",
 	"Perfect Dodge: dash (%s) right through a bullet.",
 	"Perfect Cast: press %s again as the ring closes.",
@@ -371,7 +373,7 @@ extends Resource
 	"Drag a Prana from YOUR PRANA into an empty slot.",
 	"Press %s to lock the grid and fight.",
 	"Move with %s.",
-	"Press %s to dash.",
+	"Press %s to dash. Only Faith can dash.",
 	"Press %s to cast at a training target.",
 	"Dash (%s) through a shot just before it hits.",
 ]
@@ -379,7 +381,7 @@ extends Resource
 	"Pick a Prana with %s, then press %s on an empty slot.",
 	"Press %s to lock the grid and fight.",
 	"Move with the left stick.",
-	"Press %s to dash.",
+	"Press %s to dash. Only Faith can dash.",
 	"Press %s to cast at a training target.",
 	"Dash (%s) through a shot just before it hits.",
 ]

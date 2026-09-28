@@ -28,6 +28,10 @@ signal character_swapped(character: int, cooldown: float)
 ## perfect_dodged, so it pays the same rewards and shares its cooldown.
 signal perfect_swapped(world_pos: Vector2)
 
+## ADR-0058 — dash pressed while Ayden is out. Only Faith dashes; the HUD tells the
+## player to swap.
+signal dash_blocked(world_pos: Vector2)
+
 # ── Enums ─────────────────────────────────────────────────────────────────────
 
 enum ControllerState { DISABLED, ENABLED, DASHING }
@@ -120,8 +124,6 @@ var _perfect_dodge_cd: float = 0.0
 var _duo: DuoSwap = DuoSwap.new()
 ## True when the resolved grid's hands touch (ADR-0057): shortens the swap cooldown.
 var _hands_touching: bool = false
-## Enemy instance ids Ayden's current dash already hit (once per enemy per dash).
-var _dash_hit_ids: Dictionary = {}
 var _cast_beam_timer: float = 0.0     # countdown; > 0.0 means cast beam visible (debug)
 var _cast_prana_type: int = -1        # primary type of last resolved spell; -1 = none
 var _blink_timer: float = 0.0         # counts up; toggles modulate.a every BLINK_INTERVAL
@@ -274,8 +276,11 @@ func _physics_process(delta: float) -> void:
 				velocity = velocity.lerp(Vector2.ZERO, friction_factor)
 				if velocity.length() < VELOCITY_SNAP_THRESHOLD:
 					velocity = Vector2.ZERO
-			if Input.is_action_just_pressed(&"dash") and _dash_charges > 0:
-				_start_dash(input_dir)
+			if Input.is_action_just_pressed(&"dash"):
+				if not can_dash():
+					dash_blocked.emit(global_position)
+				elif _dash_charges > 0:
+					_start_dash(input_dir)
 		# Cast lock: dampen velocity to CAST_LOCK_SPEED_FACTOR during post-hit recovery.
 		# Knockback overrides cast lock dampening — the push-away should feel unhindered.
 		if _cast_lock_timer > 0.0 and _knockback_timer <= 0.0:
@@ -287,8 +292,6 @@ func _physics_process(delta: float) -> void:
 	if _controller_state == ControllerState.DASHING:
 		if get_dash_cut_radius() > 0.0 and is_inside_tree():
 			_cut_bullets()
-		if _duo.active() == DuoSwap.Character.AYDEN and is_inside_tree():
-			_ayden_dash_hits()
 		_dash_duration_timer -= delta
 		if _dash_duration_timer <= 0.0:
 			_controller_state = ControllerState.ENABLED
@@ -365,7 +368,6 @@ func _start_dash(input_dir: Vector2) -> void:
 	_controller_state = ControllerState.DASHING
 	_dash_duration_timer = DASH_DURATION
 	_perfect_dodged_this_dash = false
-	_dash_hit_ids.clear()
 	_is_invincible = true
 	collision_mask = COLLISION_MASK_DASHING
 	_cast_lock_timer = 0.0  # dash cancels cast lock (GDD Rule 6)
@@ -383,8 +385,14 @@ func _start_dash(input_dir: Vector2) -> void:
 
 ## Assist (F2): when [member auto_dash] is on and a charge is ready, dashes to dodge a
 ## bullet that is about to hit. Returns true when it dashed (the bullet then passes).
+## Ayden cannot dash (ADR-0058), so for him it swaps to Faith instead: the tag-in
+## i-frames let the bullet pass.
 func try_auto_dash() -> bool:
-	if not auto_dash or _controller_state != ControllerState.ENABLED or _dash_charges <= 0:
+	if not auto_dash or _controller_state != ControllerState.ENABLED:
+		return false
+	if not can_dash():
+		return try_swap()
+	if _dash_charges <= 0:
 		return false
 	var dir: Vector2 = Input.get_vector(&"move_left", &"move_right", &"move_up", &"move_down") \
 		if InputMap.has_action(&"move_left") else Vector2.ZERO
@@ -507,6 +515,16 @@ func get_swap_cooldown_duration() -> float:
 	return DuoSwap.cooldown_for(_hands_touching)
 
 
+## True when the brother in the arena can dash. Only Faith dashes (ADR-0058).
+func can_dash() -> bool:
+	return DuoSwap.can_dash(_duo.active())
+
+
+## Multiplier on damage Fayde takes, read by HealthAndDamage: Ayden is sturdier.
+func get_incoming_damage_mult() -> float:
+	return DuoSwap.damage_taken_mult(_duo.active())
+
+
 ## Test seam and new-run hook: puts [param c] in the arena with no cooldown.
 func set_active_character(c: DuoSwap.Character) -> void:
 	_duo.set_active(c)
@@ -542,21 +560,6 @@ func _tag_in(mult: float) -> void:
 		add_camera_trauma(0.2)
 	else:
 		Projectile.cancel_in_radius(get_tree(), global_position, radius)
-
-
-## Ayden's dash hits each enemy it passes through once.
-func _ayden_dash_hits() -> void:
-	if DUO_TUNING.ayden_dash_damage <= 0.0:
-		return
-	for enemy: Node in get_tree().get_nodes_in_group(&"enemy"):
-		if not (enemy is Node2D) or _dash_hit_ids.has(enemy.get_instance_id()):
-			continue
-		if enemy.has_method(&"is_alive") and not enemy.is_alive():
-			continue
-		if global_position.distance_to((enemy as Node2D).global_position) <= DUO_TUNING.ayden_dash_hit_radius:
-			_dash_hit_ids[enemy.get_instance_id()] = true
-			HealthAndDamage.apply_damage(enemy, DUO_TUNING.ayden_dash_damage,
-				GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
 
 
 ## Shows the active brother's sprite sheets; [param flash] adds a short swap flash.
@@ -621,6 +624,10 @@ func request_knockback(from_pos: Vector2, strength: float) -> void:
 	if _controller_state != ControllerState.ENABLED:
 		return
 	if _is_invincible:
+		return
+	# ADR-0058: Ayden stands his ground (knock-back ×ayden_knockback_mult, 0 by default).
+	strength *= DuoSwap.knockback_mult(_duo.active())
+	if strength <= 0.0:
 		return
 	var dir: Vector2 = (global_position - from_pos).normalized()
 	if dir.length_squared() < 0.01:

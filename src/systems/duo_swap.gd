@@ -1,7 +1,8 @@
 ## DuoSwap — Ayden and Faith, the two brothers the player swaps between (ADR-0058).
 ##
 ## Pure rules plus the swap state PlayerController owns. Only one brother is in the
-## arena at a time; the swap has a cooldown, gives the tagging-in brother a short
+## arena at a time and only Faith can dash, so Ayden (sturdier, harder-hitting) gets
+## out of trouble by swapping to her; the swap has a cooldown, gives the tagging-in brother a short
 ## i-frame window. The hand-off bonus on the next attack lives in SpellCastingEffects.
 ## Static helpers turn the active brother into the numbers combat uses, so
 ## SpellCastingEffects and PlayerController share one source of truth.
@@ -122,6 +123,22 @@ static func speed_mult(c: int, t: DuoTuning = TUNING) -> float:
 		Character.AYDEN: return t.ayden_speed_mult
 		Character.FAITH: return t.faith_speed_mult
 	return 1.0
+
+
+## True when [param c] can dash. Only Faith dashes; Ayden's way out is a swap to her
+## ([constant NONE] → true, the pre-duo behaviour).
+static func can_dash(c: int) -> bool:
+	return c != Character.AYDEN
+
+
+## Multiplier on damage [param c] takes: Ayden is sturdier, Faith takes it as is.
+static func damage_taken_mult(c: int, t: DuoTuning = TUNING) -> float:
+	return t.ayden_damage_taken_mult if c == Character.AYDEN else 1.0
+
+
+## Multiplier on knock-back [param c] takes from contact hits.
+static func knockback_mult(c: int, t: DuoTuning = TUNING) -> float:
+	return t.ayden_knockback_mult if c == Character.AYDEN else 1.0
 
 
 ## Ayden's grid hand powers only Ayden: [param hand_power_mult] for him (or with no

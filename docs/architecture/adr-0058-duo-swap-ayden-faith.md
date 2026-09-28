@@ -29,8 +29,8 @@ cash in the other brother's setup (hand-off). Design: `design/gdd/duo-swap.md`.
 - `PlayerController` owns the swap: `swap` action (Q / LB, rebindable), `try_swap()`,
   tag-in i-frames through `is_invincible()`, Perfect Swap through
   `register_perfect_dodge()` (it also emits `perfect_dodged`, so PaceDirector pays the
-  same rewards and the cooldown is shared), Breach / Anchor tag-in effects, Ayden's dash
-  hit, Faith's dash bullet cut, speed multiplier and the brother's sprite set. Emits
+  same rewards and the cooldown is shared), Breach / Anchor tag-in effects, Faith's
+  dash bullet cut, speed multiplier and the brother's sprite set. Emits
   `character_swapped` and `perfect_swapped`.
 - `SpellCastingEffects` is told the active brother with `set_active_character()`.
   Step 8d applies Ayden's hand only for Ayden and the brother's damage weight; the
@@ -43,6 +43,24 @@ cash in the other brother's setup (hand-off). Design: `design/gdd/duo-swap.md`.
 - HUD: one row in the left card ("AYDEN [Q] FAITH", or the cooldown), tinted per
   brother, plus "PERFECT SWAP" and "HAND-OFF" callouts.
 - HP, Special meter and dash charges are shared.
+
+### Amendment (2026-09-28): only Faith dashes
+
+The user asked for each brother to have a clear strength and weakness, with only one
+able to dash, so the fight itself pushes the player to swap.
+
+- `DuoSwap.can_dash()`: Faith only (`NONE` keeps the pre-duo dash). PlayerController
+  ignores dash input as Ayden, spends no charge, and emits `dash_blocked`; CombatHUD
+  shows "SWAP TO DASH" and hides the dash ring while Ayden is out. Charges keep
+  recharging while he is out.
+- Ayden's dash hit is removed (`ayden_dash_damage`, `ayden_dash_hit_radius` dropped).
+- Ayden is sturdy instead: HealthAndDamage step 5c multiplies damage to the player by
+  `get_incoming_damage_mult()` (`ayden_damage_taken_mult`, 0.75), and
+  `request_knockback()` scales by `ayden_knockback_mult` (0: no stagger).
+- `swap_cooldown_sec` 1.2 → 0.6 (the swap is Ayden's escape), `ayden_damage_mult`
+  1.25 → 1.15 (he is tougher now).
+- Assist auto-dash swaps Ayden out instead of dashing. The guided first room starts
+  with Faith because its lessons teach the dash.
 
 ## Alternatives Considered
 

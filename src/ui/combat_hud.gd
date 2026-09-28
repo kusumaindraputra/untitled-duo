@@ -114,9 +114,13 @@ var chain_dots_container: HBoxContainer = null
 		if is_instance_valid(player_controller) and \
 				player_controller.dash_cooldown_changed.is_connected(_on_dash_cooldown_changed):
 			player_controller.dash_cooldown_changed.disconnect(_on_dash_cooldown_changed)
+		if is_instance_valid(player_controller) and \
+				player_controller.dash_blocked.is_connected(show_dash_blocked):
+			player_controller.dash_blocked.disconnect(show_dash_blocked)
 		player_controller = pc
 		if is_instance_valid(pc) and is_node_ready():
 			pc.dash_cooldown_changed.connect(_on_dash_cooldown_changed)
+			pc.dash_blocked.connect(show_dash_blocked)
 
 ## World-space Node2D whose position drives chain dot screen placement (AC-HUD-27–AC-HUD-29).
 ## Assign PlayerController in scene; plain Node2D is acceptable in headless tests.
@@ -343,6 +347,7 @@ func _ready() -> void:
 	CombinationResolution.combo_resolved.connect(_on_combo_resolved)
 	if player_controller != null:
 		player_controller.dash_cooldown_changed.connect(_on_dash_cooldown_changed)
+		player_controller.dash_blocked.connect(show_dash_blocked)
 
 
 func _process(delta: float) -> void:
@@ -414,7 +419,9 @@ func _update_dash_ring() -> void:
 	if _dash_ring == null:
 		return
 	var in_combat: bool = _dash_hint_label != null and _dash_hint_label.visible
-	if not in_combat or not is_instance_valid(player_controller) or not is_instance_valid(fayde_node):
+	# ADR-0058: only Faith dashes, so the ring hides while Ayden is out.
+	if not in_combat or not is_instance_valid(player_controller) or not is_instance_valid(fayde_node) \
+			or not player_controller.can_dash():
 		_dash_ring.visible = false
 		return
 	_dash_ring.set_state(player_controller.get_dash_charges(), player_controller.get_max_dash_charges(),
@@ -454,6 +461,9 @@ func _exit_tree() -> void:
 	if is_instance_valid(player_controller) and \
 			player_controller.dash_cooldown_changed.is_connected(_on_dash_cooldown_changed):
 		player_controller.dash_cooldown_changed.disconnect(_on_dash_cooldown_changed)
+	if is_instance_valid(player_controller) and \
+			player_controller.dash_blocked.is_connected(show_dash_blocked):
+		player_controller.dash_blocked.disconnect(show_dash_blocked)
 
 
 # ── Private methods ───────────────────────────────────────────────────────────
@@ -998,6 +1008,11 @@ func show_perfect_dodge(world_pos: Vector2) -> void:
 ## ADR-0058 — "HAND-OFF" pops above the enemy that paid the hand-off bonus.
 func show_handoff(world_pos: Vector2, character: int) -> void:
 	show_callout(world_pos, _COPY.handoff_label, DuoSwap.hud_color(character))
+
+
+## ADR-0058 — dash pressed as Ayden: "SWAP TO DASH" pops above him in Faith's colour.
+func show_dash_blocked(world_pos: Vector2) -> void:
+	show_callout(world_pos, _COPY.dash_blocked_label, DuoSwap.hud_color(DuoSwap.Character.FAITH))
 
 
 ## Pops [param text] above [param world_pos] in [param color]; it floats up and fades.
