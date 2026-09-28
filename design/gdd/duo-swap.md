@@ -13,7 +13,7 @@
 
 In combat the player controls one of two characters at a time, **Ayden** (power) or
 **Faith** (control), and swaps between them with one button. Only the active one is in
-the arena; the other rests inside Fayde's frame. They share one HP bar, one Special meter
+the arena; the other steps out of the fight and waits in the Prana link between them. They share one HP bar, one Special meter
 and one Prana grid, but they read that grid differently and fight differently: Ayden is
 close range, heavy hits and knock-back; Faith is long range, status and bullet control.
 Swapping is fast and cheap, has a short tag-in effect, and a well-timed swap (a **Perfect
@@ -30,9 +30,8 @@ freezing. The best moments are the hand-offs: Faith roots the elite, swap, Ayden
 hit lands on the frozen target for a shatter. Swapping never feels like a menu; it feels
 like one brother passing the fight to the other mid-motion.
 
-The story payoff: early runs feel like controlling two ghosts in one body. By the true
-ending ("You're both of them. And you're you.") the player has literally been both of them
-all along.
+The story payoff: two brothers whose Prana only works together, climbing side by side,
+and every swap is them trusting each other with the fight.
 
 ## 3. Detailed Rules
 
@@ -93,7 +92,8 @@ bridge between the kits.
 - The prep preview shows two lines, one per character.
 
 ### Rule 7 — Shared resources
-- **HP**: one shared bar (they are one body). See Open Question 2.
+- **HP**: one shared bar, carried by the Prana link that binds them (if one falls, the
+  link breaks and both fall). See Open Question 2.
 - **Special meter**: one shared meter. The Special fires as the active character's version.
 - **Dash charges**: shared.
 
@@ -145,18 +145,39 @@ plus `ayden_dash_damage`, `faith_dash_field_sec`, `perfect_swap_meter_gain`,
 - Ayden hitting an enemy Faith froze deals the hand-off bonus (unit test).
 - HP, Special meter and dash charges are shared and survive swaps.
 
-## 9. Lore (fits the existing story)
-Fayde is built from Ayden's and Faith's Prana. His frame can let either brother's pattern
-take the lead, and he flickers into that brother's shape while it does. Memo calls it
-"letting one of them drive". Fragment 3 (Two Pairs of Hands) and Fragment 8 (Faith and
-Ayden) already cover why both live in him; no fragment text has to change. The true
-ending line gains weight: the player has been both of them the whole game.
+## 9. Lore — Ayden and Faith as two separate beings (chosen 2026-09-28)
+
+The user chose to make Ayden and Faith two separate characters instead of one android
+built from both. This changes the premise, so the story needs a rewrite pass before
+content work. Proposed default, open to change:
+
+- **Premise**: the father could not save the brothers' bodies, so he rebuilt each of them
+  as a small android, one frame per brother, holding their own memories and Prana. The
+  two frames share one Prana core that only runs when both are awake and linked. That
+  link is named **Fayde** (Faith + Ayden), so the name and the title stay, but Fayde is
+  now the bond, not a person.
+- **Why they swap**: the shared core can only drive one frame at full power at a time.
+  The other stays close and linked, ready to take over. This is the in-world reason for
+  the swap button and the shared HP and Special meter.
+- **Memo** stays the companion and caretaker (their original caretaker in the backstory).
+- **Grid**: unchanged meaning from ADR-0057, left hand Ayden, right hand Faith.
+- **Ending**: the true ending line "You're both of them. And you're you." no longer fits.
+  A replacement in the same spirit: the brothers learn the link is what the First King
+  wanted to break ("Separation is the weapon", fragment 6), and they choose to stay linked.
+
+### What has to change
+| Area | Change |
+|------|--------|
+| `design/gdd/game-concept.md` | Premise: two android brothers linked as Fayde, not one boy |
+| `design/gdd/memory-fragments.md` + `assets/data/story/story_config.tres` | Rewrite fragments 1, 8, 9 and the true ending (TE); voices "Fayde" become Ayden or Faith. Fragments 2–7 and 10 mostly keep their content |
+| UI text (`combat_hud.gd`, `tutorial_coach.gd`, `run_summary_panel.gd` and others) | "Fayde" as the player's name becomes the active brother's name |
+| Art | Two character sprite sets (first playable can use one base sprite with a red Ayden / blue Faith palette) |
+| Main menu tagline | "Two brothers' Prana. One pair of hands." becomes e.g. "Two brothers. One link." |
 
 ## 10. Open Questions
-1. **Who are the two characters?** (a) Fayde shifts into Ayden or Faith (this proposal),
-   (b) Ayden and Faith as two separate beings, which rewrites the story, (c) Fayde plus a
-   second character such as Memo.
-2. **HP**: shared (this proposal, simplest and fits one body) or one bar each, where the
+1. ~~Who are the two characters?~~ Decided 2026-09-28: Ayden and Faith as two separate
+   beings (Section 9).
+2. **HP**: shared (this proposal, simplest, explained by the link) or one bar each, where the
    resting character heals slowly (closer to Cloak & Dagger, more tactical, more UI).
 3. **Art budget**: two full sprite sets, or one Fayde sprite with a colour/outline swap
    (red Ayden, blue Faith) for the first playable.
