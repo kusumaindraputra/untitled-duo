@@ -24,7 +24,10 @@ Swapping is fast and cheap, has a short tag-in effect, and a well-timed swap (a 
 Swap**) is the duo version of the Perfect Dodge.
 
 The grid already says this (ADR-0057): the left column is Ayden's hand, the right column
-is Faith's. This proposal turns those two hands into two playable characters.
+is Faith's. This proposal turns those two hands into two playable characters. Three
+rules make the swap the heart of the fight rather than a button: each brother casts the
+Prana in his own palm (the grid has two faces), the two brothers' elements react on an
+enemy (Link Reaction), and a swap on their shared heartbeat Resonates.
 
 ## 2. Player Fantasy
 
@@ -85,23 +88,47 @@ and every swap is them trusting each other with the fight.
 Status effects applied by either character stay on the enemy after a swap; that is the
 bridge between the kits.
 
-### Rule 5 — Hand-off combos
-- **Tag-in on a status**: Ayden's first landed attack within `handoff_window_sec` of
-  swapping in deals ×`handoff_damage_mult` against an enemy carrying Burn, Blind, Stun,
-  Freeze or Chill.
-- **Tag-in on damage**: Faith's first landed attack within `handoff_window_sec` of
-  swapping in holds its status ×`handoff_status_mult` on an enemy Ayden hit within
-  `ayden_mark_sec`.
-- The first attack that lands after a swap closes the window, bonus or not.
+### Rule 5 — Link Reaction (replaces the hand-off bonuses, 2026-09-28)
+- Every hit a brother lands leaves his element (his core Prana, Rule 6) on the enemy for
+  `link_mark_sec`.
+- When the **other** brother hits that enemy with a **different** element, the two react:
+  a **Link Reaction**. It uses the Prana Reaction Matrix names (combination-resolution.md
+  Formula 9), e.g. Ashfire + Deepfrost = Thermal Shock, Stormgold + Voidblue = Short
+  Circuit.
+- The burst: `link_damage_mult` × base spell damage on the enemy, ×`link_splash_mult` on
+  other enemies within `link_radius`, both elements' statuses for `link_status_sec` on
+  everyone it hits (Burn, Blind, Stun at a third, Freeze; Verdant regenerates Fayde
+  instead), and `link_meter_gain` Special meter. "LINK!" and the reaction's name pop up.
+- The hit then leaves its own element, so swapping back and hitting again reacts again.
+  That back-and-forth is the core duo loop.
+- Same element on both brothers, or the same brother hitting twice, never reacts.
+- Bonus damage (reactions, Cascade, the burst itself) does not leave marks.
 
-### Rule 6 — The grid (Preparation)
-- The grid is shared. Centre slot = core Prana for **both** characters (their basic chain
-  and Special come from it).
-- ADR-0057 changes meaning, not layout: the left column now empowers **Ayden's** attacks,
-  the right column **Faith's**. The middle column (top and bottom) empowers both.
+### Rule 6 — The grid: palm faces (Preparation)
+- The grid is shared and has **two faces**. Each brother holds a palm: Ayden the
+  middle-left slot, Faith the middle-right. In combat the active brother's palm Prana
+  trades places with the centre and becomes **his core**, so his basic chain, tier,
+  modifiers, grid reactions and Cascade come from his own face of the grid.
+- An empty palm keeps the centre as that brother's core. `palm_faces` off = both cast the
+  centre (the first-pass rule).
+- A swap switches to the incoming brother's face at once (the chain restarts).
+- ADR-0057 still holds: the left column empowers **Ayden's** attacks, the right column
+  **Faith's**. A face never changes how many Prana each hand holds.
 - "Hands touching" (both columns equal) now also shortens `swap_cooldown_sec` by
   `touch_swap_cooldown_mult`. The ×1.5 bonus stays.
-- The prep preview shows two lines, one per character.
+- The prep preview adds a duo line: "AYDEN <core> · FAITH <core> → LINK: <reaction>".
+  Building the grid is now also choosing which Link Reaction the brothers will make.
+- A pure left-right mirror was considered and dropped: adjacency is symmetric, so a mirror
+  changes no reaction, Cascade or spell.
+
+### Rule 6b — Shared heartbeat (Resonance)
+- The brothers' shared core beats every `heartbeat_sec` from the start of combat. The
+  HUD duo row ("♥ AYDEN [Q] FAITH") glows on each beat.
+- A swap within `resonance_window_sec` of a beat **Resonates**: "RESONANCE" pops up, the
+  next basic cast is Perfect whatever its timing (`resonance_perfect_sec`), the Special
+  meter gains `resonance_meter_gain`, and the next landed hit sets off a Link Reaction
+  with the benched brother's element even if the enemy carries no mark.
+- The window is generous on purpose (young players); it is a skill layer, not a gate.
 
 ### Rule 7 — Shared resources
 - **HP**: one shared bar, carried by the Prana link that binds them (if one falls, the
@@ -115,9 +142,15 @@ bridge between the kits.
 
 ## 4. Formulas
 
-`damage(hit) = base × tier × hands_power_mult(if Ayden) × char_damage_mult × handoff_mult × perfect_mult`
+`damage(hit) = base × tier × hands_power_mult(if Ayden) × char_damage_mult × perfect_mult`
+(base, tier from the active brother's face, Rule 6)
 
-`status_duration = base × hands_control_mult(if Faith) × handoff_status_mult`
+`status_duration = base × hands_control_mult(if Faith)`
+
+`link_burst = 20 × link_damage_mult × run_damage_mult` on the reacting enemy,
+`× link_splash_mult` on others within `link_radius`
+
+`resonant(swap) = distance(combat_clock, nearest multiple of heartbeat_sec) ≤ resonance_window_sec`
 
 `hands_power_mult`, `hands_control_mult` come from `PranaHands.read()` (ADR-0057),
 but each now applies only to its own character.
@@ -131,8 +164,10 @@ but each now applies only to its own character.
 Starting values (to tune after playtest):
 `ayden_damage_mult` 1.15, `faith_damage_mult` 0.85, `ayden_range_mult` 0.85,
 `faith_range_mult` 1.45, `ayden_speed_mult` 0.92, `ayden_damage_taken_mult` 0.75,
-`ayden_knockback_mult` 0.0, `handoff_damage_mult` 1.5,
-`handoff_status_mult` 1.5, `swap_cooldown_sec` 0.6, `touch_swap_cooldown_mult` 0.7,
+`ayden_knockback_mult` 0.0, `link_mark_sec` 3.0, `link_damage_mult` 1.5 (30 damage),
+`link_radius` 60, `link_splash_mult` 0.5, `link_status_sec` 1.5, `link_meter_gain` 12,
+`heartbeat_sec` 1.0, `resonance_window_sec` 0.15, `resonance_perfect_sec` 1.5,
+`resonance_meter_gain` 10, `swap_cooldown_sec` 0.6, `touch_swap_cooldown_mult` 0.7,
 `swap_iframe_sec` 0.2, `tag_in_radius` 70, `perfect_swap_tag_in_mult` 2.0.
 
 Example: Voidblue T1, Ayden, one Prana in his hand: `20 × 0.9 × 1.0 × 1.06 × 1.15 = 21.9`.
@@ -150,6 +185,13 @@ The same cast as Faith: `20 × 0.9 × 0.85 = 15.3`, but Blind lasts `2.0 × cont
 - Preparation starts mid-swap: swap completes, cooldown resets for the next room.
 - Grid with an empty left column: Ayden still fights at base damage (no hand bonus).
 - A sigil or Heirloom that says "Fayde": applies to both characters.
+- Both palms empty: both brothers cast the centre, so no Link Reaction is possible. The
+  prep preview's duo line shows the same core twice, which is the hint to fill a palm.
+- The enemy dies from the hit that reacts: the burst still lands on the others nearby.
+- Resonance while the next hit misses: the pending reaction waits for the next hit that
+  lands (until the room ends).
+- The first swap of a room at the very start of combat lands on a beat (the clock starts
+  at 0) and Resonates. Accepted: it rewards opening with a swap.
 
 ## 6. Dependencies
 Player Controller (active character, swap, i-frames), Spell Casting & Effects (two basic
@@ -160,8 +202,7 @@ Memory Fragments (lore framing, Section 9).
 
 ## 7. Tuning Knobs
 `DuoTuning` resource (`assets/data/duo_tuning.tres`) with every value in Section 4, plus
-`faith_dash_cut_radius`
-(24 px), `breach_knockback` (60 px), `handoff_window_sec` (2 s), `ayden_mark_sec` (2 s).
+`faith_dash_cut_radius` (24 px), `breach_knockback` (60 px) and `palm_faces` (on).
 Safe ranges are on each export in `src/data/duo_tuning.gd`.
 
 ## 8. Acceptance Criteria
@@ -172,7 +213,13 @@ Safe ranges are on each export in `src/data/duo_tuning.gd`.
 - Left-column Prana changes only Ayden's numbers; right-column only Faith's (unit tests on
   PranaHands + resolution).
 - A bullet overlapping during tag-in i-frames counts as a Perfect Swap, once per swap.
-- Ayden hitting an enemy Faith froze deals the hand-off bonus (unit test).
+- With Deepfrost in Ayden's palm and Voidblue in the centre, Ayden casts Deepfrost and
+  Faith Voidblue; the swap switches the spell (unit test).
+- Faith hitting an enemy Ayden hit within `link_mark_sec` with another element fires one
+  Link Reaction named by the Reaction Matrix; same element or same brother never reacts
+  (unit tests).
+- A swap on a heartbeat Resonates: free Perfect, meter, and the next hit reacts with the
+  benched brother's element (unit tests).
 - HP, Special meter and dash charges are shared and survive swaps.
 - Dash pressed as Ayden does nothing but emit `dash_blocked`; as Faith it dashes (unit test).
 - Ayden takes ×`ayden_damage_taken_mult` damage and no knock-back; Faith takes both in

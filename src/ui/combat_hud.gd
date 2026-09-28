@@ -117,10 +117,12 @@ var chain_dots_container: HBoxContainer = null
 		if is_instance_valid(player_controller) and \
 				player_controller.dash_blocked.is_connected(show_dash_blocked):
 			player_controller.dash_blocked.disconnect(show_dash_blocked)
+			player_controller.resonated.disconnect(show_resonance)
 		player_controller = pc
 		if is_instance_valid(pc) and is_node_ready():
 			pc.dash_cooldown_changed.connect(_on_dash_cooldown_changed)
 			pc.dash_blocked.connect(show_dash_blocked)
+			pc.resonated.connect(show_resonance)
 
 ## World-space Node2D whose position drives chain dot screen placement (AC-HUD-27–AC-HUD-29).
 ## Assign PlayerController in scene; plain Node2D is acceptable in headless tests.
@@ -348,6 +350,9 @@ func _ready() -> void:
 	if player_controller != null:
 		player_controller.dash_cooldown_changed.connect(_on_dash_cooldown_changed)
 		player_controller.dash_blocked.connect(show_dash_blocked)
+		player_controller.resonated.connect(show_resonance)
+	SpellCastingEffects.link_reaction.connect(show_link_reaction)
+	SpellCastingEffects.face_changed.connect(_on_face_changed)
 
 
 func _process(delta: float) -> void:
@@ -398,10 +403,19 @@ func _process(delta: float) -> void:
 func _update_duo_row() -> void:
 	if _duo_label == null or not _duo_label.visible or not is_instance_valid(player_controller):
 		return
-	_duo_label.text = duo_row_text(player_controller.get_active_character(),
+	_duo_label.text = _COPY.duo_heart + " " + duo_row_text(player_controller.get_active_character(),
 		player_controller.get_swap_cooldown_remaining(), InputPrompts.swap_key())
 	_duo_label.add_theme_color_override(&"font_color",
 		DuoSwap.hud_color(player_controller.get_active_character()))
+	# The shared heartbeat: the row glows on each beat; swapping then Resonates.
+	_duo_label.modulate.a = heartbeat_alpha(player_controller.get_heartbeat_phase())
+
+
+## Duo row opacity for heartbeat [param phase] (0 on a beat, rising to 1): full on the
+## beat, fading to 0.55 halfway between beats. Static so tests can check it.
+static func heartbeat_alpha(phase: float) -> float:
+	var near: float = minf(phase, 1.0 - phase) * 2.0  # 0 on a beat, 1 halfway
+	return lerpf(1.0, 0.55, clampf(near, 0.0, 1.0))
 
 
 ## Duo row text for [param active] with [param cooldown] seconds left on the swap and
@@ -464,6 +478,11 @@ func _exit_tree() -> void:
 	if is_instance_valid(player_controller) and \
 			player_controller.dash_blocked.is_connected(show_dash_blocked):
 		player_controller.dash_blocked.disconnect(show_dash_blocked)
+		player_controller.resonated.disconnect(show_resonance)
+	if SpellCastingEffects.link_reaction.is_connected(show_link_reaction):
+		SpellCastingEffects.link_reaction.disconnect(show_link_reaction)
+	if SpellCastingEffects.face_changed.is_connected(_on_face_changed):
+		SpellCastingEffects.face_changed.disconnect(_on_face_changed)
 
 
 # ── Private methods ───────────────────────────────────────────────────────────
@@ -1005,9 +1024,14 @@ func show_perfect_dodge(world_pos: Vector2) -> void:
 		Color(0.7, 0.95, 1.0))
 
 
-## ADR-0058 — "HAND-OFF" pops above the enemy that paid the hand-off bonus.
-func show_handoff(world_pos: Vector2, character: int) -> void:
-	show_callout(world_pos, _COPY.handoff_label, DuoSwap.hud_color(character))
+## ADR-0058 — "LINK!" pops above the enemy where the brothers' elements reacted.
+func show_link_reaction(_reaction_name: String, world_pos: Vector2, character: int) -> void:
+	show_callout(world_pos + Vector2(0.0, -14.0), _COPY.link_label, DuoSwap.hud_color(character))
+
+
+## ADR-0058 — "RESONANCE" pops above the brother who tagged in on the heartbeat.
+func show_resonance(world_pos: Vector2) -> void:
+	show_callout(world_pos, _COPY.resonance_label, Color(1.0, 0.85, 0.4))
 
 
 ## ADR-0058 — dash pressed as Ayden: "SWAP TO DASH" pops above him in Faith's colour.
@@ -1822,8 +1846,17 @@ func _animate_active_dot(dot: ColorRect, type_id: int, base_color: Color) -> Twe
 ## Caches the primary Prana type from a resolved spell for chain dot colouring,
 ## then surfaces the wave's Cascade / Reaction callout (ADR-0016 recognition layer).
 func _on_combo_resolved(spell_effect: SpellEffect) -> void:
+	# ADR-0058: the brother in the arena casts his own face of the grid.
+	var face: SpellEffect = spell_effect
+	if is_instance_valid(player_controller):
+		face = spell_effect.faces.get(player_controller.get_active_character(), spell_effect)
+	_current_primary_type = face.primary_type
+	_show_recognition_callout(face)
+
+
+## ADR-0058 — a swap changed the spell to the other brother's face of the grid.
+func _on_face_changed(spell_effect: SpellEffect) -> void:
 	_current_primary_type = spell_effect.primary_type
-	_show_recognition_callout(spell_effect)
 
 
 ## Announces this wave's recognition result (ADR-0016) via a centred pop-in banner.

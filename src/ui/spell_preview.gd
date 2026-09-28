@@ -108,6 +108,20 @@ static func hands_line(hands: Dictionary, copy: UICopy) -> String:
 	return "  ·  ".join(parts)
 
 
+## ADR-0058 — the duo preview line: each brother's core (palm faces) and, when they
+## differ, the Link Reaction their elements set off. [param ayden_core] and
+## [param faith_core] are type ids (-1 = none); [param link_name] is the reaction's
+## name or empty. Empty when neither brother has a core. Pure.
+static func duo_line(ayden_core: int, faith_core: int, link_name: String, names: Array,
+		copy: UICopy) -> String:
+	if ayden_core < 0 or faith_core < 0:
+		return ""
+	var line: String = copy.duo_cores_format % [_name_of(ayden_core, names), _name_of(faith_core, names)]
+	if ayden_core != faith_core and link_name != "":
+		line += copy.duo_link_format % link_name
+	return line
+
+
 ## Renders a [method build] result as bbcode for the panel's RichTextLabel.
 ## [param colors] are element colours and [param abbrevs] short element names, both in
 ## type_id order.
@@ -122,6 +136,8 @@ static func to_bbcode(card: Dictionary, colors: Array, abbrevs: Array) -> String
 	# ADR-0057: the hands sit right under the core line; they come from where Prana sit.
 	if card.get("hands", "") != "":
 		lines.append("[color=#%s]%s[/color]" % [UIPalette.TEXT.to_html(false), card["hands"]])
+	if card.get("duo", "") != "":
+		lines.append("[color=#%s]%s[/color]" % [UIPalette.TEXT.to_html(false), card["duo"]])
 	for m: Dictionary in card["modifiers"]:
 		var t: int = m["type"]
 		lines.append("[color=#%s]+ %s[/color]  %s" % [_color_hex(t, colors), _entry(abbrevs, t), m["text"]])

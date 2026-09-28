@@ -28,6 +28,10 @@ signal character_swapped(character: int, cooldown: float)
 ## perfect_dodged, so it pays the same rewards and shares its cooldown.
 signal perfect_swapped(world_pos: Vector2)
 
+## ADR-0058 — a swap landed on the brothers' shared heartbeat (a Resonance): the next
+## cast is Perfect and the next landed hit reacts with the benched brother's element.
+signal resonated(world_pos: Vector2)
+
 ## ADR-0058 — dash pressed while Ayden is out. Only Faith dashes; the HUD tells the
 ## player to swap.
 signal dash_blocked(world_pos: Vector2)
@@ -487,17 +491,26 @@ func try_swap() -> bool:
 	if _controller_state == ControllerState.DISABLED or not _duo.try_swap(_hands_touching):
 		return false
 	var c: DuoSwap.Character = _duo.active()
-	SpellCastingEffects.set_active_character(c, true)
+	var resonant: bool = _duo.last_swap_resonant()
+	SpellCastingEffects.set_active_character(c, true, resonant)
 	_apply_character_look(true)
 	_tag_in(1.0)
 	Sfx.play(&"sfx_dash_ready")
 	character_swapped.emit(c, _duo.cooldown_remaining())
+	if resonant:
+		resonated.emit(global_position)
 	return true
 
 
 ## The brother in the arena (DuoSwap.Character).
 func get_active_character() -> int:
 	return _duo.active()
+
+
+## Heartbeat phase of the brothers' shared core: 0 on a beat, rising to 1 before the
+## next. A swap near 0 (or 1) Resonates. For the HUD pulse.
+func get_heartbeat_phase() -> float:
+	return _duo.beat_phase()
 
 
 ## True during a swap's tag-in i-frames.

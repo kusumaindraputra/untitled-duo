@@ -36,7 +36,7 @@ cash in the other brother's setup (hand-off). Design: `design/gdd/duo-swap.md`.
   Step 8d applies Ayden's hand only for Ayden and the brother's damage weight; the
   core status uses Faith's hand only for Faith; cast range is scaled per brother; the
   hand-off bonus (Ayden on a status, Faith on an enemy Ayden just hit) is paid once
-  per swap and emits `handoff_hit`.
+  per swap and emits `handoff_hit` (replaced by the Link Reaction, see amendment).
 - `DuoSwap.NONE` (the SC&E default) keeps the pre-duo numbers, so tools and older
   tests that never create a player behave as before. PlayerController sets it back
   on `_exit_tree()`.
@@ -61,6 +61,30 @@ able to dash, so the fight itself pushes the player to swap.
   1.25 → 1.15 (he is tougher now).
 - Assist auto-dash swaps Ayden out instead of dashing. The guided first room starts
   with Faith because its lessons teach the dash.
+
+### Amendment (2026-09-28): palm faces, Link Reaction, heartbeat
+
+The user asked for a reason to swap that only this game could have, built on the Prana
+grid. Three rules, all in `DuoTuning`:
+
+- **Palm faces.** `DuoSwap.face()` trades a brother's palm slot (3 Ayden, 5 Faith) with
+  the centre. `CombinationResolution._attach_faces()` resolves both faces on combat start
+  into `SpellEffect.faces`. SC&E keeps the grid's own effect as `_base_spell_effect` and
+  casts the active brother's face; `set_active_character()` switches it and emits
+  `face_changed` (not `cast_started`, which counts casts). CombatHUD reads the face for
+  its recognition banner; the prep preview adds a duo line (`SpellPreview.duo_line`).
+  A pure mirror was rejected: grid adjacency is symmetric, so it changes nothing.
+- **Link Reaction** replaces the hand-off bonuses (`handoff_*`, `ayden_mark_sec`,
+  `handoff_hit` removed). SC&E step 9b `_link_hit()` keeps one mark per enemy (brother,
+  element, time); the other brother's different element fires `_fire_link_reaction()`:
+  burst damage through `_deal_bonus_damage()` (no marks, no chaining), both elements'
+  plain statuses, meter, `link_reaction` and `reaction_triggered` (name from
+  `CombinationResolution.get_reaction()`).
+- **Heartbeat.** `DuoSwap` keeps a beat clock (reset each preparation). `try_swap()`
+  records whether it landed within `resonance_window_sec` of a beat; PlayerController
+  passes it to `set_active_character(c, true, resonant)` and emits `resonated`. SC&E
+  grants a free Perfect, meter, and a pending reaction with the benched brother's
+  element. CombatHUD pulses the duo row's alpha with `get_heartbeat_phase()`.
 
 ## Alternatives Considered
 

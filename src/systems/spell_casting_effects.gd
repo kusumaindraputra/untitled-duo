@@ -120,9 +120,15 @@ signal special_fired(prana_type_id: int, world_pos: Vector2, radius: float)
 ## is the Special meter it added. SpellVFX / CombatHUD may flash on it.
 signal grazed(world_pos: Vector2, meter_gain: float)
 
-## A hand-off hit landed (ADR-0058): the brother who just tagged in cashed in the
-## other's setup. [param character] is a DuoSwap.Character.
-signal handoff_hit(world_pos: Vector2, character: int)
+## ADR-0058 — the brother in the arena changed the spell being cast: his face of the
+## grid (palm faces) is now the cached SpellEffect. CombatHUD and PlayerController
+## refresh from it; it is not a cast, so it does not emit cast_started.
+signal face_changed(spell_effect: SpellEffect)
+
+## ADR-0058 — a Link Reaction fired: [param character] (a DuoSwap.Character) hit an
+## enemy still carrying the other brother's element, or cashed in a Resonance.
+## [param reaction_name] is the Reaction Matrix name of the two elements.
+signal link_reaction(reaction_name: String, world_pos: Vector2, character: int)
 
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -201,12 +207,6 @@ const BULLET_HELL_TUNING: BulletHellTuning = preload("res://assets/data/bullet_h
 
 ## Ayden / Faith duo knobs (ADR-0058).
 const DUO_TUNING: DuoTuning = preload("res://assets/data/duo_tuning.tres")
-
-## Statuses Ayden's hand-off counts as Faith's setup.
-const HANDOFF_STATUSES: Array[GameEnums.BaseStatus] = [
-	GameEnums.BaseStatus.BURN, GameEnums.BaseStatus.BLIND, GameEnums.BaseStatus.STUN,
-	GameEnums.BaseStatus.FREEZE, GameEnums.BaseStatus.CHILL,
-]
 
 ## Attack data per [primary_type][primary_tier][attack_index].
 ## Key "modifier" = tier_attack_modifier used in Formula 3 Step 4.
@@ -339,14 +339,17 @@ var _special_meter: float = 0.0
 ## ADR-0058 — the brother in the arena (DuoSwap.Character), or DuoSwap.NONE when no
 ## duo is wired (tools, older tests): then every duo multiplier is 1.0.
 var _active_character: int = DuoSwap.NONE
-## Seconds left in which the next landed attack earns the hand-off bonus.
-var _handoff_timer: float = 0.0
-## Combat clock (s) used to age Ayden's marks. Advances in _process.
+## The wave's SpellEffect as resolved from the grid itself. Its faces (palm faces)
+## hold each brother's own; _current_spell_effect is the active brother's face.
+var _base_spell_effect: SpellEffect = null
+## Combat clock (s) used to age Link marks. Advances in _process.
 var _duo_clock: float = 0.0
-## Enemy instance id → _duo_clock of Ayden's last hit on it (Faith's hand-off).
-var _ayden_marks: Dictionary = {}
-## True once the attack firing now has already paid a hand-off bonus.
-var _handoff_paid: bool = false
+## Enemy instance id → { c: brother, pt: element, t: _duo_clock } of the last duo hit
+## on it. The other brother hitting it with another element sets off a Link Reaction.
+var _link_marks: Dictionary = {}
+## True after a Resonance swap until the next landed hit, which then reacts with the
+## benched brother's element even without a mark.
+var _resonance_pending: bool = false
 
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -403,8 +406,6 @@ func _exit_tree() -> void:
 ## Handles CAST_LOCKED expiry, combo window expiry, input buffer, and cast input polling. (TR-SC-002)
 func _process(delta: float) -> void:
 	_duo_clock += delta
-	if _handoff_timer > 0.0:
-		_handoff_timer = maxf(_handoff_timer - delta, 0.0)
 	if _free_perfect_timer > 0.0:
 		_free_perfect_timer = maxf(_free_perfect_timer - delta, 0.0)
 	# ── Input buffer countdown ─────────────────────────────────────────────────
@@ -492,12 +493,8 @@ func _trigger_cast() -> void:
 	var rushed: bool = timing == CastTiming.RUSHED
 	_perfect_mult = ATTACK_TUNING.perfect_damage_mult if perfect \
 		else (ATTACK_TUNING.rushed_damage_mult if rushed else 1.0)
-	_handoff_paid = false
 	_fire_attack(current_index)
 	_perfect_mult = 1.0
-	# ADR-0058 — the first attack that lands after a swap spends the hand-off window.
-	if _last_attack_hit_count > 0:
-		_handoff_timer = 0.0
 	_apply_surge_heal()
 	var is_secondary: bool = ATTACK_DATA[_current_spell_effect.primary_type][_current_spell_effect.primary_tier][current_index]["modifier"] == 0.0
 	var landed: bool = _last_attack_hit_count > 0 or is_secondary
@@ -640,18 +637,13 @@ func _apply_hit(target: Node, pt: int, tier_mod: float, se: SpellEffect,
 	raw *= DuoSwap.power_hand(_active_character, se.hand_power_mult)
 	raw *= DuoSwap.damage_mult(_active_character)
 
-	# Step 8e — Ayden's hand-off: his first attack after tagging in hits harder on an
-	# enemy carrying a status (Faith's setup). Marks the enemy for Faith's hand-off.
-	if _active_character == DuoSwap.Character.AYDEN:
-		if _handoff_timer > 0.0 and _has_any_status(target):
-			raw *= DUO_TUNING.handoff_damage_mult
-			_pay_handoff(target)
-		_ayden_marks[target_id] = _duo_clock
-
 	# Step 9 — deliver damage (element-neutral; affiliation cut 2026-06-21).
 	_health_and_damage.apply_damage(target, raw, GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
 
 	spell_hit_element.emit(target, pt)
+
+	# Step 9b — ADR-0058 Link: react with the other brother's element, then leave ours.
+	_link_hit(target, pt)
 
 	# Siphon — damage dealt to a Blinded enemy heals Fayde.
 	var siphon: ReactionDef = _armed(GameEnums.ReactionKind.SIPHON)
@@ -693,12 +685,6 @@ func _apply_status_effects(target: Node, pt: int, se: SpellEffect, step4_raw: fl
 	# Faith's hand (ADR-0057): Prana in the grid's right column lengthen the core status.
 	# With the duo (ADR-0058) it holds for Faith only.
 	var hold: float = DuoSwap.control_hand(_active_character, se.hand_control_mult)
-	# Faith's hand-off: her first attack after tagging in holds longer on an enemy
-	# Ayden hit moments ago.
-	if _active_character == DuoSwap.Character.FAITH and _handoff_timer > 0.0 \
-			and _marked_by_ayden(target):
-		hold *= DUO_TUNING.handoff_status_mult
-		_pay_handoff(target)
 	match pt:
 		0:  # Ashfire — Burn DoT; step4_raw drives tick magnitude.
 			_apply_burn(target, 2.0 * hold, step4_raw)
@@ -1320,18 +1306,28 @@ func add_special_meter(amount: float) -> void:
 		_add_special_meter(amount)
 
 
-## ADR-0058 — tells combat which brother is in the arena. [param tagged_in] is true on
-## a swap: it opens the hand-off window for the next attack. Ends the current chain,
-## since the other brother starts his own.
-func set_active_character(character: int, tagged_in: bool = false) -> void:
+## ADR-0058 — tells combat which brother is in the arena and switches to his face of
+## the grid (palm faces). [param tagged_in] is true on a swap: the current chain ends,
+## since the other brother starts his own. [param resonant] is true when the swap
+## landed on the shared heartbeat: the next cast is Perfect, the meter fills, and the
+## next landed hit reacts with the benched brother's element.
+func set_active_character(character: int, tagged_in: bool = false, resonant: bool = false) -> void:
 	_active_character = character
+	var face: SpellEffect = _face_for(character)
+	if face != null and face != _current_spell_effect:
+		_current_spell_effect = face
+		_arm_reactions(face)
+		face_changed.emit(face)
 	if tagged_in:
-		_handoff_timer = DUO_TUNING.handoff_window_sec
 		_combo_index = 0
 		_perfect_streak = 0
 		if _state == SCEState.CHAINING:
 			_state = SCEState.READY
 			chain_index_changed.emit(0, _current_spell_effect.combo_attack_count if _current_spell_effect else 0)
+	if resonant:
+		grant_perfect_cast(DUO_TUNING.resonance_perfect_sec)
+		_add_special_meter(DUO_TUNING.resonance_meter_gain)
+		_resonance_pending = true
 
 
 ## The brother in the arena (DuoSwap.Character), or DuoSwap.NONE without a duo.
@@ -1339,31 +1335,83 @@ func get_active_character() -> int:
 	return _active_character
 
 
-## True while the next landed attack still earns the hand-off bonus.
-func is_handoff_open() -> bool:
-	return _handoff_timer > 0.0
+## [param character]'s face of this wave's grid; the grid's own resolution when he has
+## none (empty palm, palm faces off, no duo). Null between waves.
+func _face_for(character: int) -> SpellEffect:
+	if _base_spell_effect == null:
+		return null
+	return _base_spell_effect.faces.get(character, _base_spell_effect)
 
 
-## True when [param target] carries any status Ayden's hand-off counts.
-func _has_any_status(target: Node) -> bool:
-	for st: GameEnums.BaseStatus in HANDOFF_STATUSES:
-		if _status_effects.has_status(target, st):
-			return true
-	return false
+## True while a Resonance waits for the next landed hit.
+func is_resonance_pending() -> bool:
+	return _resonance_pending
 
 
-## True when Ayden hit [param target] within DuoTuning.ayden_mark_sec.
-func _marked_by_ayden(target: Node) -> bool:
-	var id: int = target.get_instance_id()
-	return _ayden_marks.has(id) and _duo_clock - float(_ayden_marks[id]) <= DUO_TUNING.ayden_mark_sec
-
-
-## Emits the hand-off callout once per attack.
-func _pay_handoff(target: Node) -> void:
-	if _handoff_paid:
+## Link Reaction step for a hit of element [param pt] on [param target] (ADR-0058).
+## When the other brother left a different element on it within link_mark_sec, or a
+## Resonance is pending (benched brother's element), the two elements react. Then the
+## hit leaves this brother's element on the target.
+func _link_hit(target: Node, pt: int) -> void:
+	if _active_character == DuoSwap.NONE:
 		return
-	_handoff_paid = true
-	handoff_hit.emit(_pos_of(target), _active_character)
+	var id: int = target.get_instance_id()
+	var other_pt: int = -1
+	var mark: Dictionary = _link_marks.get(id, {})
+	if not mark.is_empty() and int(mark["c"]) != _active_character \
+			and _duo_clock - float(mark["t"]) <= DUO_TUNING.link_mark_sec:
+		other_pt = int(mark["pt"])
+	if _resonance_pending:
+		_resonance_pending = false
+		if other_pt < 0:
+			var benched: SpellEffect = _face_for(DuoSwap.other(_active_character))
+			other_pt = benched.primary_type if benched != null else -1
+	if other_pt >= 0 and other_pt != pt:
+		_fire_link_reaction(target, other_pt, pt)
+	_link_marks[id] = {"c": _active_character, "pt": pt, "t": _duo_clock}
+
+
+## Fires a Link Reaction of elements [param a] (left by the other brother) and
+## [param b] (this hit) at [param target]: a burst of link_damage_mult × base damage,
+## half of it to enemies in link_radius, both elements' statuses on everyone it hits
+## (Verdant heals Fayde), and Special meter. Emits link_reaction and reaction_triggered.
+func _fire_link_reaction(target: Node, a: int, b: int) -> void:
+	var t: DuoTuning = DUO_TUNING
+	var pos: Vector2 = _pos_of(target)
+	var hit: Array[Node] = [target]
+	for e: Node2D in _enemies_within(pos, t.link_radius):
+		if e != target:
+			hit.append(e)
+	var dmg: float = BASE_SPELL_DAMAGE * t.link_damage_mult
+	for i: int in hit.size():
+		var e: Node = hit[i]
+		_deal_bonus_damage(e, dmg if i == 0 else dmg * t.link_splash_mult, b)
+		if _is_live(e):
+			_link_status(e, a)
+			_link_status(e, b)
+	if (a == GameEnums.DamageClass.NATURE or b == GameEnums.DamageClass.NATURE) and _fayde_ref != null:
+		_status_effects.apply_status(_fayde_ref, GameEnums.BaseStatus.REGENERATE, t.link_status_sec)
+	_add_special_meter(t.link_meter_gain)
+	var rdef: ReactionDef = CombinationResolution.get_reaction(a, b)
+	var reaction_name: String = rdef.name if rdef != null else ""
+	link_reaction.emit(reaction_name, pos, _active_character)
+	if reaction_name != "":
+		reaction_triggered.emit(reaction_name, pos, b)
+
+
+## One element's status from a Link Reaction on [param enemy]. Plain statuses: they
+## never set off the grid's own reactions (Witchfire, Short Circuit...).
+func _link_status(enemy: Node, pt: int) -> void:
+	var dur: float = DUO_TUNING.link_status_sec
+	match pt:
+		GameEnums.DamageClass.FIRE:
+			_status_effects.apply_status(enemy, GameEnums.BaseStatus.BURN, dur, BASE_SPELL_DAMAGE)
+		GameEnums.DamageClass.SHADOW:
+			_status_effects.apply_status(enemy, GameEnums.BaseStatus.BLIND, dur)
+		GameEnums.DamageClass.LIGHTNING:
+			_status_effects.apply_status(enemy, GameEnums.BaseStatus.STUN, dur / 3.0)
+		GameEnums.DamageClass.ICE:
+			_status_effects.apply_status(enemy, GameEnums.BaseStatus.FREEZE, dur)
 
 
 ## ADR-0019 — the next basic cast within [param window_sec] counts as Perfect whatever
@@ -1446,8 +1494,9 @@ func _on_preparation_started(_idx: int, _rem: int) -> void:
 	_reset_chain_reaction_state()
 	_perfect_streak = 0
 	_free_perfect_timer = 0.0
-	_handoff_timer = 0.0
-	_ayden_marks.clear()
+	_base_spell_effect = null
+	_link_marks.clear()
+	_resonance_pending = false
 	_special_meter = 0.0
 	special_meter_changed.emit(_special_meter, ATTACK_TUNING.special_meter_max)
 
@@ -1472,8 +1521,9 @@ func _on_combo_resolved(spell_effect: SpellEffect) -> void:
 	# (Autoload ordering: CR=#8, SCE=#9).
 	if not (_in_combat or GameStateManager.get_active_state() == GameEnums.GameState.COMBAT_PHASE):
 		return
-	_current_spell_effect = spell_effect
-	_arm_reactions(spell_effect)
+	_base_spell_effect = spell_effect
+	_current_spell_effect = _face_for(_active_character)
+	_arm_reactions(_current_spell_effect)
 	_state = SCEState.READY
 	_combo_index = 0
-	cast_started.emit(spell_effect)
+	cast_started.emit(_current_spell_effect)

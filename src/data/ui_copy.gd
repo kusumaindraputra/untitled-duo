@@ -93,8 +93,16 @@ extends Resource
 @export var perfect_dodge_label: String = "PERFECT DODGE"
 ## ADR-0058 duo swap. Callout when the tag-in i-frames take a hit.
 @export var perfect_swap_label: String = "PERFECT SWAP"
-## Callout when the brother who tagged in cashes in the other's setup.
-@export var handoff_label: String = "HAND-OFF"
+## Callout where the brothers' two elements react (Link Reaction).
+@export var link_label: String = "LINK!"
+## Callout when a swap lands on the shared heartbeat.
+@export var resonance_label: String = "RESONANCE"
+## Heart shown at the start of the duo row; the row glows on each heartbeat.
+@export var duo_heart: String = "♥"
+## Prep preview line for the duo: Ayden's core, Faith's core (palm faces).
+@export var duo_cores_format: String = "AYDEN %s · FAITH %s"
+## Prep preview suffix naming the Link Reaction of the two cores.
+@export var duo_link_format: String = "  → LINK: %s"
 ## Callout when dash is pressed as Ayden: only Faith dashes.
 @export var dash_blocked_label: String = "SWAP TO DASH"
 ## HUD duo row when a swap is ready: active brother, swap key, the other brother.

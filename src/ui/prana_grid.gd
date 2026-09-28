@@ -825,7 +825,15 @@ func build_spell_card() -> Dictionary:
 	for id: int in PranaTypeToken.type_count():
 		var pt: PranaType = PranaCatalog.get_type(id)
 		names.append(pt.name if pt != null else PranaTypeToken.type_abbrev(id))
-	return SpellPreview.build(summary, reactions, cascade, names, _COPY)
+	var card: Dictionary = SpellPreview.build(summary, reactions, cascade, names, _COPY)
+	# ADR-0058: each brother casts his palm Prana; their two elements make the Link.
+	var ayden_core: int = DuoSwap.core_type(ids, DuoSwap.Character.AYDEN)
+	var faith_core: int = DuoSwap.core_type(ids, DuoSwap.Character.FAITH)
+	var link: ReactionDef = CombinationResolution.get_reaction(ayden_core, faith_core) \
+		if ayden_core >= 0 and faith_core >= 0 else null
+	card["duo"] = SpellPreview.duo_line(ayden_core, faith_core, link.name if link != null else "",
+		names, _COPY)
+	return card
 
 
 ## The current 9 slots as type ids (null = empty), copied. Read by the pause build view (U6).

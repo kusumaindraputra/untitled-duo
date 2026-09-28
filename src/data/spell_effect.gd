@@ -74,3 +74,9 @@ extends Resource
 ## RefCounted, not serialized) — not @export. When present, the core↔neighbor pairwise
 ## reactions it consumes are absent from active_reactions.
 var active_cascade: CascadeEffect = null
+
+## ADR-0058 palm faces — each brother's own resolution of the grid, keyed by
+## DuoSwap.Character: his palm Prana trades places with the centre and becomes his core.
+## Empty when the duo is not in play; a brother with an empty palm maps to this effect.
+## Runtime-only, filled by CombinationResolution on combat start.
+var faces: Dictionary = {}

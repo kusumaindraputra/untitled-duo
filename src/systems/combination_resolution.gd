@@ -211,6 +211,7 @@ func _on_combat_started(_is_boss: bool) -> void:
 			fragments = _make_empty_grid()
 
 	var effect: SpellEffect = _resolve(fragments)
+	_attach_faces(effect, fragments)
 	_cached_spell_effect = effect
 	combo_resolved.emit(effect)
 
@@ -278,6 +279,26 @@ func _resolve(fragments: Array) -> SpellEffect:
 	effect.hands_touching = hands["touch"]
 
 	return effect
+
+
+## ADR-0058 palm faces: resolves each brother's face of [param fragments] into
+## [member SpellEffect.faces]. A brother whose face is the grid itself (empty palm, or
+## palm faces off) shares [param effect]. No-op on an invalid effect.
+func _attach_faces(effect: SpellEffect, fragments: Array) -> void:
+	if effect.primary_type < 0:
+		return
+	for c: int in [DuoSwap.Character.AYDEN, DuoSwap.Character.FAITH]:
+		var f: Array = DuoSwap.face(fragments, c)
+		effect.faces[c] = effect if f == fragments else _resolve(f)
+
+
+## The Reaction Matrix entry for Prana types [param a] and [param b] (either order), or
+## null for a same-type or unknown pair. Used by the duo's Link Reaction (ADR-0058).
+func get_reaction(a: int, b: int) -> ReactionDef:
+	if a == b:
+		return null
+	_ensure_reaction_matrix()
+	return _reaction_matrix.get(_pair_key(a, b), null)
 
 
 ## Test seam — injects fragment data for integration tests, bypassing PranaGrid.

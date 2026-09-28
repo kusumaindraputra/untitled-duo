@@ -18,11 +18,21 @@ const NONE: int = -1
 
 const TUNING: DuoTuning = preload("res://assets/data/duo_tuning.tres")
 
+## Grid slot each brother holds as his palm: the middle of his hand's column (ADR-0057).
+const AYDEN_PALM: int = 3
+const FAITH_PALM: int = 5
+const CENTRE: int = 4
+
 var _tuning: DuoTuning
 var _active: Character = Character.AYDEN
 var _cooldown: float = 0.0
 var _iframe: float = 0.0
 var _perfect_counted: bool = false
+## Combat clock (s) of the shared heartbeat; a beat falls on every multiple of
+## DuoTuning.heartbeat_sec. Reset each preparation phase.
+var _beat_clock: float = 0.0
+## True when the last swap landed on a beat (a Resonance).
+var _last_resonant: bool = false
 
 
 func _init(tuning: DuoTuning = TUNING) -> void:
@@ -40,6 +50,7 @@ func active() -> Character:
 func tick(delta: float) -> void:
 	_cooldown = maxf(_cooldown - delta, 0.0)
 	_iframe = maxf(_iframe - delta, 0.0)
+	_beat_clock += delta
 
 
 ## True when a swap is allowed now.
@@ -52,6 +63,7 @@ func can_swap() -> bool:
 func try_swap(hands_touching: bool = false) -> bool:
 	if not can_swap():
 		return false
+	_last_resonant = is_on_beat()
 	_active = other(_active)
 	_cooldown = cooldown_for(hands_touching, _tuning)
 	_iframe = _tuning.swap_iframe_sec
@@ -69,6 +81,8 @@ func reset_timers() -> void:
 	_cooldown = 0.0
 	_iframe = 0.0
 	_perfect_counted = false
+	_beat_clock = 0.0
+	_last_resonant = false
 
 
 ## Seconds until the next swap is allowed.
@@ -89,7 +103,56 @@ func try_count_perfect() -> bool:
 	return true
 
 
+## True when the last swap landed on a heartbeat (a Resonance).
+func last_swap_resonant() -> bool:
+	return _last_resonant
+
+
+## True within DuoTuning.resonance_window_sec of a heartbeat.
+func is_on_beat() -> bool:
+	return beat_distance(_beat_clock, _tuning) <= _tuning.resonance_window_sec
+
+
+## Heartbeat phase, 0 on a beat rising to 1 just before the next (for the HUD pulse).
+func beat_phase() -> float:
+	return fposmod(_beat_clock, _tuning.heartbeat_sec) / _tuning.heartbeat_sec
+
+
 # ── Rules ────────────────────────────────────────────────────────────────────
+
+## Seconds from [param clock] to the nearest heartbeat.
+static func beat_distance(clock: float, t: DuoTuning = TUNING) -> float:
+	var into: float = fposmod(clock, t.heartbeat_sec)
+	return minf(into, t.heartbeat_sec - into)
+
+
+## Grid slot of [param c]'s palm.
+static func palm_slot(c: int) -> int:
+	return FAITH_PALM if c == Character.FAITH else AYDEN_PALM
+
+
+## [param c]'s face of [param grid] (9 slots, null = empty): his palm Prana trades
+## places with the centre, so it becomes his core. With an empty palm, palm faces off
+## or no duo, the grid is returned as is (copied).
+static func face(grid: Array, c: int, t: DuoTuning = TUNING) -> Array:
+	var out: Array = grid.duplicate()
+	if c == NONE or not t.palm_faces or out.size() <= FAITH_PALM:
+		return out
+	var palm: int = palm_slot(c)
+	if out[palm] == null or out[CENTRE] == null:
+		return out
+	var core: Variant = out[CENTRE]
+	out[CENTRE] = out[palm]
+	out[palm] = core
+	return out
+
+
+## Type id of [param c]'s core in a grid of type ids (null = empty): his palm Prana,
+## or the centre when his palm is empty. -1 when the centre is empty.
+static func core_type(type_ids: Array, c: int, t: DuoTuning = TUNING) -> int:
+	var f: Array = face(type_ids, c, t)
+	return int(f[CENTRE]) if f.size() > CENTRE and f[CENTRE] != null else -1
+
 
 ## The other brother.
 static func other(c: Character) -> Character:

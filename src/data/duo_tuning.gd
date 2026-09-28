@@ -1,7 +1,9 @@
 ## DuoTuning — knobs for the Ayden / Faith duo swap (ADR-0058).
 ##
 ## Ayden and Faith are two brothers the player swaps between in combat. Ayden hits
-## hard at short range; Faith reaches far and holds status longer. Authored as
+## hard at short range and is sturdy; Faith reaches far, holds status longer and is the
+## only one who dashes. Each takes his palm Prana as his core, the other's element on an
+## enemy sets off a Link Reaction, and a swap on the shared heartbeat Resonates. Authored as
 ## assets/data/duo_tuning.tres and read through a preload const, like PaceTuning.
 ## Design: design/gdd/duo-swap.md
 class_name DuoTuning
@@ -48,13 +50,36 @@ extends Resource
 ## Only Faith can dash; this is her dash's extra. Radius (px) of enemy bullets it wipes (like the dash-cut sigil).
 @export_range(0.0, 100.0, 1.0) var faith_dash_cut_radius: float = 24.0
 
-@export_group("Hand-off")
+@export_group("Palm faces")
 
-## Seconds after a swap during which the first attack gets the hand-off bonus.
-@export_range(0.0, 5.0, 0.05) var handoff_window_sec: float = 2.0
-## Ayden's damage multiplier on an enemy that carries any status (Faith's setup).
-@export_range(1.0, 3.0, 0.05) var handoff_damage_mult: float = 1.5
-## Faith's status duration multiplier on an enemy Ayden hit recently.
-@export_range(1.0, 3.0, 0.05) var handoff_status_mult: float = 1.5
-## How long (s) an Ayden hit marks an enemy for Faith's hand-off.
-@export_range(0.0, 5.0, 0.05) var ayden_mark_sec: float = 2.0
+## Each brother takes the Prana in his palm (Ayden: middle-left slot, Faith:
+## middle-right) as his core, so the grid has two faces: spell, tier, reactions and
+## Cascade change with the swap. Off = both brothers cast the centre Prana.
+@export var palm_faces: bool = true
+
+@export_group("Link Reaction")
+
+## Seconds a hit's element stays on an enemy for the other brother to react with.
+@export_range(0.5, 10.0, 0.1) var link_mark_sec: float = 3.0
+## Link Reaction burst damage, as a multiple of the base spell damage (20).
+@export_range(0.0, 5.0, 0.05) var link_damage_mult: float = 1.5
+## Radius (px) of the burst around the reacting enemy.
+@export_range(0.0, 300.0, 1.0) var link_radius: float = 60.0
+## Damage share the burst deals to other enemies in the radius.
+@export_range(0.0, 1.0, 0.05) var link_splash_mult: float = 0.5
+## Seconds of each element's status the burst applies (Burn, Blind, Freeze; Stun is
+## a third of it). Verdant heals Fayde instead.
+@export_range(0.0, 5.0, 0.1) var link_status_sec: float = 1.5
+## Special meter the Link Reaction pays.
+@export_range(0.0, 100.0, 1.0) var link_meter_gain: float = 12.0
+
+@export_group("Heartbeat")
+
+## Seconds between beats of the brothers' shared core.
+@export_range(0.3, 3.0, 0.05) var heartbeat_sec: float = 1.0
+## Seconds either side of a beat in which a swap resonates. Generous for young players.
+@export_range(0.02, 0.5, 0.01) var resonance_window_sec: float = 0.15
+## Seconds a Resonance keeps the next basic cast Perfect whatever its timing.
+@export_range(0.0, 5.0, 0.1) var resonance_perfect_sec: float = 1.5
+## Special meter a Resonance pays.
+@export_range(0.0, 100.0, 1.0) var resonance_meter_gain: float = 10.0
