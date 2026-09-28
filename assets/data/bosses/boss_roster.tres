@@ -199,6 +199,7 @@ hazards = Array[ExtResource("5_hazard")]([SubResource("H_k_sweep")])
 script = ExtResource("3_event")
 phase = 2
 hazards = Array[ExtResource("5_hazard")]([SubResource("H_k_ring")])
+sever_link = true
 
 [sub_resource type="Resource" id="E_k_3"]
 script = ExtResource("3_event")

@@ -19,7 +19,7 @@ const CONFIG: SigilConfig = preload("res://assets/data/sigil_config.tres")
 
 ## Ids handled here. SigilManager routes these to add_stack().
 const IDS: Array[StringName] = [&"ember_wake", &"static_halo", &"afterglow", &"unravel",
-	&"siphon", &"riposte", &"metronome"]
+	&"siphon", &"riposte", &"metronome", &"echo_brother"]
 
 ## Player node; polled for dashing, used as the origin of player-centred effects.
 var player: Node2D = null
@@ -51,6 +51,7 @@ func _ready() -> void:
 	SpellCastingEffects.grazed.connect(_on_grazed)
 	SpellCastingEffects.special_fired.connect(_on_special_fired)
 	SpellCastingEffects.perfect_cast.connect(_on_perfect_cast)
+	SpellCastingEffects.brother_tagged_in.connect(on_brother_tagged_in)
 	HealthAndDamage.enemy_killed.connect(_on_enemy_killed)
 	GameStateManager.run_started.connect(reset)
 
@@ -62,6 +63,8 @@ func _exit_tree() -> void:
 		SpellCastingEffects.special_fired.disconnect(_on_special_fired)
 	if SpellCastingEffects.perfect_cast.is_connected(_on_perfect_cast):
 		SpellCastingEffects.perfect_cast.disconnect(_on_perfect_cast)
+	if SpellCastingEffects.brother_tagged_in.is_connected(on_brother_tagged_in):
+		SpellCastingEffects.brother_tagged_in.disconnect(on_brother_tagged_in)
 	if HealthAndDamage.enemy_killed.is_connected(_on_enemy_killed):
 		HealthAndDamage.enemy_killed.disconnect(_on_enemy_killed)
 	if GameStateManager.run_started.is_connected(reset):
@@ -152,6 +155,22 @@ func _on_perfect_cast(world_pos: Vector2, streak: int) -> void:
 		return
 	HealthAndDamage.apply_heal(player, CONFIG.metronome_heal * float(n))
 	effect_fired.emit(&"metronome", world_pos)
+
+
+## Echo Brother (ADR-0058): [param character] tagged in, so the brother leaving
+## strikes the nearest enemy once and leaves his Link mark on it. Public for tests.
+func on_brother_tagged_in(character: int) -> void:
+	var n: int = stacks(&"echo_brother")
+	if n <= 0 or character == DuoSwap.NONE:
+		return
+	var leaving: int = DuoSwap.other(character)
+	var target: Node2D = SpellCastingEffects.echo_strike(leaving, CONFIG.echo_damage * float(n),
+		CONFIG.echo_range)
+	if target == null:
+		return
+	if is_instance_valid(player) and player.has_method(&"show_partner"):
+		player.show_partner(leaving, -1.0, target.global_position)
+	effect_fired.emit(&"echo_brother", target.global_position)
 
 
 func _on_enemy_killed(instance_id: int, _type_id: int, _aff: GameEnums.DamageClass) -> void:

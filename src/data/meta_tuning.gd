@@ -26,12 +26,12 @@ extends Resource
 ## Sigils (stat or behaviour) that can be unlocked as Heirlooms, in menu order. Titles and
 ## descriptions come from SigilConfig.stat_sigils, so they are not duplicated here.
 @export var heirloom_ids: Array[StringName] = [&"move_speed", &"damage", &"graze_ring", &"dash_charge", &"dash_cut",
-	&"dash_cd", &"ember_wake", &"static_halo", &"siphon", &"riposte"]
+	&"wide_link", &"dash_cd", &"ember_wake", &"echo_brother", &"static_halo", &"siphon", &"riposte"]
 ## Shard cost of each Heirloom, parallel to heirloom_ids.
-@export var heirloom_costs: Array[int] = [30, 45, 50, 70, 90, 60, 80, 90, 110, 130]
+@export var heirloom_costs: Array[int] = [30, 45, 50, 70, 90, 70, 60, 80, 100, 90, 110, 130]
 ## Memory fragments needed before each Heirloom can be bought, parallel to heirloom_ids
-## (F4: a new pair every 3 memories). 0 = available from the start.
-@export var heirloom_memory_gates: Array[int] = [0, 0, 0, 0, 0, 3, 3, 6, 6, 9]
+## (F4: new ones every 3 memories). 0 = available from the start.
+@export var heirloom_memory_gates: Array[int] = [0, 0, 0, 0, 0, 3, 3, 3, 6, 6, 6, 9]
 
 @export_group("Hard Mode")
 

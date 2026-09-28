@@ -109,6 +109,12 @@ extends Resource
 @export var duo_row_format: String = "%s   [%s] %s"
 ## HUD duo row on cooldown: active brother, the other brother, seconds left.
 @export var duo_row_cooldown_format: String = "%s   %s in %.1fs"
+## HUD duo row while a boss has the link severed: active brother, the other, hits left.
+@export var duo_row_severed_format: String = "%s  ✂  %s  (hit %d more)"
+## Callout when the Special becomes a Link Burst (both brothers join it).
+@export var link_burst_label: String = "LINK BURST!"
+## Callout when a severed link reconnects.
+@export var relinked_label: String = "RELINKED!"
 
 ## Label beside the style meter. The live rank letter follows it.
 @export var style_label: String = "STYLE"
@@ -274,7 +280,7 @@ extends Resource
 ## Banner for each Cipher Keeper phase (1st, 2nd, 3rd HP threshold crossed).
 @export var keeper_phase_banners: Array[String] = [
 	"The first lock breaks — a beam pylon rises",
-	"The vault closes in",
+	"SEPARATION IS THE WEAPON — land hits to find each other",
 	"THE LAST CIPHER — hold on",
 ]
 ## Per-run boss variant names, keyed by BossVariant.id. Shown after the boss name

@@ -36,6 +36,13 @@ signal resonated(world_pos: Vector2)
 ## player to swap.
 signal dash_blocked(world_pos: Vector2)
 
+## ADR-0058 — a boss severed the brothers' link: no swaps until [param hits] hits land.
+signal link_severed(hits: int)
+## ADR-0058 — a hit counted toward reconnecting; [param hits_left] still to go.
+signal relink_progress(hits_left: int)
+## ADR-0058 — the severed link reconnected at [param world_pos].
+signal relinked(world_pos: Vector2)
+
 # ── Enums ─────────────────────────────────────────────────────────────────────
 
 enum ControllerState { DISABLED, ENABLED, DASHING }
@@ -165,6 +172,8 @@ func _ready() -> void:
 	GameStateManager.combat_started.connect(_on_combat_started)
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	GameStateManager.room_cleared.connect(_on_room_cleared)
+	SpellCastingEffects.link_burst.connect(_on_link_burst)
+	SpellCastingEffects.spell_hit_element.connect(_on_spell_hit_element)
 	HealthAndDamage.player_died.connect(_on_player_died)
 	HealthAndDamage.heavy_hit.connect(_on_heavy_hit)
 	HealthAndDamage.damage_taken.connect(_on_player_damage_taken)
@@ -203,6 +212,10 @@ func _exit_tree() -> void:
 		GameStateManager.preparation_started.disconnect(_on_preparation_started)
 	if GameStateManager.room_cleared.is_connected(_on_room_cleared):
 		GameStateManager.room_cleared.disconnect(_on_room_cleared)
+	if SpellCastingEffects.link_burst.is_connected(_on_link_burst):
+		SpellCastingEffects.link_burst.disconnect(_on_link_burst)
+	if SpellCastingEffects.spell_hit_element.is_connected(_on_spell_hit_element):
+		SpellCastingEffects.spell_hit_element.disconnect(_on_spell_hit_element)
 	if HealthAndDamage.player_died.is_connected(_on_player_died):
 		HealthAndDamage.player_died.disconnect(_on_player_died)
 	if HealthAndDamage.heavy_hit.is_connected(_on_heavy_hit):
@@ -538,6 +551,62 @@ func get_incoming_damage_mult() -> float:
 	return DuoSwap.damage_taken_mult(_duo.active())
 
 
+## Boss hook (floor-bosses.md, fragment 6): cuts the brothers' link. The brother in
+## the arena stays and no swap works until DuoTuning.sever_reconnect_hits hits land.
+func sever_link() -> void:
+	_duo.sever(DUO_TUNING.sever_reconnect_hits)
+	link_severed.emit(_duo.sever_hits_left())
+
+
+## True while a boss has the brothers' link severed.
+func is_link_severed() -> bool:
+	return _duo.is_severed()
+
+
+## Hits still needed to reconnect a severed link.
+func get_relink_hits_left() -> int:
+	return _duo.sever_hits_left()
+
+
+## Deep Heartbeat sigil: stretches the shared heartbeat and its Resonance window.
+func apply_heartbeat_mult(factor: float) -> void:
+	_duo.apply_beat_mult(factor)
+
+
+## Seconds between heartbeats with the run's sigils.
+func get_heartbeat_period() -> float:
+	return _duo.heartbeat_period()
+
+
+## Shows [param character] beside Fayde for [param seconds], casting, then fading: the
+## benched brother joining a Link Burst or an Echo strike. Returns the sprite (tests).
+## A non-positive [param seconds] uses DuoTuning.partner_show_sec.
+func show_partner(character: int, seconds: float = -1.0,
+		toward: Vector2 = Vector2.ZERO) -> PixelCharacter:
+	if not is_inside_tree() or character == DuoSwap.NONE:
+		return null
+	if seconds <= 0.0:
+		seconds = DUO_TUNING.partner_show_sec
+	var own: PixelCharacter = get_node_or_null(^"PixelCharacter") as PixelCharacter
+	var partner := PixelCharacter.new()
+	partner.name = "Partner"
+	DuoLooks.apply(partner, character)
+	if own != null:
+		partner.position = own.position
+		partner.scale = own.scale
+	var side: float = -1.0 if toward.x > global_position.x else 1.0
+	partner.position += Vector2(side * 14.0, 2.0)
+	partner.set_facing_left(side > 0.0)
+	partner.modulate = Color(1.0, 1.0, 1.0, 0.85)
+	add_child(partner)
+	partner.play_cast(seconds)
+	var tw: Tween = partner.create_tween()
+	tw.tween_interval(seconds * 0.6)
+	tw.tween_property(partner, ^"modulate:a", 0.0, seconds * 0.4)
+	tw.tween_callback(partner.queue_free)
+	return partner
+
+
 ## Test seam and new-run hook: puts [param c] in the arena with no cooldown.
 func set_active_character(c: DuoSwap.Character) -> void:
 	_duo.set_active(c)
@@ -699,6 +768,24 @@ func _compute_steps_per_second() -> float:
 	return 1.0 / FOOTSTEP_INTERVAL_SEC
 
 # ── Signal callbacks ──────────────────────────────────────────────────────────
+
+## The Special fired a Link Burst: the benched brother appears beside Fayde.
+func _on_link_burst(_reaction_name: String, _world_pos: Vector2, _radius: float, _character: int) -> void:
+	show_partner(DuoSwap.other(_duo.active()))
+	add_camera_trauma(0.35)
+
+
+## A spell hit landed: counts toward reconnecting a severed link.
+func _on_spell_hit_element(_target: Node, _prana_type_id: int) -> void:
+	if not _duo.is_severed():
+		return
+	if _duo.note_hit():
+		SpellCastingEffects.add_special_meter(DUO_TUNING.relink_meter_gain)
+		_apply_character_look(true)
+		relinked.emit(global_position)
+	else:
+		relink_progress.emit(_duo.sever_hits_left())
+
 
 func _on_combat_started(_is_boss: bool = false) -> void:
 	_controller_state = ControllerState.ENABLED

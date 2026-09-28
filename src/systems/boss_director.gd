@@ -6,6 +6,7 @@
 ## as listed in the boss's BossProfile plus the run's BossVariant:
 ##   hazards   — stage hazards placed in the boss room
 ##   clear     — every enemy bullet wiped for one breath
+##   sever     — the Ayden / Faith link is cut until the player lands hits (ADR-0058)
 ## Each phase also shows the boss's own banner and kicks the camera.
 ##
 ## Run-scoped, created by debug_game_loop; attach() is called from
@@ -53,6 +54,16 @@ static func clears_bullets(profile: BossProfile, phase: int, variant: BossVarian
 		return false
 	for ev: BossPhaseEvent in profile.events_for_phase(phase, variant):
 		if ev.clear_bullets:
+			return true
+	return false
+
+
+## True when entering [param phase] severs the brothers' link (ADR-0058).
+static func severs_link(profile: BossProfile, phase: int, variant: BossVariant = null) -> bool:
+	if profile == null:
+		return false
+	for ev: BossPhaseEvent in profile.events_for_phase(phase, variant):
+		if ev.sever_link:
 			return true
 	return false
 
@@ -121,6 +132,8 @@ func _apply_phase(phase: int) -> void:
 	var player: Node = get_tree().get_first_node_in_group(&"player") if is_inside_tree() else null
 	if player != null and player.has_method(&"add_camera_trauma"):
 		player.add_camera_trauma(_profile.phase_trauma)
+	if player != null and player.has_method(&"sever_link") and severs_link(_profile, phase, _variant):
+		player.sever_link()
 	phase_applied.emit(phase)
 
 

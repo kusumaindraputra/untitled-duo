@@ -141,7 +141,7 @@ func _build() -> void:
 	root.add_child(_shards_label)
 
 	var grid := GridContainer.new()
-	grid.columns = 5
+	grid.columns = 4  # 12 Heirlooms: three even rows
 	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	grid.add_theme_constant_override(&"h_separation", 10)
 	grid.add_theme_constant_override(&"v_separation", 10)

@@ -186,6 +186,13 @@ func apply_sigil(sigil_id: StringName) -> void:
 			var p6: Node = _player_provider.call()
 			if is_instance_valid(p6) and p6.has_method(&"apply_graze_radius_mult"):
 				p6.apply_graze_radius_mult(CONFIG.graze_radius_mult)
+		&"wide_link":
+			SpellCastingEffects.apply_link_radius_mult(CONFIG.wide_link_mult)
+		&"deep_heart":
+			SpellCastingEffects.apply_resonance_meter_mult(CONFIG.deep_heart_meter_mult)
+			var p7: Node = _player_provider.call()
+			if is_instance_valid(p7) and p7.has_method(&"apply_heartbeat_mult"):
+				p7.apply_heartbeat_mult(CONFIG.deep_heart_mult)
 		_:
 			push_warning("SigilManager.apply_sigil: unknown sigil id '%s'" % sigil_id)
 			return

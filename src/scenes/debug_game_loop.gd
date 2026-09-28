@@ -258,6 +258,7 @@ func _ready() -> void:
 	_pace_director.style_changed.connect(hud.set_style)
 	_pace_director.room_ranked.connect(hud.show_room_rank)
 	_pace_director.room_ranked.connect(_log_room_rank)
+	_pace_director.duo_counted.connect(_log_duo_counts)
 	_pace_director.perfect_dodge_triggered.connect(hud.show_perfect_dodge)
 	# ADR-0031 rumble for big moves (impacts rumble through camera trauma).
 	_pace_director.perfect_dodge_triggered.connect(Rumble.on_perfect_dodge)
@@ -1227,6 +1228,12 @@ func _build_summary_data(win: bool, run_data: Dictionary, shards: int, hard_unlo
 ## U5 — logs a room's clear rank for the run summary.
 func _log_room_rank(rank_letter: String, _heal: float, _meter_bonus: float) -> void:
 	_run_ranks.append(rank_letter)
+
+
+## ADR-0058: puts the finished fight's duo tally on its build in the run log.
+func _log_duo_counts(counts: Dictionary) -> void:
+	if not _log_builds.is_empty():
+		_log_builds[-1]["duo"] = counts
 
 
 ## U5 — logs a taken sigil's title for the run summary (Prana rewards are not sigils).

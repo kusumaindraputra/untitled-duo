@@ -19,6 +19,9 @@ signal style_changed(value: float, max_value: float, rank_letter: String)
 signal room_ranked(rank_letter: String, heal: float, meter_bonus: float)
 ## A Perfect Dodge counted at [param world_pos].
 signal perfect_dodge_triggered(world_pos: Vector2)
+## ADR-0058: a fight ended (wave or room); [param counts] holds its swaps, links,
+## resonances and link_bursts, for the run log.
+signal duo_counted(counts: Dictionary)
 
 const TUNING: PaceTuning = preload("res://assets/data/pace_tuning.tres")
 ## Real seconds a Perfect Dodge slow-mo waits for a running hitstop to end.
@@ -36,6 +39,12 @@ var _pending_meter_bonus: float = 0.0
 ## Real-time deadline (usec) for a Perfect Dodge slow-mo waiting on a hitstop; 0 = none.
 var _slowmo_retry_until_us: int = 0
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
+## ADR-0058: duo moves in the current fight, and whether one is being counted.
+var _duo_counts: Dictionary = {}
+var _duo_open: bool = false
+## True once a spell hit landed since the last swap: swap style needs one, so mashing
+## the swap key alone does not farm the rank.
+var _hit_since_swap: bool = true
 ## Live rank at the last style emit — a better rank than this plays the rank-up cue.
 var _last_rank: StyleMeter.Rank = StyleMeter.Rank.D
 
@@ -47,6 +56,9 @@ func _ready() -> void:
 	HealthAndDamage.damage_taken.connect(_on_damage_taken)
 	SpellCastingEffects.grazed.connect(_on_grazed)
 	SpellCastingEffects.perfect_cast.connect(_on_perfect_cast)
+	SpellCastingEffects.link_reaction.connect(_on_link_reaction)
+	SpellCastingEffects.link_burst.connect(_on_link_burst)
+	SpellCastingEffects.spell_hit_element.connect(_on_spell_hit)
 	GameStateManager.run_started.connect(_on_run_started)
 	GameStateManager.preparation_started.connect(_on_preparation_started)
 	GameStateManager.combat_started.connect(_on_combat_started)
@@ -62,6 +74,12 @@ func _exit_tree() -> void:
 		SpellCastingEffects.grazed.disconnect(_on_grazed)
 	if SpellCastingEffects.perfect_cast.is_connected(_on_perfect_cast):
 		SpellCastingEffects.perfect_cast.disconnect(_on_perfect_cast)
+	if SpellCastingEffects.link_reaction.is_connected(_on_link_reaction):
+		SpellCastingEffects.link_reaction.disconnect(_on_link_reaction)
+	if SpellCastingEffects.link_burst.is_connected(_on_link_burst):
+		SpellCastingEffects.link_burst.disconnect(_on_link_burst)
+	if SpellCastingEffects.spell_hit_element.is_connected(_on_spell_hit):
+		SpellCastingEffects.spell_hit_element.disconnect(_on_spell_hit)
 	if GameStateManager.run_started.is_connected(_on_run_started):
 		GameStateManager.run_started.disconnect(_on_run_started)
 	if GameStateManager.preparation_started.is_connected(_on_preparation_started):
@@ -83,14 +101,31 @@ func _process(delta: float) -> void:
 	_emit_style()
 
 
-## Wires the player (called from the parent's _ready). Connects Perfect Dodge.
+## Wires the player (called from the parent's _ready). Connects Perfect Dodge and the
+## duo swap / Resonance signals.
 func set_player(player: Node2D) -> void:
-	if is_instance_valid(_player) and _player.has_signal(&"perfect_dodged") \
-			and _player.is_connected(&"perfect_dodged", _on_perfect_dodged):
-		_player.disconnect(&"perfect_dodged", _on_perfect_dodged)
+	var hooks: Dictionary = {
+		&"perfect_dodged": _on_perfect_dodged,
+		&"character_swapped": _on_character_swapped,
+		&"resonated": _on_resonated,
+	}
+	for sig: StringName in hooks:
+		if is_instance_valid(_player) and _player.has_signal(sig) and _player.is_connected(sig, hooks[sig]):
+			_player.disconnect(sig, hooks[sig])
 	_player = player
-	if is_instance_valid(player) and player.has_signal(&"perfect_dodged"):
-		player.connect(&"perfect_dodged", _on_perfect_dodged)
+	for sig: StringName in hooks:
+		if is_instance_valid(player) and player.has_signal(sig):
+			player.connect(sig, hooks[sig])
+
+
+## ADR-0058: duo moves counted in the current fight (copy).
+func get_duo_counts() -> Dictionary:
+	return _duo_counts.duplicate()
+
+
+## An empty duo tally.
+static func empty_duo_counts() -> Dictionary:
+	return {"swaps": 0, "links": 0, "resonances": 0, "link_bursts": 0}
 
 
 ## Test seam: seeds the orb-drop RNG.
@@ -155,6 +190,51 @@ func _on_perfect_cast(_world_pos: Vector2, _streak: int) -> void:
 		style.add(TUNING.style_perfect_cast)
 
 
+## A real swap (cooldown > 0; the combat-start announcement is not one). Counted
+## always; pays style only when a hit landed since the last swap.
+func _on_character_swapped(_character: int, cooldown: float) -> void:
+	if not _in_combat or cooldown <= 0.0:
+		return
+	_count_duo(&"swaps")
+	if _hit_since_swap:
+		style.add(TUNING.style_swap)
+	_hit_since_swap = false
+
+
+func _on_spell_hit(_target: Node, _prana_type_id: int) -> void:
+	_hit_since_swap = true
+
+
+func _on_resonated(_world_pos: Vector2) -> void:
+	if _in_combat:
+		style.add(TUNING.style_resonance)
+		_count_duo(&"resonances")
+
+
+func _on_link_reaction(_reaction_name: String, _world_pos: Vector2, _character: int) -> void:
+	if _in_combat:
+		style.add(TUNING.style_link)
+		_count_duo(&"links")
+
+
+func _on_link_burst(_reaction_name: String, _world_pos: Vector2, _radius: float, _character: int) -> void:
+	if _in_combat:
+		style.add(TUNING.style_link_burst)
+		_count_duo(&"link_bursts")
+
+
+func _count_duo(key: StringName) -> void:
+	_duo_counts[String(key)] = int(_duo_counts.get(String(key), 0)) + 1
+
+
+## Emits the finished fight's duo tally once.
+func _flush_duo_counts() -> void:
+	if not _duo_open:
+		return
+	_duo_open = false
+	duo_counted.emit(_duo_counts.duplicate())
+
+
 func _on_run_started() -> void:
 	style.reset()
 	_pending_meter_bonus = 0.0
@@ -163,6 +243,7 @@ func _on_run_started() -> void:
 
 
 func _on_preparation_started(_wave_index: int, _waves_remaining: int) -> void:
+	_flush_duo_counts()
 	_in_combat = false
 	if is_inside_tree():
 		PickupOrb.clear_all(get_tree())
@@ -171,6 +252,8 @@ func _on_preparation_started(_wave_index: int, _waves_remaining: int) -> void:
 func _on_combat_started(_is_boss: bool) -> void:
 	_in_combat = true
 	_room_kills = 0
+	_duo_counts = empty_duo_counts()
+	_duo_open = true
 	style.begin_room()
 	if _pending_meter_bonus > 0.0:
 		SpellCastingEffects.add_special_meter(_pending_meter_bonus)
@@ -190,6 +273,7 @@ func finish_room() -> void:
 	if not _in_combat:
 		return
 	_in_combat = false
+	_flush_duo_counts()
 	var rank: StyleMeter.Rank = style.end_room()
 	if TUNING.collect_all_on_clear:
 		# Deferred again so orbs the last kill queued (deferred add_child) exist first.

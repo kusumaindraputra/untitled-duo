@@ -118,11 +118,13 @@ var chain_dots_container: HBoxContainer = null
 				player_controller.dash_blocked.is_connected(show_dash_blocked):
 			player_controller.dash_blocked.disconnect(show_dash_blocked)
 			player_controller.resonated.disconnect(show_resonance)
+			player_controller.relinked.disconnect(show_relinked)
 		player_controller = pc
 		if is_instance_valid(pc) and is_node_ready():
 			pc.dash_cooldown_changed.connect(_on_dash_cooldown_changed)
 			pc.dash_blocked.connect(show_dash_blocked)
 			pc.resonated.connect(show_resonance)
+			pc.relinked.connect(show_relinked)
 
 ## World-space Node2D whose position drives chain dot screen placement (AC-HUD-27–AC-HUD-29).
 ## Assign PlayerController in scene; plain Node2D is acceptable in headless tests.
@@ -351,7 +353,9 @@ func _ready() -> void:
 		player_controller.dash_cooldown_changed.connect(_on_dash_cooldown_changed)
 		player_controller.dash_blocked.connect(show_dash_blocked)
 		player_controller.resonated.connect(show_resonance)
+		player_controller.relinked.connect(show_relinked)
 	SpellCastingEffects.link_reaction.connect(show_link_reaction)
+	SpellCastingEffects.link_burst.connect(show_link_burst)
 	SpellCastingEffects.face_changed.connect(_on_face_changed)
 
 
@@ -404,7 +408,8 @@ func _update_duo_row() -> void:
 	if _duo_label == null or not _duo_label.visible or not is_instance_valid(player_controller):
 		return
 	_duo_label.text = _COPY.duo_heart + " " + duo_row_text(player_controller.get_active_character(),
-		player_controller.get_swap_cooldown_remaining(), InputPrompts.swap_key())
+		player_controller.get_swap_cooldown_remaining(), InputPrompts.swap_key(),
+		player_controller.get_relink_hits_left())
 	_duo_label.add_theme_color_override(&"font_color",
 		DuoSwap.hud_color(player_controller.get_active_character()))
 	# The shared heartbeat: the row glows on each beat; swapping then Resonates.
@@ -419,10 +424,13 @@ static func heartbeat_alpha(phase: float) -> float:
 
 
 ## Duo row text for [param active] with [param cooldown] seconds left on the swap and
-## [param key] as the swap prompt. Static so tests can check it without a HUD.
-static func duo_row_text(active: int, cooldown: float, key: String) -> String:
+## [param key] as the swap prompt; [param relink_hits] > 0 while a boss has the link
+## severed. Static so tests can check it without a HUD.
+static func duo_row_text(active: int, cooldown: float, key: String, relink_hits: int = 0) -> String:
 	var here: String = DuoSwap.display_name(active)
 	var other: String = DuoSwap.display_name(DuoSwap.other(active))
+	if relink_hits > 0:
+		return _COPY.duo_row_severed_format % [here, other, relink_hits]
 	if cooldown > 0.0:
 		return _COPY.duo_row_cooldown_format % [here, other, cooldown]
 	return _COPY.duo_row_format % [here, key, other]
@@ -479,8 +487,11 @@ func _exit_tree() -> void:
 			player_controller.dash_blocked.is_connected(show_dash_blocked):
 		player_controller.dash_blocked.disconnect(show_dash_blocked)
 		player_controller.resonated.disconnect(show_resonance)
+		player_controller.relinked.disconnect(show_relinked)
 	if SpellCastingEffects.link_reaction.is_connected(show_link_reaction):
 		SpellCastingEffects.link_reaction.disconnect(show_link_reaction)
+	if SpellCastingEffects.link_burst.is_connected(show_link_burst):
+		SpellCastingEffects.link_burst.disconnect(show_link_burst)
 	if SpellCastingEffects.face_changed.is_connected(_on_face_changed):
 		SpellCastingEffects.face_changed.disconnect(_on_face_changed)
 
@@ -1027,6 +1038,16 @@ func show_perfect_dodge(world_pos: Vector2) -> void:
 ## ADR-0058 — "LINK!" pops above the enemy where the brothers' elements reacted.
 func show_link_reaction(_reaction_name: String, world_pos: Vector2, character: int) -> void:
 	show_callout(world_pos + Vector2(0.0, -14.0), _COPY.link_label, DuoSwap.hud_color(character))
+
+
+## ADR-0058 — "LINK BURST" pops over the Special when both brothers join it.
+func show_link_burst(_reaction_name: String, world_pos: Vector2, _radius: float, character: int) -> void:
+	show_callout(world_pos + Vector2(0.0, -22.0), _COPY.link_burst_label, DuoSwap.hud_color(character))
+
+
+## ADR-0058 — "RELINKED" pops over Fayde when a severed link reconnects.
+func show_relinked(world_pos: Vector2) -> void:
+	show_callout(world_pos, _COPY.relinked_label, Color(1.0, 0.85, 0.4))
 
 
 ## ADR-0058 — "RESONANCE" pops above the brother who tagged in on the heartbeat.

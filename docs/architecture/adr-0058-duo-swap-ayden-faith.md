@@ -108,9 +108,33 @@ grid. Three rules, all in `DuoTuning`:
   pose. Ayden: spiky auburn hair, red headband, rust vest, wrapped forearms. Faith:
   dark hair with a ponytail, lens, slate long coat, teal sash. The main menu still
   shows Fayde.
-- Not yet done: brother-specific Specials, the
-  story rewrite (fragments 1, 8, 9, true ending, UI text naming "Fayde").
-- Tests: `tests/unit/duo-swap/duo_swap_test.gd`.
+- Not yet done: the story rewrite (fragments 1, 8, 9, true ending, UI text naming
+  "Fayde").
+- Tests: `tests/unit/duo-swap/duo_swap_test.gd`, `tests/unit/duo-swap/duo_link_test.gd`.
+
+## Amendment 2026-09-28 — Link Burst, severed link, duo sigils, style, tutorial
+
+- **Link Burst.** `_trigger_special()` calls `_try_link_burst()` after the Special's own
+  hits. `duo_cores()` returns both brothers' face elements when they differ; the burst
+  deals `_deal_bonus_damage()` in `link_burst_radius()`, applies both plain statuses,
+  pulls on Voidblue, Regenerates on Verdant, and emits `link_burst`. PlayerController
+  answers with `show_partner()`: a throwaway PixelCharacter in the benched brother's
+  sheets that casts beside Fayde and fades. This replaces per-brother Specials.
+- **Severed link.** `BossPhaseEvent.sever_link` (Cipher Keeper phase 2). BossDirector
+  calls `PlayerController.sever_link()`; `DuoSwap.sever()` makes `can_swap()` false until
+  `note_hit()` has counted `sever_reconnect_hits` `spell_hit_element` hits. Then
+  `relinked` fires and the meter is paid. `reset_timers()` clears it.
+- **Duo sigils.** SC&E keeps run-scoped `_link_radius_mult` and
+  `_resonance_meter_mult` (reset with the run damage multiplier); DuoSwap keeps
+  `_beat_mult`. Echo Brother lives in SigilEffects on SC&E's new `brother_tagged_in`
+  signal and calls `echo_strike()`, which writes the leaving brother's Link mark.
+  Wide Link and Echo Brother are Heirlooms (12 in total, 4 per row).
+- **Style and run log.** PaceDirector listens to `character_swapped`, `resonated`,
+  `link_reaction` and `link_burst`, adds style, tallies each fight and emits
+  `duo_counted`; the game loop writes it on the fight's build and `RunLog.duo_totals()`
+  sums the run.
+- **Tutorial.** TutorialRoom gained the palm, swap, link and resonance lessons with
+  adapters for those signals; PranaGridSlot draws a palm ring (`palm_owner_of()`).
 
 ## Evidence
 

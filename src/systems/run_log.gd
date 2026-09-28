@@ -2,7 +2,8 @@
 ##
 ## One JSON object per line in user://run_log.jsonl: when the run ended, the game
 ## version, the outcome (win / death / abandoned), the floor reached, rooms cleared,
-## run time, what killed Fayde, and the spells she cast (the grid of every fight).
+## run time, what killed Fayde, and the spells she cast (the grid of every fight, with
+## its swaps, links, resonances and link bursts for tuning the duo, ADR-0058).
 ## Nothing leaves the machine; a playtester sends the file by hand. The file keeps the
 ## newest MAX_ENTRIES lines so it never grows without bound.
 class_name RunLog
@@ -45,6 +46,7 @@ static func entry(outcome: String, run: Dictionary, death: Dictionary, death_lin
 		"core": str(run.get("core", "")),
 		"spells": spells,
 		"builds": builds,
+		"duo": duo_totals(builds),
 		"casts": int(run.get("casts", 0)),
 		"sigils": run.get("sigils", []),
 		"assist": bool(run.get("assist", false)),
@@ -98,6 +100,16 @@ static func build_entry(floor_num: int, room: int, slots: Array) -> Dictionary:
 		"grid": grid,
 		"reactions": reactions,
 	}
+
+
+## ADR-0058: the run's duo moves summed over [param builds] (each fight's "duo" tally).
+static func duo_totals(builds: Array[Dictionary]) -> Dictionary:
+	var out: Dictionary = PaceDirector.empty_duo_counts()
+	for b: Dictionary in builds:
+		var d: Dictionary = b.get("duo", {})
+		for k: String in out.keys():
+			out[k] = int(out[k]) + int(d.get(k, 0))
+	return out
 
 
 static func _read_lines(path: String) -> PackedStringArray:
