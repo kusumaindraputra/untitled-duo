@@ -37,6 +37,10 @@ var _last_resonant: bool = false
 var _beat_mult: float = 1.0
 ## Hits still needed to reconnect a link a boss severed; 0 = linked.
 var _sever_hits_left: int = 0
+## Run-wide swap cooldown multiplier (Tether Core).
+var _cooldown_mult: float = 1.0
+## Heartbeats counted so far this combat (take_beat()).
+var _beats_seen: int = 0
 
 
 func _init(tuning: DuoTuning = TUNING) -> void:
@@ -95,6 +99,16 @@ func set_beat_mult(value: float) -> void:
 	_beat_mult = maxf(value, 0.01)
 
 
+## Tether Core: multiplies every swap cooldown by [param factor]. Stacks.
+func apply_cooldown_mult(factor: float) -> void:
+	_cooldown_mult *= maxf(factor, 0.05)
+
+
+## The run's swap cooldown multiplier.
+func cooldown_mult() -> float:
+	return _cooldown_mult
+
+
 ## Seconds between beats with the run's sigils.
 func heartbeat_period() -> float:
 	return _tuning.heartbeat_sec * _beat_mult
@@ -107,7 +121,7 @@ func try_swap(hands_touching: bool = false) -> bool:
 		return false
 	_last_resonant = is_on_beat()
 	_active = other(_active)
-	_cooldown = cooldown_for(hands_touching, _tuning)
+	_cooldown = cooldown_for(hands_touching, _tuning) * _cooldown_mult
 	_iframe = _tuning.swap_iframe_sec
 	_perfect_counted = false
 	return true
@@ -126,6 +140,7 @@ func reset_timers() -> void:
 	_beat_clock = 0.0
 	_last_resonant = false
 	_sever_hits_left = 0
+	_beats_seen = 0
 
 
 ## Seconds until the next swap is allowed.
@@ -155,6 +170,15 @@ func last_swap_resonant() -> bool:
 func is_on_beat() -> bool:
 	return beat_distance(_beat_clock, _tuning, heartbeat_period()) \
 		<= _tuning.resonance_window_sec * _beat_mult
+
+
+## True once per heartbeat the clock has passed since the last call (music thump).
+func take_beat() -> bool:
+	var beats: int = int(floor(_beat_clock / heartbeat_period()))
+	if beats > _beats_seen:
+		_beats_seen = beats
+		return true
+	return false
 
 
 ## Heartbeat phase, 0 on a beat rising to 1 just before the next (for the HUD pulse).

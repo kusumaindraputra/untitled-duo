@@ -352,6 +352,8 @@ var _duo_clock: float = 0.0
 ## Run-wide duo sigil multipliers (Wide Link, Deep Heartbeat). Reset at run start.
 var _link_radius_mult: float = 1.0
 var _resonance_meter_mult: float = 1.0
+## Run-wide per-brother hit damage (duo Cipher Cores), keyed by DuoSwap.Character.
+var _brother_damage_mult: Dictionary = {}
 ## Enemy instance id → { c: brother, pt: element, t: _duo_clock } of the last duo hit
 ## on it. The other brother hitting it with another element sets off a Link Reaction.
 var _link_marks: Dictionary = {}
@@ -643,7 +645,7 @@ func _apply_hit(target: Node, pt: int, tier_mod: float, se: SpellEffect,
 	# Step 8d — Ayden's hand (ADR-0057): Prana in the grid's left column add power.
 	# With the duo (ADR-0058) it powers Ayden only, and each brother has his own weight.
 	raw *= DuoSwap.power_hand(_active_character, se.hand_power_mult)
-	raw *= DuoSwap.damage_mult(_active_character)
+	raw *= DuoSwap.damage_mult(_active_character) * get_brother_damage_mult(_active_character)
 
 	# Step 9 — deliver damage (element-neutral; affiliation cut 2026-06-21).
 	_health_and_damage.apply_damage(target, raw, GameEnums.DamageClass.NONE, GameEnums.DamageSource.DIRECT)
@@ -1538,6 +1540,17 @@ func reset_run_damage_mult() -> void:
 	_run_damage_mult = 1.0
 	_link_radius_mult = 1.0
 	_resonance_meter_mult = 1.0
+	_brother_damage_mult.clear()
+
+
+## Duo Core: multiplies [param character]'s own hit damage by [param factor]. Stacks.
+func apply_brother_damage_mult(character: int, factor: float) -> void:
+	_brother_damage_mult[character] = get_brother_damage_mult(character) * factor
+
+
+## [param character]'s run-wide hit damage multiplier (1.0 by default).
+func get_brother_damage_mult(character: int) -> float:
+	return float(_brother_damage_mult.get(character, 1.0))
 
 
 ## Sigil (Wide Link): multiplies the Link Reaction and Link Burst radius. Stacks.

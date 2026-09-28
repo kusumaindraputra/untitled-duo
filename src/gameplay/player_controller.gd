@@ -36,6 +36,10 @@ signal resonated(world_pos: Vector2)
 ## player to swap.
 signal dash_blocked(world_pos: Vector2)
 
+## ADR-0058 — the brothers' shared heart beat (every heartbeat in combat), with
+## [param character] in the arena. DuoMusic thumps on it.
+signal heartbeat(character: int)
+
 ## ADR-0058 — a boss severed the brothers' link: no swaps until [param hits] hits land.
 signal link_severed(hits: int)
 ## ADR-0058 — a hit counted toward reconnecting; [param hits_left] still to go.
@@ -267,6 +271,8 @@ func _physics_process(delta: float) -> void:
 
 	# ── Duo swap (ADR-0058): allowed while moving or dashing ───────────────────
 	_duo.tick(delta)
+	if _duo.take_beat():
+		heartbeat.emit(_duo.active())
 	if InputMap.has_action(&"swap") and Input.is_action_just_pressed(&"swap"):
 		try_swap()
 
@@ -538,7 +544,7 @@ func get_swap_cooldown_remaining() -> float:
 
 ## Full swap cooldown right now (shorter while the grid's hands touch).
 func get_swap_cooldown_duration() -> float:
-	return DuoSwap.cooldown_for(_hands_touching)
+	return DuoSwap.cooldown_for(_hands_touching) * _duo.cooldown_mult()
 
 
 ## True when the brother in the arena can dash. Only Faith dashes (ADR-0058).
@@ -566,6 +572,11 @@ func is_link_severed() -> bool:
 ## Hits still needed to reconnect a severed link.
 func get_relink_hits_left() -> int:
 	return _duo.sever_hits_left()
+
+
+## Tether Core: multiplies every swap cooldown by [param factor].
+func apply_swap_cooldown_mult(factor: float) -> void:
+	_duo.apply_cooldown_mult(factor)
 
 
 ## Deep Heartbeat sigil: stretches the shared heartbeat and its Resonance window.

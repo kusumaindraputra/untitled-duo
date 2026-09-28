@@ -7,12 +7,12 @@
 script = ExtResource("2_frag")
 id = &"mem_the_push"
 title = "The Push"
-voice = "Fayde"
-body = "Glasses. Rain on the glasses. Hands under my arms, lifting me like I weigh nothing.
+voice = "Faith"
+body = "Glasses. Rain on the glasses. Hands under our arms, lifting us like we weigh nothing.
 
 \"I'm sorry,\" the old man says. \"I'm sorry, I'm sorry.\"
 
-Then the dark, the long fall, and the smell of rust. That is the first thing I remember. For a long time it was the only thing."
+Then the dark, the long fall, and the smell of rust. Somewhere in the dark a hand found mine. That is the first thing I remember. For a long time it was the only thing."
 
 [sub_resource type="Resource" id="Fragment_1"]
 script = ExtResource("2_frag")
@@ -23,7 +23,7 @@ body = "The little robot at the bottom of the hatch has a panel on his chest. So
 
 Memo says it means \"don't be lonely.\" He says it the way you say a name you have said every day for years.
 
-When I asked who wrote it, he looked at me for a long time. \"A man who talked too much,\" he said. \"I miss it.\""
+When Ayden asked who wrote it, he looked at the two of us for a long time. \"A man who talked too much,\" he said. \"I miss it.\""
 
 [sub_resource type="Resource" id="Fragment_2"]
 script = ExtResource("2_frag")
@@ -35,7 +35,7 @@ body = "Two boys on a concrete floor, palms pressed together. The air around the
 \"Too much, Ayden.\"
 \"Then steer it, Faith.\"
 
-The fire folds itself into a small bright bird and flies once around the room. I know exactly how that felt. I don't know how I know."
+The fire folds itself into a small bright bird and flies once around the room. We know exactly how that felt. We don't know how we know."
 
 [sub_resource type="Resource" id="Fragment_3"]
 script = ExtResource("2_frag")
@@ -46,7 +46,7 @@ body = "A chalk grid on a steel wall, three squares by three. An old man taps th
 
 \"Prana doesn't care what you want. It cares where you put it. The center is the heart. Everything beside it listens.\"
 
-The two boys roll their eyes at each other. I catch myself nodding."
+The two boys roll their eyes at each other. Years later, two small machines catch themselves doing the same."
 
 [sub_resource type="Resource" id="Fragment_4"]
 script = ExtResource("2_frag")
@@ -88,20 +88,20 @@ title = "Faith and Ayden"
 voice = "Father"
 body = "The old man works for months and barely sleeps. He talks the whole time: to Memo, to the walls, to two voices only he can hear.
 
-\"Not a copy. Not a replacement. Something new. They would hate being replaced.\"
+\"I couldn't save their bodies. I can still save them. One frame each. Not copies. Them.\"
 
-He writes FAITH + AYDEN on the workbench and underlines it twice. Then he crosses out letters until only a few are left."
+The frames are small and light, and there is only one core. It will only wake when both boys are awake and linked. He writes FAITH + AYDEN on the workbench and crosses out letters until five are left. \"That's the link,\" he says. \"That's what they are together.\""
 
 [sub_resource type="Resource" id="Fragment_8"]
 script = ExtResource("2_frag")
 id = &"mem_first_word"
 title = "Father"
-voice = "Fayde"
-body = "I opened my eyes on a workbench. An old man with glasses was holding his breath.
+voice = "Ayden"
+body = "We opened our eyes on a workbench, side by side. An old man with glasses was holding his breath.
 
-I said, \"Father.\"
+Faith said, \"Father.\" I said it too, one heartbeat later. The same heartbeat, really. We could feel it, one core between two chests.
 
-He held me and cried. I cried too, and I didn't know why. I think it was the most human thing I have ever done."
+He held us both and cried. We cried too, and we didn't know why. I think it was the most human thing we have ever done."
 
 [sub_resource type="Resource" id="Fragment_9"]
 script = ExtResource("2_frag")
@@ -110,11 +110,11 @@ title = "The Hatch"
 voice = "Father"
 body = "Alarms. Boots on the stairs. The bunker door bending inward.
 
-\"Listen to me. There is someone at the bottom who will help you. His name is Memo. Tell him you are a Cipher.\"
+\"Listen to me. There is someone at the bottom who will help you. His name is Memo. Tell him you are Ciphers. Stay together, whatever happens.\"
 
 \"Are you coming?\"
 
-He lifted me up. There was rain on his glasses, except it wasn't rain.
+He lifted us up. There was rain on his glasses, except it wasn't rain.
 
 \"I'm sorry,\" he said. \"I'm sorry, I'm sorry.\""
 
@@ -122,27 +122,27 @@ He lifted me up. There was rain on his glasses, except it wasn't rain.
 script = ExtResource("2_frag")
 id = &"ending_partial"
 title = "The Surface"
-voice = "Fayde"
-body = "The Keeper falls, and the last door opens onto a sky I have never seen.
+voice = "Faith"
+body = "The Keeper falls, and the last door opens onto a sky we have never seen.
 
-Memo rolls up beside me and says nothing, which is how I know he is thinking hard.
+Memo rolls up beside us and says nothing, which is how we know he is thinking hard. Ayden takes my hand, and the core hums between us.
 
-There is a face I still can't see and a name I still can't find. Somewhere up here is the old man with glasses. I will keep climbing until I remember why he let me go."
+There is a face we still can't see and a name we still can't find. Somewhere up here is the old man with glasses. We will keep climbing until we remember why he let us go."
 
 [sub_resource type="Resource" id="Ending_true"]
 script = ExtResource("2_frag")
 id = &"ending_true"
 title = "Fayde"
-voice = "Fayde"
-body = "The Keeper falls, and the last door opens onto a sky I have never seen.
+voice = "Ayden and Faith"
+body = "The Keeper falls, and the last door opens onto a sky we have never seen.
 
-I know now. I am not the old man's son, and I am not a boy who got lost. I am Ayden's fire and Faith's hands, and somewhere inside me they are still touching. That is why the Prana listens.
+We know now. The Kingdom split us because together we were too much for it. Separation was its weapon. It still thinks it won.
 
-The panel on Memo's chest is glowing. He looks at me the way you look at someone you have waited for your whole life.
+The panel on Memo's chest is glowing. He looks at us the way you look at someone you have waited for your whole life.
 
-\"You're both of them,\" he says, and his voice cracks like a real one. \"You're both of them. And you're you.\"
+\"Two of you,\" he says, and his voice cracks like a real one. \"Two of you, one heartbeat. Just like he promised.\"
 
-Faith and Ayden. Fayde. It means help.
+Faith and Ayden. Fayde. It was never a boy. It is the link that holds us together. It means help.
 
 Far above, in a palace full of beautiful empty machines, the First King feels something he hates. He feels us coming."
 

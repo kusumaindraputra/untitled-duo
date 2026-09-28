@@ -422,6 +422,19 @@ func _build_wave_composition(seed: int = -1) -> void:
 			"type_id": type_id, "scene": scene, "base_scale": base_scale, "archetype": archetype,
 			"group": (i * groups) / maxi(n, 1), "elite": elite,
 		})
+	_roll_duo_foes(rng.randi())
+
+
+## ADR-0058 — marks some non-boss entries as duo foes (warded or flitting). Uses its own
+## RNG seeded from [param seed], so compositions and elite rolls stay as they were.
+func _roll_duo_foes(seed: int) -> void:
+	var foe_rng := RandomNumberGenerator.new()
+	foe_rng.seed = seed
+	for entry: Dictionary in _wave_composition:
+		var kind: int = DuoFoe.Kind.NONE
+		if int(entry.get("archetype", -1)) != GameEnums.EnemyArchetype.BOSS:
+			kind = DuoFoe.roll(foe_rng.randf(), foe_rng.randf())
+		entry["duo_foe"] = kind
 
 
 ## Returns the number of spawn markers in spawn_points_container, or 0 when unset.
@@ -588,6 +601,7 @@ func _spawn_entries(entries: Array, reinforcement: bool) -> int:
 			enemy.enter_dormant()
 		if elite:
 			enemy.make_elite(BULLET_HELL_TUNING)
+		enemy.make_duo_foe(int(entry.get("duo_foe", DuoFoe.Kind.NONE)))
 		enemy.apply_hp_mult(pool_hp_mult)
 		enemy.apply_difficulty(cfg.bullet_speed_mult, cfg.fire_rate_mult, cfg.telegraph_mult)
 		if variant != null:

@@ -114,6 +114,10 @@ extends Resource
 @export var dash_hint_benched: String = "No dash: swap to Faith"
 ## Callout when the Special becomes a Link Burst (both brothers join it).
 @export var link_burst_label: String = "LINK BURST!"
+## Callout when Ayden breaks a warded foe's ward.
+@export var foe_broken_label: String = "BROKEN!"
+## Callout when a duo foe resists the brother in the arena: the brother who beats it.
+@export var foe_swap_format: String = "SWAP TO %s"
 ## Callout when a severed link reconnects.
 @export var relinked_label: String = "RELINKED!"
 
@@ -225,12 +229,18 @@ extends Resource
 	"glass": "Glass Core",
 	"gale": "Gale Core",
 	"echo": "Echo Core",
+	"anvil": "Anvil Core",
+	"kite": "Kite Core",
+	"tether": "Tether Core",
 }
 @export var core_descs: Dictionary = {
 	"steady": "No passive. Nothing to lose.",
 	"glass": "+30% spell damage, but you take +25% damage.",
 	"gale": "+1 dash charge and +10% move speed, but -15% spell damage.",
 	"echo": "Sigil offers show 4 cards and one free reroll, but -10% spell damage.",
+	"anvil": "Ayden hits +30% harder, but Faith hits -20%.",
+	"kite": "Faith hits +30% harder, but Ayden hits -20%.",
+	"tether": "Swap 40% sooner and LINK reaches +30% further, but -10% spell damage.",
 }
 ## Pause build view line naming this run's Core (%s = Core name).
 @export var core_active_format: String = "Core: %s"

@@ -102,6 +102,15 @@ var _death_pattern: BulletPattern = null
 var _keep_distance: float = KEEP_DISTANCE
 ## True after make_elite(). Elites are tougher, hit harder and fire an extra layer.
 var _is_elite: bool = false
+## ADR-0058 duo foe (DuoFoe.Kind): resists one brother. See make_duo_foe().
+var _duo_foe: int = DuoFoe.Kind.NONE
+## Ayden hits still needed to break a ward.
+var _ward_left: int = 0
+## Seconds until a flitting foe can hop again.
+var _flit_cd: float = 0.0
+## Seconds until the next "swap" hint over this foe.
+var _foe_hint_cd: float = 0.0
+var _duo_mark: Node2D = null
 ## HP phases reached last frame — distinct hp_threshold values (< 1) whose layers
 ## are active. A rise means the boss entered a new phase. Several layers sharing one
 ## threshold are one phase. -1 = not sampled yet (first frame never counts).
@@ -326,6 +335,7 @@ func _physics_process(delta: float) -> void:
 
 	# ADR-0018 bullet patterns — layered on top of every archetype's movement.
 	_tick_patterns(delta)
+	_tick_duo_foe(delta)
 
 	# ── IsoCharacter sprite sync ──────────────────────────────────────────────
 	if is_instance_valid(_iso_char) and _iso_char._initialized:
@@ -444,6 +454,74 @@ func make_elite(tuning: BulletHellTuning = BULLET_HELL_TUNING) -> void:
 	var aura := _EliteAura.new()
 	aura.tint = tuning.elite_tint
 	add_child(aura)
+
+
+## ADR-0058 — makes this enemy a duo foe of [param kind] (DuoFoe.Kind) with a ring in
+## the colour of the brother who beats it. Bosses never become duo foes.
+func make_duo_foe(kind: int) -> void:
+	if kind == DuoFoe.Kind.NONE or _archetype == GameEnums.EnemyArchetype.BOSS:
+		return
+	_duo_foe = kind
+	_ward_left = DuoFoe.TUNING.ward_hits if kind == DuoFoe.Kind.WARDED else 0
+	if is_instance_valid(_duo_mark):
+		_duo_mark.queue_free()
+	var mark := _DuoMark.new()
+	mark.kind = kind
+	mark.tint = DuoSwap.hud_color(DuoFoe.favoured(kind))
+	add_child(mark)
+	_duo_mark = mark
+
+
+## The duo foe kind (DuoFoe.Kind.NONE for a plain enemy).
+func get_duo_foe() -> int:
+	return _duo_foe
+
+
+## Ayden hits still needed to break the ward (0 when not warded).
+func get_ward_left() -> int:
+	return _ward_left
+
+
+## Called by HealthAndDamage for each direct hit: returns {"mult", "character",
+## "broke", "hint"}. An Ayden hit on a ward counts toward breaking it; the hit that
+## breaks it stuns the foe and turns it into a plain enemy. [param character] is the
+## brother who hit (DuoSwap.Character or DuoSwap.NONE).
+func take_duo_hit(character: int) -> Dictionary:
+	var out: Dictionary = {"mult": 1.0, "character": character, "broke": false, "hint": false}
+	if _duo_foe == DuoFoe.Kind.NONE:
+		return out
+	out["mult"] = DuoFoe.hit_mult(_duo_foe, character)
+	if _duo_foe == DuoFoe.Kind.WARDED and character == DuoSwap.Character.AYDEN:
+		_ward_left -= 1
+		if _ward_left <= 0:
+			out["broke"] = true
+			_clear_duo_foe()
+			apply_stun(DuoFoe.TUNING.ward_break_stun_sec)
+	elif float(out["mult"]) < 1.0 and _foe_hint_cd <= 0.0:
+		out["hint"] = true
+		_foe_hint_cd = DuoFoe.TUNING.foe_hint_sec
+	return out
+
+
+func _clear_duo_foe() -> void:
+	_duo_foe = DuoFoe.Kind.NONE
+	_ward_left = 0
+	if is_instance_valid(_duo_mark):
+		_duo_mark.queue_free()
+	_duo_mark = null
+
+
+## Flitting foes hop away from Ayden; timers for hops and hints.
+func _tick_duo_foe(delta: float) -> void:
+	_flit_cd = maxf(_flit_cd - delta, 0.0)
+	_foe_hint_cd = maxf(_foe_hint_cd - delta, 0.0)
+	if _duo_foe != DuoFoe.Kind.FLITTING or _fayde_ref == null:
+		return
+	if DuoFoe.should_flit(_duo_foe, SpellCastingEffects.get_active_character(), global_position,
+			_fayde_ref.global_position, _flit_cd):
+		_flit_cd = DuoFoe.TUNING.flit_cooldown_sec
+		apply_knockback(_fayde_ref.global_position.direction_to(global_position),
+			DuoFoe.TUNING.flit_distance)
 
 
 ## ADR-0019 — applies the floor difficulty curve: bullet speed, pattern fire rate and
@@ -1430,6 +1508,32 @@ class _EliteAura extends Node2D:
 		var c: Color = Color(minf(tint.r, 1.0), minf(tint.g, 1.0), minf(tint.b, 1.0), 0.35 + 0.35 * pulse)
 		draw_arc(Vector2.ZERO, 15.0 + 2.0 * pulse, 0.0, TAU, 24, c, 2.0, true)
 		draw_circle(Vector2.ZERO, 14.0, Color(c.r, c.g, c.b, 0.12))
+
+
+## Inner class: a duo foe's mark (ADR-0058) in the colour of the brother who beats it.
+## Warded: a solid double ring (a shield). Flitting: a broken, spinning dashed ring.
+class _DuoMark extends Node2D:
+	var kind: int = DuoFoe.Kind.WARDED
+	var tint: Color = Color.WHITE
+	var _t: float = 0.0
+
+	func _ready() -> void:
+		z_index = 1
+		process_mode = PROCESS_MODE_PAUSABLE
+
+	func _process(delta: float) -> void:
+		_t += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		var c := Color(tint.r, tint.g, tint.b, 0.8)
+		if kind == DuoFoe.Kind.WARDED:
+			draw_arc(Vector2.ZERO, 18.0, 0.0, TAU, 32, c, 2.0, true)
+			draw_arc(Vector2.ZERO, 21.0, 0.0, TAU, 32, Color(c.r, c.g, c.b, 0.4), 1.0, true)
+		else:
+			for i: int in 6:
+				var a: float = _t * 3.0 + float(i) * TAU / 6.0
+				draw_arc(Vector2.ZERO, 18.0, a, a + TAU / 12.0, 6, c, 2.0, true)
 
 
 ## Inner class: pulsing ground circle shown during BOSS SLAM telegraph.

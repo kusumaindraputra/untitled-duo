@@ -136,6 +136,25 @@ grid. Three rules, all in `DuoTuning`:
 - **Tutorial.** TutorialRoom gained the palm, swap, link and resonance lessons with
   adapters for those signals; PranaGridSlot draws a palm ring (`palm_owner_of()`).
 
+## Amendment 2026-09-28 (2) — duo foes, duo music, duo Cores, story
+
+- **Duo foes.** `DuoFoe` (`src/systems/duo_foe.gd`) holds the pure rules. WaveManager
+  rolls a `duo_foe` per composition entry on its own RNG (seeded from the wave RNG
+  after the composition) and calls `EnemyInstance.make_duo_foe()`. HealthAndDamage step
+  5d asks the enemy `take_duo_hit(character)` for DIRECT hits (character from
+  `_duo_character_provider`, SpellCastingEffects by default), scales the damage (min 1)
+  and emits `duo_foe_hit` for the HUD callout. Flitting foes hop with `apply_knockback`.
+- **Duo music.** `DuoMusic` (`src/audio/duo_music.gd`), run-scoped, adds two named shelf
+  filters to the Music bus (idempotent) and a synthesised `AudioStreamWAV` thump on the
+  SFX bus; it listens to `character_swapped`, the new `PlayerController.heartbeat` and
+  `link_burst`. AudioSystem is untouched.
+- **Duo Cores.** `CoreFrame` gained per-brother damage, swap cooldown and Link reach
+  multipliers; SC&E keeps `_brother_damage_mult` (reset with the run damage mult),
+  DuoSwap `_cooldown_mult`.
+- **Story.** `story_config.tres` fragments 1, 8, 9 and both endings rewritten for two
+  brothers sharing one core; Fayde is the link.
+- Tests: `tests/unit/duo-swap/duo_world_test.gd`.
+
 ## Evidence
 
 `production/qa/evidence/adr0058-duo-ayden.png`, `adr0058-duo-faith.png` and
