@@ -22,8 +22,17 @@ tanpa latar belakang game development atau pemrograman.
 Nama game yang sedang dikembangkan. Game bergenre action dengan sistem
 sihir berbasis elemen.
 
+**Ayden & Faith (Duo)**
+Dua karakter pemain: kakak-beradik android yang berbagi satu inti Prana. Pemain
+mengendalikan satu saudara dalam satu waktu dan menukarnya dengan tombol swap
+(Q / LB). **Ayden** = kekuatan (jarak dekat, pukulan berat, tahan serangan, tidak
+bisa dash). **Faith** = kontrol (jarak jauh, status, satu-satunya yang bisa dash).
+HP, meter Special, dan Prana grid dipakai bersama. Lihat ADR-0058.
+
 **Fayde**
-Nama karakter pemain (protagonist). Pemain mengendalikan Fayde selama bermain.
+Nama *ikatan* (link) antara Ayden dan Faith — **Fa**ith + A**yde**n, artinya
+"bantuan". Bukan karakter. Sebelum 2026-09-28, Fayde adalah nama protagonis tunggal;
+nama ini masih muncul di kode (mis. `fayde.png`) dan di catatan lama.
 
 **First Playable**
 Tahap awal game di mana satu sesi permainan sudah bisa dimainkan dari awal
@@ -51,7 +60,7 @@ punya elemen, efek status, dan kekuatan unik.
 | Voidblue | Bayangan | Blind — musuh meleset 50% serangan selama 2 detik |
 | Stormgold | Petir | Stun — musuh membeku sesaat (0,5 detik) |
 | Deepfrost | Es | Freeze — musuh tidak bisa bergerak, melambat 50% |
-| Verdant | Alam | Regenerate — memulihkan HP Fayde perlahan |
+| Verdant | Alam | Regenerate — memulihkan HP bersama duo perlahan |
 
 **Prana Grid**
 Papan 3×3 tempat pemain menyusun token Prana sebelum gelombang musuh dimulai.
@@ -100,7 +109,7 @@ Setiap musuh punya elemen kelemahan. Jika diserang menggunakan elemen yang
 tepat, damage dikalikan 2×. Ini adalah jantung dari strategi game.
 
 **HP Zone (Zona HP)**
-Sistem yang membagi kondisi HP Fayde menjadi zona-zona (misalnya: Sehat,
+Sistem yang membagi kondisi HP bersama duo menjadi zona-zona (misalnya: Sehat,
 Waspada, Kritis, Sekarat). Setiap zona memicu respons berbeda — misalnya
 efek visual bahaya saat HP sangat rendah.
 

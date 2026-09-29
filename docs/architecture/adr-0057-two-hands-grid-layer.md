@@ -15,7 +15,7 @@ Kusuma Putra (solo dev) + Claude Code Game Studios
 ## Summary
 
 The identity direction chosen on 2026-09-27 ("Dua tangan") ties the grid to the
-story. Fayde is made from Ayden (raw power) and Faith (precise control), and their
+story. The duo is made from Ayden (raw power) and Faith (precise control), and their
 Prana only worked when they touched. The grid now says so. The left column is Ayden's
 hand, and each Prana in it adds damage. The right column is Faith's hand, and each
 Prana in it lengthens the core status. When both hands hold the same number of Prana,

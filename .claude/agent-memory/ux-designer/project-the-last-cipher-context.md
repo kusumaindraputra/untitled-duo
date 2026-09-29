@@ -23,11 +23,11 @@ All-ages (7+). Accessible to children, deep enough for adults. Solo developer (K
 Preparation Phase (enemies visible in arena at start positions, arrange Prana grid 3x3) → Combat Phase (move, dodge, cast). Decision happens before combat with full information. Execution tests positioning, not UI management under pressure.
 
 ## Game Pillars (UX-relevant)
-- Pillar 3: Chaos Has Consequences — "If Fayde dies and cannot understand why, that is a design failure." Every system must communicate cause clearly.
+- Pillar 3: Chaos Has Consequences — "If the duo dies and cannot understand why, that is a design failure." Every system must communicate cause clearly.
 - Pillar 2: Power is Earned Through Understanding — UI must expose system logic, not obscure it.
 
 ## Key Characters
-- Fayde: android child protagonist, appears 11 years old, amnesiac
+- The duo: Ayden (power) and Faith (control), two android brothers on one shared Prana core; one is active at a time, swapped with Q / LB (ADR-0058)
 - Memo: companion robot, provides hints (never answers), undergoes Resonance
 
 ## Art Constraint (hard)

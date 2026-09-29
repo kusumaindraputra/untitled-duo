@@ -72,11 +72,11 @@ the open findings from the last external playtest. IDs are used in the phases be
 |----|--------|-----|------|
 | U1 | **Spell preview in the prep panel**: before Confirm, show the spell the grid will cast (name, element, damage tier, secondary effect) and update it live as Prana moves | The 2026-06-12 tester could not tell combinations apart; this is still the biggest open finding | M |
 | U2 | **Smaller prep panel**: shorter instructions with button icons, panel can shrink after Confirm, room stays visible | Panel covers a third of the room; the instruction line is two sentences of key names | S |
-| U3 | **HUD pass**: framed HP bar with a hit flash, dash cooldown ring at Fayde's feet, clearer Special meter, a proper badge for the Style rank (now a bare `STYLE D` label), one visual style for the left column | HUD is plain labels and bars stacked top-left; dash cooldown was a playtest finding | M |
-| U4 | **Floor map**: replace the letter row (`C C C E E R B`) with a small node map showing the branch, room icons and where Fayde is | Branch choice is a key decision, and letters do not show the fork | M |
+| U3 | **HUD pass**: framed HP bar with a hit flash, dash cooldown ring at the active brother's feet, clearer Special meter, a proper badge for the Style rank (now a bare `STYLE D` label), one visual style for the left column | HUD is plain labels and bars stacked top-left; dash cooldown was a playtest finding | M |
+| U4 | **Floor map**: replace the letter row (`C C C E E R B`) with a small node map showing the branch, room icons and where the duo is | Branch choice is a key decision, and letters do not show the fork | M |
 | U5 | **Run summary screen** after death or win: time, rooms, room ranks, sigils taken, bosses beaten, shards earned, new memories, and a "Run again" button | End of run is a text overlay now; a summary is what makes "one more run" happen | M |
 | U6 | **Pause shows your build**: current sigils with descriptions, the active grid and its spell | Players forget what they picked by Floor 2 | S |
-| U7 | **Main menu layout**: a background (Fayde and the vault), Heirlooms moved to their own screen, clear order Play / Heirlooms / Memories / Settings / Quit | All systems are on one screen; the title screen has no art | M |
+| U7 | **Main menu layout**: a background (the duo and the vault), Heirlooms moved to their own screen, clear order Play / Heirlooms / Memories / Settings / Quit | All systems are on one screen; the title screen has no art | M |
 | U8 | **Button prompts follow the device** (keyboard or pad) across HUD, prep panel and menus | Needed anyway for full gamepad | S |
 | U9 | **Screen feel**: fade between rooms and screens, UI sounds on focus and confirm, typewriter text on memories and endings | Cheap, makes every screen feel finished | S |
 

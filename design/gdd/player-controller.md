@@ -7,17 +7,17 @@
 
 ## Overview
 
-Player Controller owns every aspect of Fayde's movement and collision in the arena. It translates keyboard and gamepad input into movement velocity, applies physics via `CharacterBody2D.move_and_slide()`, and manages Fayde's dash ability as a short-range burst with a cooldown. It is state-driven: movement is enabled exclusively in `COMBAT_PHASE` (on `combat_started`, both regular and boss waves), disabled during `PREPARATION_PHASE` (on `preparation_started`), and suspended in `PAUSED` — all driven by signals from Game State & Scene Flow. No other system enables or disables Fayde's movement.
+Player Controller owns every aspect of the active brother's movement and collision in the arena. It translates keyboard and gamepad input into movement velocity, applies physics via `CharacterBody2D.move_and_slide()`, and manages Faith's dash ability as a short-range burst with a cooldown. It is state-driven: movement is enabled exclusively in `COMBAT_PHASE` (on `combat_started`, both regular and boss waves), disabled during `PREPARATION_PHASE` (on `preparation_started`), and suspended in `PAUSED` — all driven by signals from Game State & Scene Flow. No other system enables or disables the active brother's movement.
 
-At MVP scope, Player Controller covers three behaviors: **movement** (8-directional screen-space input, configurable speed), **dash** (short-range directional burst with cooldown), and **collision response** (Fayde cannot walk through arena walls or obstacles; enemy contact is detected and passed to Health & Damage as `DamageSource.CONTACT`). Spell casting is not owned here — Spell Casting & Effects (#3) reads Player Controller's position as cast origin, but the trigger is entirely owned by that system.
+At MVP scope, Player Controller covers three behaviors: **movement** (8-directional screen-space input, configurable speed), **dash** (short-range directional burst with cooldown), and **collision response** (the active brother cannot walk through arena walls or obstacles; enemy contact is detected and passed to Health & Damage as `DamageSource.CONTACT`). Spell casting is not owned here — Spell Casting & Effects (#3) reads Player Controller's position as cast origin, but the trigger is entirely owned by that system.
 
 **ADR-0001 constraint:** Movement is screen-space — WASD maps to up/down/left/right relative to the screen. Isometric projection is visual only; all gameplay logic (collision, position, spell origin) operates in 2D cartesian space. See `docs/architecture/adr-0001-isometric-view.md`.
 
 ## Player Fantasy
 
-Fayde's movement is a statement of intent. Every step toward or away from an enemy is a commitment — the arena is not empty space to fill, it is a problem to read before moving into it. The fantasy is **the satisfaction of correct positioning**: setting up so the Prana pre-arranged fires from exactly the angle that catches the Charger mid-approach, then holding that ground through the wave because you read it right.
+The active brother's movement is a statement of intent. Every step toward or away from an enemy is a commitment — the arena is not empty space to fill, it is a problem to read before moving into it. The fantasy is **the satisfaction of correct positioning**: setting up so the Prana pre-arranged fires from exactly the angle that catches the Charger mid-approach, then holding that ground through the wave because you read it right.
 
-Dash is the punctuation mark of that commitment — a short, directional burst that passes through enemies with brief invincibility, reserved for the moment when the read was wrong. Fayde slides *through* the oncoming Charger and lands behind it. Not a get-out-of-jail card that trivializes positioning (its cooldown ensures this), but a single corrective action per engagement that rewards timing. A player who dashes on instinct at the wrong moment will have nothing left when they need it.
+Dash is the punctuation mark of that commitment — a short, directional burst that passes through enemies with brief invincibility, reserved for the moment when the read was wrong. Faith slides *through* the oncoming Charger and lands behind it. Not a get-out-of-jail card that trivializes positioning (its cooldown ensures this), but a single corrective action per engagement that rewards timing. A player who dashes on instinct at the wrong moment will have nothing left when they need it.
 
 The paired fantasy: the run where you barely used the dash at all, because the grid arrangement and the positioning were that well-read. And the run where you burned it to survive a Cluster swarm, then had to finish the wave on foot with two enemies still up. Both are correct expressions of Pillar 3 — *Chaos Has Consequences*.
 
@@ -27,7 +27,7 @@ The paired fantasy: the run where you barely used the dash at all, because the g
 
 ### Core Rules
 
-1. **Node type**: Fayde is implemented as a `CharacterBody2D` with `process_mode = PROCESS_MODE_PAUSABLE`. Movement is computed and applied in `_physics_process(delta)` using `move_and_slide()`. All position and velocity state lives on this node.
+1. **Node type**: The duo is implemented as a `CharacterBody2D` with `process_mode = PROCESS_MODE_PAUSABLE`. Movement is computed and applied in `_physics_process(delta)` using `move_and_slide()`. All position and velocity state lives on this node.
 
 2. **State-driven enable/disable**: Player Controller has three operative states — `ENABLED`, `DISABLED`, and `DASHING` (see States and Transitions). Movement and dash input are only processed when in `ENABLED` or `DASHING`. On `game_paused`, `_physics_process` is automatically suspended by `PROCESS_MODE_PAUSABLE` — no additional pause logic is required.
 
@@ -71,11 +71,11 @@ The paired fantasy: the run where you barely used the dash at all, because the g
 
    **I-frames during dash**: For the duration of `DASH_DURATION`, Health & Damage's `apply_damage(source: CONTACT)` calls are blocked by a flag on Player Controller (`_is_invincible`). Health & Damage **queries** `PlayerController.is_invincible() -> bool` as the first check in its `apply_damage` pipeline — before the dead-target guard — and returns immediately with no damage applied and no signal emitted if `true`. *(Resolution of Open Question #1: query pattern adopted. Health & Damage GDD updated in round-2 review — step 1a added to `apply_damage` pipeline and Player Controller listed in H&D Dependencies.)*
 
-   The dash i-frame window (0.15s) is distinct from Health & Damage's post-hit i-frame window (0.5s, contact-triggered). Both protect Fayde from CONTACT damage; `is_invincible()` returning `true` causes H&D to skip the call regardless of which source triggered it.
+   The dash i-frame window (0.15s) is distinct from Health & Damage's post-hit i-frame window (0.5s, contact-triggered). Both protect the duo from CONTACT damage; `is_invincible()` returning `true` causes H&D to skip the call regardless of which source triggered it.
 
    **Signal: `dash_cooldown_changed(available: bool)`** — emitted by PlayerController when dash availability changes. Emits `false` when a dash begins (cooldown starts); emits `true` when the cooldown expires and dash is available again. CombatHUD listens to this signal to update the cooldown indicator opacity.
 
-5. **Collision**: Fayde cannot pass through arena walls or static obstacles. `move_and_slide()` handles this automatically via physics layers. Enemy bodies occupy a separate collision layer — Fayde does not physically block enemies spatially; enemy contact damage is triggered by Enemy AI's hit detection, not by Player Controller collision.
+5. **Collision**: The duo cannot pass through arena walls or static obstacles. `move_and_slide()` handles this automatically via physics layers. Enemy bodies occupy a separate collision layer — the duo does not physically block enemies spatially; enemy contact damage is triggered by Enemy AI's hit detection, not by Player Controller collision.
 
 6. **Footstep audio**: When `get_controller_state() == ENABLED` and `velocity.length() > FOOTSTEP_VELOCITY_THRESHOLD`, Player Controller fires the next footstep variant via a float accumulator timer (every `FOOTSTEP_INTERVAL_SEC`, default 0.38s — ~2.6 steps/sec). The accumulator resets to zero when velocity drops below `FOOTSTEP_VELOCITY_THRESHOLD` (timer restarts on re-entry, preventing an immediate fire after a brief stop).
 
@@ -87,7 +87,7 @@ The paired fantasy: the run where you barely used the dash at all, because the g
 
    **Timer implementation**: Both the footstep accumulator and the dash cooldown accumulator use the **float accumulator pattern** tracked inside `_physics_process(delta)` — the accumulator increments by `delta` each physics frame. Do **NOT** use `SceneTree.create_timer()` (counts wall-clock time, does not pause with the node) or `Timer` nodes. The float accumulator automatically pauses with `PROCESS_MODE_PAUSABLE` because `_physics_process` is not called on paused nodes. For unit testing, drive timers by calling `_physics_process(1.0 / 60.0)` repeatedly until the target interval accumulates.
 
-7. **No movement during PREPARATION_PHASE**: On `preparation_started`, velocity is zeroed immediately. Fayde cannot move, dash, or change facing while the Prana Grid is active.
+7. **No movement during PREPARATION_PHASE**: On `preparation_started`, velocity is zeroed immediately. The active brother cannot move, dash, or change facing while the Prana Grid is active.
 
 ---
 
@@ -107,7 +107,7 @@ The paired fantasy: the run where you barely used the dash at all, because the g
 | `DASHING` | `ENABLED` | `DASH_DURATION` timer expires; `DASH_COOLDOWN` timer begins |
 | `DASHING` | `DISABLED` | `preparation_started` signal received mid-dash; dash cancelled — velocity zeroed, `_is_invincible` cleared, **`DASH_COOLDOWN` timer begins** (cancelled dash counts as used; see Edge Case #2) |
 
-**Re-entry on boss combat**: `combat_started(is_boss: true)` also transitions `DISABLED → ENABLED` — Fayde enters boss combat from the final Preparation phase's disabled state.
+**Re-entry on boss combat**: `combat_started(is_boss: true)` also transitions `DISABLED → ENABLED` — the duo enters boss combat from the final Preparation phase's disabled state.
 
 ---
 
@@ -118,7 +118,7 @@ The paired fantasy: the run where you barely used the dash at all, because the g
 | **Game State & Scene Flow** | Listens to `combat_started`, `preparation_started` to enable/disable movement; `PROCESS_MODE_PAUSABLE` handles pause automatically | Game State → Player Controller |
 | **Health & Damage** | Exposes `is_invincible() -> bool` — queried at step 1a of `apply_damage` to block CONTACT damage during all i-frame windows | Player Controller → Health & Damage |
 | **Spell Casting & Effects (#3)** | Exposes `get_world_position() -> Vector2` (wraps `global_position`) and `get_facing_direction() -> Vector2` as the cast origin and direction for Prana spells | Player Controller → Spell Casting |
-| **Enemy AI (#8)** | Enemy AI reads `PlayerController.global_position` to navigate toward Fayde; Player Controller does not import Enemy AI | Enemy AI reads Player Controller (one-way) |
+| **Enemy AI (#8)** | Enemy AI reads `PlayerController.global_position` to navigate toward the active brother; Player Controller does not import Enemy AI | Enemy AI reads Player Controller (one-way) |
 | **Audio System** | Calls `audio_system.play_event(sfx_fayde_footstep_variant)` (one of `sfx_fayde_footstep_a/b/c` via shuffle-bag) on movement timer, and `audio_system.play_event(&"sfx_fayde_dash")` on dash initiation (via injected reference — see Dependencies). **Player Controller is the authoritative and exclusive caller for `sfx_fayde_dash`** — the Audio System GDD's Interactions table incorrectly lists Game Feel/Juice (#30) for "dash cues"; correct this when authoring the Game Feel GDD. | Player Controller → Audio System |
 
 ## Formulas
@@ -141,7 +141,7 @@ If `velocity.length() < VELOCITY_SNAP_THRESHOLD`: `velocity = Vector2.ZERO`
 
 | Variable | Symbol | Type | Range | Description |
 |----------|--------|------|-------|-------------|
-| Current velocity | `velocity` | Vector2 | magnitude 0 – `MOVE_SPEED` | Fayde's current movement vector (px/sec) |
+| Current velocity | `velocity` | Vector2 | magnitude 0 – `MOVE_SPEED` | The active brother's current movement vector (px/sec) |
 | Input direction | `input_dir` | Vector2 | normalized magnitude 0 or 1 | WASD/gamepad input this frame |
 | Move speed | `MOVE_SPEED` | float | 80–200 px/sec | Maximum movement speed (tuning knob) |
 | Acceleration factor | `MOVE_ACCELERATION` | float | 0.1–1.0 (base weight; delta-corrected at runtime) | How fast velocity reaches MOVE_SPEED; 1.0 = instant |
@@ -193,11 +193,11 @@ If `velocity.length() < VELOCITY_SNAP_THRESHOLD`: `velocity = Vector2.ZERO`
 
 ## Edge Cases
 
-1. **If `combat_started` fires while Fayde is mid-dash:** Dash completes normally — `DASHING` is already a sub-state of combat-active. No special handling needed.
+1. **If `combat_started` fires while Faith is mid-dash:** Dash completes normally — `DASHING` is already a sub-state of combat-active. No special handling needed.
 
-2. **If `preparation_started` fires while Fayde is mid-dash:** Cancel the dash immediately — velocity zeroed, `_is_invincible` cleared. **Start the `DASH_COOLDOWN` timer from this point** — a cancelled dash counts as a used dash (the same cooldown applies whether the dash completed or was interrupted). State transitions to `DISABLED`. This is handled in `_on_preparation_started()`, which explicitly clears `_is_invincible` and starts the cooldown accumulator in the same call as zeroing velocity.
+2. **If `preparation_started` fires while Faith is mid-dash:** Cancel the dash immediately — velocity zeroed, `_is_invincible` cleared. **Start the `DASH_COOLDOWN` timer from this point** — a cancelled dash counts as a used dash (the same cooldown applies whether the dash completed or was interrupted). State transitions to `DISABLED`. This is handled in `_on_preparation_started()`, which explicitly clears `_is_invincible` and starts the cooldown accumulator in the same call as zeroing velocity.
 
-3. **If dash is triggered with no movement input and no stored last-moved direction:** Dash fires to the right (default facing direction). Occurs at combat start before Fayde has moved. Visually jarring but functionally safe — cannot damage Fayde or break game state.
+3. **If dash is triggered with no movement input and no stored last-moved direction:** Dash fires to the right (default facing direction). Occurs at combat start before the active brother has moved. Visually jarring but functionally safe — cannot damage the duo or break game state.
 
 4. **If `MOVE_FRICTION = 1.0`:** The delta-corrected factor equals 1.0 — velocity zeroes in one frame via lerp before the snap check. Valid extreme value; the formula handles it correctly.
 
@@ -233,7 +233,7 @@ Player Controller has no runtime dependencies on Prana Data, Health & Damage, or
 | **Health & Damage (#6)** | `is_invincible() -> bool` — queried at step 1a of `apply_damage` before the dead-target guard | Health & Damage GDD must add this query step and list Player Controller as a dependency |
 | **Spell Casting & Effects (#3)** | `get_world_position() -> Vector2`, `get_facing_direction() -> Vector2` — cast origin and direction for Prana spells | Spell Casting GDD must declare Player Controller as a dependency |
 | **Enemy AI (#8)** | `global_position` (built-in — no custom getter needed) as pathfinding target | Enemy AI GDD must declare Player Controller as a dependency |
-| **Wave / Encounter System (#12)** | Fayde position for spawn placement (avoids spawning on top of Fayde) | Wave/Encounter GDD must declare Player Controller as a dependency |
+| **Wave / Encounter System (#12)** | The active brother's position for spawn placement (avoids spawning on top of the active brother) | Wave/Encounter GDD must declare Player Controller as a dependency |
 
 ### Interface Constraints for Downstream GDDs
 
@@ -245,9 +245,9 @@ Player Controller has no runtime dependencies on Prana Data, Health & Damage, or
 
 | Knob | Default | Safe Range | What it affects | What breaks if wrong |
 |------|---------|------------|-----------------|----------------------|
-| `MOVE_SPEED` | 120 px/sec | 80–200 px/sec | Fayde's maximum movement speed | Too low: can't escape enemy attacks; too high: arena feels small, positioning decisions become trivial |
+| `MOVE_SPEED` | 120 px/sec | 80–200 px/sec | The active brother's maximum movement speed | Too low: can't escape enemy attacks; too high: arena feels small, positioning decisions become trivial |
 | `MOVE_ACCELERATION` | 0.2 | 0.1–1.0 (base lerp weight/frame) | How fast velocity reaches `MOVE_SPEED` from standstill | Too low: sluggish, unresponsive; too high: instant acceleration, removes movement weight |
-| `MOVE_FRICTION` | 0.25 | 0.1–1.0 (base lerp weight/frame) | How fast Fayde decelerates when input released | Too low: drifts past intended position; too high: rapid stop — tune together with VELOCITY_SNAP_THRESHOLD |
+| `MOVE_FRICTION` | 0.25 | 0.1–1.0 (base lerp weight/frame) | How fast the duo decelerates when input released | Too low: drifts past intended position; too high: rapid stop — tune together with VELOCITY_SNAP_THRESHOLD |
 | `VELOCITY_SNAP_THRESHOLD` | 8 px/sec | 4–20 px/sec | Below this speed with no input, velocity zeroes immediately — ensures pixel-predictable stop position | Too low: perceivable drift before snap; too high: movement feels digital/stiff. Must stay below FOOTSTEP_VELOCITY_THRESHOLD (10 px/sec default) |
 | `DASH_SPEED` | 400 px/sec | 200–600 px/sec | Velocity override during dash burst | Too low: dash barely outruns walking; too high: wall tunneling risk at 30 fps begins near the default 400 px/sec |
 | `DASH_DURATION` | 0.15s | 0.08–0.25s | Dash burst duration AND i-frame window duration | Too short: insufficient travel distance; too long: i-frames exploitable for sustained invincibility |
@@ -264,9 +264,9 @@ Player Controller has no runtime dependencies on Prana Data, Health & Damage, or
 ## Visual/Audio Requirements
 
 **Movement animation requirements:**
-- Fayde requires a walk cycle animation covering all 8 movement directions (isometric dimetric: down, down-right, right, up-right, up, up-left, left, down-left). At 32–48px sprite height (ADR-0001), the walk cycle requires at minimum 4 frames per direction for legible limb movement.
-- Idle animation: at minimum a 2-frame breathing or standing loop per facing direction. Fayde must not be fully static while waiting.
-- Facing direction is retained from last movement input — Fayde does not snap to a default facing when velocity zeroes.
+- The brothers require a walk cycle animation covering all 8 movement directions (isometric dimetric: down, down-right, right, up-right, up, up-left, left, down-left). At 32–48px sprite height (ADR-0001), the walk cycle requires at minimum 4 frames per direction for legible limb movement.
+- Idle animation: at minimum a 2-frame breathing or standing loop per facing direction. The duo must not be fully static while waiting.
+- Facing direction is retained from last movement input — the duo does not snap to a default facing when velocity zeroes.
 
 **Dash animation requirements:**
 - Dash requires a visible motion blur, directional lean, or afterimage effect that distinguishes it from fast walking. A dash with no visual difference from running is a design failure — the i-frame window is invisible without it.
@@ -275,7 +275,7 @@ Player Controller has no runtime dependencies on Prana Data, Health & Damage, or
 
 **Audio requirements:**
 - `sfx_fayde_footstep_a`, `sfx_fayde_footstep_b`, `sfx_fayde_footstep_c`: Three distinct variants registered separately in `AudioEventRegistry`. Player Controller owns the shuffle-bag selection (see Core Rule 6 — no consecutive repeat guarantee). Priority: LOW. Target level: −12 to −9 dBTP — textures the mix without competing with Prana cast sounds. Audio System must route these events through a dedicated non-pooled `AudioStreamPlayer2D` node (not the SFX pool) — pool-routing at 2.63 events/sec produces audible eviction pops under combat load. This is a hard requirement on the Audio System implementation; see Audio System Open Q3.
-- `sfx_fayde_dash`: short burst (<0.3s), directional character. Priority: **HIGH** (raised from NORMAL). Registered in `AudioEventRegistry` as `bus = &"SFX"`. Minimum −6 dBTP (Prana SFX floor per Audio System GDD). HIGH priority is required because `sfx_fayde_dash` is the primary sensory confirmation that Fayde's i-frame window is active — silent drop at the critical dash moment is not an accepted tradeoff. **Player Controller is the authoritative and exclusive caller** — Game Feel / Juice (#30) owns the visual dash effect only. The Audio System GDD's Interactions table (which lists Game Feel/Juice as caller for "dash cues") must be corrected when that GDD is authored.
+- `sfx_fayde_dash`: short burst (<0.3s), directional character. Priority: **HIGH** (raised from NORMAL). Registered in `AudioEventRegistry` as `bus = &"SFX"`. Minimum −6 dBTP (Prana SFX floor per Audio System GDD). HIGH priority is required because `sfx_fayde_dash` is the primary sensory confirmation that the duo's i-frame window is active — silent drop at the critical dash moment is not an accepted tradeoff. **Player Controller is the authoritative and exclusive caller** — Game Feel / Juice (#30) owns the visual dash effect only. The Audio System GDD's Interactions table (which lists Game Feel/Juice as caller for "dash cues") must be corrected when that GDD is authored.
 
 **All-ages constraint (hard):** All visual feedback for movement and dash must be appropriate for ages 7+. No violent aesthetics. The visual language should be energetic and expressive — Ghibli-like motion emphasis — not threatening.
 
@@ -343,7 +343,7 @@ ACs PC-15, PC-16, and PC-17 require `audio_system` set to a mock/spy object. Ass
 
 **[U] AC-PC-08** — GIVEN no movement input and no stored last-moved direction, WHEN dash is triggered, THEN velocity during dash points in the positive X direction (default right facing).
 
-**[M] AC-PC-09** — GIVEN Fayde is dashing through an enemy that would deal CONTACT damage, WHEN the overlap occurs during `DASH_DURATION`, THEN no damage is applied and Fayde's HP is unchanged. *(Manual QA — requires Enemy AI present in scene.)*
+**[M] AC-PC-09** — GIVEN Faith is dashing through an enemy that would deal CONTACT damage, WHEN the overlap occurs during `DASH_DURATION`, THEN no damage is applied and the duo's HP is unchanged. *(Manual QA — requires Enemy AI present in scene.)*
 
 ### State Transitions
 
@@ -385,6 +385,6 @@ ACs PC-15, PC-16, and PC-17 require `audio_system` set to a mock/spy object. Ass
 
 3. **Walk animation direction count**: Visual/Audio Requirements specify 8-direction walk cycles. If art production cost is prohibitive at First Playable, a 4-direction cycle (down, right, up, left) with mirroring for diagonal movement is a valid fallback. Resolve with the artist before sprite production begins.
 
-4. **Dash visual effect ownership**: Dash VFX (motion blur, trail, afterimage) is deferred to Game Feel / Juice GDD (#30). If Game Feel is not in First Playable scope (currently Vertical Slice), a placeholder dash effect (simple color flash on Fayde's sprite) must be specified before First Playable ships — the i-frame window must be visually communicated. Resolve when First Playable scope is locked.
+4. **Dash visual effect ownership**: Dash VFX (motion blur, trail, afterimage) is deferred to Game Feel / Juice GDD (#30). If Game Feel is not in First Playable scope (currently Vertical Slice), a placeholder dash effect (simple color flash on the active brother's sprite) must be specified before First Playable ships — the i-frame window must be visually communicated. Resolve when First Playable scope is locked.
 
 5. **Combat HUD dash cooldown display**: Player Controller exposes `get_dash_cooldown_remaining()`. Whether Combat HUD (#22) actually displays a dash cooldown indicator is a Combat HUD design decision. Flag this in the Combat HUD GDD when authored.

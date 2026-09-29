@@ -7,7 +7,7 @@
 ## 1. Overview
 
 Each run pays Cipher Shards based on how far it got. Shards unlock Heirlooms: a
-stat sigil Fayde starts every run with. The first win unlocks Hard Mode, which makes
+stat sigil the duo starts every run with. The first win unlocks Hard Mode, which makes
 enemies faster, denser and more often elite, and pays 1.5× shards.
 
 ## 2. Player Fantasy

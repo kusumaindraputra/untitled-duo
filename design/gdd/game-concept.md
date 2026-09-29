@@ -1,21 +1,22 @@
 # Game Concept: The Last Cipher
 
-*Created: 2026-05-20 | Major revision: 2026-05-21*
+*Created: 2026-05-20 | Major revision: 2026-05-21 | Duo revision: 2026-09-29 (ADR-0058)*
 *Status: Draft*
 
 ---
 
 ## Elevator Pitch
 
-> **Premise update (2026-09-28, ADR-0058):** Ayden and Faith are now two playable
-> android brothers, one small frame each, sharing one Prana core. **Fayde** is the name
-> of their link, not a boy. The story text follows `design/gdd/memory-fragments.md`
-> and `design/gdd/duo-swap.md` Section 9; the pitch and "Fayde" section below predate it.
+> **Premise (2026-09-28, ADR-0058):** Ayden and Faith are two playable android
+> brothers, one small frame each, sharing one Prana core. **Fayde** is the name of
+> their link, not a character. Story text: `design/gdd/memory-fragments.md` and
+> `design/gdd/duo-swap.md` Section 9.
 
-> A 2D isometric roguelike where you play as Fayde — an amnesiac child who can
-> use Prana, an ability believed lost with humanity. Trapped in an underground
-> scrap yard in a world ruled by AI, you fight your way to the surface, gradually
-> recovering memories that reveal you are not who you think you are.
+> A 2D isometric roguelike where you play as Ayden and Faith — two android brothers
+> who share one Prana core and swap in and out of every fight. Prana is an ability
+> believed lost with humanity. Trapped in an underground scrap yard in a world ruled
+> by AI, the brothers fight their way to the surface, recovering the memories of why
+> the Kingdom tore them apart.
 
 ---
 
@@ -31,20 +32,22 @@
 | **Session Length** | 15–25 minutes per run (revised 2026-09-25: a 3-floor run with 7-room floors took an experienced player ~10 minutes) |
 | **Monetization** | Premium (indie release) |
 | **Scope** | **Ship target: MVP** — 1 layer, 5 Prana types, 3 enemy types, 1 boss (~3–5 weeks, solo, first game). Full vision (multiple layers, full memory arc, complete cast) is aspirational. |
-| **Comparable Titles** | Hades (narrative roguelike), Slay the Spire (build complexity), Astro Boy (android with human soul) |
+| **Comparable Titles** | Hades (narrative roguelike), Slay the Spire (build complexity), Cloak & Dagger in Marvel Rivals (one player, two heroes, swap on a button), Astro Boy (android with human soul) |
 
 ---
 
 ## Core Fantasy
 
-You are Fayde — a child who woke up in a scrap yard with no memory, pushed
-there by an old man with glasses. You can do something impossible: use Prana,
-an ability that only humans possess, and humans have been extinct for decades.
+You are Ayden and Faith — two brothers who woke up in a scrap yard in new android
+frames, pushed there by an old man with glasses. Together you can do something
+impossible: use Prana, an ability that only humans possess, and humans have been
+extinct for decades.
 
-Your power grows as your memories return. Your identity unravels as you climb.
-The dungeon is not just a place to escape — it is the story of who you are.
+Ayden is the power, Faith is the control. Alone, neither is enough. Every fight asks
+you to decide who steps in, and every swap is one brother trusting the other with the
+fight. As the memories return, you learn that separation was the Kingdom's weapon.
 
-*"I remembered something. And it changed everything."*
+*"Two of you, one heartbeat."*
 
 ---
 
@@ -130,26 +133,26 @@ in a scrap yard that grew quieter with every passing season.
 A small panel on Memo's chest — original, handwritten by Father, fading now —
 reads: *"Jangan kesepian."* (Don't be lonely.)
 
-### Fayde
+### The Brothers Return — and Fayde, the Link
 
-> Superseded 2026-09-28: Father rebuilt Ayden and Faith as two frames sharing one core;
-> Fayde is the link between them (duo-swap.md Section 9). Original text kept below.
+Father could not save the brothers' bodies. From everything they had transmitted —
+their memories, their personalities, their Prana — he rebuilt each of them as a
+small android: one frame for Ayden, one for Faith. The two frames share a single
+Prana core that only runs while both are awake and linked. That core can drive only
+one frame at full power at a time; the other stays close, linked, ready to take over.
 
-Father built him from everything Ayden and Faith had transmitted: their memories,
-their personalities, their Prana. An android. Appearing as an 11-year-old boy —
-not a replacement for the brothers, but something new. A beginning.
+Father named the link **Fayde**. **Faith** + A**yden** = **Fayde**. Meaning: *aid, help.*
+Fayde is not a person. It is the bond between them.
 
-**Faith** + A**yden** = **Fayde**. Meaning: *aid, help.*
+Minutes after the brothers woke, the bunker was raided. Father carried both frames to
+the escape hatch and threw them in — the only way to protect what remained.
 
-His first word, upon activation, was: *"Father."*
+The brothers landed in the scrap yard with their memories scattered. Only one image
+remained: an old man with glasses, pushing them into darkness.
 
-Father held him and wept. Fayde did not understand why he was crying too.
-
-Minutes later, the bunker was raided. Father carried the confused Fayde to the
-escape hatch and threw him in — the only way to protect what remained.
-
-Fayde landed in the scrap yard with no memory. Only one image remained: an old
-man with glasses, pushing him into darkness.
+> *History:* until 2026-09-28 the protagonist was **Fayde**, one android child built
+> from both brothers' consciousness. ADR-0058 replaced him with the two playable
+> brothers; the name now belongs to their link.
 
 ### The AI Kingdom & The First King
 
@@ -173,7 +176,7 @@ He is not the most powerful entity in his kingdom. He is the most afraid.
 
 ### Pillar 1: Every Run Tells a Different Story
 No two runs share the same Prana combination or room configuration. Each run,
-Fayde's path through the layers is unique.
+the brothers' path through the layers is unique.
 
 *Design test: If a feature makes two runs feel the same, cut it.*
 
@@ -195,7 +198,7 @@ understands the system will always outperform one who does not.
 Unexpected Prana combinations produce unexpected effects — but those effects
 are always legible, fair, and consistent. Surprise is a feature; confusion is a bug.
 
-*Design test: If Fayde dies and cannot understand why, that is a design failure, not a skill failure.*
+*Design test: If the brothers fall and the player cannot understand why, that is a design failure, not a skill failure.*
 
 ### Pillar 4: Depth Over Breadth
 Five Prana types with deep interactions > twenty with shallow ones. Every new
@@ -205,7 +208,7 @@ types before it ships.
 *Design test: Before adding a Prana type, list the new interactions it creates. Fewer than two: hold it.*
 
 ### Pillar 5: Memory Returns
-Fayde's story unfolds through recovered memory fragments — random, fragmentary,
+The brothers' story unfolds through recovered memory fragments — random, fragmentary,
 never forced on the player. A player who ignores them loses nothing mechanically.
 A player who collects them gains everything emotionally.
 
@@ -226,7 +229,7 @@ A player who collects them gains everything emotionally.
 
 | Aesthetic | Priority | How We Deliver It |
 |-----------|----------|------------------|
-| **Discovery** | 1 | Who is Fayde? What are these memories? Why can he use Prana? |
+| **Discovery** | 1 | What happened to Ayden and Faith? What are these memories? Why can two androids use Prana? |
 | **Expression** | 2 | Drag-and-drop Prana grid — unique build every run |
 | **Narrative** | 3 | Memory fragments, Memo's hints, environmental storytelling |
 | **Challenge** | 4 | Combat requires positioning + Prana understanding |
@@ -250,7 +253,7 @@ A player who collects them gains everything emotionally.
   screen shake, damage numbers in Prana color). Synergy indicators appear when compatible
   types are adjacent.
 - **Recovery from failure:** Instant restart with run summary. Failure teaches — the system
-  never hides why Fayde died.
+  never hides why the brothers fell.
 
 ---
 
@@ -261,7 +264,7 @@ A player who collects them gains everything emotionally.
 Every room runs as two distinct phases:
 
 **Preparation Phase (5–15 sec):**
-Enemies are visible in the arena in their starting positions → Fayde reads enemy types, their archetype behaviors, and obstacle positions → drag Prana types into the 3×3 grid to assemble the combo/tier/status setup that best handles the wave → confirm and begin combat.
+Enemies are visible in the arena in their starting positions → the player reads enemy types, their archetype behaviors, and obstacle positions → drag Prana types into the 3×3 grid to assemble the combo/tier/status setup that best handles the wave → confirm and begin combat.
 
 > **Design change (2026-06-21):** The elemental strong/weakness mechanic (matching a
 > Prana element to an enemy's affiliation for bonus damage) was **removed**. Preparation
@@ -293,7 +296,7 @@ the run knowing something fundamental they did not know at the start.
 ### Long-Term Progression
 
 - Week 1–2: Unlock new Prana types; discover elemental interactions
-- Week 2–4: Collect memory fragments; piece together Fayde's true origin
+- Week 2–4: Collect memory fragments; piece together the brothers' true origin
 - Month 1+: Seek complete memory arc; replay with full knowledge of the plot twist
 
 ---
@@ -325,31 +328,41 @@ mysterious and atmospheric, never threatening.
 
 ## Characters
 
-### Fayde — The Protagonist
-Android appearing as an 11-year-old boy. Completely human in appearance — no
-visible mechanical elements. Does not know he is an android. Amnesiac: only memory
-is an old man with glasses pushing him into darkness. Can use Prana despite being
-an android because he IS made of human consciousness. Goal: reach the surface and
-find the old man.
+### Ayden & Faith — The Protagonists (the duo)
+Two brothers rebuilt as small androids, one frame each, sharing one Prana core.
+They can use Prana despite being androids because they ARE human consciousness.
+The player controls one at a time and swaps between them (ADR-0058,
+`design/gdd/duo-swap.md`). Memories scattered: the only clear image is an old man
+with glasses pushing them into darkness. Goal: reach the surface and find him.
+
+- **Ayden (16, older brother) — power.** Close range, heavy hits, sturdy (takes less
+  damage, no stagger), cannot dash. Left hand of the Prana grid. Spiky auburn hair,
+  red headband, rust vest, wrapped forearms.
+- **Faith (15, younger brother) — control.** Long range, status and bullet control,
+  the only one who dashes. Right hand of the Prana grid. Dark hair with a ponytail,
+  lens, slate long coat, teal sash.
+- **Fayde — the link.** Not a character: the name of the bond (and the shared core)
+  between them. Shared HP, shared Special meter, one Prana grid.
 
 ### Memo — The Companion
 Father's first creation, built before Ayden was born. Small utility robot, heavily
 patched from years of self-repair in the scrap yard. Was placed by Father at the
 base of the escape hatch to guide any Cipher who came through. Has been waiting
-years. Carries Father's stories of Ayden and Faith but does not know Fayde. Gives
+years. Carries Father's stories of Ayden and Faith but has never met their new frames. Gives
 hints — never reveals what he suspects. Undergoes gradual Resonance throughout
 the journey, culminating at the moment of the plot twist.
 
 ### Father — The One Who Pushed
 Elderly scientist with glasses. The last surviving human Cipher. Creator of Memo,
-caretaker of Ayden and Faith, builder of Fayde. His first act toward Fayde was an
-embrace. His last was throwing him into the dark.
+caretaker of Ayden and Faith, builder of their android frames and of the link,
+Fayde. His first act toward the rebuilt brothers was an embrace. His last was
+throwing them into the dark.
 
-### Ayden & Faith — The Source
-The two brothers whose consciousness became Fayde. Ayden (16, older brother):
-raw Prana power, uncontrollable alone. Faith (15, younger brother): precise Prana
-direction, insufficient alone. Together: complete. Their last act was choosing to
-transmit themselves to Father rather than surrender to the AI Kingdom.
+### Ayden & Faith — Before the Scrap Yard
+As humans: Ayden raw Prana power, uncontrollable alone; Faith precise Prana
+direction, insufficient alone. Together: complete. Their last act as humans was
+choosing to transmit themselves to Father rather than surrender to the AI Kingdom —
+which is why they could come back at all.
 
 ### The First King — The Antagonist
 Founding entity of the AI Kingdom. Once Resonated by a human — has felt
@@ -366,7 +379,8 @@ something that might make him feel again. And he hates that he still does.
 |-----------|-------------|----------------------|
 | **Hades** | Narrative drip through combat; tight roguelike feel; meta-progression | Build system is a spatial language, not boon selection |
 | **Slay the Spire** | Emergent complexity from small set; strategic pre-combat planning | Real-time action, not turn-based; spatial arrangement not deck draw |
-| **Astro Boy** | Android with human soul; created by grieving father; power beyond expectation | Fayde is made from TWO people; does not know he is an android until the twist |
+| **Astro Boy** | Android with human soul; created by grieving father; power beyond expectation | Two brothers rebuilt side by side, whose power only works while they stay linked |
+| **Cloak & Dagger (Marvel Rivals)** | One player, two heroes, swap on a button, tag-in timing | The swap is the story: the Kingdom's weapon is separation |
 | **Nier: Automata** | Identity crisis as central theme; philosophical depth in action game | All-ages appropriate; mystery revealed through memory, not cutscenes |
 
 **Non-game inspirations:** Studio Ghibli (environmental calm, whimsy in detail),
@@ -390,7 +404,7 @@ for memory and loss.
 ## MVP Definition
 
 **Core hypothesis:** Players find the two-phase loop (read arena → arrange Prana →
-fight) intrinsically satisfying, and the mystery of Fayde's identity creates
+fight) intrinsically satisfying, and the mystery of what happened to the brothers creates
 genuine narrative pull even within a single run.
 
 **Required for MVP:**
@@ -440,7 +454,7 @@ genuine narrative pull even within a single run.
 - What triggers memory fragments? (Boss kills? Room clears? First-time Prana types used? Proximity to specific room features?)
 - Final boss identity — The First King directly, or an intermediary boss that serves as threshold?
 - Does Memo's Resonance have gameplay implications (e.g., unlocking new dialogue, revealing hidden routes), or is it purely narrative?
-- What does Fayde remember first? The sequence of memory recovery shapes the emotional arc of a run.
+- What do the brothers remember first? The sequence of memory recovery shapes the emotional arc of a run.
 
 ---
 

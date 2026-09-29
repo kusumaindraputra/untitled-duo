@@ -28,7 +28,7 @@ Four readability and accessibility changes for the closed beta:
    shape; the ring carries the enemy colour, elites get a second gold ring, and a
    swarm shows one icon with a count.
 3. **Death recap**: `HealthAndDamage.apply_damage()` takes an optional `cause`
-   Dictionary (`DeathRecap.cause(attacker, attack)`). A hit on Fayde that deals damage
+   Dictionary (`DeathRecap.cause(attacker, attack)`). A hit on the duo that deals damage
    stores it in `last_player_hit`, cleared on `run_started`. Enemies, bullets, lasers,
    mortar shells (and their splash) and stage hazards all pass a cause.
    `DeathRecap.line()` turns it into "Killed by Rifter · a fan of bullets", which the
@@ -81,8 +81,8 @@ what killed the player, and Settings had no text size or bullet contrast option.
 
 ## Consequences
 
-- Any new source that damages Fayde should pass a `DeathRecap.cause()`; without one
-  the recap reads "Fayde fell."
+- Any new source that damages the duo should pass a `DeathRecap.cause()`; without one
+  the recap reads "the duo fell."
 - Code that sets a font size on a Label after it entered the tree keeps working: the
   new size becomes the unscaled size on the next rescale.
 - Screens added later should be checked at 130 % text and use

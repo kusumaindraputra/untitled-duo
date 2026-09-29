@@ -10,8 +10,8 @@
 ## Overview
 
 Anchor objects are static environmental objects placed in Memory Chamber rooms.
-Fayde approaches them, triggering a recovered memory fragment — a brief, fragmentary
-glimpse of who Fayde was before the dungeon. Each anchor triggers at most once per run.
+The duo approaches them, triggering a recovered memory fragment — a brief, fragmentary
+glimpse of who the duo was before the dungeon. Each anchor triggers at most once per run.
 
 Tone: mysterious and wondrous, never melancholy. The memories feel like rediscovery,
 not loss.
@@ -33,7 +33,7 @@ not loss.
 
 ## Trigger Condition
 
-Default: **PROXIMITY** — Fayde's CharacterBody2D enters the anchor's Area2D
+Default: **PROXIMITY** — the duo's CharacterBody2D enters the anchor's Area2D
 (radius = `AnchorObject.trigger_radius`, default 48px).
 
 Future (LD-23+): `ROOM_CLEARED` — memory fragment fires after wave is cleared,
@@ -45,16 +45,16 @@ not on approach.
 
 | ID | Display Name | Visual Description | Trigger Memory | Narrative Logic |
 |----|-------------|-------------------|----------------|-----------------|
-| `worn_journal` | Worn Journal | A tattered leather journal left open. Handwriting inside looks familiar. | Fayde as a child, writing in an identical journal — first lessons in Prana theory | Establishes that Fayde was educated, not self-taught |
-| `fractured_mirror` | Fractured Mirror | A floor-length mirror, cracked across the center. The reflection is subtly wrong. | Fayde staring into this mirror and not recognizing the face staring back | Plants the question: was Fayde always who they are now? |
-| `abandoned_cipher` | Abandoned Cipher | A brass mechanism — wheels and pins — that clicks when Fayde moves nearby. | Fayde solving this exact cipher as a lesson, being told "the cipher is the key" | Connects to the game's title; Fayde has solved this before |
-| `faded_portrait` | Faded Portrait | A painting propped against the wall. The subject's face has faded to white. | Fayde standing before this portrait with someone whose name won't come | Hints at a companion or mentor Fayde has forgotten |
-| `rusted_key` | Rusted Key | An ornate iron key hanging from a peg. Fits no lock in sight. | Someone pressing this key into Fayde's hand with the words "only when you're ready" | A promise or inheritance — creates a sense of responsibility |
-| `prana_crystal_cluster` | Crystal Cluster | A cluster of dormant Prana crystals arranged in a careful arc. | These crystals glowing warm and soft — a place Fayde called home | Establishes that Prana was once safe and familiar to Fayde |
-| `carved_toy` | Carved Toy | A small wooden animal — a fox, worn smooth by years of handling. | Fayde holding this same toy, young, unafraid, laughing | Grounds Fayde's humanity — there was joy before the cipher |
-| `coded_tablet` | Coded Tablet | A flat stone tablet incised with early Prana notation. | Fayde learning to read this script from a teacher — "each symbol is a breath" | Deepens Prana lore; it has a language, a pedagogy |
-| `empty_vessel` | Empty Vessel | A ceramic cup, ceremonially crafted, traces of Prana residue inside. | Fayde drinking from this vessel as part of a ritual — others watching | Hints at community, ceremony, belonging — all now absent |
-| `map_fragment` | Map Fragment | A torn piece of a larger map. One location is circled in faded ink. | Being shown this map: "This is where you came from. Don't forget." | Implies Fayde was displaced deliberately — not lost, removed |
+| `worn_journal` | Worn Journal | A tattered leather journal left open. Handwriting inside looks familiar. | Ayden and Faith as children, writing in an identical journal — first lessons in Prana theory | Establishes that the brothers were educated, not self-taught |
+| `fractured_mirror` | Fractured Mirror | A floor-length mirror, cracked across the center. The reflection is subtly wrong. | The duo staring into this mirror and not recognizing the face staring back | Plants the question: was the duo always who they are now? |
+| `abandoned_cipher` | Abandoned Cipher | A brass mechanism — wheels and pins — that clicks when the active brother moves nearby. | The duo solving this exact cipher as a lesson, being told "the cipher is the key" | Connects to the game's title; the duo has solved this before |
+| `faded_portrait` | Faded Portrait | A painting propped against the wall. The subject's face has faded to white. | The duo standing before this portrait with someone whose name won't come | Hints at a companion or mentor the duo has forgotten |
+| `rusted_key` | Rusted Key | An ornate iron key hanging from a peg. Fits no lock in sight. | Someone pressing this key into the duo's hand with the words "only when you're ready" | A promise or inheritance — creates a sense of responsibility |
+| `prana_crystal_cluster` | Crystal Cluster | A cluster of dormant Prana crystals arranged in a careful arc. | These crystals glowing warm and soft — a place the duo called home | Establishes that Prana was once safe and familiar to the duo |
+| `carved_toy` | Carved Toy | A small wooden animal — a fox, worn smooth by years of handling. | The duo holding this same toy, young, unafraid, laughing | Grounds the duo's humanity — there was joy before the cipher |
+| `coded_tablet` | Coded Tablet | A flat stone tablet incised with early Prana notation. | The duo learning to read this script from a teacher — "each symbol is a breath" | Deepens Prana lore; it has a language, a pedagogy |
+| `empty_vessel` | Empty Vessel | A ceramic cup, ceremonially crafted, traces of Prana residue inside. | The duo drinking from this vessel as part of a ritual — others watching | Hints at community, ceremony, belonging — all now absent |
+| `map_fragment` | Map Fragment | A torn piece of a larger map. One location is circled in faded ink. | Being shown this map: "This is where you came from. Don't forget." | Implies the duo was displaced deliberately — not lost, removed |
 
 ---
 

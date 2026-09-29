@@ -45,7 +45,7 @@ Players do not engage with Prana Data as a system. They engage with Prana types 
    | `icon` | Texture2D | 8×8 px silhouette icon for colorblind fallback display. (Locked by art bible §4.5.) |
    | `vfx_burst_shape` | enum (`VfxBurstShape`) | Routes VFX system to the correct particle preset. See enum definition below. |
    | `audio_signature` | AudioStream | Cast sound played on type activation. |
-   | `cast_animation` | enum (`CastAnimation`) | Routes Fayde animation controller on cast. See enum definition below. |
+   | `cast_animation` | enum (`CastAnimation`) | Routes the duo animation controller on cast. See enum definition below. |
    | `damage_class` | enum (`GameEnums.DamageClass`) | Elemental damage type — `FIRE`, `SHADOW`, `LIGHTNING`, `ICE`, or `NATURE`. Used for VFX/damage-number coloring and routing. *(No longer feeds a weakness multiplier — Elemental Affiliation & Weakness removed 2026-06-21.)* |
    | `base_status` | enum (`GameEnums.BaseStatus`) | Status effect this type naturally applies in single-type casts: `BURN`, `BLIND`, `STUN`, `FREEZE`, or `REGENERATE`. Used by Combination Resolution as a fallback. |
    | `base_damage_modifier` | float | Scalar applied to raw `base_damage` on direct hit. Encodes the type's offense/control trade-off. Values range 0.70–1.25. |
@@ -86,7 +86,7 @@ Players do not engage with Prana Data as a system. They engage with Prana types 
    | **Voidblue** — *Deepening Doubt* | Each time an enemy with Blind misses an attack due to Blind, the Blind timer extends by `deepening_doubt_extension` (default 0.5s — see Tuning Knobs), capped at `deepening_doubt_cap = 2.0 × blind_duration` (at canonical `blind_duration=2.0s`, cap = 4.0s). Cap is computed at load time from the tunable `blind_duration` value — never hardcoded. Fast-attacking enemies stay confused longer. | Player notices Blind lasting longer against high-frequency attackers. |
    | **Stormgold** — *Lightning Follow-Through* | A Stormgold cast made within 1.5s of a successful Stun interrupt (one that cancelled an in-progress enemy attack animation — not applied to an idle enemy) deals +30% direct damage. Formula: `follow_through_damage = base_damage × base_damage_modifier × 1.30` — multiplicative, not additive to the modifier. Example: `base_damage=20, stormgold_modifier=1.15 → 20 × 1.15 × 1.30 = 29.9 → round to 30`. | Player casts Stormgold to interrupt, rapidly casts again, sees a larger damage number. |
    | **Deepfrost** — *Shatter* | A Frozen enemy (during the root window) that takes `DamageSource.DIRECT` or `DamageSource.CONTACT` damage receives +25% bonus damage on that hit. Formula: `shatter_damage = base_damage × base_damage_modifier × 1.25` — multiplicative, not additive to the modifier; applied before `elemental_multiplier`. Example: `base_damage=20, deepfrost_modifier=0.80 → round(20 × 0.80 × 1.25) = 20` (Shatter exactly compensates for Deepfrost's low modifier on impact hits). `DamageSource.DOT` ticks do not trigger Shatter — impact only. | Player hits a Frozen enemy with another spell and sees a bonus damage value. |
-   | **Verdant** — *Injury Bloom* | If Regen is active on Fayde when she takes `DamageSource.CONTACT` damage, an additional immediate Regen tick fires at the moment of impact (`regen_tick_magnitude × fayde_max_hp` HP — uses the same tunable value as a normal Regen tick). | Player takes a hit while regenerating and notices an extra green tick. |
+   | **Verdant** — *Injury Bloom* | If Regen is active on the duo when she takes `DamageSource.CONTACT` damage, an additional immediate Regen tick fires at the moment of impact (`regen_tick_magnitude × fayde_max_hp` HP — uses the same tunable value as a normal Regen tick). | Player takes a hit while regenerating and notices an extra green tick. |
 
    *Shatter (Deepfrost) creates the most powerful inter-type synergy: Deepfrost root → any offensive type for +25% bonus. Combination Resolution GDD should acknowledge this pairing explicitly.*
 
@@ -110,7 +110,7 @@ Players do not engage with Prana Data as a system. They engage with Prana types 
    | Blind | Persistent eye-shimmer overlay on enemy for full duration | 50% miss: player needs confirmation before a miss occurs |
    | Stun | Enemy animation freeze-frame for full duration; distinct full-body flash | 0.8s minimum — must be perceptible at the tuning floor |
    | Freeze | Ice crystal overlay; enemy fully stops (root) then shows slowed movement | Deterministic root is self-confirming; overlay reinforces |
-   | Regenerate | Persistent green particle aura on Fayde for full duration | 6 HP / 100 HP = 6% bar movement — imperceptible without aura |
+   | Regenerate | Persistent green particle aura on the duo for full duration | 6 HP / 100 HP = 6% bar movement — imperceptible without aura |
    | Stun — re-application rejected | A brief desaturated pulse on the enemy's existing freeze-frame (distinct from the initial full-body flash) when a second Stun application is ignored. Must be visually distinguishable from a fresh Stun application. *(Consuming GDDs: Status Effects, Combat HUD)* | Without a rejection signal, players conflate "Stun refreshed" with "Stun ignored" — either misconception breaks the mastery arc for Stun timing. |
 
 ---
@@ -203,7 +203,7 @@ The `regen_total` formula is defined as:
 
 | Variable | Symbol | Type | Range | Description |
 |----------|--------|------|-------|-------------|
-| Fayde's max HP | `fayde_max_hp` | int | 1–unbounded | Defined in Health & Damage GDD |
+| The duo's max HP | `fayde_max_hp` | int | 1–unbounded | Defined in Health & Damage GDD |
 | HP per tick | `regen_tick_magnitude` | float | 0.0–1.0 | Fraction of `fayde_max_hp` per tick. **Value: 0.02** |
 | Tick count | `regen_tick_count` | int | 1–N | `floor(regen_duration / regen_tick_rate)` = floor(3.0 / 1.0) = **3**. Same `floor()` rule as Burn. Fractional remainder window discarded. |
 | Tick interval | `regen_tick_rate` | float | seconds | **1.0s** per tick |
@@ -233,13 +233,13 @@ These statuses have no formula — their effect is binary or a fixed value:
 
 - **If Burn is applied to an enemy already burning (Ashfire cast twice on same target)**: The existing Burn timer resets to full duration (2.0s) and `burn_tick_magnitude` stays at 0.08. Burn does NOT stack — a second Burn application refreshes, not multiplies. *Rationale: Stacking would make rapid Ashfire casts trivially dominant and create DoT overflow that is difficult to read visually.*
 
-- **If Regenerate is triggered while Fayde is already regenerating**: The existing Regen timer resets to full duration (3.0s). Regen does NOT stack. Same rule as Burn refresh.
+- **If Regenerate is triggered while the duo is already regenerating**: The existing Regen timer resets to full duration (3.0s). Regen does NOT stack. Same rule as Burn refresh.
 
-- **If Regenerate ticks when Fayde is already at max HP**: The tick does nothing — HP cannot exceed `fayde_max_hp`. No overflow, no carry-forward. Healing a full-HP Fayde is wasted — intentional design pressure to use Verdant opportunistically, not freely.
+- **If Regenerate ticks when the duo is already at max HP**: The tick does nothing — HP cannot exceed `fayde_max_hp`. No overflow, no carry-forward. Healing a full-HP the duo is wasted — intentional design pressure to use Verdant opportunistically, not freely.
 
 - **If two different statuses from two different Prana types are active simultaneously** (e.g., enemy has Freeze from Deepfrost and then gets hit by Ashfire): Both statuses are active simultaneously. Burn and Freeze do not cancel each other. An enemy can be Frozen (rooted + slowed) AND Burning (DoT) at the same time.
 
-- **General Stun concurrency rule**: Stun does **not** pause Burn, Regen, or Blind timers. Only Freeze receives the pause treatment (see below). Rationale: Freeze's pause protects earned lockdown duration — a positioning investment the player should not lose to a Stormgold follow-up. Burn (DoT on enemy), Regen (healing on Fayde), and Blind (evasion window on enemy) all run independently of whether the enemy can act. An enemy that is Stunned while Burning continues to take Burn ticks; Fayde's active Regen continues to tick; an enemy's Blind window counts down regardless of Stun.
+- **General Stun concurrency rule**: Stun does **not** pause Burn, Regen, or Blind timers. Only Freeze receives the pause treatment (see below). Rationale: Freeze's pause protects earned lockdown duration — a positioning investment the player should not lose to a Stormgold follow-up. Burn (DoT on enemy), Regen (healing on the duo), and Blind (evasion window on enemy) all run independently of whether the enemy can act. An enemy that is Stunned while Burning continues to take Burn ticks; the duo's active Regen continues to tick; an enemy's Blind window counts down regardless of Stun.
 
 - **If Stun is applied to an already-Frozen enemy**: Stun takes precedence for its configured duration (canonical: **0.8s**) — the enemy is stunned (interrupting any action). The Freeze timer **pauses** during the Stun window; it does not count down. When Stun expires, Freeze resumes with its full remaining duration intact. *Rationale: Pause model is fair to the player — they do not lose Freeze time they earned.*
 
@@ -253,7 +253,7 @@ These statuses have no formula — their effect is binary or a fixed value:
 
 - **If `base_damage` is 0 or negative when `burn_total` is calculated**: Burn total = 0. No negative DoT. `base_damage` is expected to be a positive float by contract from Spell Casting & Effects — clamp behavior at 0 is a safety fallback, not an intended game state.
 
-- **If `fayde_max_hp` is 0 when `regen_total` is calculated**: Regen total = 0. This is a game-ending condition (Fayde dead or HP system error) — handle at the Health & Damage level, not Prana Data. Prana Data formula output of 0 is safe behavior.
+- **If `fayde_max_hp` is 0 when `regen_total` is calculated**: Regen total = 0. This is a game-ending condition (the duo dead or HP system error) — handle at the Health & Damage level, not Prana Data. Prana Data formula output of 0 is safe behavior.
 
 - **If Freeze is applied to an enemy while Stun is already active**: The Freeze timer does NOT begin counting down during the remaining Stun window — Freeze enters the paused state from the moment of application. When Stun expires, Freeze resumes from its full configured duration (2.0s). The remaining Stun time consumes no Freeze duration. This is the symmetric complement of the Stun-onto-Frozen rule; regardless of application order, Stun and Freeze do not overlap their active time windows.
 
@@ -277,7 +277,7 @@ These statuses have no formula — their effect is binary or a fixed value:
 
 - **Deepening Doubt — extension cap enforcement**: The Blind timer cap is `deepening_doubt_cap = 2.0 × blind_duration` — computed at load time from the tunable `blind_duration` value, never hardcoded. At canonical `blind_duration=2.0s`, cap = 4.0s. A very fast-attacking enemy that misses 10 times cannot push Blind beyond the cap. Cap is enforced per-tick: `new_timer = min(current_timer + deepening_doubt_extension, deepening_doubt_cap)`.
 
-- **Injury Bloom — i-frame interaction**: If Fayde takes `DamageSource.CONTACT` damage during an active i-frame window (`fayde_iframe_duration = 0.5s`), the i-frame absorbs the hit and Fayde's HP does not change. In this case, **Injury Bloom does NOT fire** — Bloom triggers only when real CONTACT damage is applied (i.e., when `final_damage > 0` is applied to Fayde's HP). An i-framed hit is not a damage event for Bloom purposes. This prevents swarm scenarios (multiple simultaneous hits during one i-frame) from generating multiple free healing ticks.
+- **Injury Bloom — i-frame interaction**: If the duo takes `DamageSource.CONTACT` damage during an active i-frame window (`fayde_iframe_duration = 0.5s`), the i-frame absorbs the hit and the duo's HP does not change. In this case, **Injury Bloom does NOT fire** — Bloom triggers only when real CONTACT damage is applied (i.e., when `final_damage > 0` is applied to the duo's HP). An i-framed hit is not a damage event for Bloom purposes. This prevents swarm scenarios (multiple simultaneous hits during one i-frame) from generating multiple free healing ticks.
 
 - **Lightning Follow-Through — window replacement on second interrupt**: If a second qualifying interrupt (a Stormgold Stun that cancels an in-progress enemy attack animation) occurs while a Follow-Through window is already open, the window timer **resets to 1.5s** — the new interrupt replaces the previous window, it does not stack a new one. Multiple simultaneous interrupts in a multi-enemy wave do not accumulate into a permanent +30% bonus.
 
@@ -373,10 +373,10 @@ All values listed here should be designer-adjustable without code changes — st
 | `blind_duration` | 2.0s | 1.0–3.0s | Voidblue provides sustained near-evasion throughout a wave | Too brief to use strategically around enemy attacks |
 | `deepening_doubt_extension` | 0.5s | 0.25–1.0s | Extension reaches cap in fewer misses — Deepening Doubt becomes trivially powerful against fast attackers | Extension is too small to notice against any but the highest-frequency attackers; Deepening Doubt depth behavior becomes inaccessible |
 | `stun_duration` | 0.8s | 0.8–1.0s | Stun approaches guaranteed lockdown for slow wind-up bosses | Below 0.8s is perceptibility-prohibited: the visual freeze-frame (Core Rule 8) requires at least 0.8s to register in real-time action. *Minimum raised from 0.25s to 0.8s after design-review — perceptibility is a design constraint, not a tuning preference.* |
-| `freeze_duration` | 2.0s | 1.5–3.0s | Deepfrost trivializes positioning — enemies never reach Fayde | Freeze barely disrupts enemy paths — root+slow loses strategic value |
+| `freeze_duration` | 2.0s | 1.5–3.0s | Deepfrost trivializes positioning — enemies never reach the active brother | Freeze barely disrupts enemy paths — root+slow loses strategic value |
 | `freeze_slow_pct` | 50% | 30–70% | Near-complete speed reduction; effectively extends root duration | Enemies move nearly at full speed — Freeze root becomes the only meaningful effect |
 | `regen_tick_magnitude` | 0.02 | 0.01–0.05 | Verdant can sustain through moderate hits — removes positioning pressure | Regen covers only 1–3% HP total — irrelevant to run survival |
-| `regen_duration` | 3.0s | 2.0–5.0s | Verdant provides sustained healing between casts — sustain becomes passive | Too brief to be worth slotting unless Fayde is taking hits in rapid succession |
+| `regen_duration` | 3.0s | 2.0–5.0s | Verdant provides sustained healing between casts — sustain becomes passive | Too brief to be worth slotting unless the duo is taking hits in rapid succession |
 
 | `burn_contagion_range` | 200px | 100–400px | Contagion chains cascade across entire waves — Ashfire clears clustered enemies for free | Contagion almost never triggers — Ashfire depth behavior is effectively inaccessible in normal wave compositions |
 
@@ -484,7 +484,7 @@ GIVEN `base_damage` = 20 and the active type is Verdant (ID 4), WHEN direct hit 
 GIVEN `fayde_max_hp` = 100, `regen_tick_magnitude` = 0.02, `regen_tick_count` = 3, WHEN `regen_total` is computed as `fayde_max_hp × regen_tick_magnitude × regen_tick_count`, THEN the result equals 6.0. No player character, no timer, no SceneTree required. (Timer behavior is covered by AC-PD-17.)
 
 **AC-PD-17 — Regen ticks at 1.0s intervals** *(Integration — requires running SceneTree timer)*
-GIVEN Regen is applied to Fayde at T=0 with `fayde_max_hp` = 100, WHEN time advances and tick events are recorded, THEN HP restore events occur at T=1.0s, T=2.0s, and T=3.0s — exactly three events, none earlier than 1.0s apart.
+GIVEN Regen is applied to the duo at T=0 with `fayde_max_hp` = 100, WHEN time advances and tick events are recorded, THEN HP restore events occur at T=1.0s, T=2.0s, and T=3.0s — exactly three events, none earlier than 1.0s apart.
 
 **AC-PD-18 — Blind applies 50% miss chance per attack** *(Advisory — not in CI BLOCKING gate; see Open Question #1)*
 GIVEN an enemy has Blind applied, WHEN that enemy makes 1,000 attacks during the Blind window, THEN the number of misses falls between **469 and 531** — the miss check is per-attack (coin flip), not periodic. *(95% confidence interval for p=0.5, n=1000; the prior 450–550 range was a 68% CI and would produce excessive false CI failures.)*
@@ -513,10 +513,10 @@ GIVEN the catalog is loaded with IDs 0–4, WHEN any system requests ID 5 (or an
 GIVEN an enemy has Burn active with 1.0s remaining, WHEN an Ashfire cast applies Burn again, THEN the Burn timer resets to 2.0s, `burn_tick_magnitude` remains 0.08, and the enemy does not receive more burn damage per tick than the single-stack value.
 
 **AC-PD-25 — Regen refresh on re-application (no stack)** *(Integration — requires running SceneTree timer)*
-GIVEN Fayde has Regen active with 1.0s remaining, WHEN a Verdant cast applies Regen again, THEN the Regen timer resets to 3.0s, the stored `regen_tick_magnitude` fraction remains **0.02** (the fraction of `fayde_max_hp` — not the computed absolute value `0.02 × fayde_max_hp`), and each tick continues to heal exactly `0.02 × fayde_max_hp` HP — Fayde does not receive more healing per tick than the single-stack value.
+GIVEN the duo has Regen active with 1.0s remaining, WHEN a Verdant cast applies Regen again, THEN the Regen timer resets to 3.0s, the stored `regen_tick_magnitude` fraction remains **0.02** (the fraction of `fayde_max_hp` — not the computed absolute value `0.02 × fayde_max_hp`), and each tick continues to heal exactly `0.02 × fayde_max_hp` HP — the duo does not receive more healing per tick than the single-stack value.
 
 **AC-PD-26 — Regen tick at max HP is a no-op**
-GIVEN Fayde is at exactly `fayde_max_hp` with Regen active, WHEN a Regen tick fires, THEN Fayde's HP does not exceed `fayde_max_hp` — the value before and after the tick is identical, no overflow is stored or carried forward.
+GIVEN the duo is at exactly `fayde_max_hp` with Regen active, WHEN a Regen tick fires, THEN the duo's HP does not exceed `fayde_max_hp` — the value before and after the tick is identical, no overflow is stored or carried forward.
 
 **AC-PD-27 — Burn and Freeze coexist independently** *(Integration)*
 GIVEN an enemy has Freeze active with **0.5s already elapsed** (Freeze timer reads **1.5s ± 0.05s** remaining), WHEN an Ashfire cast hits the same enemy and applies Burn in the same frame, THEN: (1) both Freeze and Burn are active simultaneously; (2) the Freeze timer still reads **1.5s ± 0.05s** — unchanged by the Burn application; (3) both effects resolve independently until their respective durations expire.
@@ -534,13 +534,13 @@ GIVEN an enemy has Blind applied at T=0 and makes zero attacks between T=0 and T
 GIVEN `base_damage` = 0, WHEN Ashfire applies Burn, THEN `burn_total` = 0 — each tick deals 0 damage, no negative damage is applied, and no error is thrown.
 
 **AC-PD-32 — regen_total is 0 when fayde_max_hp is 0**
-GIVEN `fayde_max_hp` = 0, WHEN Verdant applies Regen, THEN `regen_total` = 0 — each tick heals 0 HP, Fayde's HP does not change, and no error is thrown.
+GIVEN `fayde_max_hp` = 0, WHEN Verdant applies Regen, THEN `regen_total` = 0 — each tick heals 0 HP, the duo's HP does not change, and no error is thrown.
 
 **AC-PD-33a — Stun does not pause Burn timer** *(Integration)*
 GIVEN an enemy has Burn active with 2.0s remaining, WHEN Stun is applied at T=0, THEN at Stun expiry the Burn timer has counted down by the Stun duration (within ±0.05s) and at least one Burn tick has fired during the Stun window — Stun did not pause or skip the Burn timer.
 
-**AC-PD-33b — Stun applied to an enemy does not pause Fayde's Regen timer** *(Integration)*
-GIVEN Fayde has Regen active with **T_remaining ≥ 1.0s** (guarantees at least one 1.0s-interval Regen tick fires within any Stun window), WHEN **an enemy** is Stunned for the canonical 0.8s duration (Stun applies to enemies, not to Fayde), THEN Fayde's Regen timer continues counting down at its normal rate and at least one Regen tick fires during the Stun window — Stun applied to an enemy does not affect Fayde's active timers.
+**AC-PD-33b — Stun applied to an enemy does not pause the duo's Regen timer** *(Integration)*
+GIVEN the duo has Regen active with **T_remaining ≥ 1.0s** (guarantees at least one 1.0s-interval Regen tick fires within any Stun window), WHEN **an enemy** is Stunned for the canonical 0.8s duration (Stun applies to enemies, not to the duo), THEN the duo's Regen timer continues counting down at its normal rate and at least one Regen tick fires during the Stun window — Stun applied to an enemy does not affect the duo's active timers.
 
 **AC-PD-33c — Stun does not pause Blind timer** *(Integration)*
 GIVEN an enemy has both Stun and Blind active simultaneously, WHEN Stun expires, THEN the Blind timer has counted down by the Stun duration (within ±0.05s) — Blind was not paused during the Stun window.
@@ -586,13 +586,13 @@ GIVEN Stormgold applied Stun that cancelled an in-progress enemy attack animatio
 GIVEN an enemy has Freeze active (root window), WHEN a spell with `DamageSource.DIRECT` and `base_damage = 20`, `base_damage_modifier = 1.0` (test uses modifier=1.0 to isolate the Shatter bonus) hits the enemy, THEN applied damage = `round(20 × 1.0 × 1.25) = 25`. A subsequent `DamageSource.DOT` tick on the same Frozen enemy does NOT include the 25% bonus. Deepfrost-modifier case (modifier=0.80): `round(20 × 0.80 × 1.25) = 20` — Shatter exactly compensates for Deepfrost's low modifier on impact hits, confirming multiplicative application. *(Note: `base_damage_modifier` here refers to the Prana type's modifier from the catalog — `1.0` is used in the primary fixture to isolate the Shatter multiplier from type-specific values; the `0.80` case confirms the formula is `base_damage × base_damage_modifier × 1.25`, not `base_damage × (base_damage_modifier + 0.25)`.)*
 
 **AC-PD-44 — Injury Bloom: extra Regen tick fires immediately on contact damage during Regen** *(Integration)*
-GIVEN Fayde has Regen active with **T_remaining = 1.5s** remaining, WHEN Fayde takes `DamageSource.CONTACT` damage (real damage applied, not i-frame blocked), THEN: (1) exactly one additional Regen tick fires **in the same physics frame that `final_damage` is applied to Fayde's HP** — not deferred to the next frame; the tick heals `regen_tick_magnitude × fayde_max_hp` HP; (2) the Regen timer reads **1.5s ± 0.05s** after the extra tick fires — it was not reset to 3.0s.
+GIVEN the duo has Regen active with **T_remaining = 1.5s** remaining, WHEN the duo takes `DamageSource.CONTACT` damage (real damage applied, not i-frame blocked), THEN: (1) exactly one additional Regen tick fires **in the same physics frame that `final_damage` is applied to the duo's HP** — not deferred to the next frame; the tick heals `regen_tick_magnitude × fayde_max_hp` HP; (2) the Regen timer reads **1.5s ± 0.05s** after the extra tick fires — it was not reset to 3.0s.
 
 **AC-PD-44b — Injury Bloom does NOT fire on i-framed CONTACT hits** *(Integration)*
-GIVEN Fayde has Regen active AND Fayde is within the `fayde_iframe_duration` (0.5s) window after a previous hit, WHEN a second `DamageSource.CONTACT` hit arrives during the i-frame, THEN no extra `regen_tick_magnitude × fayde_max_hp` Regen tick fires — the i-frame absorbed the hit and Fayde's HP did not change. The Regen timer is unaffected.
+GIVEN the duo has Regen active AND the duo is within the `fayde_iframe_duration` (0.5s) window after a previous hit, WHEN a second `DamageSource.CONTACT` hit arrives during the i-frame, THEN no extra `regen_tick_magnitude × fayde_max_hp` Regen tick fires — the i-frame absorbed the hit and the duo's HP did not change. The Regen timer is unaffected.
 
-**AC-PD-44c — Injury Bloom does NOT fire on DamageSource.DIRECT hits to Fayde** *(Integration)*
-GIVEN Fayde has Regen active, WHEN Fayde takes `DamageSource.DIRECT` damage (e.g., a ranged spell impact), THEN no extra Regen tick fires — Injury Bloom triggers only on `DamageSource.CONTACT`, not all incoming damage types.
+**AC-PD-44c — Injury Bloom does NOT fire on DamageSource.DIRECT hits to the duo** *(Integration)*
+GIVEN the duo has Regen active, WHEN the duo takes `DamageSource.DIRECT` damage (e.g., a ranged spell impact), THEN no extra Regen tick fires — Injury Bloom triggers only on `DamageSource.CONTACT`, not all incoming damage types.
 
 ---
 
@@ -611,7 +611,7 @@ These risks are documented so downstream system authors inherit the awareness ra
 | **Deepfrost + Ashfire is the implied dominant two-type pairing** (root + DoT). If no encounter type punishes this combination, it becomes generically optimal, reducing run-to-run variety and undermining Pillar 1. | Combination Resolution should acknowledge this pairing and either provide diminishing returns or create enemy types that resist it. | Combination Resolution GDD, Boss Encounter GDD |
 | **Pillar 2 depth ("Power is Earned Through Understanding") now rests entirely on Combination Resolution.** The second-layer conditional behaviors (Core Rule 7) add a depth gradient at the per-type level. With Elemental Affiliation & Weakness removed (2026-06-21), emergent depth depends solely on Combination Resolution + positioning/status setup. If Combination Resolution's interaction space is shallow, the pillar's promise is at risk — there is no longer an affiliation-matching layer to fall back on. | Combination Resolution GDD is now load-bearing for ALL of Pillar 2 depth. | Combination Resolution GDD |
 | **Verdant viability requires a specific encounter archetype.** At nominal tuning, Verdant has negative expected HP value against the Charger (6 HP healed vs. ~10 HP expected exposure from extended kill time). Verdant is viable only when cumulative encounter chip damage exceeds approximately **15 HP per 10-second window** — sustained attrition, not burst. Without this encounter archetype, Verdant is a trap pick in most wave compositions. | Encounter design must include at least one wave archetype that creates meaningful attrition pressure. If Combination Resolution combo bonuses for Verdant are insufficient to close the gap, Verdant's modifier or regen magnitude must be revisited. | Wave / Encounter System GDD, Combination Resolution GDD |
-| **Ashfire dominant-strategy risk — pre-implementation gate — RESOLVED 2026-05-31.** ~~The Status Effects implementation sprint is blocked on this decision.~~ **Gate closed:** Charger (RUSHER/gap-closer, highest-threat FP unit) affiliation changed from Fire/Ashfire → Ice/Deepfrost. Charger is a natural anti-Ashfire archetype: Burn DoT is wasted against a gap-closer that reaches Fayde in <2s; Deepfrost Freeze lockdown and Stormgold Stun are strategically superior. All-Ashfire is no longer the discovered optimal in the FP arena. Verdant remains a FP gap (no enemy target), but only 1 of 5 types lacks coverage. Status Effects sprint now unblocked. | **RESOLVED** — Wave / Encounter System GDD updated 2026-05-31 |
+| **Ashfire dominant-strategy risk — pre-implementation gate — RESOLVED 2026-05-31.** ~~The Status Effects implementation sprint is blocked on this decision.~~ **Gate closed:** Charger (RUSHER/gap-closer, highest-threat FP unit) affiliation changed from Fire/Ashfire → Ice/Deepfrost. Charger is a natural anti-Ashfire archetype: Burn DoT is wasted against a gap-closer that reaches the active brother in <2s; Deepfrost Freeze lockdown and Stormgold Stun are strategically superior. All-Ashfire is no longer the discovered optimal in the FP arena. Verdant remains a FP gap (no enemy target), but only 1 of 5 types lacks coverage. Status Effects sprint now unblocked. | **RESOLVED** — Wave / Encounter System GDD updated 2026-05-31 |
 
 ## Open Questions
 

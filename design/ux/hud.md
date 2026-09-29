@@ -31,8 +31,8 @@ Every piece of information the HUD must communicate during an active run, drawn 
 
 | # | Information | Source GDD |
 |---|------------|-----------|
-| 1 | Fayde's HP bar fill (current / max) | Health & Damage, Combat HUD |
-| 2 | Fayde's HP numeric readout (`72 / 100`) | Health & Damage, Combat HUD |
+| 1 | The duo's HP bar fill (current / max) | Health & Damage, Combat HUD |
+| 2 | The duo's HP numeric readout (`72 / 100`) | Health & Damage, Combat HUD |
 | 3 | HP zone state treatment (FULL / CAREFUL / DESPERATE) | Health & Damage, Combat HUD |
 | 4 | Prana grid arrangement — 3×3 committed state | Prana Grid, Combat HUD |
 | 5 | Floating damage numbers (amount + Prana color) | Combat HUD |
@@ -40,7 +40,7 @@ Every piece of information the HUD must communicate during an active run, drawn 
 | 7 | Prana Type Selector — available types for drag/placement | Prana Grid |
 | 8 | Confirm / Clear All action buttons | Prana Grid |
 | 9 | Wave Counter (`Wave 2 / 5`) | Art Bible §7 |
-| 11 | Active status effects on Fayde — icon + duration | Status Effects |
+| 11 | Active status effects on the duo — icon + duration | Status Effects |
 | 12 | Memo companion hints | Game Concept (Core Loop) |
 
 ### Categorization
@@ -61,7 +61,7 @@ Every piece of information the HUD must communicate during an active run, drawn 
 | 6 | Cast chain dots | **Contextual** | Combat Phase only, and only when a spell has been cached by SC&E |
 | 7 | Prana Type Selector + action buttons | **Contextual** | Preparation Phase only — hidden when `combat_started` fires |
 | 8 | Wave Counter | **Contextual** | Active run only — visible in top-right from `run_started` to `run_ended`; hidden on Main Menu / Death Screen / Run Summary |
-| 10 | Active status effects | **Contextual** | Visible only when ≥1 status effects are active on Fayde; hidden when none are active |
+| 10 | Active status effects | **Contextual** | Visible only when ≥1 status effects are active on the duo; hidden when none are active |
 | 11 | Memo hints | **On Demand** | Screen-edge notification (IP-12) — auto-surfaced by game event, auto-dismisses; never blocks gameplay |
 
 **Philosophy check:** The Must Show list has 3 elements (HP bar, HP numeric, Prana grid arrangement). This is consistent with the "minimal but present" philosophy — the game world owns ≥80% of screen area during Combat Phase.
@@ -108,7 +108,7 @@ COMBAT PHASE
 |------|------|----------|-------------|---------------------|
 | A | **Top-left** | HP bar + numeric readout + chain dots | Always during active run | ≤288px × ≤86px |
 | B | **Top-right** | Wave Counter (`Wave 2 / 5`) | Active run — from `run_started` to run end (MVP scope) | ~160px × ~40px |
-| C | **Bottom-left** | Active status effect icons + duration rings | Visible when ≥1 effect active on Fayde (MVP scope) | ~96px × ~24px per row; max 4 icons |
+| C | **Bottom-left** | Active status effect icons + duration rings | Visible when ≥1 effect active on the duo (MVP scope) | ~96px × ~24px per row; max 4 icons |
 | D | **Bottom-right** | Type Selector (left, Prep only) + Prana Grid (always) | Grid always; Type Selector + Confirm/Clear buttons collapse on `combat_started` | Grid: ≤216×216px; Selector: ~40px wide |
 | E | **World overlay** | Floating damage numbers | Combat Phase — transient, world-space, auto-expire after 0.8s | Per-label ~40×20px; pool cap = 12 |
 
@@ -187,7 +187,7 @@ The zone occupies ≤288×86px anchored 8px from the top-left screen edges. Thre
 - Each icon: Prana type's silhouette shape (per Art Bible §4.5 icon set) centered on a Prana-color background fill.
 - Duration ring: a radial fill border draining clockwise around the icon. Full ring = freshly applied; empty ring = expiring.
 - Icons appear in application order (leftmost = most recent). When an effect expires, its icon removes. At First Playable scope, remaining icons do not reposition (no stack-shift animation — avoids visual noise).
-- Visible only when ≥1 effects are active on Fayde. Hidden when no effects are active.
+- Visible only when ≥1 effects are active on the duo. Hidden when no effects are active.
 - **Deferred to MVP implementation.** Design is complete; implementation awaits Status Effects system integration.
 
 ---
@@ -251,7 +251,7 @@ The game's primary decision surface. ≤216×216px for the grid; Type Selector (
 - **Color encoding:**
   - Enemy target + same-frame elemental signal: Prana type color from `PranaCatalog.get_type(prana_type_id).color`
   - Enemy target + no elemental signal: white `#FFFFFF` (neutral hit)
-  - Fayde target (CONTACT damage): grey `#AAAAAA`
+  - The duo target (CONTACT damage): grey `#AAAAAA`
 - **Animation:** float upward 32px over 0.8s (position: TRANS_LINEAR), fade alpha 1.0→0.0 from 0.5s to 0.8s (alpha: TRANS_CUBIC / EASE_IN). `queue_free()` on tween completion.
 - **Spawn jitter:** ±8px random X offset per label — prevents stacking on simultaneous hits.
 - **Pool cap:** 12 concurrent labels. Oldest label freed before spawning if cap is reached.
@@ -359,7 +359,7 @@ WHEN ≤100ms have elapsed
 THEN HP bar node is visible; bar fill fraction equals `FAYDE_MAX_HP / FAYDE_MAX_HP` (1.0 = full)
 
 **AC-HUD-S02 [U]** — Zone CAREFUL: amber color fires at correct threshold (instantaneous)
-GIVEN Fayde at HP 45 (FULL zone)
+GIVEN the duo at HP 45 (FULL zone)
 WHEN `damage_taken` reduces HP to 38 (crossing the 40% CAREFUL threshold)
 THEN HP bar fill color == `#E61A0D` (health red) AND numeric label color == `#FFA500` in the same frame — no transition delay
 

@@ -20,7 +20,7 @@ Two items from the juice review:
    sound. Now a rune circle draws itself on the floor at the spawn point and the enemy
    rises out of it.
 2. **Light 2D on the floor (item 7).** The floor was evenly bright everywhere. It is
-   now lit around Fayde, spells, spawns and some enemy bullets. The combat dim that
+   now lit around the active brother, spells, spawns and some enemy bullets. The combat dim that
    darkens the rest of the floor is ADR-0042 (`IsometricRoom.set_combat_dim`, PR #94);
    this ADR only adds the light on top of it.
 
@@ -74,8 +74,8 @@ Two items from the juice review:
   ambience. Lights add on top of both.
 - Light sources, all additive `PointLight2D` with a shared banded radial
   `GradientTexture2D` (constant interpolation, so the falloff reads as pixel steps):
-  - Fayde: one light following the player, art bible E7 Warm Lantern `#8E7358`.
-  - Pulses: `cast_started` (at Fayde), `spell_hit_element` (at the target),
+  - The duo: one light following the player, art bible E7 Warm Lantern `#8E7358`.
+  - Pulses: `cast_started` (at the duo), `spell_hit_element` (at the target),
     `cascade_burst` and `special_fired` (at the burst, covering its radius), and a spawn
     glyph pulse from `WaveManager`. Prana colours come from `PranaCatalog`. A pool of
     `pulse_pool_size` (6) lights; when all are busy the oldest is reused.

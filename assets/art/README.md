@@ -16,7 +16,7 @@ godot --headless --path . -s tools/art-gen/generate_character_sprites.gd
 
 Every sheet is **4 columns × 3 rows**, one sheet pixel = one world pixel:
 
-| Row | Fayde | Enemies | Played |
+| Row | Ayden / Faith | Enemies | Played |
 |-----|-------|---------|--------|
 | 0 | idle | idle | loops at 6 fps |
 | 1 | move | move | loops at 6 fps while the parent moves |
@@ -27,7 +27,8 @@ centre of each frame.
 
 | Sheet | Frame | Used by |
 |-------|-------|---------|
-| `fayde.png` + `fayde_glow.png` | 20×32 | `PlayerController.tscn`, `MenuBackdrop` (glow is white, tinted with the active Prana) |
+| `ayden.png` / `faith.png` + `_glow`, `_casts`, `_crumple` | 20×32 | The two brothers (ADR-0058), swapped on the shared player rig by `DuoLooks`; `MenuBackdrop` shows both (glow is white, tinted with the active Prana) |
+| `fayde*.png` | 20×32 | Pre-duo single protagonist; still the rig's fallback sheet in `PlayerController.tscn` |
 | `drifter`, `charger`, `cluster`, `weaver`, `mortar`, `rifter`, `sniper`, `spinner`, `splitter` | 14–26 px a side | `assets/data/enemy_types/enemy_*.tres` → `sprite_sheet` |
 | `vault_sentinel.png` | 96×96 | Floor 1 boss |
 | `warped_warden.png` | 96×96 | Floor 2 boss |
@@ -35,11 +36,11 @@ centre of each frame.
 
 `PixelCharacter` (`src/visual/pixel_character.gd`) plays the sheet. Enemies set
 `sprite_pixel_scale = 1` in their `EnemyType`; the node counter-scales for
-`base_scale`, so bosses keep Fayde's pixel size however large their hitbox is.
+`base_scale`, so bosses keep the active brother's pixel size however large their hitbox is.
 
 ### Changing a character
 
-- Edit the design in the generator (Fayde is an ASCII map; enemies and bosses are
+- Edit the design in the generator (Ayden and Faith are ASCII maps; enemies and bosses are
   shape code using `pixel_painter.gd`) and re-run it, then run
   `godot --headless --import` so the new PNGs are imported.
 - Or paint over a PNG in Aseprite. Keep the 4×3 layout, the frame size, a 1 px

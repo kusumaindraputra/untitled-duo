@@ -79,7 +79,7 @@ A system is a **scene node** if any of the following is true:
 
 | Node | Why Scene-Local |
 |------|-----------------|
-| PlayerController | Fayde's per-arena instance; freed on room change |
+| PlayerController | The duo's per-arena instance; freed on room change |
 | PranaGrid | UI node bound to arena scene; state resets each run |
 | EnemyInstance | Per-enemy node; spawned and freed within a wave |
 | WaveManager | Encounter lifecycle tied to the arena scene |

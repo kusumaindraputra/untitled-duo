@@ -189,7 +189,7 @@ This makes SC&E the single stat broker for the wave. No system reads `aggregate_
 - **17f. Spatial language.** The core's cardinal cross (slots 1/3/5/7) is the Cascade engine; the corners (slots 0/2/6/8) never feed the Cascade — they serve primary-tier and ring reactions. Positioning intent is explicit: surround the core to flavor it, fill corners to support it.
 - **17g. Preview.** The prep preview (Rule 16f) must also surface the armed Cascade (lead + modifier icons) live, computed via the same stateless path as reactions.
 
-**18. Two hands (ADR-0057, 2026-09-27).** Fayde is made from two brothers: Ayden, raw power, and Faith, precise control. The grid's **left column (slots 0/3/6) is Ayden's hand** and its **right column (slots 2/5/8) is Faith's hand**. The middle column (1/4/7) belongs to neither. Any filled slot counts, whatever its type or level.
+**18. Two hands (ADR-0057, 2026-09-27).** The duo is made from two brothers: Ayden, raw power, and Faith, precise control. The grid's **left column (slots 0/3/6) is Ayden's hand** and its **right column (slots 2/5/8) is Faith's hand**. The middle column (1/4/7) belongs to neither. Any filled slot counts, whatever its type or level.
 
 - **18a. Ayden's hand.** `hand_power_mult = 1 + power_per_prana × A`, where `A` is the filled Ayden slots (0–3). SC&E multiplies every primary chain hit by it (Step 8d, after Perfect). Reaction and Cascade bonus hits and the Special are not scaled.
 - **18b. Faith's hand.** `hand_control_mult = 1 + control_per_prana × F`, where `F` is the filled Faith slots (0–3). SC&E multiplies the duration of the core Prana's own status (Burn, Blind, Stun, Freeze, Regenerate) by it. Reaction-applied statuses are not scaled.
@@ -340,15 +340,15 @@ Steps 4–7 are independent multipliers applied sequentially. All four can co-oc
 
 #### Type 0 — Ashfire (base_damage_modifier = 1.25, base_status = Burn)
 
-Thematic identity: **melee dance combo** — Avatar Fire Nation martial arts reference. Fluid spinning strikes at close range; each hit in the chain is a continuation of a dance sequence. Fayde must close to melee distance (`ASHFIRE_MELEE_RANGE = 80px`) to land the combo. The T3 eruption radiates outward from **Fayde's position** (spinning 360°), not from the target.
+Thematic identity: **melee dance combo** — Avatar Fire Nation martial arts reference. Fluid spinning strikes at close range; each hit in the chain is a continuation of a dance sequence. The duo must close to melee distance (`ASHFIRE_MELEE_RANGE = 80px`) to land the combo. The T3 eruption radiates outward from **The active brother's position** (spinning 360°), not from the target.
 
 | Tier | Combo Attacks | Attack Sequence | Status per Hit | Example total (base_damage=20) |
 |------|--------------|-----------------|----------------|-------------------------------|
 | **T1** | 1 | Spinning fire strike: `1.00×` — close-range melee spin directed at target | Burn (2.0s) on hit | `round(20 × 1.25 × 1.00)` = **25** |
 | **T2** | 2 | First: Fire palm strike `1.00×`; Second: Sweeping fire kick `1.25×` — flowing 2-hit dance sequence | Burn on first; Burn refreshes on second | First = **25**, Second = `round(20 × 1.25 × 1.25)` = **31**; total = **56** |
-| **T3** | 3 | First: Fire palm strike `1.00×`; Second: Sweeping fire kick `1.25×`; Third: Spinning 360° eruption `1.50×` — Fayde pivots and releases fire in all directions (`AREA_AROUND_FAYDE`, radius `ASHFIRE_T3_AOE_RADIUS = 80px`) | Burn on each hit (refresh); Burn applied to all secondary eruption targets at full magnitude | First = **25**, Second = **31**, Third = `round(20 × 1.25 × 1.50)` = **38** per target in radius; total single-target = **94** |
+| **T3** | 3 | First: Fire palm strike `1.00×`; Second: Sweeping fire kick `1.25×`; Third: Spinning 360° eruption `1.50×` — the duo pivots and releases fire in all directions (`AREA_AROUND_FAYDE`, radius `ASHFIRE_T3_AOE_RADIUS = 80px`) | Burn on each hit (refresh); Burn applied to all secondary eruption targets at full magnitude | First = **25**, Second = **31**, Third = `round(20 × 1.25 × 1.50)` = **38** per target in radius; total single-target = **94** |
 
-**T3 eruption targeting**: `AREA_AROUND_FAYDE` — all enemies within `ASHFIRE_T3_AOE_RADIUS` of **Fayde's position** at the moment of the spinning pivot. This is distinct from `AREA_AT_TARGET` (centered on the primary target's position). The dancer is the origin. `ASHFIRE_T3_AOE_RADIUS` and `ASHFIRE_MELEE_RANGE` are tuning knobs defined in the SC&E GDD (system #3).
+**T3 eruption targeting**: `AREA_AROUND_FAYDE` — all enemies within `ASHFIRE_T3_AOE_RADIUS` of **The active brother's position** at the moment of the spinning pivot. This is distinct from `AREA_AT_TARGET` (centered on the primary target's position). The dancer is the origin. `ASHFIRE_T3_AOE_RADIUS` and `ASHFIRE_MELEE_RANGE` are tuning knobs defined in the SC&E GDD (system #3).
 
 ---
 
@@ -359,7 +359,7 @@ Thematic identity: shadow pressure, control escalation, attack suppression rathe
 | Tier | Combo Attacks | Attack Sequence | Status per Hit | Example total (base_damage=20) |
 |------|--------------|-----------------|----------------|-------------------------------|
 | **T1** | 1 | Single reaching strike: `1.00×` | Blind (2.0s) on hit | `round(20 × 0.90 × 1.00)` = **18** |
-| **T2** | 2 | First: Strike `1.00×`; Second: Shadow pull `1.10×` — draws nearest non-targeted enemy 60px closer to Fayde | Blind on first; Stagger (0.3s, interrupts movement transitions — does not cancel attack animations, does not open Follow-Through window) on second | First = **18**, Second = `round(20 × 0.90 × 1.10)` = **20**; total = **38** |
+| **T2** | 2 | First: Strike `1.00×`; Second: Shadow pull `1.10×` — draws nearest non-targeted enemy 60px closer to the duo | Blind on first; Stagger (0.3s, interrupts movement transitions — does not cancel attack animations, does not open Follow-Through window) on second | First = **18**, Second = `round(20 × 0.90 × 1.10)` = **20**; total = **38** |
 | **T3** | 3 | First: Strike `1.00×`; Second: Pull `1.10×`; Third: Void collapse `1.30×` — applies Blind to ALL enemies currently on screen, not just primary target | Blind on first; Stagger on second; mass Blind on third | First = **18**, Second = **20**, Third = `round(20 × 0.90 × 1.30)` = **23**; total = **61** |
 
 Stagger is a new status exclusive to Voidblue — distinct from Stun. It is not registered in Prana Data. Duration tracking is owned by `StatusEffectsManager` (stub at MVP — duration tracking + movement-interrupt via `apply_stun`); see Status Effects GDD.
@@ -387,7 +387,7 @@ Thematic identity: patience and control. Lowest direct damage; highest setup val
 | Tier | Combo Attacks | Attack Sequence | Status per Hit | Example total (base_damage=20) |
 |------|--------------|-----------------|----------------|-------------------------------|
 | **T1** | 1 | Slow two-hand push: `1.00×` | Freeze (2.0s root + 50% slow) on hit | `round(20 × 0.80 × 1.00)` = **16** |
-| **T2** | 2 | First: Push `1.00×` (primary target); Second: Frost line `0.80×` — hits all enemies in a 100px line extending from Fayde through the primary target | Freeze on first (primary target); Freeze on second (all line targets) | First = **16**, Second = `round(20 × 0.80 × 0.80)` = **13** per line target; primary chain total = **29** |
+| **T2** | 2 | First: Push `1.00×` (primary target); Second: Frost line `0.80×` — hits all enemies in a 100px line extending from the active brother through the primary target | Freeze on first (primary target); Freeze on second (all line targets) | First = **16**, Second = `round(20 × 0.80 × 0.80)` = **13** per line target; primary chain total = **29** |
 | **T3** | 3 | First: Push `1.00×`; Second: Frost line `0.80×`; Third: Glacial field — **0 direct damage** — creates a 120px radius slow zone at primary target position for `GLACIAL_FIELD_DURATION = 3.0s`; any enemy entering the zone has movement speed reduced by `FREEZE_SLOW_PCT = 50%` (slow only, no root, does not trigger Shatter) | Freeze on first; Freeze on second; slow zone on third | First = **16**, Second = **13** per line target; Third = 0 damage + 3.0s slow aura |
 
 Deepfrost T3's third attack intentionally deals zero damage. The zone slow combined with prior Freeze applications is the longest lockdown window in the game. `GLACIAL_FIELD_DURATION` and the zone radius are tuning knobs.
@@ -400,8 +400,8 @@ Thematic identity: endurance and attrition. Lowest direct damage; highest sustai
 
 | Tier | Combo Attacks | Attack Sequence | Status / Sustain | Example total (base_damage=20) |
 |------|--------------|-----------------|-----------------|-------------------------------|
-| **T1** | 1 | Bloom strike: `1.00×` | Regen applied to Fayde on hit (6 HP over 3.0s per Prana Data Formula 2) | `round(20 × 0.70 × 1.00)` = **14** + 6 HP regen |
-| **T2** | 2 | First: Bloom strike `1.00×`; Second: Verdant shield pulse — **0 direct damage** — grants Fayde a **one-hit absorb barrier** that absorbs the **entire next incoming hit completely, regardless of damage magnitude**, within `BARRIER_DURATION = 4.0s`. The barrier HP value `round(base_damage × base_damage_modifier × BARRIER_COEFFICIENT)` is the cumulative absorption pool for **multi-hit tick scenarios** only: if multiple rapid hits arrive within the window, the barrier absorbs them until its HP is depleted; any hit that would exhaust the remaining pool is only partially absorbed. A single hit of any magnitude is always fully absorbed — the barrier acts as one-hit immunity for single-hit events. | Regen on first; one-hit absorb barrier on second | First = **14** + Regen; Second = 0 damage + barrier (one-hit immunity for single hits; multi-hit pool = `round(20 × 0.70 × 0.10)` = **1 HP** cumulative across rapid-tick scenarios) |
+| **T1** | 1 | Bloom strike: `1.00×` | Regen applied to the duo on hit (6 HP over 3.0s per Prana Data Formula 2) | `round(20 × 0.70 × 1.00)` = **14** + 6 HP regen |
+| **T2** | 2 | First: Bloom strike `1.00×`; Second: Verdant shield pulse — **0 direct damage** — grants the duo a **one-hit absorb barrier** that absorbs the **entire next incoming hit completely, regardless of damage magnitude**, within `BARRIER_DURATION = 4.0s`. The barrier HP value `round(base_damage × base_damage_modifier × BARRIER_COEFFICIENT)` is the cumulative absorption pool for **multi-hit tick scenarios** only: if multiple rapid hits arrive within the window, the barrier absorbs them until its HP is depleted; any hit that would exhaust the remaining pool is only partially absorbed. A single hit of any magnitude is always fully absorbed — the barrier acts as one-hit immunity for single-hit events. | Regen on first; one-hit absorb barrier on second | First = **14** + Regen; Second = 0 damage + barrier (one-hit immunity for single hits; multi-hit pool = `round(20 × 0.70 × 0.10)` = **1 HP** cumulative across rapid-tick scenarios) |
 | **T3** | 3 | First: Bloom `1.00×`; Second: Shield pulse (barrier as above); Third: Rejuvenating strike `1.20×` — on hit, triggers an immediate bonus Regen tick (`regen_tick_magnitude × fayde_max_hp = 2 HP`) AND starts a fresh full Regen cycle (resets timer to 3.0s per refresh rule) | Regen on first; barrier on second; fresh Regen + immediate 2 HP tick on third | First = **14** + Regen start; Second = barrier; Third = `round(20 × 0.70 × 1.20)` = **17** + 2 HP immediate tick + Regen reset to 3s (replaces T1 Regen). Total sustain: ~**10–14 HP** across 3s post-T3 hit (lower bound if T1 Regen fired one tick before T3; upper bound only if chain timing allows T1 Regen to complete before T3 fires — unusual at 2.0s window). |
 
 `BARRIER_COEFFICIENT = 0.10` and `BARRIER_DURATION = 4.0s` are tuning knobs. The barrier absorbs any single incoming hit in full (one-hit immunity). The barrier HP value governs multi-hit tick depletion only — the coefficient controls how many rapid ticks the barrier can absorb before the pool is exhausted.
@@ -478,9 +478,9 @@ Shatter within T2 non-primary Freeze window: subsequent chain attacks during the
 
 #### Verdant as Non-Primary
 
-**Tier 1 (effective 1–2):** Regen applied to Fayde at **cast time** (not on hit — fires before attacks resolve). `regen_total = 6 HP over 3.0s`. Refreshes if Regen already active.
+**Tier 1 (effective 1–2):** Regen applied to the duo at **cast time** (not on hit — fires before attacks resolve). `regen_total = 6 HP over 3.0s`. Refreshes if Regen already active.
 
-**Tier 2 (effective 3+):** As Tier 1 (cast-time Regen), plus: all healing Fayde receives during the active Regen window is amplified by `VERDANT_NP_HEAL_AMP = 1.25`.
+**Tier 2 (effective 3+):** As Tier 1 (cast-time Regen), plus: all healing the duo receives during the active Regen window is amplified by `VERDANT_NP_HEAL_AMP = 1.25`.
 
 `amplified_heal = heal_amount × VERDANT_NP_HEAL_AMP`
 
@@ -510,13 +510,13 @@ Each `AdjacencyEffect` a fragment carries draws one `EffectModifier` from the po
 | `ADJ_STATUS_EXTEND` | Status Extend | One vertical neighbor — randomly assigned as ABOVE or BELOW at fragment generation; direction is fixed per fragment instance and visible in UI — must match **this fragment's own Prana type** (`required_type_id = fragment.type_id` at generation; not a dynamic sentinel for the primary type) | Primary type's applied status extended by `ADJ_STATUS_EXT = 1.0s` on primary target. Burn tick count recalculated: `floor((duration + 1.0) / tick_rate)`. |
 | `ADJ_COMBO_EXTEND` | Combo Window Extend | Any 1 cardinal neighbor (LEFT or RIGHT), any type | `combo_continuation_window` extended by `ADJ_COMBO_WIN = 0.5s`. Stacks additively with Stormgold non-primary window extension. |
 | `ADJ_EXTRA_HIT` | Extra Combo Hit | Any 1 cardinal neighbor must match primary type | Bonus attack appended to end of chain at `0.80×` of chain's final attack modifier. Applies primary status. Does not increase `primary_tier`. |
-| `ADJ_LIFESTEAL` | Lifesteal | Any 1 cardinal neighbor must be Verdant (type 4) | Fayde heals `ADJ_LIFESTEAL_PCT = 0.20` × `final_damage` per chain hit. At 25 damage: **5 HP** per hit. Applied via `apply_heal()`. |
+| `ADJ_LIFESTEAL` | Lifesteal | Any 1 cardinal neighbor must be Verdant (type 4) | The duo heals `ADJ_LIFESTEAL_PCT = 0.20` × `final_damage` per chain hit. At 25 damage: **5 HP** per hit. Applied via `apply_heal()`. |
 | `ADJ_FROST_BURST` | Frost Burst | Any 1 cardinal neighbor must be Deepfrost (type 3) | On first enemy kill during chain, Frost Burst fires at kill position: `ADJ_FROST_SLOW = 0.30` movement slow to enemies within `ADJ_FROST_RADIUS = 80px` for `1.5s`. Does not trigger if no kill occurs. |
 | `ADJ_CHAIN_LIGHTNING` | Chain Lightning | Any 1 cardinal neighbor must be Stormgold (type 2) | Second chain attack (if `combo_attack_count ≥ 2`) arcs to nearest non-targeted enemy at `0.70×` second attack's damage. If only one enemy present, arc hits primary for bonus `0.70×` hit. No status on arc. |
-| `ADJ_REGEN_ON_HIT` | Regen on Hit | Any 1 cardinal neighbor must be Verdant (type 4) | Each chain hit triggers an immediate Regen tick on Fayde: `regen_tick_magnitude × fayde_max_hp = 2 HP`. Max 3 ticks (Tier 3 chain). Applied via `apply_heal()`. |
+| `ADJ_REGEN_ON_HIT` | Regen on Hit | Any 1 cardinal neighbor must be Verdant (type 4) | Each chain hit triggers an immediate Regen tick on the duo: `regen_tick_magnitude × fayde_max_hp = 2 HP`. Max 3 ticks (Tier 3 chain). Applied via `apply_heal()`. |
 | `ADJ_BURN_INTENSIFY` | Burn Intensify | ABOVE = Ashfire (type 0) AND BELOW = Ashfire (type 0) | `burn_tick_magnitude` increased by `ADJ_BURN_INTENSIFY_BONUS = 0.04` for this cast. At base 0.08 → 0.12 per tick. Total Burn: `base_damage × 0.12 × 4`. At base_damage=20: **9.6** instead of 6.4. |
-| `ADJ_PHASE_SHIFT` | Phase Shift | LEFT = Voidblue (type 1) AND RIGHT = Voidblue (type 1) | Fayde becomes intangible for `ADJ_PHASE_DURATION = 0.6s` after cast resolves, negating any CONTACT damage. Does not stack with existing i-frame — longer window takes precedence. |
-| `ADJ_BARRIER_HIT` | Barrier on Kill | Any 1 cardinal neighbor, any type | First kill in the chain grants Fayde a one-hit absorb barrier (absorbs entire next hit) lasting `ADJ_BARRIER_DUR = 5.0s`. If no kill occurs, no barrier. |
+| `ADJ_PHASE_SHIFT` | Phase Shift | LEFT = Voidblue (type 1) AND RIGHT = Voidblue (type 1) | The duo becomes intangible for `ADJ_PHASE_DURATION = 0.6s` after cast resolves, negating any CONTACT damage. Does not stack with existing i-frame — longer window takes precedence. |
+| `ADJ_BARRIER_HIT` | Barrier on Kill | Any 1 cardinal neighbor, any type | First kill in the chain grants the duo a one-hit absorb barrier (absorbs entire next hit) lasting `ADJ_BARRIER_DUR = 5.0s`. If no kill occurs, no barrier. |
 | `ADJ_ECHO` | Echo Strike | ABOVE = any type | After full chain resolves, an Echo Strike fires automatically after `ADJ_ECHO_DELAY = 0.8s` at `0.50×` first attack's modifier. Targets the nearest live enemy at fire time; if no enemies remain, Echo is suppressed. Applies primary type's status. Does not consume combo input. |
 
 **Condition notation:** "Any 1 cardinal neighbor must be X" means one specific direction (ABOVE, BELOW, LEFT, or RIGHT) is assigned randomly at fragment generation. The direction is fixed per fragment instance and visible to the player in the UI.
@@ -655,10 +655,10 @@ Each same-type pair is skipped; each distinct cross-type adjacent pair contribut
 | Ashfire+Verdant (IGNITE+NOURISH) | `WILDFIRE` | **Wildfire** | Burn applied this cast immediately spreads once to the nearest enemy within `REACT_WILDFIRE_RANGE` at application time (generalises Contagion to apply-time; fixed 2.0s spread, Contagion-inert). | `REACT_WILDFIRE_RANGE = 150px` |
 | Voidblue+Stormgold (SUPPRESS+CHAIN) | `SHORT_CIRCUIT` | **Short Circuit** | First Stun this cast is treated as a guaranteed qualifying interrupt (opens Follow-Through even vs idle) AND Stuns the nearest second enemy for `REACT_SHORTCIRCUIT_STUN`. *("silence before the strike" — fulfils the Player-Fantasy promise.)* | `REACT_SHORTCIRCUIT_STUN = 0.8s` |
 | Voidblue+Deepfrost (SUPPRESS+BIND) | `WHITEOUT` | **Whiteout** | While a target has both Blind and an active slow/Freeze, its Blind miss chance is raised to `REACT_WHITEOUT_MISS`. | `REACT_WHITEOUT_MISS = 0.90` |
-| Voidblue+Verdant (SUPPRESS+NOURISH) | `SIPHON` | **Siphon** | Damage dealt to Blinded enemies heals Fayde `REACT_SIPHON_LEECH × final_damage` (via `apply_heal`). | `REACT_SIPHON_LEECH = 0.20` |
+| Voidblue+Verdant (SUPPRESS+NOURISH) | `SIPHON` | **Siphon** | Damage dealt to Blinded enemies heals the duo `REACT_SIPHON_LEECH × final_damage` (via `apply_heal`). | `REACT_SIPHON_LEECH = 0.20` |
 | Stormgold+Deepfrost (CHAIN+BIND) | `SUPERCONDUCT` | **Superconduct** | When the primary target is Frozen/slowed, chain attacks arc to one extra nearest enemy at `REACT_SUPERCONDUCT_ARC × damage` (ice conducts lightning). | `REACT_SUPERCONDUCT_ARC = 0.60` |
-| Stormgold+Verdant (CHAIN+NOURISH) | `SURGE` | **Surge** | `combo_continuation_window` extended by `REACT_SURGE_WINDOW`; each chain hit heals Fayde `REACT_SURGE_HEAL` HP. | `REACT_SURGE_WINDOW = 0.4s`, `REACT_SURGE_HEAL = 2 HP` |
-| Deepfrost+Verdant (BIND+NOURISH) | `PERMAFROST` | **Permafrost** | While ≥1 enemy is Frozen, Fayde's Regen ticks are amplified ×`REACT_PERMAFROST_AMP` (safe healing window). | `REACT_PERMAFROST_AMP = 1.50` |
+| Stormgold+Verdant (CHAIN+NOURISH) | `SURGE` | **Surge** | `combo_continuation_window` extended by `REACT_SURGE_WINDOW`; each chain hit heals the duo `REACT_SURGE_HEAL` HP. | `REACT_SURGE_WINDOW = 0.4s`, `REACT_SURGE_HEAL = 2 HP` |
+| Deepfrost+Verdant (BIND+NOURISH) | `PERMAFROST` | **Permafrost** | While ≥1 enemy is Frozen, the duo's Regen ticks are amplified ×`REACT_PERMAFROST_AMP` (safe healing window). | `REACT_PERMAFROST_AMP = 1.50` |
 
 **Output range:** `active_reactions` holds 0–10 entries. A typical 2–3 type build arms 1–3 reactions; arming all 10 is not achievable on a 9-slot grid.
 
@@ -696,7 +696,7 @@ else:
 | Voidblue (SUPPRESS) | Shadow **collapse** — effect spreads to all enemies in a wide cluster | Burst applies **Blind** for `CASCADE_BLIND_DUR` |
 | Stormgold (CHAIN) | Lightning **chain** — burst arcs across nearest enemies | Burst also **arcs** to `CASCADE_ARC_TARGETS` extra enemy/enemies |
 | Deepfrost (BIND) | Frost **field** — burst lands as a slow/freeze zone at the target | Burst applies **Freeze** for `CASCADE_FREEZE_DUR` (root + slow) |
-| Verdant (NOURISH) | Bloom **pulse** — burst centred on Fayde (sustain) | Burst **heals** Fayde `CASCADE_LIFESTEAL × damage dealt` |
+| Verdant (NOURISH) | Bloom **pulse** — burst centred on the duo (sustain) | Burst **heals** the duo `CASCADE_LIFESTEAL × damage dealt` |
 
 **Cascade damage** (one burst, fired after the primary chain resolves):
 
@@ -713,7 +713,7 @@ else:
 | `CASCADE_MOD_DMG_BONUS` | 0.10 (knob) | Added per modifier — rewards commitment |
 | `CASCADE_MULT_CAP` | 1.6 (knob) | Hard ceiling on `cascade_mult` |
 
-**Targeting note:** the lead sets where the burst goes. A Verdant lead (Bloom, Fayde-centred) deals minimal direct damage; its offensive modifiers (Burn/Blind/Freeze/arc) attach to the nearest enemies within `CASCADE_AOE_RADIUS` of the primary target, while the Nourish portion heals Fayde. Verdant-as-modifier always heals Fayde regardless of lead.
+**Targeting note:** the lead sets where the burst goes. A Verdant lead (Bloom, duo-centred) deals minimal direct damage; its offensive modifiers (Burn/Blind/Freeze/arc) attach to the nearest enemies within `CASCADE_AOE_RADIUS` of the primary target, while the Nourish portion heals the duo. Verdant-as-modifier always heals the duo regardless of lead.
 
 **Worked example (answers the core-sensitivity question).** Types present {Ashfire, Voidblue, Stormgold}:
 - **Core = Ashfire**, neighbors Voidblue + Stormgold (`|M| = 2`): lead = Fire nova; modifiers add Blind + arc → a **blinding, arcing fire nova**. `cascade_mult = 1.0 + 2×0.10 = 1.20`; damage = `round(20 × 1.25 × 1.20) = 30` per nova target, applying Blind, arcing to 1 extra enemy.
@@ -791,7 +791,7 @@ Same three types, **different Cascade** — the lead (core) decides the shape; t
 
 - **If a Cascade fires while ring↔ring pairwise reactions also exist (non-core slots):** Only the core↔neighbor pairwise reactions are consumed by the Cascade (Rule 17d). Ring↔ring reactions (e.g., an Ashfire–Voidblue pair both in corner-adjacent ring slots) still emit into `active_reactions` independently. Assert both the Cascade and the surviving ring reaction are present.
 
-- **If a Verdant-lead Cascade has offensive modifiers but no enemy within `CASCADE_AOE_RADIUS` of the primary target:** The offensive facets (Burn/Blind/Freeze/arc) are suppressed for lack of a target; the Nourish heal on Fayde still applies. No error.
+- **If a Verdant-lead Cascade has offensive modifiers but no enemy within `CASCADE_AOE_RADIUS` of the primary target:** The offensive facets (Burn/Blind/Freeze/arc) are suppressed for lack of a target; the Nourish heal on the duo still applies. No error.
 
 - **If `MAX_CASCADE_MODIFIERS` is configured below 4 and more distinct neighbor types are present:** Excess modifiers are dropped in ascending `type_id` so the kept set is deterministic. At MVP the cap is 4 — no modifier is ever dropped on the 3×3 grid (max 4 cardinal neighbors).
 

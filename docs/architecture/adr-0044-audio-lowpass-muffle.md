@@ -15,7 +15,7 @@ Kusuma Putra (solo dev) + Claude Code Game Studios
 ## Summary
 
 Item 9 of the juice review: the mix should "go under water" when the game is paused
-and when Fayde's HP is critical, so both moments are felt as well as seen.
+and when the duo's HP is critical, so both moments are felt as well as seen.
 
 AudioSystem installs one shared `AudioEffectLowPassFilter` (tagged `CipherMuffle`) on
 the Music, SFX and AMB buses. The UI bus stays dry so pause-menu clicks stay crisp.

@@ -7,11 +7,11 @@
 
 ## Overview
 
-Spell Casting & Effects is the execution layer that translates Fayde's Prana grid arrangement into combat damage. When `combat_started` fires, it receives the resolved `SpellEffect` payload from Combination Resolution via `combo_resolved` — containing the primary type, tier, non-primary modifiers, adjacency effects, and wave-scoped stat bonuses — and holds it for the wave. When the player presses the cast action, it fires the pre-arranged attack chain: a sequence of 1–3 attacks (determined by `primary_tier`) with a `combo_continuation_window` between each press. For each hit, SC&E resolves the full damage chain — primary type's `base_damage_modifier`, tier attack scalar, stat property bonuses, non-primary modifier bonuses, and adjacency effect modifiers — then calls `apply_damage(target, base_damage, element, DamageSource.DIRECT)` on Health & Damage. (The elemental strong/weakness affiliation multiplier was cut from scope 2026-06-21 — damage is element-neutral.) SC&E also acts as the wave-scoped stat broker: Status Effects and Health & Damage query it for relevant stat delta values from `aggregate_stat_bonus` rather than reading the `SpellEffect` payload directly.
+Spell Casting & Effects is the execution layer that translates the duo's Prana grid arrangement into combat damage. When `combat_started` fires, it receives the resolved `SpellEffect` payload from Combination Resolution via `combo_resolved` — containing the primary type, tier, non-primary modifiers, adjacency effects, and wave-scoped stat bonuses — and holds it for the wave. When the player presses the cast action, it fires the pre-arranged attack chain: a sequence of 1–3 attacks (determined by `primary_tier`) with a `combo_continuation_window` between each press. For each hit, SC&E resolves the full damage chain — primary type's `base_damage_modifier`, tier attack scalar, stat property bonuses, non-primary modifier bonuses, and adjacency effect modifiers — then calls `apply_damage(target, base_damage, element, DamageSource.DIRECT)` on Health & Damage. (The elemental strong/weakness affiliation multiplier was cut from scope 2026-06-21 — damage is element-neutral.) SC&E also acts as the wave-scoped stat broker: Status Effects and Health & Damage query it for relevant stat delta values from `aggregate_stat_bonus` rather than reading the `SpellEffect` payload directly.
 
 At First Playable scope, the system is simplified — damage resolution and the full CR modifier chain are implemented; status effect tick systems are stubs (`apply_status(target, status, duration)`, with tick timing owned by the future Status Effects GDD); and visual effects are minimal. All gameplay positions and hit detection operate in 2D screen-space cartesian coordinates per **ADR-0001** — the isometric projection is visual only.
 
-From the player's perspective, SC&E is the payoff moment of every Preparation phase: the spell Fayde built for 5–15 seconds fires in a chain, exactly as arranged. The system delivers no judgment — only the results of the decision the player already made. *(Note: the elemental strong/weakness payoff described below was cut 2026-06-21; the prep-phase payoff now rests on positioning, tier/combo arrangement, and status setup rather than affiliation matching.)*
+From the player's perspective, SC&E is the payoff moment of every Preparation phase: the spell the duo built for 5–15 seconds fires in a chain, exactly as arranged. The system delivers no judgment — only the results of the decision the player already made. *(Note: the elemental strong/weakness payoff described below was cut 2026-06-21; the prep-phase payoff now rests on positioning, tier/combo arrangement, and status setup rather than affiliation matching.)*
 
 ## Player Fantasy
 
@@ -66,7 +66,7 @@ Cast input (`Input.is_action_just_pressed(&"cast")`) is only processed when `_st
 - If all chain attacks fired (index reached `combo_attack_count`): reset chain (`_combo_index = 0`), emit `chain_index_changed(0, combo_attack_count)`, enter READY — SpellEffect is NOT cleared
 - Chain resets to `_combo_index = 0` and READY when the combo window expires; emit `chain_index_changed(0, combo_attack_count)`
 
-**5. Target selection.** On each cast press, SC&E selects a primary target using the `TargetingModel` for the current attack. The **default targeting model is `DIRECTIONAL_FACING`** — fires a ray from Fayde in `PlayerController.get_facing_direction()` and hits the first enemy whose collision shape intersects the ray within `CAST_MAX_RANGE`. Implemented via `PhysicsDirectSpaceState2D.intersect_ray(origin, origin + facing * range, exclude_list, ENEMY_COLLISION_LAYER)`.
+**5. Target selection.** On each cast press, SC&E selects a primary target using the `TargetingModel` for the current attack. The **default targeting model is `DIRECTIONAL_FACING`** — fires a ray from the active brother in `PlayerController.get_facing_direction()` and hits the first enemy whose collision shape intersects the ray within `CAST_MAX_RANGE`. Implemented via `PhysicsDirectSpaceState2D.intersect_ray(origin, origin + facing * range, exclude_list, ENEMY_COLLISION_LAYER)`.
 
 **CAST_MAX_RANGE is per-type — 3-tier system.** Range and cone angle are coupled: shorter range = wider cone to compensate for reduced reach.
 
@@ -82,13 +82,13 @@ If `primary_target == null` (no enemy in range/direction): visual cast effect fi
 
 **Special targeting models** (specified per attack in the Formulas section — override the directional default for that individual attack):
 - `SINGLE_NEAREST`: nearest enemy within the type's CAST_MAX_RANGE regardless of facing direction. Used where type-specific descriptions imply auto-targeting (e.g. Voidblue T2 shadow pull on "nearest non-targeted enemy").
-- `AREA_AROUND_FAYDE`: all enemies within radius of **Fayde's current position**. Used for Ashfire T3 spinning eruption (80px radius) — the dancer is the origin, not the target. Distinct from `AREA_AT_TARGET`.
+- `AREA_AROUND_FAYDE`: all enemies within radius of **The active brother's current position**. Used for Ashfire T3 spinning eruption (80px radius) — the dancer is the origin, not the target. Distinct from `AREA_AT_TARGET`.
 - `LINE_THROUGH_TARGET`: hits all enemies within 10px of the line segment from cast origin through primary target, up to `LINE_LENGTH`. Deepfrost T2 second attack.
 - `AREA_AT_TARGET`: all enemies within `AoE_radius` of primary target's position. Deepfrost T3 glacial field (120px).
 - `ALL_ON_SCREEN`: all active enemies in the arena. Voidblue T3.
-- `SELF`: no enemy target; effect applies only to Fayde. Verdant T2.
+- `SELF`: no enemy target; effect applies only to the duo. Verdant T2.
 
-Retargeting between chain presses: each press re-runs the targeting query at the moment of the press using Fayde's current facing direction and position.
+Retargeting between chain presses: each press re-runs the targeting query at the moment of the press using the active brother's current facing direction and position.
 
 **6. Cast lock and movement interaction.** Immediately after any hit fires, SC&E emits `cast_hit_started(lock_duration)`. Player Controller listens and briefly zeroes movement input for `lock_duration`. Dash input remains available — a dash cancels the cast lock early.
 
@@ -151,7 +151,7 @@ Effective durations: Freeze = `2.0 + aggregate_stat_bonus.get("FROST_FREEZE_DUR"
 - **Deepfrost NP T1**: after each chain hit, `apply_status(target, STATUS_CHILL, CHILL_DURATION)` — 15% movement slow for 2.0s; Enemy AI reads to reduce speed. At FP: field-write stub only (`target.status_chill_timer = CHILL_DURATION`); Enemy AI does not read this field at FP — slow has no visible effect; inert at FP.
 - **Deepfrost NP T2**: first hit applies `STATUS_FREEZE` for `NONPRIMARY_FREEZE_DURATION = 1.0s`; remaining hits apply Chill. At FP: Chill entries are field-write stubs only (same as NP T1 note above); Freeze stub per Rule 8 table.
 - **Verdant NP T1**: on first cast press, `apply_heal(fayde, REGEN_TOTAL)` immediately (6 HP); refreshes if active
-- **Verdant NP T2**: as T1 heal; plus `_heal_amplifier = VERDANT_NP_HEAL_AMP (1.25)` — SC&E amplifies all `apply_heal` calls to Fayde during the wave
+- **Verdant NP T2**: as T1 heal; plus `_heal_amplifier = VERDANT_NP_HEAL_AMP (1.25)` — SC&E amplifies all `apply_heal` calls to the duo during the wave
 - **Voidblue NP T1**: on first hit, `if randf() < 0.30: apply_status(target, STATUS_BLIND, 2.0s)`
 - **Voidblue NP T2**: Blind is guaranteed on first hit; all currently Blinded enemies get timer extended by 1.0s
 
@@ -242,11 +242,11 @@ SC&E resolves each chain attack via `ATTACK_DATA[primary_type][primary_tier][att
 |-------|-------------|
 | `DIRECTIONAL_FACING` | Ray in facing direction; first enemy hit within `cast_range` via `intersect_ray()` |
 | `SINGLE_NEAREST` | Nearest enemy within `cast_range` regardless of facing |
-| `AREA_AROUND_FAYDE` | All enemies within `aoe_radius` of Fayde's position |
+| `AREA_AROUND_FAYDE` | All enemies within `aoe_radius` of the active brother's position |
 | `AREA_AT_TARGET` | All enemies within `aoe_radius` of primary target's position |
-| `LINE_THROUGH_TARGET` | All enemies within 10px of line from Fayde through primary target, up to `cast_range` |
+| `LINE_THROUGH_TARGET` | All enemies within 10px of line from the active brother through primary target, up to `cast_range` |
 | `ALL_ON_SCREEN` | All active enemies in the arena |
-| `SELF` | No enemy target; effect applies to Fayde only |
+| `SELF` | No enemy target; effect applies to the duo only |
 
 **Type 0 — Ashfire** (`base_damage_modifier = 1.25`, `cast_range = ASHFIRE_MELEE_RANGE = 80px`, `cast_lock = 0.20s`)
 
@@ -273,7 +273,7 @@ SC&E resolves each chain attack via `ATTACK_DATA[primary_type][primary_tier][att
 |------|-------|----------------------|-------------------|-------|
 | 1 | 0 | 1.00 | DIRECTIONAL_FACING | Reaching strike; Blind on hit |
 | 2 | 0 | 1.00 | DIRECTIONAL_FACING | Strike; Blind on hit |
-| 2 | 1 | 1.10 | DIRECTIONAL_FACING | Shadow pull; Stagger (0.3s) on hit; *secondary*: nearest enemy ≠ primary target moved 60px toward Fayde (no damage on pulled enemy) |
+| 2 | 1 | 1.10 | DIRECTIONAL_FACING | Shadow pull; Stagger (0.3s) on hit; *secondary*: nearest enemy ≠ primary target moved 60px toward the active brother (no damage on pulled enemy) |
 | 3 | 0 | 1.00 | DIRECTIONAL_FACING | Strike |
 | 3 | 1 | 1.10 | DIRECTIONAL_FACING | Shadow pull (same secondary) |
 | 3 | 2 | 1.30 | ALL_ON_SCREEN | Void collapse; Blind on all enemies on screen |
@@ -286,7 +286,7 @@ SC&E resolves each chain attack via `ATTACK_DATA[primary_type][primary_tier][att
 |------|-------|----------------------|-------------------|-------|
 | 1 | 0 | 1.00 | DIRECTIONAL_FACING | Quick snap; Stun (0.8s) on hit; if qualifying interrupt, start `_followthrough_window = 1.5s` |
 | 2 | 0 | 1.00 | DIRECTIONAL_FACING | Snap; Stun; `_followthrough_window` as above |
-| 2 | 1 | 1.20 | DIRECTIONAL_FACING | Lightning follow; Step 6 bonus if `_followthrough_window > 0` **AND** `distance(Fayde, target) ≤ STORMGOLD_FOLLOW_THROUGH_MAX_DIST = 100px` at hit time |
+| 2 | 1 | 1.20 | DIRECTIONAL_FACING | Lightning follow; Step 6 bonus if `_followthrough_window > 0` **AND** `distance(the duo, target) ≤ STORMGOLD_FOLLOW_THROUGH_MAX_DIST = 100px` at hit time |
 | 3 | 0 | 1.00 | DIRECTIONAL_FACING | Snap |
 | 3 | 1 | 1.20 | DIRECTIONAL_FACING | Follow (distance check as above) |
 | 3 | 2 | 1.00 | DIRECTIONAL_FACING | Chain strike (primary); *secondary*: fork to nearest enemy ≠ primary (Formula 4) |
@@ -314,9 +314,9 @@ SC&E resolves each chain attack via `ATTACK_DATA[primary_type][primary_tier][att
 
 | Tier | Index | `tier_attack_modifier` | `targeting_model` | Notes |
 |------|-------|----------------------|-------------------|-------|
-| 1 | 0 | 1.00 | DIRECTIONAL_FACING (80px) | Bloom strike; Regen applied to Fayde on hit |
+| 1 | 0 | 1.00 | DIRECTIONAL_FACING (80px) | Bloom strike; Regen applied to the duo on hit |
 | 2 | 0 | 1.00 | DIRECTIONAL_FACING (80px) | Bloom strike |
-| 2 | 1 | 0.00 | SELF | Shield pulse; **0 damage**; calls `health_and_damage.grant_barrier(fayde, barrier_hp)` where `barrier_hp` = Formula 8; barrier absorbed on next hit to Fayde |
+| 2 | 1 | 0.00 | SELF | Shield pulse; **0 damage**; calls `health_and_damage.grant_barrier(fayde, barrier_hp)` where `barrier_hp` = Formula 8; barrier absorbed on next hit to the duo |
 | 3 | 0 | 1.00 | DIRECTIONAL_FACING (80px) | Bloom strike |
 | 3 | 1 | 0.00 | SELF | Shield pulse (barrier) |
 | 3 | 2 | 1.20 | DIRECTIONAL_FACING (80px) | Rejuvenating strike; Regen resets to 3.0s + immediate 2 HP tick on hit |
@@ -433,7 +433,7 @@ Fires `ADJ_ECHO_DELAY = 0.8s` after full chain resolves. Re-runs Steps 1–3 at 
 
 (Simplifies to `effective_base × base_damage_modifier × 0.50` since all type first-attack modifiers are 1.00.)
 
-Target selection: re-runs `DIRECTIONAL_FACING` query at Fayde's position at echo fire time. If no target: echo misses visually, 0 damage.
+Target selection: re-runs `DIRECTIONAL_FACING` query at the active brother's position at echo fire time. If no target: echo misses visually, 0 damage.
 
 **Output:** At T1 Ashfire (no stat bonus): `round(20 × 1.25 × 0.50)` = `round(12.5)` = **13**.
 
@@ -478,7 +478,7 @@ SC&E computes these before each `apply_status()` call:
 
 - **If `tier_attack_modifier == 0.0` (Verdant T2/T3 SELF attacks, Deepfrost T3 glacial field):** SC&E skips Formula 3 entirely. Only the secondary effect fires (barrier grant or glacial slow zone). `apply_damage` is not called with 0 — the zero-modifier check guards this explicitly before entering the damage chain.
 
-- **If `SELF` targeting fires but Fayde is dead:** No effect applied. H&D's dead-target guard handles any `apply_heal` call; SC&E skips the barrier grant if `fayde.current_hp <= 0`.
+- **If `SELF` targeting fires but the duo is dead:** No effect applied. H&D's dead-target guard handles any `apply_heal` call; SC&E skips the barrier grant if `fayde.current_hp <= 0`.
 
 - **If `ALL_ON_SCREEN` (Voidblue T3) fires with 0 active enemies:** No hits, no signals. Chain index advances normally. No error.
 
@@ -496,7 +496,7 @@ SC&E computes these before each `apply_status()` call:
 
 - **If Stormgold T3 fork finds no eligible second enemy:** Fork hits the primary target for `0.60×` as a bonus hit (per CR T3 spec). Not a miss — always fires.
 
-- **If Verdant T3 rejuvenating strike fires while `_heal_amplifier > 1.0` (Verdant NP T2) is active:** The amplifier applies to the immediate 2 HP tick: `round(2 × VERDANT_NP_HEAL_AMP)` = 3 HP at default. Consistent with CR: "all healing Fayde receives during the active Regen window is amplified."
+- **If Verdant T3 rejuvenating strike fires while `_heal_amplifier > 1.0` (Verdant NP T2) is active:** The amplifier applies to the immediate 2 HP tick: `round(2 × VERDANT_NP_HEAL_AMP)` = 3 HP at default. Consistent with CR: "all healing the duo receives during the active Regen window is amplified."
 
 - **If Ashfire T3 eruption (`AREA_AROUND_FAYDE`) fires with no enemies within 80px:** No hits, no Burn applications. Visual eruption fires (minimal VFX). Chain resets to READY.
 
@@ -542,7 +542,7 @@ SC&E computes these before each `apply_status()` call:
 | Knob | Symbol | Default | Safe Range | Effect if too high | Effect if too low |
 |------|--------|---------|------------|-------------------|-------------------|
 | Spell base damage | `BASE_SPELL_DAMAGE` | 20.0 | 10–30 | All spells overkill; low-tier combos trivialize enemies | All spells feel weak; T3 fails to one-shot Clusters (12 HP) |
-| Melee range (Ashfire, Verdant) | `MELEE_RANGE` | 80px | 48–120px | Melee types become safe-range; lose close-combat identity | Fayde must be inside enemy hitbox; collision issues |
+| Melee range (Ashfire, Verdant) | `MELEE_RANGE` | 80px | 48–120px | Melee types become safe-range; lose close-combat identity | The duo must be inside enemy hitbox; collision issues |
 | Semi-melee range (Voidblue, Deepfrost) | `SEMI_MELEE_RANGE` | 110px | 80–140px | Approaches ranged safety; positioning pressure lost | Inside melee comfort; semi-melee has no spacing advantage over melee |
 | Stormgold sniper range | `STORMGOLD_SNIPER_RANGE` | 220px | 150–300px | Out of screen edge awareness; enemies feel like shooting gallery | Loses sniper identity; approaches semi-melee spacing |
 | Melee cone angle | `CONE_ANGLE_MELEE` | 90° | 60–120° | Too forgiving; eliminates facing skill expression | Frustrating at 80px; tiny cone at close range feels unfair |
@@ -559,7 +559,7 @@ SC&E computes these before each `apply_status()` call:
 | ADJ_ECHO delay | `ADJ_ECHO_DELAY` | 0.8s | 0.3–2.0s | Echo reads as a 4th chain attack at short delays | Too late; echo catches only stationary enemies |
 | ADJ_PHASE_SHIFT duration | `ADJ_PHASE_DURATION` | 0.6s | 0.3–1.0s | Post-cast invincibility trivializes melee responses | Too short to protect against contact-damage enemies at Ashfire range |
 | Verdant barrier coefficient | `BARRIER_COEFFICIENT` | 0.10 | 0.05–0.30 | Barrier HP pool absorbs many rapid ticks | Multi-hit pool depletes in one rapid tick sequence |
-| Voidblue shadow pull distance | `PULL_DISTANCE` | 60px | 20–100px | Pulled enemy snaps to Fayde's position; unnatural | Pull imperceptible; secondary effect has no gameplay value |
+| Voidblue shadow pull distance | `PULL_DISTANCE` | 60px | 20–100px | Pulled enemy snaps to the active brother's position; unnatural | Pull imperceptible; secondary effect has no gameplay value |
 | Chill slow percentage | `CHILL_SLOW_PCT` | 0.15 | 0.05–0.40 | Chill approaches Freeze-level slow | Too minor to notice; feels cosmetic |
 | Chill duration | `CHILL_DURATION` | 2.0s | 1.0–3.0s | Persists long past tactical relevance | Expires before capitalizing on slowed movement |
 
@@ -589,7 +589,7 @@ SC&E computes these before each `apply_status()` call:
 
 **Implementation rule**: particle color is always sourced from `PranaCatalog.get_type(prana_type_id).color` — never hardcoded hex.
 
-**Cast animation** (plays on Fayde's `AnimationPlayer` via `string_name` lookup):
+**Cast animation** (plays on the duo's `AnimationPlayer` via `string_name` lookup):
 
 | Prana Type | CastAnimation | AnimationPlayer key |
 |------------|---------------|---------------------|
@@ -605,7 +605,7 @@ SC&E computes these before each `apply_status()` call:
 > snaps two fingers forward, Deepfrost pushes from a horse stance, and Verdant opens
 > both hands like a flower. The primary (centre) Prana picks the pose.
 
-**Miss cast**: cast animation fires from Fayde in facing direction; no hit burst emitted; `spell_hit_element` NOT emitted.
+**Miss cast**: cast animation fires from the active brother in facing direction; no hit burst emitted; `spell_hit_element` NOT emitted.
 
 **Zero-modifier attack** (e.g. Verdant T2 SELF type, `tier_attack_modifier == 0.0`): hit burst VFX fires at `target.global_position`; `apply_damage` NOT called.
 
@@ -674,7 +674,7 @@ THEN `_state == IDLE`, `_combo_index == 0`, and `_current_spell_effect == null`.
 ### Targeting
 
 **[M] AC-SC-07** — DIRECTIONAL_FACING selects first enemy in ray within CAST_MAX_RANGE
-GIVEN Fayde at (100, 100) facing right (+X), enemy A at (180, 100) (80px away), enemy B at (230, 100) (130px away), `CAST_MAX_RANGE = 150px`,
+GIVEN the duo at (100, 100) facing right (+X), enemy A at (180, 100) (80px away), enemy B at (230, 100) (130px away), `CAST_MAX_RANGE = 150px`,
 WHEN a Voidblue T1 cast fires,
 THEN `apply_damage` is called on enemy A only; enemy B receives no damage.
 
@@ -684,7 +684,7 @@ WHEN cast fires,
 THEN `apply_damage` is never called, `apply_status` is never called, and `_combo_index == 1`.
 
 **[M] AC-SC-09** — Ashfire T3 eruption uses `AREA_AROUND_FAYDE`, not `AREA_AT_TARGET`
-GIVEN Fayde at (200, 200), enemy A at (240, 200) (40px from Fayde), enemy B at (320, 200) (120px from Fayde — outside `ASHFIRE_T3_AOE_RADIUS = 80px`),
+GIVEN the duo at (200, 200), enemy A at (240, 200) (40px from the active brother), enemy B at (320, 200) (120px from the active brother — outside `ASHFIRE_T3_AOE_RADIUS = 80px`),
 WHEN Ashfire T3 attack index 2 fires,
 THEN `apply_damage` is called on enemy A; enemy B receives no damage.
 

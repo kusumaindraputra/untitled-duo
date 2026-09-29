@@ -7,17 +7,17 @@
 
 ## Overview
 
-Status Effects is the tick-timing authority for all persistent, Prana-triggered combat conditions in The Last Cipher. When Spell Casting & Effects lands a hit, it calls `apply_status(target, status_type, duration)` — Status Effects takes ownership from that moment: it tracks each active instance on each target, drives the tick timer via a float accumulator in `_process(delta)`, and calls back into Health & Damage (`apply_damage` for DoT ticks, `apply_heal` for HoT ticks) once per scheduled interval. Health & Damage owns the HP math; Status Effects owns the clock. At MVP scope, two effects are fully wired — **Burn** (Ashfire: damage-over-time, four ticks across 2.0s, 8% of base spell damage per tick) and **Freeze** (Deepfrost: movement root plus 50% speed reduction, 2.0s) — and three are implemented as structured stubs that accept `apply_status` calls, display their visual indicator, and hold their duration without executing tick logic: Blind (miss-chance reduction), Stun (brief attack-cancel), and Regenerate (heal-over-time on Fayde). All five conditional depth behaviours defined in Prana Data — Burn Contagion, Deepening Doubt, Lightning Follow-Through, Shatter, and Injury Bloom — are owned by this system and ship alongside their corresponding base effect: Contagion and Shatter at MVP with Burn and Freeze; the remaining three at Vertical Slice with their parent effects. From the player's perspective, Status Effects is the system that makes the Prana type in the centre slot matter past the initial hit: the Charger that charged through a Burn is still dying; the Cluster that walked into a Freeze root cannot reposition; the follow-up Deepfrost hit shatters the frozen enemy for an unexpected bonus — and the player realizes the arrangement they built ten seconds ago is still working.
+Status Effects is the tick-timing authority for all persistent, Prana-triggered combat conditions in The Last Cipher. When Spell Casting & Effects lands a hit, it calls `apply_status(target, status_type, duration)` — Status Effects takes ownership from that moment: it tracks each active instance on each target, drives the tick timer via a float accumulator in `_process(delta)`, and calls back into Health & Damage (`apply_damage` for DoT ticks, `apply_heal` for HoT ticks) once per scheduled interval. Health & Damage owns the HP math; Status Effects owns the clock. At MVP scope, two effects are fully wired — **Burn** (Ashfire: damage-over-time, four ticks across 2.0s, 8% of base spell damage per tick) and **Freeze** (Deepfrost: movement root plus 50% speed reduction, 2.0s) — and three are implemented as structured stubs that accept `apply_status` calls, display their visual indicator, and hold their duration without executing tick logic: Blind (miss-chance reduction), Stun (brief attack-cancel), and Regenerate (heal-over-time on the duo). All five conditional depth behaviours defined in Prana Data — Burn Contagion, Deepening Doubt, Lightning Follow-Through, Shatter, and Injury Bloom — are owned by this system and ship alongside their corresponding base effect: Contagion and Shatter at MVP with Burn and Freeze; the remaining three at Vertical Slice with their parent effects. From the player's perspective, Status Effects is the system that makes the Prana type in the centre slot matter past the initial hit: the Charger that charged through a Burn is still dying; the Cluster that walked into a Freeze root cannot reposition; the follow-up Deepfrost hit shatters the frozen enemy for an unexpected bonus — and the player realizes the arrangement they built ten seconds ago is still working.
 
 ## Player Fantasy
 
 > *`creative-director` not consulted — Lean mode. Review manually before production.*
 
-Status Effects is where Prana types prove they have *consequence*. The fantasy is **the arrangement that keeps working** — a spell Fayde fired eight seconds ago is still deciding the outcome of this wave. The Charger didn't die in the first hit, but it's burning. The Cluster rooted under a Freeze root can't scatter. The enemy the player staggered with Stormgold is frozen mid-lunge. The feeling isn't "I pressed the right button" — it's "I set this up."
+Status Effects is where Prana types prove they have *consequence*. The fantasy is **the arrangement that keeps working** — a spell the duo fired eight seconds ago is still deciding the outcome of this wave. The Charger didn't die in the first hit, but it's burning. The Cluster rooted under a Freeze root can't scatter. The enemy the player staggered with Stormgold is frozen mid-lunge. The feeling isn't "I pressed the right button" — it's "I set this up."
 
 The system delivers three distinct moments of satisfaction:
 
-**1. The lingering threat** — A Burn tick fires on an enemy that has already moved out of Fayde's line of sight. The player didn't need to track it; the status did. The damage number floats up from behind a crate, and the player grins. This is the Ashfire fantasy: aggressive placement pays off after the moment of contact.
+**1. The lingering threat** — A Burn tick fires on an enemy that has already moved out of the duo's line of sight. The player didn't need to track it; the status did. The damage number floats up from behind a crate, and the player grins. This is the Ashfire fantasy: aggressive placement pays off after the moment of contact.
 
 **2. The frozen opportunity** — A Charger that would have rushed and cancelled the next cast is instead rooted for two seconds under Deepfrost Freeze. That's a free cast window. The Deepfrost slow began as a defensive choice in the Preparation phase; in combat, it reads as offensive — the player bought time. This is the core Deepfrost fantasy: *patience imposed on a world that resists it.*
 
@@ -62,11 +62,11 @@ The registry is a `Dictionary[int, Array[StatusInstance]]` keyed by `target.get_
 | Freeze | Enemies only | Movement control |
 | Blind | Enemies only (stub) | Offensive debuff |
 | Stun | Enemies only (stub) | Offensive debuff |
-| Regenerate | Fayde only | The only MVP heal source (per H&D GDD Rule 4); enemies have no heal mechanic at MVP |
+| Regenerate | The duo only | The only MVP heal source (per H&D GDD Rule 4); enemies have no heal mechanic at MVP |
 | Chill | Enemies only (stub) | Deepfrost non-primary 15% movement slow; suppressed if FREEZE already active on same target |
 | Stagger | Enemies only (stub) | Voidblue T2 brief interrupt; same Enemy AI interface as Stun with 0.3s fixed duration |
 
-`apply_status` must validate target scope and log an error for invalid calls (e.g., trying to apply Burn to Fayde). No gameplay processing if the target is out of scope.
+`apply_status` must validate target scope and log an error for invalid calls (e.g., trying to apply Burn to the duo). No gameplay processing if the target is out of scope.
 
 **Note**: Despite the "1–2 effects" simplification estimate in the systems index, Regenerate must be fully wired at MVP because Health & Damage identifies it as Verdant's only healing path at MVP scope. Revised MVP scope: **Burn + Freeze + Regenerate fully wired; Blind + Stun as structured stubs** (visual indicator, duration tracking, no tick logic).
 
@@ -171,12 +171,12 @@ On `GameStateManager.preparation_started`: clear all entries in `_active_statuse
   - Else: return `base_damage` unchanged.
 - SC&E calls `check_and_apply_shatter(primary_target, raw_base_damage)` and passes the returned value as `base_damage` to `HealthDamage.apply_damage` for every DIRECT spell hit.
 - Shatter does **not** end the Freeze status — the target remains Frozen for its remaining duration.
-- Enemy CONTACT hits on Fayde are not subject to Shatter at MVP (Freeze only targets enemies).
+- Enemy CONTACT hits on the duo are not subject to Shatter at MVP (Freeze only targets enemies).
 
 **Stub conditional behaviours (deferred to Vertical Slice):**
 - Deepening Doubt (Blind): Blind timer extension per missed attack
 - Lightning Follow-Through (Stun): +30% on Stormgold cast within 1.5s of a Stun interrupt
-- Injury Bloom (Regenerate): extra Regen tick on CONTACT hit while Regen active on Fayde
+- Injury Bloom (Regenerate): extra Regen tick on CONTACT hit while Regen active on the duo
 
 ---
 
@@ -259,7 +259,7 @@ Applied 3 times across the 3.0s duration (once per 1.0s tick interval). Total he
 
 | Variable | Symbol | Type | Range | Description |
 |----------|--------|------|-------|-------------|
-| Fayde max HP | `FAYDE_MAX_HP` | int | 80 – 150 | Constant from H&D. Default 100. |
+| The duo max HP | `FAYDE_MAX_HP` | int | 80 – 150 | Constant from H&D. Default 100. |
 | Regen tick magnitude | `REGEN_TICK_MAGNITUDE` | float | 0.02 (constant) | Fraction of FAYDE_MAX_HP per tick. Defined in Prana Data. |
 
 **Output range:** At default FAYDE_MAX_HP=100: 2 HP/tick (H&D rounds `roundi(2.0) = 2`). Total: **6 HP** per cast.
@@ -337,13 +337,13 @@ No formula. The mechanic is a nearest-enemy range check:
 
 8. **If Burn Contagion range query finds no living enemies within 200px**: no transfer. No fallback. Status Effects takes no further action.
 
-9. **If Regen is applied to an enemy** (invalid target scope): log an error and return. No StatusInstance created. Regen is Fayde-only; calling it on an enemy is a caller bug.
+9. **If Regen is applied to an enemy** (invalid target scope): log an error and return. No StatusInstance created. Regen is duo-only; calling it on an enemy is a caller bug.
 
 10. **If a Burn tick fires on an enemy already at `current_hp = 0`** (race condition — tick fires in the same frame as `enemy_killed`): H&D's dead-target guard returns immediately — no damage, no signal. The tick is harmless.
 
 11. **If `preparation_started` fires while tick accumulators are mid-countdown**: `_on_preparation_started` clears all StatusInstances before the tick loop runs on remaining instances. Any cleared instances are absent from the registry — the loop skips them. In-progress ticks for the current frame that fired before the clear are already applied and cannot be rolled back (acceptable).
 
-12. **If Regen is active when Fayde dies**: any subsequent Regen ticks that fire before `preparation_started` call `apply_heal(fayde, ...)`. H&D's dead-target guard blocks the heal — `current_hp = 0` means `DEAD` state, all `apply_damage` and `apply_heal` calls return immediately. Status Effects does not need to listen to `player_died`; the next `preparation_started` clears all statuses normally.
+12. **If Regen is active when the duo dies**: any subsequent Regen ticks that fire before `preparation_started` call `apply_heal(fayde, ...)`. H&D's dead-target guard blocks the heal — `current_hp = 0` means `DEAD` state, all `apply_damage` and `apply_heal` calls return immediately. Status Effects does not need to listen to `player_died`; the next `preparation_started` clears all statuses normally.
 
 ## Dependencies
 
@@ -410,12 +410,12 @@ No formula. The mechanic is a nearest-enemy range check:
 
 **Regen — apply and tick:**
 
-- **AC-SE-08** — GIVEN Fayde at `current_hp=80` and `apply_status(fayde, REGENERATE, 3.0, 0.0)` is called, WHEN 1.0s elapses, THEN `HealthDamage.apply_heal(fayde, 2.0)` was called once. WHEN 3.0s total elapse, THEN `apply_heal` was called exactly 3 times.
+- **AC-SE-08** — GIVEN the duo at `current_hp=80` and `apply_status(fayde, REGENERATE, 3.0, 0.0)` is called, WHEN 1.0s elapses, THEN `HealthDamage.apply_heal(fayde, 2.0)` was called once. WHEN 3.0s total elapse, THEN `apply_heal` was called exactly 3 times.
 
 **Target scope guard:**
 
 - **AC-SE-09** — GIVEN `apply_status(fayde, BURN, 2.0, 20.0)` is called (Burn is enemies-only), THEN no StatusInstance is created; an error is logged; `status_applied` is NOT emitted.
-- **AC-SE-10** — GIVEN `apply_status(enemy, REGENERATE, 3.0, 0.0)` is called (Regen is Fayde-only), THEN no StatusInstance is created; an error is logged; `status_applied` is NOT emitted.
+- **AC-SE-10** — GIVEN `apply_status(enemy, REGENERATE, 3.0, 0.0)` is called (Regen is duo-only), THEN no StatusInstance is created; an error is logged; `status_applied` is NOT emitted.
 
 **Dead target guard:**
 
@@ -447,7 +447,7 @@ No formula. The mechanic is a nearest-enemy range check:
 
 **Regen total heal (Formula 2):**
 
-- **AC-SE-21** — GIVEN Fayde at `current_hp=50` and `apply_status(fayde, REGENERATE, 3.0, 0.0)` called, WHEN 3.0s elapse (3 ticks at 1.0s interval), THEN `apply_heal` was called exactly 3 times with `tick_heal = 2.0` each; Fayde gains 6 HP total (H&D rounds each 2.0 to 2).
+- **AC-SE-21** — GIVEN the duo at `current_hp=50` and `apply_status(fayde, REGENERATE, 3.0, 0.0)` called, WHEN 3.0s elapse (3 ticks at 1.0s interval), THEN `apply_heal` was called exactly 3 times with `tick_heal = 2.0` each; the duo gains 6 HP total (H&D rounds each 2.0 to 2).
 
 **Stub effects (Blind and Stun at MVP):**
 
@@ -468,7 +468,7 @@ No formula. The mechanic is a nearest-enemy range check:
 
 1. **Stun/Freeze timer pause (VS scope)** — Prana Data (PD-28/PD-35) specifies that applying Stun to a Frozen enemy pauses the Freeze timer. At MVP, Stun is a stub and `duration_remaining` decrements for all StatusInstances unconditionally — Freeze timer counts down during Stun. At Vertical Slice when Stun is fully implemented, the tick loop (Rule 5) must be extended: skip `duration_remaining` decrement for non-Stun statuses while a STUN instance is active on the same target. *Owner: Status Effects VS implementation.*
 
-2. **Target alive-check mechanism** — Rule 4 step 1a requires `target.is_alive() -> bool`. All target node types (Enemy AI instances, Fayde) must expose this method returning `current_hp > 0`. Confirm this contract is included in Enemy AI and Player Controller GDDs before implementation. *Owner: Enemy AI GDD and Player Controller GDD cross-reference.*
+2. **Target alive-check mechanism** — Rule 4 step 1a requires `target.is_alive() -> bool`. All target node types (Enemy AI instances, the duo) must expose this method returning `current_hp > 0`. Confirm this contract is included in Enemy AI and Player Controller GDDs before implementation. *Owner: Enemy AI GDD and Player Controller GDD cross-reference.*
 
 3. **Shatter at FP scope (resolved — inert)** — At FP, StatusEffectsManager does not track status instances for SC&E's stub field-writes. `has_status(target, FREEZE)` returns `false` at FP. Shatter is inert. At MVP when StatusEffectsManager owns Freeze tracking, Shatter becomes active. No design action needed.
 

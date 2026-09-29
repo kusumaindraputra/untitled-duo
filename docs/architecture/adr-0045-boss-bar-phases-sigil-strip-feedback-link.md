@@ -26,7 +26,7 @@ The high-priority items from the UI/HUD improvement review.
      `BossHealthBar.clean_thresholds()` keeps the distinct values inside (0, 1),
      because layers that share a threshold are one phase (ADR-0018). A notch the boss
      has already passed is drawn faint.
-   - A ghost chunk. Like Fayde's bar (ADR-0042), the HP lost in a hit stays visible
+   - A ghost chunk. Like the duo's bar (ADR-0042), the HP lost in a hit stays visible
      in a pale colour for `boss_ghost_hold_sec`, then drains at
      `boss_ghost_drain_per_sec` × max HP per second.
    - A white flash over the bar for `boss_phase_flash_sec` when `phase_changed`

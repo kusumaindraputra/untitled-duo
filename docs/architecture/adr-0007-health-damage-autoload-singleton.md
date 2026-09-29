@@ -30,7 +30,7 @@ Accepted
 
 ### Problem Statement
 
-Fayde and every enemy in the game need HP pools. There are two architectural options: (a) per-node HP (each EnemyInstance holds its own `current_hp` variable), or (b) central HP registry (HealthAndDamage Autoload holds all HP in a dictionary). The damage pipeline also needs to apply elemental multipliers, i-frame checks, clamps, and emit signals — this logic must live in exactly one place.
+The duo and every enemy in the game need HP pools. There are two architectural options: (a) per-node HP (each EnemyInstance holds its own `current_hp` variable), or (b) central HP registry (HealthAndDamage Autoload holds all HP in a dictionary). The damage pipeline also needs to apply elemental multipliers, i-frame checks, clamps, and emit signals — this logic must live in exactly one place.
 
 **Resolved open questions (from architecture.md QQ-03, QQ-04):**
 - QQ-03: Enemy HP registration contract — WaveManager calls `register_enemy()` before `add_child()`
@@ -41,7 +41,7 @@ Fayde and every enemy in the game need HP pools. There are two architectural opt
 - Engine: Godot 4.6, GDScript
 - Up to 10 enemies per wave at First Playable
 - `enemy_killed` signal must fire from one authoritative source (H&D, not EnemyInstance)
-- Fayde's HP pool must persist across wave transitions within a run (not reset between waves)
+- The duo's HP pool must persist across wave transitions within a run (not reset between waves)
 - StatusEffectsManager must call `apply_damage()` and `apply_heal()` on H&D (Autoload pattern, not per-node)
 - Player invincibility frame (i-frame) check must be in the damage pipeline, not in every caller
 
@@ -64,7 +64,7 @@ Fayde and every enemy in the game need HP pools. There are two architectural opt
 class_name HealthAndDamage
 extends Node
 
-# ── Fayde HP ──────────────────────────────────────────────────────────────────
+# ── Duo HP (shared) ──────────────────────────────────────────────────────────────────
 var _fayde_max_hp: float          # = EnemyData default or tuning knob (100.0)
 var _fayde_current_hp: float
 var _iframe_active: bool = false

@@ -46,7 +46,7 @@ charges, elite enemies and mid-wave reinforcements. All knobs live in
 The user asked for a fast-paced bullet hell with many enemy attack types. Before this
 change the only ranged attacks were the Rifter's single aimed shot every 2 s and the
 boss's 6-bullet salvo, both hardcoded constants in `enemy_instance.gd`. Every new
-attack would have meant a new archetype branch. Fayde's 8 px movement body was also
+attack would have meant a new archetype branch. The duo's 8 px movement body was also
 her bullet hurtbox, which punishes near misses, and the 2 s dash cooldown is far too
 slow for dense patterns.
 
@@ -67,9 +67,9 @@ slow for dense patterns.
 4. **Boss phases are HP-gated layers.** A layer with `hp_threshold < 1` switches on
    below that HP ratio; a rise in active gated layers emits `EnemyInstance.phase_changed`,
    which CombatHUD calls out.
-5. **Bullets.** `Projectile` hits Fayde by distance (`bullet_radius + player_hurt_radius`),
+5. **Bullets.** `Projectile` hits the duo by distance (`bullet_radius + player_hurt_radius`),
    not by physics against her body; its collision mask is walls only. A bullet that
-   reaches a dashing Fayde passes through and grazes. Live bullets join group
+   reaches a dashing Faith passes through and grazes. Live bullets join group
    `enemy_bullet`; `Projectile.cancel_in_radius()` clears them.
 6. **Pooling.** `BulletPool` (one per arena parent) recycles pattern bullets. Spent
    bullets hide at once and are released deferred, so `process_mode = DISABLED`
@@ -92,7 +92,7 @@ slow for dense patterns.
 - **Bullets as a MultiMesh / server-side canvas items** — faster, but loses the
   per-bullet `Area2D` wall collision and complicates cancel. Revisit only if profiling
   shows the pool cannot hold 60 fps.
-- **Graze as a second Area2D on Fayde** — rejected: the bullet already measures its
+- **Graze as a second Area2D on the duo** — rejected: the bullet already measures its
   distance for the hit test, so graze is one extra comparison.
 
 ## Consequences

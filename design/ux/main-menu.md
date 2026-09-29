@@ -12,7 +12,7 @@
 
 > **Player goal statement:** *"The player arrives at the Main Menu wanting to begin. The screen exists to give them permission — and to make the beginning feel like something."*
 
-The Main Menu serves two needs simultaneously: **orientation** (this is the world, this is the atmosphere of what you are entering) and **threshold** (one action gets you in). The screen must communicate the emotional register of the game before the player ever controls Fayde — the quiet, mysterious, slightly-melancholy atmosphere of a scrap yard that has been waiting a long time.
+The Main Menu serves two needs simultaneously: **orientation** (this is the world, this is the atmosphere of what you are entering) and **threshold** (one action gets you in). The screen must communicate the emotional register of the game before the player ever controls the duo — the quiet, mysterious, slightly-melancholy atmosphere of a scrap yard that has been waiting a long time.
 
 The screen is not a hub — it is a doorway. At MVP scope there are no choices to make beyond "start" or "quit." The design honors that simplicity: one dominant action, minimal chrome, atmosphere does the work. When the player presses New Game, they should already feel the weight of stepping into something that has been asleep.
 
@@ -28,7 +28,7 @@ Four distinct paths lead to the Main Menu:
 |---------------|---------------|-----------------|
 | First launch | Nothing — first encounter with the game | Curious, no context, discovering |
 | From RUN_SUMMARY | Completed a full run (won) | Satisfied, reflective, wants to go again |
-| From DEATH_SCREEN | Fayde died mid-run | Wistful, not ashamed — "I want to know how it ends" (Art Bible §2.5) |
+| From DEATH_SCREEN | The duo died mid-run | Wistful, not ashamed — "I want to know how it ends" (Art Bible §2.5) |
 | From PAUSED → Quit | Abandoned a run voluntarily | Pragmatic — chose to stop, may return immediately |
 
 **At MVP scope**, all four paths arrive at a visually identical screen — there is no save state, no "continue" option, and no run history to display. The UI makes no distinction between arrival contexts.

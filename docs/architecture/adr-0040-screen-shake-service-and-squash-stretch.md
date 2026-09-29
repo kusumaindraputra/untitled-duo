@@ -30,7 +30,7 @@ erase a boss-phase shake. And no shake knew which way the blow went.
 3. **Named sizes.** Callers pick `ShakeState.Strength.LIGHT / MEDIUM / HEAVY /
    MASSIVE` instead of raw numbers. All values are in `assets/data/shake_tuning.tres`.
 4. **Squash & stretch.** `PixelCharacter.squash(peak, duration)` deforms the sprite
-   around its feet and springs it back with one overshoot. Fayde stretches along a
+   around its feet and springs it back with one overshoot. The duo stretches along a
    dash, squashes when the dash lands and squashes when a cast begins. Enemies
    squash along the blow when hit, and bosses squash less. The timings are in
    `CharacterFxTuning`.
@@ -90,7 +90,7 @@ into the floor instead of around its middle. Nothing that sets the node's own
 - **Keep both shakes and add them.** This would still leave two tunings and two
   settings paths, and the other juice threads would need to know which one to
   call.
-- **A shake on PlayerController only.** It would be tied to Fayde's physics tick,
+- **A shake on PlayerController only.** It would be tied to the duo's physics tick,
   which freezes in hit-stop, and it has no camera outside a run.
 - **Tween-based squash.** Tweens on `scale` fight each other when hits come fast.
   A timer in `advance_fx` restarts cleanly and is testable without a tree.

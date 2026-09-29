@@ -15,7 +15,7 @@ Kusuma Putra (solo dev) + Claude Code Game Studios
 ## Summary
 
 The combat camera moves in from 1.5× to 2.0× zoom, and enemies of a room's
-opening wave now spawn dormant and wake when Fayde comes within an aggro radius.
+opening wave now spawn dormant and wake when the duo comes within an aggro radius.
 Both sets of numbers moved out of code constants into `.tres` resources:
 `assets/data/camera_tuning.tres` and `assets/data/enemy_awareness_tuning.tres`.
 
@@ -30,7 +30,7 @@ Both sets of numbers moved out of code constants into `.tres` resources:
 ## Context
 
 - The base viewport is 1152×648. At 1.5× the combat view showed 768×432 game px,
-  and Fayde (about 32 px of art) filled about 7% of the screen height. Playtest
+  and the duo (about 32 px of art) filled about 7% of the screen height. Playtest
   feedback: the view felt too wide.
 - Every enemy chased and fired from the moment it spawned, including ones on the
   far side of a 1280×768 arena, well outside the view. There was no aggro range.
@@ -51,7 +51,7 @@ Both sets of numbers moved out of code constants into `.tres` resources:
 
 | Knob | Old | New | Visible area |
 |------|-----|-----|--------------|
-| `combat_zoom` | 1.5 | **2.0** | 576×324 game px, Fayde ~10% of height |
+| `combat_zoom` | 1.5 | **2.0** | 576×324 game px, the duo ~10% of height |
 | `boss_reveal_zoom` | 1.0 | **1.4** | 823×463, still a pull-out from combat |
 | `prep_zoom` | 0.55 | 0.55 | whole arena |
 | `look_ahead_max` | 30 | **40** | more lead in the move direction |
@@ -59,7 +59,7 @@ Both sets of numbers moved out of code constants into `.tres` resources:
 
 2.0 sits between Hades and Diablo. Going to a full Diablo 2.4× (480×270) was
 tried and left out as the default: the view gets short vertically, and a
-150 px/s bullet entering at the top or bottom edge reaches Fayde in 0.9 s
+150 px/s bullet entering at the top or bottom edge reaches the active brother in 0.9 s
 (1.08 s at 2.0, 1.44 s at 1.5). The test suite keeps `combat_zoom` inside
 1.5–2.6.
 
@@ -70,7 +70,7 @@ tried and left out as the default: the view gets short vertically, and a
   it.
 - A dormant enemy stands still and runs no bullet patterns.
 - It wakes when any of these happens:
-  - Fayde is within `aggro_radius` = **230** ground px.
+  - The duo is within `aggro_radius` = **230** ground px.
   - It takes damage.
   - An ally within `alert_link_radius` = **170** of it wakes up, so packs pull
     together.
@@ -78,7 +78,7 @@ tried and left out as the default: the view gets short vertically, and a
 - Distance is measured on the isometric floor: screen y is multiplied by
   `iso_y_scale` = 2 first, so the aggro area is a 2:1 ellipse on screen that
   matches the diamond floor. 230 means 230 px to the side or 115 px above or
-  below Fayde. That ellipse fits inside the 576×324 combat view, so an enemy is
+  below the duo. That ellipse fits inside the 576×324 combat view, so an enemy is
   always on screen before it wakes and starts shooting. A test locks that
   relationship in, so changing one value without the other fails CI.
 - A waking enemy pops a pixel "!" above its head for 0.5 s and emits `alerted`.
@@ -91,7 +91,7 @@ tried and left out as the default: the view gets short vertically, and a
 - **Aggro by line of sight.** Needs raycasts per enemy per frame and makes cover
   pillars also block waking. Radius plus alert-on-hit is enough for rooms this
   size.
-- **Enemies lose aggro when Fayde leaves.** In a bullet hell with small rooms
+- **Enemies lose aggro when the duo leaves.** In a bullet hell with small rooms
   this reads as enemies forgetting her mid-fight. Once awake they stay awake.
 
 ## Consequences

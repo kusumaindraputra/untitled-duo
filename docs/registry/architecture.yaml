@@ -450,7 +450,7 @@ forbidden_patterns:
   - pattern: dual_group_membership
     status: active
     description: "No scene node may be a member of both the 'player' group and the 'enemy' group simultaneously. PlayerController is the sole permitted member of 'player'. EnemyInstance scripts are the sole permitted members of 'enemy'."
-    why: "H&D, SC&E, and EnemyAI all use is_in_group() to discriminate Fayde from enemies in signal handlers and Area2D callbacks. Dual membership would cause a node to trigger both code paths, resulting in self-damage or incorrect targeting."
+    why: "H&D, SC&E, and EnemyAI all use is_in_group() to discriminate the duo from enemies in signal handlers and Area2D callbacks. Dual membership would cause a node to trigger both code paths, resulting in self-damage or incorrect targeting."
     adr: docs/architecture/adr-0010-player-group-convention.md
     added: 2026-05-29
 

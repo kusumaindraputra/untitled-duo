@@ -66,7 +66,7 @@ through the arena walls. The same bug would have made pillars useless.
    `CoverPillar.cast_beam()` during the telegraph and when it fires.
 4. **Hazards are data.** `HazardSpec` resources sit in `RoomTemplate.hazards`.
    `IsometricRoom` builds one `StageHazard` subclass per spec under a `Hazards` node.
-   Random-position hazards take a free interior tile clear of spawns, doors and Fayde's
+   Random-position hazards take a free interior tile clear of spawns, doors and the duo's
    start. Hazards listen to `GameStateManager`: `combat_started` switches them on,
    and preparation, wave end, room clear and death switch them off.
 5. **Floor identity is data.** `FloorTheme` holds parallel template/weight arrays per room
@@ -95,7 +95,7 @@ through the arena walls. The same bug would have made pillars useless.
 
 - Positive: layout now changes how a fight is survived. Floors look and play
   differently. Enemy bullets finally stop at walls, which also fixes bullets hitting
-  Fayde from outside the arena.
+  The duo from outside the arena.
 - Negative: more physics bodies per room (2–4 pillars and up to 4 hazards). They are
   cheap static bodies and one ray per beam per frame.
 - Risk: dense patterns can grind pillars down quickly. Durability was raised to 24

@@ -23,7 +23,7 @@ forward.
 | Beat | Recovers the next fragment when |
 |------|--------------------------------|
 | Floor boss defeated (not the last floor) | always |
-| Fayde dies | the run cleared at least 3 rooms |
+| The brothers fall (shared HP reaches 0) | the run cleared at least 3 rooms |
 | Final boss defeated | always, then the ending plays |
 
 - Fragments unlock in the fixed order below; progress is a count saved between runs.

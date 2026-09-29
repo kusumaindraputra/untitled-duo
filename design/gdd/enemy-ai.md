@@ -7,17 +7,17 @@
 
 ## Overview
 
-Enemy AI owns the runtime behavior of every enemy instance in The Last Cipher. It is responsible for three behaviors: **movement** (approaching Fayde during Combat phase), **attack** (dealing contact damage on overlap), and **death sequencing** (crumple → bloom → dissolve animation and one-frame node-lifetime guarantee after `enemy_killed` fires). Behavior is archetype-routed: three archetypes from Enemy Data map to three distinct behavioral patterns — SEEKER (Drifter) pursues Fayde at constant speed; RUSHER (Charger) telegraphs a directional charge burst; SWARMER (Cluster) moves in loose formation with other Swarmer units, threatening only in groups.
+Enemy AI owns the runtime behavior of every enemy instance in The Last Cipher. It is responsible for three behaviors: **movement** (approaching the active brother during Combat phase), **attack** (dealing contact damage on overlap), and **death sequencing** (crumple → bloom → dissolve animation and one-frame node-lifetime guarantee after `enemy_killed` fires). Behavior is archetype-routed: three archetypes from Enemy Data map to three distinct behavioral patterns — SEEKER (Drifter) pursues the active brother at constant speed; RUSHER (Charger) telegraphs a directional charge burst; SWARMER (Cluster) moves in loose formation with other Swarmer units, threatening only in groups.
 
-At **First Playable scope**, all three archetypes implement a simplified form: direct screen-space vector movement toward Fayde's position each physics frame, and a single contact-damage call per `ENEMY_MIN_CONTACT_INTERVAL` when overlapping Fayde's collision area. No navmesh, no formation logic, no Charger wind-up telegraph at FP. The archetype routing scaffolding is in place so fuller patterns arrive at MVP/VS without structural refactor.
+At **First Playable scope**, all three archetypes implement a simplified form: direct screen-space vector movement toward the active brother's position each physics frame, and a single contact-damage call per `ENEMY_MIN_CONTACT_INTERVAL` when overlapping the active brother's collision area. No navmesh, no formation logic, no Charger wind-up telegraph at FP. The archetype routing scaffolding is in place so fuller patterns arrive at MVP/VS without structural refactor.
 
 Enemy AI operates exclusively in `COMBAT_PHASE` — all enemy processing suspends during `PREPARATION_PHASE` and `PAUSED`. Enemy instances are spawned and despawned by Wave / Encounter System; Enemy AI activates on spawn and deactivates when `enemy_killed` fires. All HP tracking and damage application are delegated to Health & Damage: `apply_damage(fayde, enemy.base_damage, null, DamageSource.CONTACT)` exactly once per contact event.
 
 ## Player Fantasy
 
-The fantasy of Enemy AI is **legible threat**. Fayde's combat is two-phase by design: in Preparation you arrange the grid knowing what's coming; in Combat you find out if you read it right. Enemy AI is what makes "what's coming" feel real.
+The fantasy of Enemy AI is **legible threat**. The duo's combat is two-phase by design: in Preparation you arrange the grid knowing what's coming; in Combat you find out if you read it right. Enemy AI is what makes "what's coming" feel real.
 
-Each archetype delivers a distinct emotional pressure. The **Drifter** is steady menace — it does not rush, it just closes the distance at a pace that always feels like it will reach you exactly when you don't want it to. It teaches patience and spacing. The **Charger** is the moment of commitment: a slow approach, then the burst — a test of whether the player read the wind-up and repositioned, or didn't. The satisfaction of a clean dodge is earned by the dread that preceded it. The **Cluster** is arithmetic becoming terror: individually each unit is negligible; three at once means Fayde's position has to be deliberate or the contact interval stack becomes a problem.
+Each archetype delivers a distinct emotional pressure. The **Drifter** is steady menace — it does not rush, it just closes the distance at a pace that always feels like it will reach you exactly when you don't want it to. It teaches patience and spacing. The **Charger** is the moment of commitment: a slow approach, then the burst — a test of whether the player read the wind-up and repositioned, or didn't. The satisfaction of a clean dodge is earned by the dread that preceded it. The **Cluster** is arithmetic becoming terror: individually each unit is negligible; three at once means the active brother's position has to be deliberate or the contact interval stack becomes a problem.
 
 The combined fantasy is **the feeling of a wave that was understood**: Drifters peeled off the right flank, Charger dodged with a well-timed dash, Cluster caught in the Prana cone and thinned fast. When the player can describe what they did and *why* it worked — "I stayed center so the Charger charge went wide; the Clusters couldn't swarm from there" — Enemy AI is delivering Pillar 2 fully.
 
@@ -44,13 +44,13 @@ At FP scope, the simplified behavior (direct movement + contact damage) is inten
    - `PROCESS_MODE_PAUSABLE` handles `game_paused` automatically.
 
 4. **FP movement (all archetypes)**: Each `_physics_process(delta)`:
-   - Get Fayde reference: `_fayde_ref = get_tree().get_first_node_in_group(&"player")` — cached at `_ready()`; re-resolved if null
+   - Get the duo reference: `_fayde_ref = get_tree().get_first_node_in_group(&"player")` — cached at `_ready()`; re-resolved if null
    - `dir = (fayde_ref.global_position - global_position).normalized()`
    - `velocity = dir * _move_speed`
    - `move_and_slide()`
-   - Degenerate case (`dir.length() < 0.01`): hold last valid direction; do not zero — prevents jitter when enemy is already at Fayde's position
+   - Degenerate case (`dir.length() < 0.01`): hold last valid direction; do not zero — prevents jitter when enemy is already at the active brother's position
 
-5. **Contact attack**: Child `Area2D` fires signals when Fayde's `CharacterBody2D` enters/exits:
+5. **Contact attack**: Child `Area2D` fires signals when the duo's `CharacterBody2D` enters/exits:
    - `body_entered(body)`: if `body.is_in_group("player")` → `_fayde_in_contact = true` → call `apply_damage(fayde, _base_damage, null, DamageSource.CONTACT)` immediately → start `_contact_timer` (period = `ENEMY_MIN_CONTACT_INTERVAL`)
    - `_contact_timer.timeout`: if `_fayde_in_contact` → call `apply_damage()` again
    - `body_exited(body)`: if `body.is_in_group("player")` → `_fayde_in_contact = false` → stop `_contact_timer`
@@ -64,7 +64,7 @@ At FP scope, the simplified behavior (direct movement + contact damage) is inten
 
 7. **Group membership** (hard constraint from H&D target discrimination contract):
    - Enemy instances **must** be added to the `"enemy"` group at `_ready()`: `add_to_group(&"enemy")`
-   - Enemy instances must **NOT** be in the `"player"` group — listeners on `damage_taken` and `heavy_hit` use `target.is_in_group("player")` to distinguish Fayde from enemies
+   - Enemy instances must **NOT** be in the `"player"` group — listeners on `damage_taken` and `heavy_hit` use `target.is_in_group("player")` to distinguish the duo from enemies
 
 ---
 
@@ -72,7 +72,7 @@ At FP scope, the simplified behavior (direct movement + contact damage) is inten
 
 | State | Description | Entry | Exit |
 |-------|-------------|-------|------|
-| `CHASING` | Moving toward Fayde; contact attack armed | Default on spawn (enemies spawned during COMBAT_PHASE only) | → `DEAD` on self `enemy_killed` |
+| `CHASING` | Moving toward the active brother; contact attack armed | Default on spawn (enemies spawned during COMBAT_PHASE only) | → `DEAD` on self `enemy_killed` |
 | `DEAD` | Death animation playing; no movement, no attack | `_on_self_killed()` | Terminal — node `queue_free()` after animation |
 
 **Phase overlay** (orthogonal to state machine):
@@ -104,7 +104,7 @@ At FP scope, the simplified behavior (direct movement + contact damage) is inten
 
 ### Formula 1 — Degenerate Direction Guard
 
-The direction vector `(fayde_pos - enemy_pos)` collapses to zero when an enemy occupies the same position as Fayde. `Vector2.ZERO.normalized()` produces `NaN` in GDScript, which propagates through `move_and_slide()` and crashes. The guard prevents this:
+The direction vector `(fayde_pos - enemy_pos)` collapses to zero when an enemy occupies the same position as the duo. `Vector2.ZERO.normalized()` produces `NaN` in GDScript, which propagates through `move_and_slide()` and crashes. The guard prevents this:
 
 ```
 dir_this_frame = (dir.length() >= 0.01) ? dir.normalized() : _dir_last_valid
@@ -114,13 +114,13 @@ dir_this_frame = (dir.length() >= 0.01) ? dir.normalized() : _dir_last_valid
 | Variable | Symbol | Type | Range | Description |
 |----------|--------|------|-------|-------------|
 | Raw direction | `dir` | Vector2 | any | `fayde_pos - global_position` this frame |
-| Direction length | `dir.length()` | float | 0 – unbounded | Euclidean distance to Fayde in px |
+| Direction length | `dir.length()` | float | 0 – unbounded | Euclidean distance to the duo in px |
 | Cached direction | `_dir_last_valid` | Vector2 (normalized) | unit vectors | Last frame's valid normalized direction; initialized to `Vector2.RIGHT` at spawn |
 | Output direction | `dir_this_frame` | Vector2 (normalized) | unit vectors | Direction used for velocity this frame |
 
 **Output Range:** Always a unit vector. When degenerate, uses last cached direction to prevent any change in momentum.
 
-**Example — enemy directly on top of Fayde:**
+**Example — enemy directly on top of the active brother:**
 `dir = (0, 0)`, `dir.length() = 0 < 0.01` → use `_dir_last_valid = (1, 0)` → `velocity = (1, 0) × 80 = (80, 0) px/s`. Enemy slides out of the degenerate position on the next frame.
 
 ---
@@ -144,7 +144,7 @@ effective_move_speed = base_move_speed × max(0, 1 - slow_pct)
 
 **Example — Drifter under Freeze:** `80 × max(0, 1 - 0.50) = 40 px/s`
 
-**Cross-system note:** `slow_pct = 1.0` produces `v_eff = 0` (correct speed for Stun). However, Stun also requires pausing the `_dir_last_valid` cache so the direction does not continue tracking Fayde while velocity is zeroed. This distinction means Stun must be implemented via a separate `apply_stun(duration)` interface at MVP, not via `slow_pct`. See Open Questions.
+**Cross-system note:** `slow_pct = 1.0` produces `v_eff = 0` (correct speed for Stun). However, Stun also requires pausing the `_dir_last_valid` cache so the direction does not continue tracking the duo while velocity is zeroed. This distinction means Stun must be implemented via a separate `apply_stun(duration)` interface at MVP, not via `slow_pct`. See Open Questions.
 
 ---
 
@@ -189,7 +189,7 @@ The i-frame window (0.5s) always outlasts one contact retry (0.3s), guaranteeing
 
 ### MVP Formula Note — Aggro Radius
 
-At FP scope: no aggro check — all enemies chase Fayde from spawn. At MVP when non-wave-spawned patrol enemies are introduced, the check will be:
+At FP scope: no aggro check — all enemies chase the duo from spawn. At MVP when non-wave-spawned patrol enemies are introduced, the check will be:
 
 ```
 is_aggro = (enemy_pos - fayde_pos).length() ≤ AGGRO_RADIUS
@@ -199,8 +199,8 @@ Proposed default: `AGGRO_RADIUS = 400px`. Pending confirmation of final arena pi
 
 ## Edge Cases
 
-**1. Fayde node reference null at spawn**
-- **If** `get_tree().get_first_node_in_group("player")` returns `null` at `_ready()` (Fayde not yet in the scene tree): cache `_fayde_ref = null`. In `_physics_process`, if `_fayde_ref == null`, re-attempt lookup each frame. If still null, hold position (velocity = Vector2.ZERO). Enemy idles until Fayde is found. This prevents a null-access crash on the first physics tick.
+**1. The duo node reference null at spawn**
+- **If** `get_tree().get_first_node_in_group("player")` returns `null` at `_ready()` (the duo not yet in the scene tree): cache `_fayde_ref = null`. In `_physics_process`, if `_fayde_ref == null`, re-attempt lookup each frame. If still null, hold position (velocity = Vector2.ZERO). Enemy idles until the duo is found. This prevents a null-access crash on the first physics tick.
 
 **2. Enemy spawned before `combat_started` fires**
 - **If** Wave / Encounter System spawns an enemy instance during PREPARATION_PHASE (should not occur at FP, but guard is present): `_combat_active` defaults to `false` at init. Enemy holds position and does not attack until `combat_started` fires. No damage occurs. State machine enters `CHASING` but `_physics_process` early-returns on `not _combat_active`.
@@ -212,7 +212,7 @@ Proposed default: `AGGRO_RADIUS = 400px`. Pending confirmation of final arena pi
 - **If** Wave / Encounter System starts a new wave (fires `combat_started`) while this enemy's death animation is still playing (transitioning from the previous wave): `_combat_active` is set to `true`, but the `DEAD` state guard in `_physics_process` (`if _state == EnemyState.DEAD: return`) prevents any movement or attack. The death animation completes and `queue_free()` fires normally. This is expected behavior during the rare edge case where wave transition overlaps with lingering death sequences.
 
 **5. Contact damage call during death animation**
-- **If** Fayde is still overlapping when `_on_self_killed()` fires (enemy died mid-overlap): `_contact_timer` is stopped and `$HitArea.monitoring = false` in the death handler. No further `body_entered` or `_contact_timer.timeout` events fire. The in-progress contact does not re-trigger after `DEAD`.
+- **If** the active brother is still overlapping when `_on_self_killed()` fires (enemy died mid-overlap): `_contact_timer` is stopped and `$HitArea.monitoring = false` in the death handler. No further `body_entered` or `_contact_timer.timeout` events fire. The in-progress contact does not re-trigger after `DEAD`.
 
 **6. `apply_damage` rejected by H&D dead-target guard on an enemy already at 0 HP**
 - **If** Spell Casting & Effects or Status Effects (MVP) calls `apply_damage` on an enemy that has already reached 0 HP and entered `DEAD` state: H&D's dead-target guard (Rule 2, step 2) returns immediately — no second `enemy_killed` emission, no double-death. Enemy AI's `DEAD` state guard independently ensures no further movement or attack regardless. Both systems have independent guards; neither depends on the other for safety.
@@ -233,7 +233,7 @@ Proposed default: `AGGRO_RADIUS = 400px`. Pending confirmation of final arena pi
 | # | System | What Enemy AI reads/uses | Contract |
 |---|--------|--------------------------|---------|
 | 1 | **Enemy Data** | `archetype`, `base_damage`, `base_move_speed` — looked up by `enemy_type_id` at spawn | Enemy Data is the authoritative source; Enemy AI caches values at init and does not re-query mid-wave |
-| 2 | **Player Controller** | Fayde's `global_position` each physics frame; Fayde node must be in the `"player"` group | Player Controller must maintain `"player"` group membership on the Fayde node; Enemy AI accesses position via the cached node reference |
+| 2 | **Player Controller** | The duo's `global_position` each physics frame; the duo node must be in the `"player"` group | Player Controller must maintain `"player"` group membership on the duo node; Enemy AI accesses position via the cached node reference |
 | 3 | **Health & Damage** | Calls `apply_damage(fayde, base_damage, null, DamageSource.CONTACT)` per contact event; listens for `enemy_killed(instance_id, ...)` signal to detect own death | H&D owns HP state and death signal emission; Enemy AI never tracks HP directly. Enemy AI must enforce `ENEMY_MIN_CONTACT_INTERVAL ≥ 0.3s` — H&D's i-frame guarantee depends on it (H&D Dependency #5) |
 | 4 | **Game State & Scene Flow** | `combat_started` / `preparation_started` signals to toggle `_combat_active` | Accessed via `GameStateManager` autoload; Enemy AI connects in `_ready()` |
 
@@ -257,12 +257,12 @@ The `"player"` / `"enemy"` group convention (target discrimination) is a shared 
 
 | Knob | Constant Name | Default Value | Safe Range | What It Affects | What Breaks If Wrong |
 |------|---------------|---------------|------------|-----------------|----------------------|
-| Contact interval | `ENEMY_MIN_CONTACT_INTERVAL` | 0.3s | 0.3s – 0.49s | How fast contact-damage enemies stack pressure on Fayde; minimum swarm pacing | **Upper bound constraint: must stay below `FAYDE_IFRAME_DURATION` (0.5s)** — if interval ≥ 0.5s, retries land outside the i-frame window and Cluster swarms provide no protection (Formula 3 co-tuning). Lower bound 0.3s is a gameplay floor — below this, contact spam feels unfair regardless of i-frames |
+| Contact interval | `ENEMY_MIN_CONTACT_INTERVAL` | 0.3s | 0.3s – 0.49s | How fast contact-damage enemies stack pressure on the duo; minimum swarm pacing | **Upper bound constraint: must stay below `FAYDE_IFRAME_DURATION` (0.5s)** — if interval ≥ 0.5s, retries land outside the i-frame window and Cluster swarms provide no protection (Formula 3 co-tuning). Lower bound 0.3s is a gameplay floor — below this, contact spam feels unfair regardless of i-frames |
 | Base death duration | `BASE_DEATH_DURATION` | 0.7s | 0.5s – 1.0s | Overall pacing of enemy deaths; how long the arena stays "cluttered" with dying enemies | Below 0.5s: crumple → bloom → dissolve reads as one undifferentiated flash (each phase needs ≥ 8f). Above 1.0s: dense Cluster waves create a wall of dissolving corpses that obscures live enemies |
 | Cluster tier scale | `DEATH_TIER_SCALE_SWARMER` | 0.75 | 0.60 – 0.90 | Cluster death animation length relative to base | Below 0.60: animation too fast to read as distinct from an instant kill. Above 0.90: Cluster deaths start feeling weighty — reduces contrast with Charger's death |
 | Drifter tier scale | `DEATH_TIER_SCALE_SEEKER` | 1.00 | 0.85 – 1.15 | Drifter death animation length; the "baseline" feel | Keeping near 1.0 maintains it as the reference point. Large deviations distort the relative weight of Cluster vs. Charger deaths |
 | Charger tier scale | `DEATH_TIER_SCALE_RUSHER` | 1.50 | 1.20 – 1.80 | Charger death animation length; the "event" feel | Below 1.20: Charger death feels too similar to Drifter — the weight of killing the 35 HP high-damage threat is lost. Above 1.80 (> 1.25s): death sequence stalls wave pacing notably |
-| Aggro radius (MVP) | `AGGRO_RADIUS` | 400px | 200px – screen width | At what distance enemies begin chasing Fayde (MVP only — not active at FP) | If too small: enemies passive at spawn, breaking always-pressure feel. If too large: indistinguishable from no-aggro-check (acceptable for FP-style MVP) |
+| Aggro radius (MVP) | `AGGRO_RADIUS` | 400px | 200px – screen width | At what distance enemies begin chasing the active brother (MVP only — not active at FP) | If too small: enemies passive at spawn, breaking always-pressure feel. If too large: indistinguishable from no-aggro-check (acceptable for FP-style MVP) |
 
 **Cross-system notes:**
 - `base_move_speed`, `base_damage`, `base_hp` are NOT tuning knobs for this GDD — they are defined in Enemy Data and must be tuned there.
@@ -293,20 +293,20 @@ The `"player"` / `"enemy"` group convention (target discrimination) is a shared 
 
 - **AC-EAI-04** — GIVEN `_combat_active = false`, WHEN `_physics_process(delta)` runs, THEN `velocity == Vector2.ZERO` and no displacement occurs.
 - **AC-EAI-05** — GIVEN `_state == DEAD` AND `_combat_active = true`, WHEN `_physics_process(delta)` runs, THEN `velocity == Vector2.ZERO` — DEAD takes precedence over `_combat_active`.
-- **AC-EAI-06** — GIVEN `_combat_active = false` and a valid Fayde reference, WHEN `combat_started` fires, THEN `_combat_active = true` and the next `_physics_process` call produces non-zero velocity.
+- **AC-EAI-06** — GIVEN `_combat_active = false` and a valid the duo reference, WHEN `combat_started` fires, THEN `_combat_active = true` and the next `_physics_process` call produces non-zero velocity.
 
 ### FP Movement
 
-- **AC-EAI-07** — GIVEN enemy at `(0, 0)` and Fayde at `(100, 0)` with `_combat_active = true`, WHEN `_physics_process(delta)` runs, THEN `velocity == Vector2(1, 0) × _move_speed`.
-- **AC-EAI-08** — GIVEN enemy and Fayde at the exact same position (dir.length() = 0), WHEN `_physics_process(delta)` runs, THEN `velocity` is a valid non-NaN vector — no crash, no NaN propagation. Assertion: `not is_nan(velocity.x) and not is_nan(velocity.y)`.
-- **AC-EAI-09** — GIVEN `_dir_last_valid = Vector2(0, 1)` from a prior valid frame, then enemy and Fayde at the same position, WHEN `_physics_process(delta)` runs, THEN `velocity == Vector2(0, 1) × _move_speed` — last valid direction used, not a default axis.
-- **AC-EAI-27** — GIVEN `_fayde_ref == null` (Fayde not yet in scene tree), WHEN `_physics_process(delta)` runs, THEN `velocity == Vector2.ZERO` and no null-access error is raised.
+- **AC-EAI-07** — GIVEN enemy at `(0, 0)` and the duo at `(100, 0)` with `_combat_active = true`, WHEN `_physics_process(delta)` runs, THEN `velocity == Vector2(1, 0) × _move_speed`.
+- **AC-EAI-08** — GIVEN enemy and the active brother at the exact same position (dir.length() = 0), WHEN `_physics_process(delta)` runs, THEN `velocity` is a valid non-NaN vector — no crash, no NaN propagation. Assertion: `not is_nan(velocity.x) and not is_nan(velocity.y)`.
+- **AC-EAI-09** — GIVEN `_dir_last_valid = Vector2(0, 1)` from a prior valid frame, then enemy and the active brother at the same position, WHEN `_physics_process(delta)` runs, THEN `velocity == Vector2(0, 1) × _move_speed` — last valid direction used, not a default axis.
+- **AC-EAI-27** — GIVEN `_fayde_ref == null` (the duo not yet in scene tree), WHEN `_physics_process(delta)` runs, THEN `velocity == Vector2.ZERO` and no null-access error is raised.
 
 ### Contact Attack
 
-- **AC-EAI-10** — GIVEN enemy alive in COMBAT_PHASE and Fayde not overlapping, WHEN Fayde's body enters the `Area2D` (`body_entered` fires), THEN `apply_damage(fayde, _base_damage, null, DamageSource.CONTACT)` is called exactly once before any timer elapses.
-- **AC-EAI-11** — GIVEN Fayde overlapping and initial hit fired, WHEN `_contact_timer` fires (0.3s) and `_fayde_in_contact == true`, THEN `apply_damage` is called again with the same arguments.
-- **AC-EAI-12** — GIVEN Fayde overlapping and timer running, WHEN Fayde's body exits the `Area2D`, THEN `_contact_timer` stops and no further `apply_damage` calls occur after one full `ENEMY_MIN_CONTACT_INTERVAL` duration.
+- **AC-EAI-10** — GIVEN enemy alive in COMBAT_PHASE and the active brother not overlapping, WHEN the active brother's body enters the `Area2D` (`body_entered` fires), THEN `apply_damage(fayde, _base_damage, null, DamageSource.CONTACT)` is called exactly once before any timer elapses.
+- **AC-EAI-11** — GIVEN the active brother overlapping and initial hit fired, WHEN `_contact_timer` fires (0.3s) and `_fayde_in_contact == true`, THEN `apply_damage` is called again with the same arguments.
+- **AC-EAI-12** — GIVEN the active brother overlapping and timer running, WHEN the active brother's body exits the `Area2D`, THEN `_contact_timer` stops and no further `apply_damage` calls occur after one full `ENEMY_MIN_CONTACT_INTERVAL` duration.
 - **AC-EAI-13** — GIVEN the compiled `EnemyAI` class, WHEN `ENEMY_MIN_CONTACT_INTERVAL` is read, THEN its value equals exactly `0.3` (float).
 - **AC-EAI-14** — GIVEN `ENEMY_MIN_CONTACT_INTERVAL` and `FAYDE_IFRAME_DURATION` constants, THEN both conditions hold: (1) `ENEMY_MIN_CONTACT_INTERVAL >= 0.3` AND (2) `FAYDE_IFRAME_DURATION / ENEMY_MIN_CONTACT_INTERVAL >= 1.0` — the i-frame window must always outlast one contact interval.
 
@@ -338,9 +338,9 @@ The `"player"` / `"enemy"` group convention (target discrimination) is a shared 
 
 ### Integration
 
-- **AC-EAI-24** — Full contact sequence: GIVEN an alive enemy in COMBAT_PHASE with Fayde not overlapping: (1) Fayde enters → `apply_damage` called once immediately; (2) timer fires at 0.3s, Fayde still overlapping → `apply_damage` called again; (3) Fayde exits → timer stops; (4) after one full interval elapses post-exit → no third call. All 4 steps verified via call counter in one sequential test.
-- **AC-EAI-25** — Phase transition during contact: (1) Fayde overlapping, timer running in COMBAT_PHASE; (2) `preparation_started` fires → timer stops, velocity zeros, no damage during PREP phase; (3) `combat_started` fires → phase resumes, new contact correctly re-arms with no leaked timer state.
-- **AC-EAI-26** — Kill during overlap: GIVEN Fayde overlapping and timer running, WHEN `enemy_killed` fires for that enemy, THEN `$HitArea.monitoring == false` and no additional `apply_damage` fires — confirmed after one full interval elapses post-kill.
+- **AC-EAI-24** — Full contact sequence: GIVEN an alive enemy in COMBAT_PHASE with the active brother not overlapping: (1) the active brother enters → `apply_damage` called once immediately; (2) timer fires at 0.3s, the duo still overlapping → `apply_damage` called again; (3) the duo exits → timer stops; (4) after one full interval elapses post-exit → no third call. All 4 steps verified via call counter in one sequential test.
+- **AC-EAI-25** — Phase transition during contact: (1) the active brother overlapping, timer running in COMBAT_PHASE; (2) `preparation_started` fires → timer stops, velocity zeros, no damage during PREP phase; (3) `combat_started` fires → phase resumes, new contact correctly re-arms with no leaked timer state.
+- **AC-EAI-26** — Kill during overlap: GIVEN the active brother overlapping and timer running, WHEN `enemy_killed` fires for that enemy, THEN `$HitArea.monitoring == false` and no additional `apply_damage` fires — confirmed after one full interval elapses post-kill.
 
 ## Open Questions
 

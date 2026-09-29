@@ -17,7 +17,7 @@ allowed to happen.
 ending in a boss encounter. Each wave runs as a full Prep→Combat cycle — the player
 returns to `PREPARATION_PHASE` between waves to re-arrange the Prana grid before
 confirming the next wave's loadout. The arena ends when the boss is defeated
-(`RUN_SUMMARY`) or Fayde dies (`DEATH_SCREEN`). Boss combat is handled via
+(`RUN_SUMMARY`) or the duo dies (`DEATH_SCREEN`). Boss combat is handled via
 `COMBAT_PHASE` with `is_boss: true` on the `combat_started` signal — no separate state
 is needed because the state table rules are identical to a regular combat wave. MVP
 states: `MAIN_MENU`, `PREPARATION_PHASE`, `COMBAT_PHASE`, `RUN_SUMMARY`,
@@ -42,7 +42,7 @@ Combat. Multiple waves per run establish the pattern before the boss delivers th
 culminating confrontation. The system gives the run its pulse.
 
 **The final confrontation (MVP — climax):** After the waves, the boss arrives. The
-pattern the player has practiced becomes the test. Victory delivers Fayde's first
+pattern the player has practiced becomes the test. Victory delivers the duo's first
 recovered memory — the plot twist that recontextualizes the run just completed.
 
 **The map reader's fantasy (`[VS]`):** The moment between rooms when the player surveys
@@ -178,7 +178,7 @@ Controller enables movement — no one-frame window where both are active.
 **Signal ordering: Same-Frame Death Priority (MVP):** The `boss_defeated → RUN_SUMMARY`
 transition is executed via `call_deferred("_request_transition", RUN_SUMMARY)` rather
 than immediately. This guarantees that if `player_died` fires in the same frame (e.g.,
-Fayde at critically low HP kills the boss while a DoT tick resolves simultaneously),
+The duo at critically low HP kills the boss while a DoT tick resolves simultaneously),
 `_on_player_died()` runs immediately and transitions to `DEATH_SCREEN` before the
 deferred WIN fires. When the deferred `_request_transition(RUN_SUMMARY)` executes on
 the next frame, the state is already `DEATH_SCREEN` and the transition is rejected by
@@ -202,7 +202,7 @@ signals as the universal coupling mechanism.
 | `PREPARATION_PHASE` | `COMBAT_PHASE` | Prana Grid emits `arrangement_confirmed`; loadout must be valid per Prana Grid Rule 6 (slot 4 non-null required); `combat_started(is_boss: false)` emitted |
 | `COMBAT_PHASE` | `PREPARATION_PHASE` | Wave cleared, more regular waves remain (Wave/Encounter emits `wave_cleared`) |
 | `COMBAT_PHASE` | `COMBAT_PHASE` | All regular waves cleared (Wave/Encounter emits `all_waves_cleared`); `combat_started(is_boss: true)` emitted — boss combat begins. This is a self-transition that reloads the state with new parameters. |
-| `COMBAT_PHASE` | `DEATH_SCREEN` | Fayde's health reaches 0 (in regular or boss combat); `death_started` emitted first, then state changes, then `run_ended(win: false)` |
+| `COMBAT_PHASE` | `DEATH_SCREEN` | The duo's health reaches 0 (in regular or boss combat); `death_started` emitted first, then state changes, then `run_ended(win: false)` |
 | `COMBAT_PHASE` | `RUN_SUMMARY` | Boss defeated while `is_boss: true` (Wave/Encounter emits `boss_defeated`); transition executed via `call_deferred` — see Signal Ordering: Same-Frame Death Priority |
 | `PREPARATION_PHASE` | `PAUSED` | Player triggers pause |
 | `COMBAT_PHASE` | `PAUSED` | Player triggers pause |
@@ -271,7 +271,7 @@ system emits these events.
 | `game_paused` | — | Entry to `PAUSED` | MVP |
 | `game_resumed` | — | Exit from `PAUSED`; `_previous_state` restored | MVP |
 | `room_cleared` | — | `COMBAT_PHASE` → `RUN_SUMMARY` when boss defeated (`is_boss: true`) — MVP, fires once per run; `COMBAT_PHASE` → `PATH_SELECTION` (VS) | MVP |
-| `death_started` | — | Emitted as the **first** signal in the `COMBAT_PHASE → DEATH_SCREEN` transition handler, before state changes and before `run_ended`. Marks the moment Fayde's death animation begins. | MVP |
+| `death_started` | — | Emitted as the **first** signal in the `COMBAT_PHASE → DEATH_SCREEN` transition handler, before state changes and before `run_ended`. Marks the moment the duo's death animation begins. | MVP |
 | `run_ended` | `win: bool` | Entry to `RUN_SUMMARY` (`win: true`); entry to `DEATH_SCREEN` or `PAUSED → MAIN_MENU` quit (`win: false`) | MVP |
 | `shop_entered` | — | Entry to `SHOP_PHASE` | [VS] |
 | `rest_entered` | — | Entry to `REST_PHASE` | [VS] |
@@ -393,7 +393,7 @@ This is the intended behavior for a final-node Trial.
 
 ## Edge Cases
 
-- **If Fayde's health reaches 0 during `COMBAT_PHASE`** (including boss combat when
+- **If the duo's health reaches 0 during `COMBAT_PHASE`** (including boss combat when
   `is_boss: true`): Transition to `DEATH_SCREEN` immediately. No intermediate states.
   Any in-progress wave spawns and enemy AI are halted by the state change signal.
   Transition effects (fade, death animation timing) are delegated to Game Feel / Juice
@@ -425,13 +425,13 @@ This is the intended behavior for a final-node Trial.
   The request is rejected until the transition completes. If two simultaneous requests
   arrive, the first wins; the second is dropped with a debug log.
 
-- **`[VS]` If a Cipher's Trial tradeoff option's cost would reduce Fayde's HP to 0 or
+- **`[VS]` If a Cipher's Trial tradeoff option's cost would reduce the duo's HP to 0 or
   below**: That option is disabled and unselectable. The player may still choose other
   options or pay the skip cost. A disabled option is shown with a visual affordance that
   does not rely on color alone (required for colorblind accessibility).
 
-- **`[VS]` If Cipher's Trial skip cost would reduce Fayde's health to 0 or below**: The
-  skip is still permitted. Fayde's health floors at 1 HP — the skip cost cannot kill him.
+- **`[VS]` If Cipher's Trial skip cost would reduce the duo's health to 0 or below**: The
+  skip is still permitted. The duo's health floors at 1 HP — the skip cost cannot kill them.
   This prevents a soft-lock where the only exit from the state would result in death.
   **At 1 HP (intended soft-lock prevention behavior):** All tradeoff options are disabled
   (each would reduce HP to ≤ 0) AND the skip costs 0 net HP (floors at 1). The player
@@ -454,7 +454,7 @@ This is the intended behavior for a final-node Trial.
   `option_count` defaults to 1. A fatal error is logged. Division by zero is
   never attempted.
 
-- **If `boss_defeated` and Fayde death occur in the same frame**: Loss takes priority.
+- **If `boss_defeated` and the duo death occur in the same frame**: Loss takes priority.
   The `boss_defeated → RUN_SUMMARY` transition is deferred via `call_deferred`; the
   same-frame `player_died` is handled immediately and transitions to `DEATH_SCREEN`
   first. The deferred WIN fires on the next frame, sees `DEATH_SCREEN` (not
@@ -525,7 +525,7 @@ When authoring any downstream GDD, it must:
 | `cipher_trial_skip_cost_hp` | 15% of max HP | 5%–40% | Low: skipping is nearly free. High: skipping is punishing, forces engagement even when options are bad. | [VS] |
 
 **Note on `cipher_trial_skip_cost_hp`:** The skip cost floors at 1 HP regardless of
-this value (Edge Case — the skip cannot kill Fayde). Re-express as a flat value once
+this value (Edge Case — the skip cannot kill the duo). Re-express as a flat value once
 the Health & Damage GDD (System #6) defines max HP.
 
 **Note on depth thresholds:** `cipher_trial_depth_threshold_2` must be strictly greater
@@ -544,7 +544,7 @@ require a full node map visual design pass.]
 must be appropriate for ages 7+. `DEATH_SCREEN` must not display blood, distressing
 imagery, or threatening language. Failure framing must be consistent with the game's
 "mysterious, not threatening" tone established in `design/gdd/game-concept.md`. Enemy
-defeat uses the Prana bloom dissolve convention; Fayde's death state must have an
+defeat uses the Prana bloom dissolve convention; the duo's death state must have an
 equivalent age-appropriate visual treatment — specific design deferred to Game Feel /
 Juice GDD #30, which must treat this as a required item alongside the death transition.
 
@@ -603,7 +603,7 @@ same test step (no intervening frame), THEN after `await get_tree().process_fram
 *(Same-frame death priority: deferred WIN fires after immediate LOSS, sees
 `DEATH_SCREEN`, and is rejected. Validates Signal Ordering: Same-Frame Death Priority.)*
 
-**[I] AC-02** — GIVEN Fayde's health reaches 0 during `COMBAT_PHASE` (regardless of
+**[I] AC-02** — GIVEN the duo's health reaches 0 during `COMBAT_PHASE` (regardless of
 `is_boss` value), WHEN the death event fires from the Health & Damage system, THEN the
 active state transitions to `DEATH_SCREEN` — not `RUN_SUMMARY`.
 
@@ -654,7 +654,7 @@ and calls `_request_transition(Y)` constructs this scenario in GUT without multi
 `COMBAT_PHASE` (regular waves and boss via `is_boss: true`), and `RUN_SUMMARY` or
 `DEATH_SCREEN`, WHEN each transition occurs, THEN: (a) the persistent HUD node is
 present in the scene tree at every state (`is_inside_tree()` = true); (b) the HUD
-health and Prana display values match Fayde's actual state at each transition.
+health and Prana display values match the duo's actual state at each transition.
 *(Manual walkthrough — visual verification; Advisory. HUD scene-tree presence is an
 integration concern owned by SceneManager, not a unit-testable state machine assertion.)*
 
@@ -697,7 +697,7 @@ preparation timer reaches zero, THEN the state remains `PREPARATION_PHASE` and t
 timer is halted (not running). The empty-grid block applies; the timer does not resume.
 *(Timer halt on empty grid at expiry — documented in Edge Cases, previously without AC.)*
 
-**[U] AC-18** — GIVEN the active state is `COMBAT_PHASE` and Fayde's health reaches 0,
+**[U] AC-18** — GIVEN the active state is `COMBAT_PHASE` and the duo's health reaches 0,
 WHEN the death event handler runs, THEN `run_ended(win: false)` is emitted exactly once
 and `get_active_state()` returns `DEATH_SCREEN`.
 *(Complements AC-01b which covers `run_ended(win: true)` on boss defeat. Both payloads
@@ -719,7 +719,7 @@ and a validation error is recorded.
 requires VS states to be defined as valid enum values.)*
 
 **[I] AC-VS-01** — GIVEN the game is in `COMBAT_PHASE` with `is_boss: true` active and
-the full Boss Encounter System (#11) is integrated, WHEN Fayde's health reaches 0 via
+the full Boss Encounter System (#11) is integrated, WHEN the duo's health reaches 0 via
 the Boss Encounter system's damage path, THEN the active state transitions to
 `DEATH_SCREEN` — not `RUN_SUMMARY`.
 *(VS integration test — validates Boss Encounter System (#11) integration with death
@@ -764,16 +764,16 @@ options are displayed in the UI.
 *(Integration test — requires Cipher's Trial scene loaded. `nodes_completed` excludes
 the Trial node currently being entered — see Formulas section definition.)*
 
-**[I] AC-VS-10** — GIVEN a Cipher's Trial option whose cost would reduce Fayde's HP
+**[I] AC-VS-10** — GIVEN a Cipher's Trial option whose cost would reduce the duo's HP
 to 0 or below, WHEN the player attempts to select that option, THEN the selection is
-rejected and no tradeoff is applied to Fayde's state.
+rejected and no tradeoff is applied to the duo's state.
 
 **[V] AC-VS-11** — GIVEN a disabled Cipher's Trial option (cost too high), WHEN it is
 displayed, THEN it appears visually distinct from selectable options using a non-color-only
 affordance (e.g., icon, pattern, or text label — not color alone).
 *(Advisory — screenshot evidence required; Visual/Feel gate; accessibility requirement.)*
 
-**[I] AC-VS-12** — GIVEN Fayde has 1 HP, WHEN the player pays the Cipher's Trial skip
+**[I] AC-VS-12** — GIVEN the duo has 1 HP, WHEN the player pays the Cipher's Trial skip
 cost, THEN the active state becomes `PATH_SELECTION` and no `run_ended` signal is
 emitted. *(HP floor behavior is a separate AC owned by the Health & Damage GDD.)*
 

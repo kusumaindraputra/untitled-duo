@@ -1,4 +1,4 @@
-# ADR-0056: Fayde Cast Styles per Prana
+# ADR-0056: Cast Styles per Prana (both brothers)
 
 ## Status
 
@@ -14,7 +14,7 @@ Kusuma Putra (solo dev) + Claude Code Game Studios
 
 ## Summary
 
-Fayde now moves differently for each Prana. The Prana in the centre slot picks one
+The duo now moves differently for each Prana. The Prana in the centre slot picks one
 of five cast poses: an Ashfire fire dance (a chambered stance, a palm strike from a
 lunge, a spin, then a sweeping kick, in the spirit of firebending in *Avatar: The
 Last Airbender*), a Voidblue reach and pull, a Stormgold two-finger snap, a
@@ -59,7 +59,7 @@ cast row with only the flash colour changed.
 
 ## Consequences
 
-- Each Prana reads as its own fighting style, which ties the grid to Fayde's body
+- Each Prana reads as its own fighting style, which ties the grid to the active brother's body
   and to the Ayden (power) / Faith (control) story.
 - At 20×32 the poses are small. The hands, glow and stance carry the read more than
   the arms do. A later pass can add frames or longer holds.

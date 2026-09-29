@@ -2,7 +2,7 @@
 
 > 2D isometric roguelike — Godot 4.6 · GDScript · Solo dev · Production (First Playable)
 
-A roguelike where Fayde composes spells by arranging Prana types in a 3×3 drag-and-drop grid. Each room is a two-phase cycle: **Preparation** (peek the wave → arrange the grid to exploit enemy elemental affinities) then **Combat** (move, dash, cast the pre-arranged combo). The skill ceiling is understanding the 5 Prana types and how they interact — not reflexes.
+A roguelike where two android brothers, Ayden (power) and Faith (control), share one Prana core, swap in and out of every fight, and compose spells by arranging Prana types in a 3×3 drag-and-drop grid. Each room is a two-phase cycle: **Preparation** (peek the wave → arrange the grid to exploit enemy elemental affinities) then **Combat** (move, cast the pre-arranged combo, swap brothers; only Faith dashes). The skill ceiling is understanding the 5 Prana types and how they interact — not reflexes.
 
 ---
 
@@ -51,8 +51,8 @@ A roguelike where Fayde composes spells by arranging Prana types in a 3×3 drag-
 
 | Enemy | Archetype | Affiliation | HP | Threat |
 |-------|-----------|-------------|-----|--------|
-| Drifter | Seeker — pursues Fayde at constant speed | Shadow/Voidblue | 20 | Low |
-| Charger | Rusher — directional burst toward Fayde | Ice/Deepfrost | 35 | High |
+| Drifter | Seeker — pursues the active brother at constant speed | Shadow/Voidblue | 20 | Low |
+| Charger | Rusher — directional burst toward the active brother | Ice/Deepfrost | 35 | High |
 | Cluster | Swarmer — moves in loose formation | Lightning/Stormgold | 12 | Low (swarm) |
 
 FP wave: 3 Drifter + 2 Charger + 5 Cluster — Charger is Deepfrost-weak, making Freeze lockdown the smart play against the highest-threat unit.

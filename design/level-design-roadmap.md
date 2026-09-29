@@ -71,14 +71,14 @@ Setiap task punya ID, estimated effort, dependency, dan acceptance criteria.
 | **LD-17** | Implement `PathBuilder` — branching path algorithm | M (2d) | LD-16, LD-09 | Generate branching path graph: start → N rooms → boss; enforce Rest room before Boss; 2-3 branch points per layer; no dead ends |
 | **LD-18** | Implement `RoomSelector` — template picker with type distribution | M (1d) | LD-16, LD-14 | Pick room templates from pool; enforce type distribution (60% Combat, 15% Elite, 10% Memory, 10% Rest, 5% Boss); prevent same template twice in one run |
 | **LD-19** | Implement `DungeonGenerator` orchestrator | M (1.5d) | LD-17, LD-18, LD-15 | Wire PathBuilder + RoomSelector + TemplateRoom; generate full layer; emit `layer_generated` signal |
-| **LD-20** | Implement room transition system | M (1d) | LD-19 | Corridor/transition between rooms; door trigger; camera transition; enemy cleanup on exit; preserve Fayde state |
+| **LD-20** | Implement room transition system | M (1d) | LD-19 | Corridor/transition between rooms; door trigger; camera transition; enemy cleanup on exit; preserve the duo state |
 
 ### Fase 3c: Anchor Objects
 
 | ID | Task | Effort | Depends On | AC |
 |----|------|--------|------------|-----|
 | **LD-22** | Implement `AnchorObject` resource + placement | M (1d) | LD-10, LD-15 | `.tres` resource: visual description, trigger condition, memory ID; placed in Memory Chamber rooms by RoomPopulator |
-| **LD-23** | Implement memory fragment trigger system | M (1.5d) | LD-22 | Fayde proximity → Memo dialog → memory fragment fires; integration with narrative system; one-shot per run |
+| **LD-23** | Implement memory fragment trigger system | M (1.5d) | LD-22 | The duo proximity → Memo dialog → memory fragment fires; integration with narrative system; one-shot per run |
 
 **Fase 3 total**: ~13.5 hari | **Gate**: full procedural dungeon playable — branch, pick path, clear rooms, reach boss
 

@@ -9,15 +9,15 @@
 
 Combat HUD is the persistent feedback layer for The Last Cipher's two-phase combat cycle — a signal-driven overlay that translates gameplay state into player-readable information. It lives on a `CanvasLayer` above the game world, listens exclusively to signals from Health & Damage and Spell Casting & Effects, and never polls game state directly.
 
-At First Playable scope, Combat HUD owns three display responsibilities: **(1) Fayde's HP display** — a visual bar with numeric readout (`current / max`) animated with smooth tweens on every `damage_taken` and `health_restored` event, shifting to an amber treatment when entering `HPZone.CAREFUL` (≤ 40 HP) and a red treatment on `HPZone.DESPERATE` (≤ 20 HP); **(2) Prana Grid layout boundary** — Combat HUD defines the screen region for the Prana Grid system's panel, ensuring it remains visible during both Preparation (editable) and Combat (locked, display-only) phases without being obscured by other HUD elements; **(3) floating damage numbers** — positioned over hit targets, color-coded by Prana type, appearing on every `damage_taken` event. All HUD elements combined occupy ≤ 20% of screen area during combat. Status effect icons, wave counter, and enemy HP bars are excluded at FP scope.
+At First Playable scope, Combat HUD owns three display responsibilities: **(1) the duo's HP display** — a visual bar with numeric readout (`current / max`) animated with smooth tweens on every `damage_taken` and `health_restored` event, shifting to an amber treatment when entering `HPZone.CAREFUL` (≤ 40 HP) and a red treatment on `HPZone.DESPERATE` (≤ 20 HP); **(2) Prana Grid layout boundary** — Combat HUD defines the screen region for the Prana Grid system's panel, ensuring it remains visible during both Preparation (editable) and Combat (locked, display-only) phases without being obscured by other HUD elements; **(3) floating damage numbers** — positioned over hit targets, color-coded by Prana type, appearing on every `damage_taken` event. All HUD elements combined occupy ≤ 20% of screen area during combat. Status effect icons, wave counter, and enemy HP bars are excluded at FP scope.
 
 From the player's perspective, the Combat HUD's singular responsibility is clarity: the HP bar and zone color make the run's stakes legible at a glance. At 80 HP with a full-color bar, combat is confident. At 20 HP with a red critical bar and a Charger approaching, the visual state alone communicates the stakes. The HUD does not editorialize — it reports. The decisions belong to the player; the HUD ensures those decisions are made with accurate information.
 
 ## Player Fantasy
 
-The player fantasy of Combat HUD is **the weight of information at the right moment**. The HUD is not an interruption — it is always there, peripheral, quiet. But when Fayde's HP bar drops into the amber zone mid-wave, that shift is not decoration. It is a signal: *something is wrong, and you need to respond.* The player who reads that transition correctly and adjusts their positioning has just used the HUD as a skill expression tool, not a passive readout.
+The player fantasy of Combat HUD is **the weight of information at the right moment**. The HUD is not an interruption — it is always there, peripheral, quiet. But when the duo's HP bar drops into the amber zone mid-wave, that shift is not decoration. It is a signal: *something is wrong, and you need to respond.* The player who reads that transition correctly and adjusts their positioning has just used the HUD as a skill expression tool, not a passive readout.
 
-The peak moment this system delivers is the **threshold read**: Fayde at 22 HP, one Charger rushing in, the bar a narrow sliver of red. The HUD has compressed the run's entire risk into a single visible state. The player knows — not because the game told them in words, but because the visual language of the bar communicates it instantly. That clarity under pressure is what the HUD exists to provide.
+The peak moment this system delivers is the **threshold read**: The duo at 22 HP, one Charger rushing in, the bar a narrow sliver of red. The HUD has compressed the run's entire risk into a single visible state. The player knows — not because the game told them in words, but because the visual language of the bar communicates it instantly. That clarity under pressure is what the HUD exists to provide.
 
 The secondary fantasy is **legibility of your own power**. Floating damage numbers in Prana type colors are not just numerical feedback — they are confirmation that the arrangement worked. A Stormgold strike landing a `23` in bright gold against a rust-grey robot is the moment of *"yes, that was the right read."* The numbers are the system translating the player's Preparation Phase decision into a visible, readable result.
 
@@ -92,7 +92,7 @@ Therefore: `sfx_fayde_heal` is **not required at FP scope**. Audio System GDD mu
 - **Color:**
   - Enemy target + same-frame `spell_hit_element(target, prana_type_id)` received: use `PranaCatalog.get_type(prana_type_id).color`
   - Enemy target + no `spell_hit_element` in same frame: white `#FFFFFF` (neutral hit)
-  - Fayde target (CONTACT damage): grey `#AAAAAA`
+  - The duo target (CONTACT damage): grey `#AAAAAA`
 - **Animation:** float upward 32px over 0.8s, fade alpha 1.0→0.0 over the final 0.3s. Label `queue_free()` after tween.
 - **Spawn jitter:** random X offset ±8px to prevent stacking on simultaneous hits.
 - **Pool cap:** if ≥ 12 active label nodes exist, oldest is freed before spawning a new one (prevents label proliferation during Cluster swarms).
@@ -198,7 +198,7 @@ Combat HUD derives no combat math — all damage, HP, and zone values come from 
 
 - **If `damage_taken` fires with `final_damage > 0` and a tween is already in progress** (rapid successive hits): cancel the current tween, start a new tween from the bar's current mid-animation value to the new target. Do not reset to the pre-hit value. No visible snap.
 
-- **If `damage_taken` fires simultaneously for both Fayde and an enemy in the same frame**: both number labels spawn at their respective positions with their respective colors. No deduplication — the signals are distinct (different targets).
+- **If `damage_taken` fires simultaneously for both the duo and an enemy in the same frame**: both number labels spawn at their respective positions with their respective colors. No deduplication — the signals are distinct (different targets).
 
 - **If `health_restored` fires while a drain tween is still in progress** (e.g., DoT tick immediately followed by Regen tick): cancel the drain tween, start fill tween from current mid-animation value. Green tint is applied at the fill tween start regardless of direction.
 
@@ -280,7 +280,7 @@ Combat HUD derives no combat math — all damage, HP, and zone values come from 
 **Floating damage numbers:**
 - Font: same pixel art font, bold. Size: 14–16px. 1px black outline for legibility.
 - No drop shadow at FP scope. No size scaling at FP scope (deferred to MVP).
-- Colors per Detailed Design Rule 7: Prana type color (elemental hit), white `#FFFFFF` (neutral enemy hit), grey `#AAAAAA` (Fayde CONTACT received).
+- Colors per Detailed Design Rule 7: Prana type color (elemental hit), white `#FFFFFF` (neutral enemy hit), grey `#AAAAAA` (CONTACT received by the active brother).
 
 **Chain dots:**
 - Filled circles, 6px diameter, 4px gap between dots.
@@ -348,7 +348,7 @@ Classification: **[U]** = Unit test (GUT, headless) | **[M]** = Manual QA (visua
 ---
 
 **AC-HUD-01 [U]** — HP bar value updates after drain tween
-GIVEN Fayde at `current_hp=100`; `damage_taken(fayde, 20, 80)` fires
+GIVEN the duo at `current_hp=100`; `damage_taken(fayde, 20, 80)` fires
 WHEN `HP_BAR_DRAIN_DURATION` (0.15s) has elapsed (drive via `_process` accumulation)
 THEN `ProgressBar.value == 80`
 
@@ -425,7 +425,7 @@ GIVEN `damage_taken(enemy_node, 16, 10)` fires; no `spell_hit_element` for this 
 WHEN label spawns
 THEN label color == `Color("#FFFFFF")`
 
-**AC-HUD-17 [U]** — Fayde-received: grey label at Fayde's position
+**AC-HUD-17 [U]** — duo-received: grey label at the active brother's position
 GIVEN `damage_taken(fayde_node, 20, 80)` fires
 WHEN label spawns
 THEN label color == `Color("#AAAAAA")`; label position derived from `fayde_node.global_position`

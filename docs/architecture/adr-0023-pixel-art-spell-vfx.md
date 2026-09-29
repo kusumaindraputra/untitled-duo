@@ -14,7 +14,7 @@ Kusuma Putra (solo dev) + Claude Code Game Studios
 
 ## Summary
 
-Fayde's spell effects are now drawn on the same pixel grid as the pixel-art
+The duo's spell effects are now drawn on the same pixel grid as the pixel-art
 sprites from ADR-0022. Before this change they were antialiased vector strokes
 (`draw_arc`, `draw_line`, `draw_circle`), which looked smooth and thin next to the
 blocky sprites. The shapes, timings and colours of every effect stay the same.
@@ -32,7 +32,7 @@ Only the way they are rasterised changes.
 
 - The sprites use 1 art pixel = 1 world unit, and the camera shows them at 2× zoom.
 - The spell VFX (`src/ui/spell_vfx.gd`), the cast beam (`debug_circle_2d.gd`),
-  Fayde's hurtbox dot and dash dust, and the enemy death burst were vector strokes.
+  The active brother's hurtbox dot and dash dust, and the enemy death burst were vector strokes.
   At 2× zoom those strokes render at screen resolution, so they looked sharper and
   finer than the sprites around them.
 - Hand-painting sprite sheets for every effect would mean about 30 sheets, and
@@ -71,5 +71,5 @@ the existing `_draw()` code calls instead of the vector draw calls:
   shape, the 90 px Cascade burst, is about 180 runs per frame.
 - `tests/unit/pixel-vfx/pixel_vfx_test.gd` covers the raster maths. It also guards
   `spell_vfx.gd` and `debug_circle_2d.gd` against vector draw calls coming back.
-- Still vector for now (not Fayde's effects): enemy projectiles, enemy telegraph
+- Still vector for now (not the duo's effects): enemy projectiles, enemy telegraph
   rings, and hazards.

@@ -16,7 +16,7 @@ Kusuma Putra (solo dev) + Claude Code Game Studios
 
 Combat rewards momentum. A dash through a bullet that would have hit is a **Perfect
 Dodge**: a short slow-mo, Special meter and a free Perfect on the next cast. Kills drop
-**HP and meter orbs** that magnet to Fayde, so standing close pays. Bullets wiped by a
+**HP and meter orbs** that magnet to the duo, so standing close pays. Bullets wiped by a
 Perfect Cast or a dash cut feed the meter. A **style meter** rises with kills, grazes
 and Perfects and decays when passive or hit; each room ends with an **S–D rank** that
 heals and gives the next room a Special head start. Kills get a hitstop. Preparation
@@ -51,7 +51,7 @@ through a preparation panel even when there was nothing to place. Several effect
 wrote `Engine.time_scale` independently (SpellVFX hit hitstop, the heavy-hit stop and
 death slow-mo in `debug_game_loop`, SpellVFX death), and any new slow-mo would fight
 them. Separately, the boss bar and name card were anchored inside a 0×0 `CombatHUD`
-root, so they collapsed onto the top-left corner over Fayde's HP bar.
+root, so they collapsed onto the top-left corner over the duo's HP bar.
 
 ## Decision
 
@@ -72,7 +72,7 @@ root, so they collapsed onto the top-left corner over Fayde's HP bar.
    there is one hitstop owner. A Perfect Dodge that lands during a hitstop retries for
    0.15 s real time.
 4. **Perfect Dodge detection stays in the hazards**: where a hazard already checks
-   Fayde's hurtbox and sees her dashing, it calls
+   The active brother's hurtbox and sees her dashing, it calls
    `PlayerController.register_perfect_dodge()`. The player owns the rules (dash only —
    not post-hit grace — once per dash, cooldown).
 5. **Meter entry points** on `SpellCastingEffects`: public `add_special_meter()` and

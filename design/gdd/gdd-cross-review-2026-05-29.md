@@ -108,7 +108,7 @@ adds the bonus on its own `apply_heal` calls, so Regen-tick VER_HEAL_FLAT is sil
 - `wave-encounter-system.md` Rule 2 labels per-type "threat value = 3/4/5" (these are count×value
   subtotals, not per-unit 1/2/1). Formula 1 is correct; the Rule 2 labels mislead.
 - `audio-system.md` lists `PREPARATION → DYING`, but `game-state-scene-flow.md` only emits
-  `death_started` from COMBAT (Fayde can't die in PREP). Defensive/harmless.
+  `death_started` from COMBAT (the duo can't die in PREP). Defensive/harmless.
 
 ---
 

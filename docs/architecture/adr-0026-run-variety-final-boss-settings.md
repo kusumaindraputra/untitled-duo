@@ -64,13 +64,13 @@ turn off screen shake, reduce flashes, rebind keys or go fullscreen.
   floor. Elite, rest and boss rooms are never modified.
 - Cursed rooms swap `WaveManager.enemy_pool_config` for a harder copy of the floor
   pool; the shared `.tres` is never changed (same rule as Hard Mode).
-- Challenge: the first `damage_taken` on Fayde during combat in that room loses the
+- Challenge: the first `damage_taken` on the duo during combat in that room loses the
   bonus. A flawless clear adds `bonus_shards` to the run data, which
   `MetaProgress.record_run` pays after the Hard Mode multiplier.
 - `SigilManager.offer_sigils(picks)` re-opens with fresh cards until the picks are
   used, then emits `offer_finished`.
 - Wayshrine: `HealthAndDamage.pay_fayde_hp(cost)` is a price, not an attack. It never
-  leaves Fayde below 1 HP and emits `damage_taken` so the HUD updates.
+  leaves the duo below 1 HP and emits `damage_taken` so the HUD updates.
 - Doors, the minimap ("!" Challenge, "X" Cursed) and a HUD banner show the modifier.
 
 ### The Cipher Keeper

@@ -21,10 +21,10 @@ wash and the rank banner. Two "big moments" fix that:
 1. **Boss death cinematic (`BossDeathCinematic`)**: slow-mo (0.25× for 1.4 real s),
    a white flash, the music cut to a low boom, and a camera that glides onto the
    boss, holds while it dissolves (1.1 game s instead of 0.55), then glides back to
-   Fayde. The memory card (non-final floors) and the run summary wait for it.
+   The duo. The memory card (non-final floors) and the run summary wait for it.
 2. **Room clear moment (`RoomClearMoment`)**: a short slow-mo right after the last
    kill (0.3× for 0.45 real s), a big `CLEAR` punching in over the rank banner,
-   orbs that gather for a beat and then whip into Fayde with a streak, and an
+   orbs that gather for a beat and then whip into the duo with a streak, and an
    exit-door burst when the door unlocks.
 
 All timings live in `assets/data/big_moment_tuning.tres` (`BigMomentTuning`).
@@ -43,8 +43,8 @@ All timings live in `assets/data/big_moment_tuning.tres` (`BigMomentTuning`).
 ### A separate cinematic camera
 
 The boss camera is its own `Camera2D`, made current for the beat and handed back
-to Fayde's camera at the end. It starts from Fayde's `get_screen_center_position()`
-and zoom, so the swap has no jump. Fayde's camera offset belongs to screen shake
+to the duo's camera at the end. It starts from the active brother's `get_screen_center_position()`
+and zoom, so the swap has no jump. The duo's camera offset belongs to screen shake
 (ADR-0040 is unifying it) and her camera position to look-ahead, so the cinematic
 touches neither. Camera limits are copied across.
 
@@ -97,7 +97,7 @@ machine stays untouched.
 
 ## Alternatives Considered
 
-- **Tween Fayde's own camera**: fights look-ahead (written every physics frame) and
+- **Tween the duo's own camera**: fights look-ahead (written every physics frame) and
   the shake offset, and would edit code another thread owns. Rejected.
 - **Delay `boss_defeated` in WaveManager or GameStateManager**: touches the signal
   contract of ADR-0014 and every system that reacts to it. Rejected in favour of
