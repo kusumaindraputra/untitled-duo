@@ -7,6 +7,7 @@
 ##   RC-04: bosses are listed in floor order (Sentinel, Warden, Keeper)
 ##   RC-05: the menu line shows "—" before any record and the time after one
 ##   RC-06: the summary shows each new-record line
+##   RC-07: the menu line names only bosses the player has beaten
 ##
 ## Framework: GdUnit4 | Godot 4.6
 extends GdUnitTestSuite
@@ -97,3 +98,21 @@ func test_records_summary_shows_new_record_lines() -> void:
 		texts.append((n as Label).text)
 	assert_array(texts).contains(lines)
 	panel.free()
+
+
+# ── RC-07 ─────────────────────────────────────────────────────────────────────
+
+func test_records_menu_line_names_only_beaten_bosses() -> void:
+	var p := MetaProgress.new()
+	var fresh: String = Records.menu_line(p, 10)
+
+	for id in [SENTINEL, WARDEN, KEEPER]:
+		assert_str(fresh).not_contains(Records.boss_name(id).replace(" ", "\u00a0"))
+	assert_str(fresh).not_contains("\n")
+
+	p.record_boss_time(SENTINEL, 48.0)
+	var line: String = Records.menu_line(p, 10)
+
+	assert_str(line).contains(Records.boss_name(SENTINEL).replace(" ", "\u00a0"))
+	assert_str(line).not_contains(Records.boss_name(WARDEN).replace(" ", "\u00a0"))
+	assert_str(line).not_contains(Records.boss_name(KEEPER).replace(" ", "\u00a0"))
