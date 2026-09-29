@@ -14,7 +14,7 @@ extends Control
 ## Both brothers share Fayde's rig: 4×3 frames of 20×32 (ADR-0034, ADR-0058); frame 0
 ## is the front idle.
 const IDLE_FRAME := Rect2(0, 0, 20, 32)
-const FIGURE_SCALE: float = 7.0
+const FIGURE_SCALE: float = 10.0
 ## Horizontal distance from the vault's centre to each brother's centre, in figure widths.
 const FIGURE_SPREAD: float = 0.72
 ## Height of the link thread above the feet, as a fraction of the figure height (hands).

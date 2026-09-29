@@ -32,8 +32,6 @@ var _play_button: Button = null
 ## Shown above Play when a saved run can be continued (ADR-0048); null otherwise.
 var _continue_button: Button = null
 var _records_label: Label = null
-## Controls line at the bottom; follows the last-used device (U8).
-var _controls_label: Label = null
 var _hard_toggle: CheckButton = null
 var _hard_locked_label: Label = null
 ## ADR-0052: steps through the unlocked Ascension levels while Hard Mode is on.
@@ -42,8 +40,9 @@ var _ascension_button: Button = null
 var _ascension_label: Label = null
 ## The left column, centred vertically and shrunk to fit at large text sizes (ADR-0032).
 var _column: VBoxContainer = null
-## Space kept free under the column for the controls line, px.
-const CONTROLS_RESERVE: float = 30.0
+## Space kept free under the column, px. The controls line no longer sits there: the
+## run's title card and the tutorial room teach the controls instead.
+const BOTTOM_RESERVE: float = 12.0
 
 
 func _ready() -> void:
@@ -65,12 +64,13 @@ func _ready() -> void:
 
 func _fit_column() -> void:
 	if is_instance_valid(_column):
-		UIFeel.fit_to_viewport(_column, 8.0, COLUMN_LEFT, CONTROLS_RESERVE)
+		UIFeel.fit_to_viewport(_column, 8.0, COLUMN_LEFT, BOTTOM_RESERVE)
 
 
-## Builds the menu (U7): the vault backdrop with Fayde on the right; on the left the
-## title, progress line, buttons (Play / Heirlooms / Memories / Settings / Feedback when a
-## form URL is set / Quit) and the Hard Mode toggle, with the controls line underneath.
+## Builds the menu (U7): the vault backdrop with Ayden and Faith on the right; on the
+## left the title, progress and records lines (hidden until the first run ends), buttons
+## (Play / Heirlooms / Spellbook / Memories / Settings / Feedback when a form URL is set /
+## Quit) and the Hard Mode toggle.
 func _build_ui() -> void:
 	var backdrop := MenuBackdrop.new()
 	backdrop.animate = not GameSettings.motion_reduced()
@@ -93,6 +93,9 @@ func _build_ui() -> void:
 	_records_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_records_label.custom_minimum_size = Vector2(COLUMN_WIDTH, 0)
 	column.add_child(_records_label)
+	# A first-time player has only zeros to read, so the stats wait for the first run.
+	_progress_label.visible = shows_stats(progress)
+	_records_label.visible = shows_stats(progress)
 	column.add_child(_make_spacer(10))
 
 	var saved: Dictionary = RunSave.read(run_save_path)
@@ -137,15 +140,6 @@ func _build_ui() -> void:
 	_ascension_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_ascension_label)
 
-	var controls := _make_label(InputPrompts.controls_line(), 14, UIPalette.TEXT_FAINT)
-	_controls_label = controls
-	InputPrompts.device_changed.connect(_on_device_changed)
-	controls.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	controls.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	controls.offset_left = COLUMN_LEFT
-	controls.offset_bottom = -10.0
-	add_child(controls)
-
 	var version := _make_label(_COPY.version_format % version_string(), 14, UIPalette.TEXT_FAINT)
 	version.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
 	version.grow_horizontal = Control.GROW_DIRECTION_BEGIN
@@ -163,8 +157,10 @@ func _build_ui() -> void:
 		_play_button.grab_focus()
 
 
-func _on_device_changed(_using_pad: bool) -> void:
-	_controls_label.text = InputPrompts.controls_line()
+## True once the player has finished at least one run: before that the progress and
+## records lines hold only zeros and dashes, so the menu hides them.
+static func shows_stats(p: MetaProgress) -> bool:
+	return p != null and p.runs > 0
 
 
 ## A left-aligned menu button of the column's width.

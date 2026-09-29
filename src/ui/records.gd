@@ -28,15 +28,22 @@ static func boss_name(id: int) -> String:
 	return Spellbook.display_name(et.name) if et != null else "?"
 
 
-## The menu records: best run and memories found, then each boss's best kill on a
-## second line. Names keep their spaces unbroken so a wrap never splits one.
+## The menu records: best run and memories found, then each beaten boss's best kill on
+## a second line. A boss the player has not beaten is left out, so the menu never names
+## a boss before the player has met it. Names keep their spaces unbroken so a wrap never
+## splits one.
 static func menu_line(p: MetaProgress, memories_total: int) -> String:
 	var top: String = "%s      %s" % [_COPY.records_best_run_format % _time_or_none(p.best_win_sec),
 		_COPY.records_memories_format % [mini(p.fragments_found, memories_total), memories_total]]
 	var bosses: PackedStringArray = PackedStringArray()
 	for id in boss_ids():
-		var entry: String = _COPY.records_boss_format % [boss_name(id), _time_or_none(float(p.boss_best_sec.get(id, 0.0)))]
+		var best: float = float(p.boss_best_sec.get(id, 0.0))
+		if best <= 0.0:
+			continue
+		var entry: String = _COPY.records_boss_format % [boss_name(id), _time_or_none(best)]
 		bosses.append(entry.replace(" ", "\u00a0"))
+	if bosses.is_empty():
+		return top
 	return top + "\n" + "     ".join(bosses)
 
 
