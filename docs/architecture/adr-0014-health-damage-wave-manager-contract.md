@@ -80,7 +80,7 @@ The `<= 0` guard (not `== 0`) protects against a duplicate-signal edge case. H&D
 
 H&D calls `unregister_enemy(instance_id)` internally from the `enemy_killed` emission path. WaveManager **never** calls `unregister_enemy()`. Enemy node lifetime (queue_free()) is managed by EnemyInstance after `enemy_killed` fires, not by WaveManager.
 
-### Run End Contract (Fayde dies)
+### Run End Contract (the brothers fall)
 
 When `player_died` fires (emitted by H&D), GameStateManager transitions to `DEATH_SCREEN`. WaveManager does NOT emit `all_waves_cleared` or `boss_defeated` in this case. Remaining enemy nodes are freed when SceneManager unloads the arena scene. WaveManager's `_enemies_alive` is left non-zero; it is reset on `preparation_started` at the start of the next run.
 
@@ -94,7 +94,7 @@ _enemies_total = 0
 _wave_state = WaveState.IDLE
 ```
 
-H&D does not need notification of wave reset — its `_enemy_registry` is emptied when enemies die (each kill triggers `unregister_enemy()`). By the time `all_waves_cleared` fires, `_enemy_registry` contains only the current wave's alive entries; if Fayde dies mid-wave, the SceneManager scene unload flushes the registry via H&D's `_exit_tree()` cleanup.
+H&D does not need notification of wave reset — its `_enemy_registry` is emptied when enemies die (each kill triggers `unregister_enemy()`). By the time `all_waves_cleared` fires, `_enemy_registry` contains only the current wave's alive entries; if the duo dies mid-wave, the SceneManager scene unload flushes the registry via H&D's `_exit_tree()` cleanup.
 
 ### base_hp Source
 

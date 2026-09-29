@@ -61,7 +61,7 @@ Three medium-priority HUD items from the UI/HUD review:
   below the map.
 - At 130 % the card's right edge (≈ 302 px) still clears the boss bar (x ≈ 316 at
   1152 px wide). A test enforces this.
-- Screen-space elements that follow Fayde (chain dots, dash ring, damage numbers)
+- Screen-space elements that follow the active brother (chain dots, dash ring, damage numbers)
   are not scaled. They sit in the world, not in a corner.
 - Opacity multiplies the alpha of the card's background and border
   (`UIPalette.CARD`, `CARD_BORDER`). Text stays fully opaque. Toast cards use the
@@ -107,7 +107,7 @@ Godot 4.6. It uses only APIs that predate 4.4: `Control.scale`, `SceneTree.call_
 ## Alternatives Considered
 
 - **Scaling the whole CombatHUD Control.** Rejected. The chain dots and the dash ring
-  are placed from Fayde's screen position and would drift, and the boss bar would
+  are placed from the active brother's screen position and would drift, and the boss bar would
   outgrow the screen.
 - **Toasts inside CombatHUD.** Rejected to keep `combat_hud.gd` changes small, since
   parallel threads edit that file.

@@ -96,14 +96,14 @@ cek inventory, atau sekedar bernafas.
 ### Spesifikasi corridor:
 - **Panjang**: 2-3 detik walk (sekitar 400-600px di move speed normal).
 - **Visual**: Lorong sempit dengan tile yang match tema layer.
-- **Transisi**: Camera mengikuti Fayde. Tidak ada scene reload — room dan corridor
+- **Transisi**: Camera mengikuti the duo. Tidak ada scene reload — room dan corridor
   adalah bagian dari scene yang sama, hanya camera yang pan.
 
 ### Alternative: Scene per Room (jika template-based scene)
 
 Jika tiap room adalah scene terpisah (seperti Hades):
 - Corridor = scene transition trigger.
-- Saat Fayde menyentuh exit trigger → `SceneManager.change_room()` → load room baru.
+- Saat the duo menyentuh exit trigger → `SceneManager.change_room()` → load room baru.
 - Player spawn di entry point room baru.
 - Transisi 0.5-1 detik (fade atau screen wipe).
 

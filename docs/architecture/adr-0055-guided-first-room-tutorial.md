@@ -21,8 +21,8 @@ Six lessons appear one at a time on a card at the bottom centre:
 |---|--------|-------|------------|
 | 1 | Place a Prana from the bag | Prep | a Prana leaves the bag while the grid is open |
 | 2 | Lock the grid | Prep | combat starts (also ticks lesson 1) |
-| 3 | Move | Combat | Fayde travels `move_distance` px |
-| 4 | Dash | Combat | Fayde is dashing |
+| 3 | Move | Combat | The duo travels `move_distance` px |
+| 4 | Dash | Combat | Faith is dashing |
 | 5 | Cast at a training target | Combat | a training target takes damage |
 | 6 | Perfect Dodge | Combat | PaceDirector reports a Perfect Dodge |
 
@@ -34,7 +34,7 @@ when they finish or are skipped.
 - `TutorialRoom` (`src/systems/tutorial/tutorial_room.gd`) keeps the lesson list and
   spawns the training targets (tougher `DummyEnemy` instances) and a shot pylon.
 - `TutorialTurret` (`src/gameplay/tutorial_turret.gd`) glows, then fires one slow
-  **0-damage** `Projectile` at Fayde. Only while lesson 6 is on screen.
+  **0-damage** `Projectile` at the duo. Only while lesson 6 is on screen.
 - `TutorialRoomPanel` (`src/ui/tutorial_room_panel.gd`) is the card: counter, lesson,
   detail line, hold-to-skip prompt and fill bar.
 - `WaveManager.hold_wave` and `release_wave()` hold the room's wave back.
@@ -76,7 +76,7 @@ had nothing to arrange.
   back after `target_respawn_sec`. Their kills are not a Spellbook discovery:
   `_log_enemy_discovery()` asks `TutorialRoom.is_target()` first, because the dummy
   borrows the Warped Warden's catalog id.
-- **Spots.** Targets take the room's spawn markers nearest Fayde (at least
+- **Spots.** Targets take the room's spawn markers nearest the duo (at least
   `target_min_distance` away). The pylon takes the free marker whose distance is
   closest to `turret_distance`. Markers are always inside the room.
 - **Perfect Dodge.** The pylon fires a normal `Projectile` with `base_damage = 0`, so

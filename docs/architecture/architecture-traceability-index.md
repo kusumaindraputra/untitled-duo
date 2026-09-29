@@ -88,7 +88,7 @@ Engine: Godot 4.6 (Compatibility renderer)
 | TR-EAI-005 | enemy-ai.md | Enemy AI | "enemy" group + not "player" group | ADR-0010 PROPOSED | ⚠️ |
 | TR-EAI-006 | enemy-ai.md | Enemy AI | Degenerate direction guard (NaN prevention) | — | ❌ |
 | TR-EAI-007 | enemy-ai.md | Enemy AI | apply_speed_modifier() + apply_stun() methods | — | ❌ |
-| TR-EAI-008 | enemy-ai.md | Enemy AI | get_first_node_in_group("player") for Fayde | ADR-0010 PROPOSED | ⚠️ |
+| TR-EAI-008 | enemy-ai.md | Enemy AI | get_first_node_in_group("player") for the duo | ADR-0010 PROPOSED | ⚠️ |
 | TR-EAI-009 | enemy-ai.md | Enemy AI | PROCESS_MODE_PAUSABLE | ADR-0004 | ✅ |
 | TR-WES-001 | wave-encounter-system.md | Wave / Encounter | WaveManager sole signal emitter | ADR-0003 | ✅ |
 | TR-WES-002 | wave-encounter-system.md | Wave / Encounter | Simultaneous spawn in single frame | — | ❌ |

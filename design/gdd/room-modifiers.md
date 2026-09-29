@@ -27,7 +27,7 @@ into power.
   bullet speed. Clearing it offers `cursed_picks` sigil picks.
 - **Wayshrine**: after the rest heal, a panel offers "Offer `wayshrine_hp_cost` HP"
   for one sigil pick, or "Walk on". The offer is disabled when paying would leave
-  Fayde below 1 HP.
+  The duo below 1 HP.
 - Doors read "⚔ Challenge", "☠ Cursed", "♥ Wayshrine". The minimap marks Challenge
   "!" (white border) and Cursed "X" (violet border). A banner names the modifier on
   entry.

@@ -7,7 +7,7 @@ metadata:
 
 **The Last Cipher** is a 2D top-down roguelike (Godot 4.6, GDScript, Compatibility renderer).
 
-Player: Fayde, an amnesiac child android. Core mechanic: arrange Prana types on a 3x3
+Player: the duo Ayden and Faith, two android brothers sharing one Prana core, swapped in combat (ADR-0058). Core mechanic: arrange Prana types on a 3x3
 drag-and-drop grid during a Preparation Phase, then fight locked-loadout in Combat Phase.
 
 **MVP scope (as of 2026-05-22):** Single arena, multiple enemy waves, boss encounter.

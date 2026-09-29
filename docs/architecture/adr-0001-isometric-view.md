@@ -67,7 +67,7 @@ Implementasi teknis:
          |
     ┌────┴────┐
     │         │
-[Tilemap]  [Entities: Fayde, Enemies, Obstacles]
+[Tilemap]  [Entities: the duo, Enemies, Obstacles]
 (floor/wall)  (sorted by Y position for correct draw order)
          |
          v

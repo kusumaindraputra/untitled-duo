@@ -9,14 +9,14 @@
 
 A layer of momentum rules on top of the bullet-hell layer. Dashing through a bullet at
 the last moment (Perfect Dodge) slows time and charges the Special. Kills drop HP and
-meter orbs that only magnet in when Fayde is close. A style meter tracks how
+meter orbs that only magnet in when the duo is close. A style meter tracks how
 aggressively and cleanly the room was played and turns into an S–D rank with a reward.
 Preparation between rooms is one press when nothing changed. Three sigils and a
 per-floor difficulty curve push bullet-hell play further as the run goes on.
 
 ## 2. Player Fantasy
 
-Fayde threads the needle. The best defence is to dive through the pattern and come out
+The duo threads the needle. The best defence is to dive through the pattern and come out
 the other side with time slowed and a Perfect ready. Staying in the thick of it is how
 she heals and charges up, and a room played with style is visibly graded and paid for.
 Between rooms she never waits on a menu she has nothing to do in.
@@ -24,20 +24,20 @@ Between rooms she never waits on a menu she has nothing to do in.
 ## 3. Detailed Rules
 
 **Perfect Dodge**
-1. Counts when an enemy bullet, laser or mortar blast overlaps Fayde's hurtbox while she
+1. Counts when an enemy bullet, laser or mortar blast overlaps the active brother's hurtbox while she
    is dashing (dash i-frames only; post-hit grace does not count).
 2. At most once per dash, then not again for `perfect_dodge_cooldown_sec`.
 3. Effects: `perfect_dodge_time_scale` for `perfect_dodge_slowmo_sec` real seconds, +
    `perfect_dodge_meter_gain` Special meter, + `style_perfect_dodge` style, and the next
    basic cast within `perfect_dodge_cast_window_sec` counts as Perfect whatever its
-   timing. The "PERFECT DODGE" callout floats above Fayde.
+   timing. The "PERFECT DODGE" callout floats above the duo.
 4. The dodged bullet still grazes (×`dash_graze_mult`, bullet-hell.md).
 
 **Kill orbs**
 1. Every kill drops `meter_orbs_per_kill` meter orbs (×2 for elites and bosses).
 2. An HP orb drops with `hp_orb_chance`; elites and bosses always drop one when
    `elite_always_drops_hp` is on.
-3. Orbs pop out, then idle. Inside `orb_magnet_radius` they fly to Fayde at
+3. Orbs pop out, then idle. Inside `orb_magnet_radius` they fly to the duo at
    `orb_magnet_speed` and are collected at `orb_pickup_radius`. Untouched orbs fade after
    `orb_lifetime_sec`.
 4. On room clear every orb flies in at `orb_clear_speed_mult` × speed. Orbs left at the

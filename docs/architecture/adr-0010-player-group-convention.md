@@ -32,9 +32,9 @@ Accepted
 Three GDDs — Enemy AI (Core Rules 4 and 7), Player Controller (Interface Constraints), and Health & Damage (target discrimination) — each independently reference a `"player"` and `"enemy"` Godot SceneTree group convention for node discovery and signal target filtering. No ADR documents the authoritative rules: which node types join which group, which API to use for lookup, the single-player constraint, and the prohibition against dual-group membership. Without this decision recorded, any rename of the group strings, addition of a second player-type node, or alternative lookup approach introduced in a new system will silently break all consumers.
 
 ### Constraints
-- Single-player game: exactly one PlayerController (Fayde) node in the scene tree during any combat frame
+- Single-player game: exactly one PlayerController (the duo) node in the scene tree during any combat frame
 - EnemyInstance nodes range from 0 (between waves) to ~15 (dense Cluster wave) simultaneously
-- No navmesh at FP scope — group lookup is the primary way EnemyAI finds Fayde
+- No navmesh at FP scope — group lookup is the primary way EnemyAI finds the duo
 - Enemy AI caches the player node reference at `_ready()`; group query runs at most once per EnemyInstance per null-dereference event, not per-frame in normal operation
 - `queue_free()` defers deletion to end-of-frame — a node remains in its group until that point
 
@@ -67,7 +67,7 @@ SceneTree
 
 Group Query Flow:
   EnemyAI._ready()       → get_tree().get_first_node_in_group(&"player") → cache _fayde_ref
-  H&D signal handler     → target.is_in_group(&"player") → Fayde-specific damage rules
+  H&D signal handler     → target.is_in_group(&"player") → duo-specific damage rules
   H&D signal handler     → target.is_in_group(&"enemy")  → enemy HP tracking
   SC&E collision handler → body.is_in_group(&"enemy")    → spell damage target
   EnemyAI body_entered   → body.is_in_group(&"player")   → contact damage gating
@@ -89,11 +89,11 @@ func _ready() -> void:
 assert(get_tree().get_nodes_in_group(&"player").size() == 0,
     "Duplicate 'player' group member: only one PlayerController may exist")
 
-# ── LOOKUP: locate Fayde (Enemy AI — cache at _ready(), re-resolve on null) ──
-_fayde_ref = get_tree().get_first_node_in_group(&"player")   # null if Fayde not in scene
+# ── LOOKUP: locate the active brother (Enemy AI — cache at _ready(), re-resolve on null) ──
+_fayde_ref = get_tree().get_first_node_in_group(&"player")   # null if the duo not in scene
 
 # ── DISCRIMINATION: in signal handlers and Area2D callbacks ───────────────────
-if target.is_in_group(&"player"):    # Fayde-specific path
+if target.is_in_group(&"player"):    # duo-specific path
     pass
 if body.is_in_group(&"enemy"):       # enemy-specific path
     pass
@@ -119,7 +119,7 @@ for enemy: Node in enemies:
 ### Alternative B: Direct Reference Injection
 - **Description**: WaveManager injects a reference to PlayerController into each EnemyInstance at spawn via `init(enemy_type_id, player_ref: PlayerController)`. No SceneTree queries.
 - **Pros**: Zero SceneTree query overhead; explicit dependency — coupling is visible in the function signature
-- **Cons**: WaveManager becomes a coupling point between EnemyAI and PlayerController; any future Fayde lifecycle change (respawn) must be threaded through WaveManager. Does not address H&D and SC&E's need for `is_in_group()` discrimination — the group pattern is still needed for those systems regardless.
+- **Cons**: WaveManager becomes a coupling point between EnemyAI and PlayerController; any future the duo lifecycle change (respawn) must be threaded through WaveManager. Does not address H&D and SC&E's need for `is_in_group()` discrimination — the group pattern is still needed for those systems regardless.
 - **Rejection Reason**: Doesn't eliminate the group pattern for H&D/SC&E; adds an unnecessary coupling chain through WaveManager for EnemyAI alone.
 
 ### Alternative C: Autoload-Mediated Lookup
@@ -144,8 +144,8 @@ for enemy: Node in enemies:
 ### Risks
 - **Risk**: Developer adds a second player-type node (summoned ally, mirror copy) to the `"player"` group. `get_first_node_in_group()` returns the wrong node non-deterministically.
   **Mitigation**: Invariant #1 bans this explicitly. The single-player assertion in PlayerController's `_ready()` detects duplicates at runtime.
-- **Risk**: Enemy AI caches `_fayde_ref`, but Fayde's node is freed and re-instantiated (future respawn mechanic). Stale reference causes null-access crash.
-  **Mitigation**: Enemy AI re-resolves via `get_first_node_in_group(&"player")` when `_fayde_ref == null` (Enemy AI Core Rule 4). At FP/MVP scope, Fayde is not destroyed mid-combat.
+- **Risk**: Enemy AI caches `_fayde_ref`, but the duo's node is freed and re-instantiated (future respawn mechanic). Stale reference causes null-access crash.
+  **Mitigation**: Enemy AI re-resolves via `get_first_node_in_group(&"player")` when `_fayde_ref == null` (Enemy AI Core Rule 4). At FP/MVP scope, the duo is not destroyed mid-combat.
 - **Risk**: Group query on `"enemy"` returns a node between its `queue_free()` call and end-of-frame deletion. Calling a method on it crashes.
   **Mitigation**: Invariant #5 requires `is_instance_valid()` guard on all group-query consumers. H&D Rule 5 already requires this guard independently.
 
@@ -153,11 +153,11 @@ for enemy: Node in enemies:
 
 | GDD System | Requirement | How This ADR Addresses It |
 |------------|-------------|--------------------------|
-| enemy-ai.md | Core Rule 4: `get_tree().get_first_node_in_group(&"player")` to locate Fayde | Establishes `"player"` group as the authoritative lookup mechanism; confirms the API name |
+| enemy-ai.md | Core Rule 4: `get_tree().get_first_node_in_group(&"player")` to locate the duo | Establishes `"player"` group as the authoritative lookup mechanism; confirms the API name |
 | enemy-ai.md | Core Rule 7: Enemy instances must be in `"enemy"` group; must NOT be in `"player"` group | Establishes `"enemy"` group membership as a requirement on EnemyInstance `_ready()`; prohibits dual membership |
 | enemy-ai.md | Contact attack: `body.is_in_group("player")` for contact damage gating | Confirms `is_in_group(&"player")` as the approved discrimination API |
 | player-controller.md | Interface Constraints: "Player Controller must maintain 'player' group membership; Enemy AI accesses position via the cached node reference" | Makes this constraint authoritative; adds the single-player assertion as the enforcement mechanism |
-| health-damage.md | Target discrimination: `is_in_group("player")` distinguishes Fayde from enemies in signal handlers | Confirms `is_in_group()` as the approved discrimination pattern for H&D signal callbacks |
+| health-damage.md | Target discrimination: `is_in_group("player")` distinguishes the duo from enemies in signal handlers | Confirms `is_in_group()` as the approved discrimination pattern for H&D signal callbacks |
 | spell-casting-effects.md | Spell collision: must identify enemy targets vs. player | `is_in_group(&"enemy")` on collision body is the approved target check |
 
 ## Performance Implications

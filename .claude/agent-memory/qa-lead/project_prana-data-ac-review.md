@@ -17,7 +17,7 @@ Round 1: 2026-05-23 (4 BLOCKING). Round 2: 2026-05-26 (10 BLOCKING). Round 3: 20
 | # | AC | Problem |
 |---|---|---|
 | BLOCKING-1 | AC-PD-04b | Icon isolation is an untestable instruction ("verify icon property isolation separately") — no discrete THEN assertion, no AC-PD-04c, sub-case can be silently omitted |
-| BLOCKING-2 | AC-PD-33b | T_remaining is unconstrained — tester cannot guarantee a Regen tick fires during 0.8s Stun window; WHEN says "enemy is Stunned" without specifying the Stun target is NOT Fayde |
+| BLOCKING-2 | AC-PD-33b | T_remaining is unconstrained — tester cannot guarantee a Regen tick fires during 0.8s Stun window; WHEN says "enemy is Stunned" without specifying the Stun target is NOT the duo |
 | BLOCKING-3 | AC-PD-43 | `type_modifier` undefined in GDD formulas; integer-only example (20 × 1.0 × 1.25 = 25.0) does not distinguish round() from floor(); no .5 boundary test case |
 | BLOCKING-4 | AC-PD-44 | "Moment of impact" is not frame-precise; Discovery Signal Contract requires same-frame tick; deferred-tick implementation passes this AC but violates the contract |
 | BLOCKING-5 | AC-PD-27 | "Freeze timer has not reset" has no numeric assertion; no elapsed time in GIVEN; broken reset at T=0 passes as written |

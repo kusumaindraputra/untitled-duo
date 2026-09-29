@@ -36,7 +36,7 @@ family, taken from `assets/data/enemy_bullet_palette.tres`:
 ## Context
 
 The art review found boss bullets in cyan, pink, orange and gold, which are the
-same hues as Fayde's Prana spells (Deepfrost, Ashfire, Stormgold). Each of the 27
+same hues as the duo's Prana spells (Deepfrost, Ashfire, Stormgold). Each of the 27
 `BulletPattern` files carried its own free-form `color`, so nothing kept enemy
 fire apart from player spells. In a dense fight the player could not tell at a
 glance which shots hurt them.

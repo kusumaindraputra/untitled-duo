@@ -97,7 +97,7 @@ bridge between the kits.
   Circuit.
 - The burst: `link_damage_mult` × base spell damage on the enemy, ×`link_splash_mult` on
   other enemies within `link_radius`, both elements' statuses for `link_status_sec` on
-  everyone it hits (Burn, Blind, Stun at a third, Freeze; Verdant regenerates Fayde
+  everyone it hits (Burn, Blind, Stun at a third, Freeze; Verdant regenerates the brothers
   instead), and `link_meter_gain` Special meter. "LINK!" and the reaction's name pop up.
 - The hit then leaves its own element, so swapping back and hitting again reacts again.
   That back-and-forth is the core duo loop.
@@ -133,13 +133,13 @@ bridge between the kits.
 
 ### Rule 6c — Link Burst (the duo Special, 2026-09-28)
 - When the Special fires and the two brothers' cores differ (palm faces, Rule 6), it
-  becomes a **Link Burst**: the benched brother appears beside Fayde, casting, and the
-  two elements react around Fayde after the active brother's own Special.
+  becomes a **Link Burst**: the benched brother appears beside the active brother, casting, and
+  the two elements react around him after the active brother's own Special.
 - Every enemy within `special_radius × link_burst_radius_mult` takes
   `special_damage × link_burst_damage_mult` and both elements' statuses for
   `link_status_sec × link_burst_status_mult`.
-- The pair sets the shape: Voidblue in the pair pulls enemies toward Fayde
-  (`link_burst_pull`), Verdant gives Fayde Regenerate, Stormgold stuns through its status.
+- The pair sets the shape: Voidblue in the pair pulls enemies toward the active brother
+  (`link_burst_pull`), Verdant gives the brothers Regenerate, Stormgold stuns through its status.
   The name comes from the Reaction Matrix ("LINK BURST!" callout).
 - Same core on both brothers (or no palm Prana): a plain Special, which is the hint to
   fill a palm. This resolves the "brother-specific Specials" item: the Special is the
@@ -265,10 +265,10 @@ The same cast as Faith: `20 × 0.9 × 0.85 = 15.3`, but Blind lasts `2.0 × cont
 - Swap on cooldown while Ayden is cornered: he has no escape but his toughness. This is
   the intended cost of staying Ayden too long; `swap_cooldown_sec` is the knob if it
   feels unfair.
-- Swap on the frame Fayde dies: death wins, no swap.
+- Swap on the frame the shared HP reaches 0: death wins, no swap.
 - Preparation starts mid-swap: swap completes, cooldown resets for the next room.
 - Grid with an empty left column: Ayden still fights at base damage (no hand bonus).
-- A sigil or Heirloom that says "Fayde": applies to both characters.
+- A sigil or Heirloom written before the duo (that said "Fayde"): applies to both characters.
 - Both palms empty: both brothers cast the centre, so no Link Reaction is possible. The
   prep preview's duo line shows the same core twice, which is the hint to fill a palm.
 - The enemy dies from the hit that reacts: the burst still lands on the others nearby.
@@ -367,10 +367,11 @@ content work. Proposed default, open to change:
 ### What has to change
 | Area | Change |
 |------|--------|
-| `design/gdd/game-concept.md` | Done 2026-09-28: premise note at the top; the old "Fayde" section is marked superseded |
+| `design/gdd/game-concept.md` | Done 2026-09-28: premise note at the top. 2026-09-29: pitch, core fantasy, lore and Characters rewritten for the duo; Fayde kept only as the link's name |
+| All living design and architecture docs | Done 2026-09-29: the player is "the duo" (shared HP, meter, grid), "the active brother" (body, hurtbox, position) or Faith (dash); "Fayde" stays only as the link's name, in code identifiers and in dated history (playtests, QA evidence, sprints, stories) |
 | `design/gdd/memory-fragments.md` + `assets/data/story/story_config.tres` | Done 2026-09-28: fragments 1, 8, 9, both endings rewritten for two brothers and one core; 2, 3, 4 and 10 reworded to "we"; no voice reads "Fayde" |
 | UI text (`combat_hud.gd`, `tutorial_coach.gd`, `run_summary_panel.gd` and others) | Done 2026-09-28 (UI pass): no player-facing UI text calls the player "Fayde"; the defeat fallback reads "The brothers fell.", reaction text heals "the brothers" |
-| Art | Done 2026-09-28: two sprite sets on Fayde's rig (ADR-0058). Main menu backdrop shows Ayden and Faith side by side with a Prana link and a beating heart between them |
+| Art | Done 2026-09-28: two sprite sets on the shared player rig (Fayde's pre-duo rig, ADR-0058). Main menu backdrop shows Ayden and Faith side by side with a Prana link and a beating heart between them |
 | Main menu tagline | Done 2026-09-28: "Two brothers. One link." |
 
 ## 10. Open Questions
@@ -378,7 +379,7 @@ content work. Proposed default, open to change:
    beings (Section 9).
 2. **HP**: shared (this proposal, simplest, explained by the link) or one bar each, where the
    resting character heals slowly (closer to Cloak & Dagger, more tactical, more UI).
-3. ~~**Art budget**~~ Decided 2026-09-28: two full sprite sets, generated on Fayde's rig.
+3. ~~**Art budget**~~ Decided 2026-09-28: two full sprite sets, generated on the shared player rig.
 
 ## 11. UI pass (2026-09-28)
 

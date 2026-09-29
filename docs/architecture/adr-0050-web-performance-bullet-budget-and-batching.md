@@ -43,7 +43,7 @@ and the Cipher Keeper's last phase. The report is
 - The CPU cost per bullet was mostly the redraw: rebuilding seven canvas commands for every
   bullet on every frame. With 240 bullets that took 7.8 to 10.4 ms of physics time per frame
   natively, and WebAssembly is slower.
-- FloorLighting (ADR-0043) was checked and is not a hotspot. Its pools are fixed (1 Fayde
+- FloorLighting (ADR-0043) was checked and is not a hotspot. Its pools are fixed (1 the duo
   light, 6 pulses, 8 bullet lights), and turning it off changed draw calls by only a few.
 
 ## Decision

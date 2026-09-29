@@ -9,7 +9,7 @@
 
 ## Overview
 
-The Last Cipher is a 2D isometric (dimetric) roguelike where Fayde composes spells by arranging
+The Last Cipher is a 2D isometric (dimetric) roguelike where the duo composes spells by arranging
 Prana types in a 3×3 drag-and-drop grid. Mechanically the game is built from four bands of
 systems: a **Prana/spell spine** (grid placement → combination resolution → spell cast),
 a **combat layer** (player movement, health/damage, status effects, enemy AI), an

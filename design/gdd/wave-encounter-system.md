@@ -7,7 +7,7 @@
 
 ## Overview
 
-Wave / Encounter System is the runtime layer that structures what Fayde faces in each room — which enemy archetypes appear, in what numbers, and from where. It owns the full encounter lifecycle: seeding the wave composition that Wave Peek previews during Preparation, spawning enemy instances when Combat begins, and tracking kills until the wave is cleared. This system is what makes the Preparation-phase Prana grid arrangement a *meaningful decision* rather than arbitrary layout: it defines the enemy problem the player is solving.
+Wave / Encounter System is the runtime layer that structures what the duo faces in each room — which enemy archetypes appear, in what numbers, and from where. It owns the full encounter lifecycle: seeding the wave composition that Wave Peek previews during Preparation, spawning enemy instances when Combat begins, and tracking kills until the wave is cleared. This system is what makes the Preparation-phase Prana grid arrangement a *meaningful decision* rather than arbitrary layout: it defines the enemy problem the player is solving.
 
 At **First Playable scope**, the system runs a single hardcoded encounter: one room, one wave of 8–12 enemies with a fixed multi-archetype composition (Drifter, Charger, and Cluster all present), spawning simultaneously at Combat start. This density — bullet-hell-style pressure — is intentional. It is the maximum stress test for the two-phase loop: does peeking the wave and arranging the Prana grid in advance translate into a concrete combat advantage? The run ends when the last enemy falls.
 
@@ -43,13 +43,13 @@ This system succeeds when a player can describe what they did and why: *"The Clu
    - 5 × Cluster (ID 2) — SWARMER archetype; Lightning/Stormgold affiliation; threat value = 5
    - **Total: 10 enemies | Threat budget: 12**
 
-   **Anti-Ashfire gate (prana-data.md) — RESOLVED 2026-05-31:** Charger affiliation changed from Fire/Ashfire → Ice/Deepfrost. The Charger (Rusher/gap-closer) is the highest-threat unit; Burn DoT is suboptimal against a gap-closer that reaches Fayde in <2s, while Deepfrost Freeze lockdown and Stormgold Stun are strategically superior choices. All-Ashfire play is no longer optimal against the hardest unit. Deepfrost (Charger) and Stormgold (Cluster) cover the high-threat composition; Voidblue (Drifter) rewards precision. Verdant remains without a FP target enemy (1 of 5 Prana types with no 2× target at FP — accepted gap; Verdant sustain is still playable). Status Effects implementation sprint is now unblocked per prana-data.md gate.
+   **Anti-Ashfire gate (prana-data.md) — RESOLVED 2026-05-31:** Charger affiliation changed from Fire/Ashfire → Ice/Deepfrost. The Charger (Rusher/gap-closer) is the highest-threat unit; Burn DoT is suboptimal against a gap-closer that reaches the active brother in <2s, while Deepfrost Freeze lockdown and Stormgold Stun are strategically superior choices. All-Ashfire play is no longer optimal against the hardest unit. Deepfrost (Charger) and Stormgold (Cluster) cover the high-threat composition; Voidblue (Drifter) rewards precision. Verdant remains without a FP target enemy (1 of 5 Prana types with no 2× target at FP — accepted gap; Verdant sustain is still playable). Status Effects implementation sprint is now unblocked per prana-data.md gate.
 
    **Shatter risk note:** Shatter (+25% bonus on Frozen target) requires Freeze (Deepfrost status effect). Freeze is targeted for sprint-2 Should Have. If Status Effects slips to sprint-3, Shatter does not fire at the first playtest — the 2× affiliation bonus against Charger will still demonstrate strategic depth. Ensure Freeze is implemented before the first playtest (2026-06-14).
 
    At MVP/VS, this constant is replaced by a budget-driven composition generator. The constant form is intentional for FP — changing it is a one-line edit per iteration.
 
-3. **Spawn markers**: The arena scene contains predefined `Node2D` spawn marker nodes (e.g., a `SpawnPoints` container with children `SP_01` through `SP_N` — minimum 10 markers for FP composition). Markers are placed at the scene level by the level designer, outside Fayde's starting position but within arena bounds. The Wave Manager reads each marker's `global_position` at spawn time; it does not own or author the marker positions. Markers are assigned to enemies in composition-array order (entry 0 → SP_01, entry 1 → SP_02, etc.). Each marker is used by at most one enemy per wave.
+3. **Spawn markers**: The arena scene contains predefined `Node2D` spawn marker nodes (e.g., a `SpawnPoints` container with children `SP_01` through `SP_N` — minimum 10 markers for FP composition). Markers are placed at the scene level by the level designer, outside the active brother's starting position but within arena bounds. The Wave Manager reads each marker's `global_position` at spawn time; it does not own or author the marker positions. Markers are assigned to enemies in composition-array order (entry 0 → SP_01, entry 1 → SP_02, etc.). Each marker is used by at most one enemy per wave.
 
 4. **Simultaneous spawn** (on `combat_started(is_boss: false)`): The Wave Manager instantiates all enemies from their `PackedScene` references in a single loop iteration, calls `add_child()` for each, positions each at its assigned spawn marker's `global_position`, and calls `init(enemy_type_id)` on each. All 10 enemies enter the scene tree on the same frame. `_enemies_alive = _enemies_total = 10`. `_wave_state → WAVE_ACTIVE`.
 
@@ -171,7 +171,7 @@ This formula is **not implemented at FP**. It is documented here so the Wave Sys
 
 - **If `combat_started(is_boss: true)` fires while `_wave_state == WAVE_ACTIVE`** (should not occur at FP — indicates GS&SF sent boss start before wave was cleared): Wave Manager logs a debug warning and ignores the signal. `_wave_state` remains `WAVE_ACTIVE`. The existing wave must clear before any state change.
 
-- **If the run ends (Fayde dies) while `_wave_state == WAVE_ACTIVE`**: `player_died` is emitted by H&D; GS&SF transitions to `DEATH_SCREEN`. Wave Manager does not emit `all_waves_cleared` or `boss_defeated` — the run is over. Remaining enemy nodes are freed when the arena scene is unloaded by `SceneManager`. Wave Manager's `_enemies_alive` is left non-zero, but the node transitions to a new run on the next `run_started` (which triggers `preparation_started` → reset).
+- **If the run ends (the duo dies) while `_wave_state == WAVE_ACTIVE`**: `player_died` is emitted by H&D; GS&SF transitions to `DEATH_SCREEN`. Wave Manager does not emit `all_waves_cleared` or `boss_defeated` — the run is over. Remaining enemy nodes are freed when the arena scene is unloaded by `SceneManager`. Wave Manager's `_enemies_alive` is left non-zero, but the node transitions to a new run on the next `run_started` (which triggers `preparation_started` → reset).
 
 - **If `_enemies_alive` somehow reaches `<= 0` before all enemies are killed** (e.g., no enemies were spawned or all spawns failed): After the spawn loop, if `_enemies_total == 0`, log `push_error()` and immediately emit `all_waves_cleared` + `boss_defeated` to prevent the run from softlocking in `WAVE_ACTIVE` indefinitely. No enemies → wave is vacuously complete.
 
@@ -216,7 +216,7 @@ Game State & Scene Flow GDD (Downstream Dependents table) explicitly lists Wave 
 
 **Cross-system tuning notes:**
 - `FP_CLUSTER_COUNT` lower bound (3) is enforced by Enemy Data Edge Case 5 — spawning fewer than 3 Clusters defeats the archetype's swarm design intent.
-- `ARENA_WIDTH_PX` must be set before implementing spawn markers. Enemy AI's `AGGRO_RADIUS = 400px` is validated against arenas ≤ 800px wide — raising arena above 800px means enemies will not aggro from the far edge of the arena at spawn. This is acceptable if spawn markers are placed within 400px of Fayde's start position.
+- `ARENA_WIDTH_PX` must be set before implementing spawn markers. Enemy AI's `AGGRO_RADIUS = 400px` is validated against arenas ≤ 800px wide — raising arena above 800px means enemies will not aggro from the far edge of the arena at spawn. This is acceptable if spawn markers are placed within 400px of the duo's start position.
 - Cluster count above 8 should be profiled: 8+ simultaneously `PROCESS_MODE_PAUSABLE` physics objects each running `move_and_slide()` may approach frame budget limits on target hardware. Profile at ≥ 8 Clusters before shipping.
 
 ## Visual/Audio Requirements
@@ -262,7 +262,7 @@ Game State & Scene Flow GDD (Downstream Dependents table) explicitly lists Wave 
 ### Integration
 
 - **AC-WES-14** — Full FP run flow: (1) `preparation_started` fires → state = IDLE; (2) `combat_started(is_boss: false)` fires → 10 enemies spawned, `_wave_state = WAVE_ACTIVE`; (3) 10 × `enemy_killed` signals received → `_enemies_alive` reaches 0 → `all_waves_cleared` emitted → `boss_defeated` emitted → `_wave_state = WAVE_COMPLETE`. Verify signal emission counts: `all_waves_cleared` exactly 1, `boss_defeated` exactly 1.
-- **AC-WES-15** — GIVEN Fayde dies (H&D emits `player_died`) while `_wave_state = WAVE_ACTIVE`, WHEN the run ends and GS&SF transitions to `DEATH_SCREEN`, THEN Wave Manager does not emit `all_waves_cleared` or `boss_defeated`. Enemy nodes are freed by scene unload; Wave Manager state is reset on next `preparation_started`.
+- **AC-WES-15** — GIVEN the duo dies (H&D emits `player_died`) while `_wave_state = WAVE_ACTIVE`, WHEN the run ends and GS&SF transitions to `DEATH_SCREEN`, THEN Wave Manager does not emit `all_waves_cleared` or `boss_defeated`. Enemy nodes are freed by scene unload; Wave Manager state is reset on next `preparation_started`.
 
 ## Open Questions
 

@@ -90,7 +90,7 @@ maths is unit-tested.
 
 ## Alternatives Considered
 
-- **CanvasModulate for the boss tint**: this also tints Fayde and spell VFX,
+- **CanvasModulate for the boss tint**: this also tints the duo and spell VFX,
   which the art bible forbids. Rejected.
 - **Rebuilding the pillar as a baked pixel texture**: this would need textures for
   each crack stage and the hit flash. Removing anti-aliasing and adding the outline

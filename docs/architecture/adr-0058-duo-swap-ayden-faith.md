@@ -102,14 +102,15 @@ grid. Three rules, all in `DuoTuning`:
 - Q is shared with the prep grid's discard key; the two never run at the same time.
 - Faith's dash wipes bullets like the dash-cut sigil (the larger radius wins), so the
   sigil is weaker on Faith. Balance pass needed.
-- Sprites: each brother has his own sheet set on Fayde's rig (body, glow, five Prana
+- Sprites: each brother has his own sheet set on the shared player rig (Fayde's pre-duo rig) (body, glow, five Prana
   cast poses, crumple), made by `tools/art-gen/generate_character_sprites.gd`.
   `DuoLooks` (`src/visual/duo_looks.gd`) swaps them on PixelCharacter and the crumple
   pose. Ayden: spiky auburn hair, red headband, rust vest, wrapped forearms. Faith:
-  dark hair with a ponytail, lens, slate long coat, teal sash. The main menu still
-  shows Fayde.
-- Not yet done: the story rewrite (fragments 1, 8, 9, true ending, UI text naming
-  "Fayde").
+  dark hair with a ponytail, lens, slate long coat, teal sash. The main menu shows
+  both brothers side by side (UI pass, below).
+- Story rewrite (fragments 1, 8, 9, true ending, UI text naming "Fayde"): done
+  2026-09-28, see the amendments below. Design and architecture docs were brought in
+  line on 2026-09-29.
 - Tests: `tests/unit/duo-swap/duo_swap_test.gd`, `tests/unit/duo-swap/duo_link_test.gd`.
 
 ## Amendment 2026-09-28 — Link Burst, severed link, duo sigils, style, tutorial
@@ -119,7 +120,7 @@ grid. Three rules, all in `DuoTuning`:
   deals `_deal_bonus_damage()` in `link_burst_radius()`, applies both plain statuses,
   pulls on Voidblue, Regenerates on Verdant, and emits `link_burst`. PlayerController
   answers with `show_partner()`: a throwaway PixelCharacter in the benched brother's
-  sheets that casts beside Fayde and fades. This replaces per-brother Specials.
+  sheets that casts beside the active brother and fades. This replaces per-brother Specials.
 - **Severed link.** `BossPhaseEvent.sever_link` (Cipher Keeper phase 2). BossDirector
   calls `PlayerController.sever_link()`; `DuoSwap.sever()` makes `can_swap()` false until
   `note_hit()` has counted `sever_reconnect_hits` `spell_hit_element` hits. Then

@@ -21,7 +21,7 @@ Items 3 and 8 of the juice review, plus the three gaps ADR-0039 logged for later
    jolts a few pixels, sized by the hit.
 2. **Prep→combat dim** (art bible §2.3): the room's ambient drops 18 % over 0.3 s at
    wave start and lifts again when the wave or room is over.
-3. **Crumple pose** (art bible §5.3 stage 1): when Fayde falls, her sprite gives way
+3. **Crumple pose** (art bible §5.3 stage 1): when the duo falls, her sprite gives way
    to a new crumple strip (knees bend, arms loose, head down, eyes close). The
    defeat screen shows the same pose beside the stats, drained of warmth, with the
    last Prana colour still in her hands (§2.5).
@@ -62,13 +62,13 @@ All timings live in `assets/data/hud_juice_tuning.tres` (`HudJuiceTuning`).
 ### Crumple pose
 
 - `tools/art-gen/generate_character_sprites.gd` now also writes
-  `fayde_crumple.png` and `fayde_crumple_glow.png`: one row of 4 columns in Fayde's
+  `fayde_crumple.png` and `fayde_crumple_glow.png`: one row of 4 columns in the duo's
   20×32 cell, feet on the origin. The main `fayde.png` sheet is unchanged, so
   `PixelCharacter` (owned by the squash/stretch work, ADR-0040) is not touched.
 - `CrumplePose` (`src/visual/crumple_pose.gd`) plays the strip once over
   `crumple_sec` in real time (it must play during the 0.15× death slow-mo) and holds
   the last column. Its glow sheet takes the last Prana colour.
-- On a loss the game loop hides Fayde's `PixelCharacter` and adds a `CrumplePose`
+- On a loss the game loop hides the duo's `PixelCharacter` and adds a `CrumplePose`
   under the player at the same pixel scale and facing. A restart rebuilds the scene.
 - `RunSummaryPanel` shows a `CrumplePose` at `crumple_portrait_scale` beside the stat
   cards on a loss only, tinted cool (`CRUMPLE_TINT`) with the Prana glow from the new
@@ -90,7 +90,7 @@ All timings live in `assets/data/hud_juice_tuning.tres` (`HudJuiceTuning`).
   (ADR-0004) so tests can drive time by hand. A Tween would break that. Rejected.
 - **Ghost as a child of `hp_bar`**: `hp_bar.modulate` carries the zone colour and
   would tint the ghost red. A sibling bar avoids that. Chosen.
-- **`CanvasModulate` for the combat dim**: it darkens Fayde and spells too, which
+- **`CanvasModulate` for the combat dim**: it darkens the duo and spells too, which
   §2.3 and ADR-0039 rule out. Rejected.
 - **A fourth row on `fayde.png`**: this changes `PixelCharacter.ROWS`, and that file
   belongs to the squash/stretch thread. A separate strip needs no change there.

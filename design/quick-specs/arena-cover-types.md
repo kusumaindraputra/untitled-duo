@@ -22,7 +22,7 @@ Arena obstacles fall into two classes:
 
 ## Design Rationale
 
-Half cover creates a spatial reward for the Preparation phase: arranging Prana in a direction that fires through debris gives Fayde an attack angle that enemies can't easily close. Enemies must walk around debris, taking longer to reach Fayde. Prana can fire straight through.
+Half cover creates a spatial reward for the Preparation phase: arranging Prana in a direction that fires through debris gives the duo an attack angle that enemies can't easily close. Enemies must walk around debris, taking longer to reach the active brother. Prana can fire straight through.
 
 This directly enriches Pillar 2 (Power is Earned Through Understanding) without adding UI complexity.
 

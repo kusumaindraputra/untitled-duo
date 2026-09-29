@@ -67,7 +67,7 @@ overlap. Unchanged from FP implementation.
 
 **RUSHER** — Four-phase charge cycle:
 - `APPROACH` (0): Chase slowly (`_move_speed × RUSHER_APPROACH_SPEED_MULT`). When distance to
-  Fayde ≤ `RUSHER_CHARGE_RANGE`, transition to TELEGRAPH.
+  The duo ≤ `RUSHER_CHARGE_RANGE`, transition to TELEGRAPH.
 - `TELEGRAPH` (1): Freeze in place for `RUSHER_TELEGRAPH_DURATION`. At expiry, lock
   `_rusher_charge_dir = _dir_last_valid` and transition to CHARGING.
 - `CHARGING` (2): Burst in locked direction at `_move_speed × RUSHER_CHARGE_SPEED_MULT` for
@@ -78,10 +78,10 @@ overlap. Unchanged from FP implementation.
 RUSHER phase is reset to APPROACH on `preparation_started`. Contact damage fires normally on
 any phase overlap.
 
-**SWARMER** — Orbit: targets a point offset from Fayde at `SWARMER_ORBIT_RADIUS` (80 px).
+**SWARMER** — Orbit: targets a point offset from the active brother at `SWARMER_ORBIT_RADIUS` (80 px).
 The offset angle `_swarmer_angle` advances at `SWARMER_ORBIT_SPEED` (1.4 rad/s) each frame,
-so the SWARMER circles Fayde. Each SWARMER instance is assigned a random starting angle on
-`init()`, spreading multiple Swarmers around Fayde automatically. Chase speed is `_move_speed`
+so the SWARMER circles the duo. Each SWARMER instance is assigned a random starting angle on
+`init()`, spreading multiple Swarmers around the active brother automatically. Chase speed is `_move_speed`
 toward the orbit target; separation force applied as normal.
 
 **SHOOTER** — Unchanged: maintain ≥ `KEEP_DISTANCE` (150 px), fire projectile every
@@ -127,7 +127,7 @@ Example: SWARMER_ORBIT_RADIUS = 80 px, θ advances at 1.4 rad/s → full circle 
 - **RUSHER charges into a wall**: `move_and_slide()` handles collision; RUSHER slides along
   the wall and charge timer counts down normally. No special state needed.
 - **SWARMER orbit target outside arena**: Arena walls contain the SWARMER via physics;
-  wall-hugging may occur near arena edges but SWARMER self-corrects as Fayde moves.
+  wall-hugging may occur near arena edges but SWARMER self-corrects as the active brother moves.
 - **Single SWARMER instance**: Orbits alone; no multi-instance spread needed, but the orbit
   still creates a circling threat distinct from SEEKER direct chase.
 
@@ -175,7 +175,7 @@ All constants live in the source file listed — change there to retune without 
 | `RUSHER_CHARGE_SPEED_MULT` | 3.5 | Speed multiplier during CHARGING burst |
 | `RUSHER_CHARGE_DURATION` | 0.55 s | Duration of the burst |
 | `RUSHER_COOLDOWN_DURATION` | 1.2 s | Rest period after burst |
-| `SWARMER_ORBIT_RADIUS` | 80 px | Orbit circle radius around Fayde |
+| `SWARMER_ORBIT_RADIUS` | 80 px | Orbit circle radius around the active brother |
 | `SWARMER_ORBIT_SPEED` | 1.4 rad/s | Angular velocity of orbit |
 
 ## Acceptance Criteria

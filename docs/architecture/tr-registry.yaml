@@ -261,7 +261,7 @@ requirements:
   - id: TR-HD-012
     system: hd
     gdd: design/gdd/health-damage.md
-    requirement: "run_started signal triggers: Fayde HP reset to FAYDE_MAX_HP, zone reset to FULL, player_hp_zone_changed(FULL) emitted"
+    requirement: "run_started signal triggers: the duo HP reset to FAYDE_MAX_HP, zone reset to FULL, player_hp_zone_changed(FULL) emitted"
     created: "2026-05-29"
     revised: ""
     status: active
@@ -579,7 +579,7 @@ requirements:
   - id: TR-EAI-001
     system: eai
     gdd: design/gdd/enemy-ai.md
-    requirement: "CharacterBody2D.move_and_slide() for movement — direct screen-space vector toward Fayde position each physics frame"
+    requirement: "CharacterBody2D.move_and_slide() for movement — direct screen-space vector toward the active brother position each physics frame"
     created: "2026-05-29"
     revised: ""
     status: active
@@ -635,7 +635,7 @@ requirements:
   - id: TR-EAI-008
     system: eai
     gdd: design/gdd/enemy-ai.md
-    requirement: "get_tree().get_first_node_in_group(&'player') for Fayde reference — cached at _ready(), re-resolved when null"
+    requirement: "get_tree().get_first_node_in_group(&'player') for the duo reference — cached at _ready(), re-resolved when null"
     created: "2026-05-29"
     revised: ""
     status: active

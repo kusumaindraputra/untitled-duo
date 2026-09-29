@@ -5,7 +5,7 @@ metadata:
   type: project
 ---
 
-The game's audio design directive is "The world breathes softly; magic screams." Fayde is an android child fighting robots in a quiet underground world using elemental Prana abilities. All-ages (7+), pixel art, sci-fi dungeon crawler.
+The game's audio design directive is "The world breathes softly; magic screams." Ayden and Faith, two android brothers sharing one Prana core, fight robots in a quiet underground world using elemental Prana abilities. All-ages (7+), pixel art, sci-fi dungeon crawler.
 
 **Why:** This contrast is the core emotional contract — ambient and preparation audio are understated/textural, Prana SFX are loud and sharp. Every audio decision should be evaluated against this axis.
 

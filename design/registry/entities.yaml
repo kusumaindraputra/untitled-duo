@@ -156,7 +156,7 @@ entities:
     enemy_id: 1
     archetype: RUSHER
     prana_affiliation: Deepfrost  # Ice — VFX color + drop typing only (was Ashfire; changed 2026-05-31)
-    base_hp: 90  # was 35; buffed 2026-06-20 difficulty rebalance (tank — 3 hits = dead Fayde)
+    base_hp: 90  # was 35; buffed 2026-06-20 difficulty rebalance (tank — 3 hits = dead the duo)
     base_damage: 30.0  # was 20.0; buffed 2026-06-20 difficulty rebalance
     base_move_speed: 50  # px/s
     wave_threat_value: 2

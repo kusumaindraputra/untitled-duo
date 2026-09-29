@@ -2,13 +2,13 @@
 
 ## Overview
 
-Visual ring around Fayde that depletes during the combo continuation window (2.0s),
+Visual ring around the active brother that depletes during the combo continuation window (2.0s),
 showing the player when their chain will reset. Ring appears after each hit's cast-lock
 expires, shrinks from 360°→0°, and resets on the next chain hit.
 
 ## Player Fantasy
 
-The player feels the combo timer as a physical presence — a ring tightens around Fayde,
+The player feels the combo timer as a physical presence — a ring tightens around the active brother,
 creating urgency and giving precise feedback on when the chain window expires. The Prana
 color matches, reinforcing spell identity.
 
@@ -25,7 +25,7 @@ color matches, reinforcing spell identity.
 ## Formulas
 
 - Arc angle = (remaining_window / COMBO_CONTINUATION_WINDOW) * TAU
-- Radius: 50px from Fayde center
+- Radius: 50px from the active brother center
 - Line width: 3.5px
 - Alpha: 0.6 × (remaining_ratio) + 0.15 (fades slightly as it depletes)
 
@@ -51,7 +51,7 @@ color matches, reinforcing spell identity.
 
 ## Acceptance Criteria
 
-1. Ring appears around Fayde in world-space when combo chain is active
+1. Ring appears around the active brother in world-space when combo chain is active
 2. Ring arc shrinks proportionally to remaining window time
 3. Ring color matches current spell's Prana type
 4. Ring resets on each chain advance

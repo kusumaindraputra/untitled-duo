@@ -76,7 +76,7 @@ collision, navigation and the stage layouts from ADR-0020 must not change.
 ## Alternatives Considered
 
 - **Props on floor tiles without collision.** Rejected: a rock that looks solid
-  but lets Fayde walk through reads as a bug, and it would crowd the bullet-hell
+  but lets the active brother walk through reads as a bug, and it would crowd the bullet-hell
   readability work.
 - **Hand-drawn prop PNGs.** Deferred: no artist asset pipeline exists yet, and
   procedural art keeps the look data-driven and palette-locked. `PropArt.texture()`

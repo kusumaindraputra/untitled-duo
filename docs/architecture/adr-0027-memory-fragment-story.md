@@ -14,7 +14,7 @@ Kusuma Putra (solo dev) + Claude Code Game Studios
 
 ## Summary
 
-Fayde's story is told through ten memory fragments recovered in a fixed order
+The duo's story is told through ten memory fragments recovered in a fixed order
 across runs, plus two endings after the Cipher Keeper. The story is data
 (`assets/data/story/story_config.tres`), the rules are a stateless `StoryRules`
 class, and the count of recovered fragments is saved in `MetaProgress`

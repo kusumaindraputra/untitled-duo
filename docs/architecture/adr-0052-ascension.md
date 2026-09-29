@@ -32,7 +32,7 @@ healing, one more enemy, faster fire with shorter warnings, then more HP again) 
 - `EnemyPoolConfig` gains `enemy_hp_mult` and `boss_hp_mult` (default 1.0). WaveManager
   multiplies them into the H&D registration and calls the new
   `EnemyInstance.apply_hp_mult()` so the boss bar matches.
-- `HealthAndDamage.player_heal_mult` (default 1.0) scales every heal Fayde receives;
+- `HealthAndDamage.player_heal_mult` (default 1.0) scales every heal the duo receives;
   the run scene sets it with the Assist values.
 - The run scene builds each pool as Hard Mode then Ascension (`_run_pool()`). The main
   menu shows an Ascension button under the Hard Mode toggle; the run summary names a
@@ -57,7 +57,7 @@ Heat show that small, stacking, named steps keep a win meaningful.
 A fixed ladder (not a free menu of modifiers like Heat) because it is one button on the
 menu, one line per level, and each level can be tested in isolation. Changes reuse the
 knobs Hard Mode already scales (pool configs), plus two new multipliers that only
-Ascension sets: pool HP and Fayde's healing. Ascension sits on Hard Mode so the existing
+Ascension sets: pool HP and the duo's healing. Ascension sits on Hard Mode so the existing
 unlock flow and shard multiplier stay the single entry point.
 
 ## Alternatives Considered

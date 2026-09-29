@@ -18,7 +18,7 @@ Two small additions give the player more decisions per run:
 
 1. **Sigil reroll (mid-run decision)**: every sigil reward screen has a Reroll
    button. It costs HP, and the price rises with each reroll bought in the run.
-   It follows the Wayshrine rule: it never leaves Fayde below 1 HP.
+   It follows the Wayshrine rule: it never leaves the duo below 1 HP.
 2. **Cipher Cores (build variety)**: the core-pick screen adds a row of four
    Cores next to the five core Prana. The Prana still picks the spell. The Core
    adds a passive with a trade-off for the whole run.

@@ -32,7 +32,7 @@ dash has to count.
   a pillar cuts short costs it `CoverPillar.LASER_HITS` (3). Mortars arc over pillars.
   Sweep-laser hazards are cut short but do not wear pillars down.
 - A pillar shows 3 crack stages and crumbles at 0 hits (chip burst, collision off).
-- Pillars take interior floor tiles at least 120 px from spawn markers, Fayde's start and
+- Pillars take interior floor tiles at least 120 px from spawn markers, the duo's start and
   the door slots, keep `min_center_dist` from the room centre, stay
   `pillar_min_between_dist` apart and avoid debris and hazards.
 
@@ -44,7 +44,7 @@ post-hit grace apply.
 
 | Kind | Behaviour |
 |------|-----------|
-| **Turret** | Fires its `BulletPattern` at Fayde (same runner as enemies: windup glow, fan / ring). Its base is half cover. It cannot be destroyed. |
+| **Turret** | Fires its `BulletPattern` at the duo (same runner as enemies: windup glow, fan / ring). Its base is half cover. It cannot be destroyed. |
 | **Sweep laser** | 1–4 beam arms rotate around a pylon. There is a harmless telegraph for `warmup_sec`, then the beams are live. Touching one deals damage. Dashing through one counts as a Perfect Dodge. Passing close grazes. Beams stop at pillars and, unless `stop_at_walls` is off, at walls. |
 | **Floor vent** | Cycles dormant → telegraph (growing glow) → burning. It hurts only while burning and only inside its iso circle. `phase_offset` staggers vents. |
 | **Closing ring** | After `ring_delay_sec`, the safe diamond shrinks from `ring_start_scale` to `ring_min_scale` over `ring_close_sec`. Standing outside it hurts. |
@@ -117,13 +117,13 @@ iso circle hit     = length(dx, 2·dy) ≤ radius
 
 - **No room for pillars** (narrow rooms, crowded spawns): fewer pillars, or none. That is valid.
 - **A random hazard finds no free tile**: it is skipped, and the room still builds.
-- **The pillar Fayde hides behind breaks**: its collision turns off on the next
+- **The pillar the duo hides behind breaks**: its collision turns off on the next
   physics step, so bullets already in flight carry on.
 - **Several hazards in a multi-wave room**: they switch off between waves and restart
   their timers each wave, so a vent never burns during preparation.
 - **The sweep pylon sits inside the Ring core**: the core's rim would block the beam at
   once, so core templates set `stop_at_walls = false`. The beam then runs over the
-  void past the outer edge, where Fayde cannot stand.
+  void past the outer edge, where the duo cannot stand.
 - **The first room of a run**: `main.tscn` ships its own room without a template, so
   floor 1's first room is a plain diamond with no pillars. Later rooms use the themes.
 
@@ -162,7 +162,7 @@ iso circle hit     = length(dx, 2·dy) ≤ radius
 |----|-----------|------|
 | AC-SL-01 | A bullet that reaches a pillar stops and costs it 1 hit | `cover_pillar_test::test_flying_bullet_is_stopped_by_pillar` |
 | AC-SL-02 | A pillar breaks exactly on its last hit and emits `destroyed` once | `cover_pillar_test` |
-| AC-SL-03 | Fayde cannot walk or dash through a pillar; dash still passes debris and enemies | `cover_pillar_test::test_fayde_cannot_walk_or_dash_through_pillars` |
+| AC-SL-03 | The active brother cannot walk or dash through a pillar; dash still passes debris and enemies | `cover_pillar_test::test_fayde_cannot_walk_or_dash_through_pillars` |
 | AC-SL-04 | A laser beam cast at a pillar is cut short and reports the pillar | `cover_pillar_test::test_laser_blocked_by_pillar_in_tree` |
 | AC-SL-05 | Vent phases follow the cycle and phase offset | `hazard_logic_test` |
 | AC-SL-06 | Sweep arms are spread evenly and harmless during warmup | `hazard_logic_test` |

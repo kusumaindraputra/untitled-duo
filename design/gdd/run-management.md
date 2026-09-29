@@ -7,15 +7,15 @@
 
 ## Overview
 
-Run Management is the lifecycle owner of a single run in The Last Cipher. It initializes run data when a run begins (`run_started`), tracks each wave result as the encounter progresses (`wave_ended`), and finalizes the run record when the run ends (`run_ended`) — whether through victory or Fayde's death. At MVP simplified scope, run management is intentionally minimal: a run is one arena, one encounter, and the only state that carries between start and end is whether the player won or lost. There is no loot tracking, no meta-currency accumulation, and no persistent progression between runs. Players experience this system through its outputs — the Run Summary Screen (win) and Death Screen (loss) that conclude every run — not through any direct interaction. The system exists to make a "run" a coherent, bounded unit that Game State & Scene Flow can start, track, and end cleanly.
+Run Management is the lifecycle owner of a single run in The Last Cipher. It initializes run data when a run begins (`run_started`), tracks each wave result as the encounter progresses (`wave_ended`), and finalizes the run record when the run ends (`run_ended`) — whether through victory or the duo's death. At MVP simplified scope, run management is intentionally minimal: a run is one arena, one encounter, and the only state that carries between start and end is whether the player won or lost. There is no loot tracking, no meta-currency accumulation, and no persistent progression between runs. Players experience this system through its outputs — the Run Summary Screen (win) and Death Screen (loss) that conclude every run — not through any direct interaction. The system exists to make a "run" a coherent, bounded unit that Game State & Scene Flow can start, track, and end cleanly.
 
 ## Player Fantasy
 
 Run Management is infrastructure — players do not experience the system, they experience what it enables.
 
-**The complete run** — every session has a clear arc: beginning (Fayde enters the arena), middle (the encounter tests the prepared grid), end (win or die). This system makes that arc coherent. The game never leaves Fayde in an ambiguous state — when the last enemy falls, the run is over; when Fayde dies, the run is over. There is no lingering.
+**The complete run** — every session has a clear arc: beginning (the duo enters the arena), middle (the encounter tests the prepared grid), end (win or die). This system makes that arc coherent. The game never leaves the duo in an ambiguous state — when the last enemy falls, the run is over; when the duo dies, the run is over. There is no lingering.
 
-**Legible failure (Pillar 3)** — the Death Screen reflects what happened this run. At MVP: a clear signal that Fayde is gone and a new run is immediately available. Players experience the run as a *unit of learning*, not a punishment.
+**Legible failure (Pillar 3)** — the Death Screen reflects what happened this run. At MVP: a clear signal that the duo is gone and a new run is immediately available. Players experience the run as a *unit of learning*, not a punishment.
 
 **The instant restart** — players who want to try again feel no friction between run end and run begin. Run Management ensures the clean handoff: run state finalized, data ready for the Summary Screen, system reset for the next attempt.
 
@@ -42,7 +42,7 @@ Run Management is infrastructure — players do not experience the system, they 
 
 6. **On `room_cleared`**: set `run_outcome = WIN`. At MVP, `room_cleared` fires exactly once per run — when the boss is defeated. Setting outcome here ensures it is determined before `run_ended(win: true)` fires.
 
-7. **On `run_ended(win: bool)`**: set `run_active = false`. If `win = false` **and** `run_outcome = NONE` (no `room_cleared` fired — Fayde died or player quit), set `run_outcome = LOSS`. If `win = true`, `run_outcome` is already `WIN` from Rule 6. Run data is now final. — *Note: At MVP, Fayde-died and player-quit are both treated as LOSS. Distinguishing QUIT from LOSS (listening for `death_started` vs. `PAUSED → MAIN_MENU` quit path) is a VS refinement.*
+7. **On `run_ended(win: bool)`**: set `run_active = false`. If `win = false` **and** `run_outcome = NONE` (no `room_cleared` fired — the duo died or player quit), set `run_outcome = LOSS`. If `win = true`, `run_outcome` is already `WIN` from Rule 6. Run data is now final. — *Note: At MVP, duo-died and player-quit are both treated as LOSS. Distinguishing QUIT from LOSS (listening for `death_started` vs. `PAUSED → MAIN_MENU` quit path) is a VS refinement.*
 
 8. **Read access**: `RunManager` exposes one public method: `get_run_data() -> Dictionary`. Returns a copy of the current run record (`{ "run_active": bool, "run_outcome": RunOutcome, "waves_completed": int }`). Callers receive a copy — never a reference to the internal fields. This prevents accidental mutation by downstream screens.
 

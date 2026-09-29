@@ -40,7 +40,7 @@ Players do not engage with Enemy Data as a system. They engage with enemy types 
    | `archetype` | enum (`EnemyArchetype`) | Behavioral class — routes Enemy AI to the correct behavior tree. See enum definition below. |
    | `prana_affiliation` | enum (`DamageClass`) / null | Elemental identity. Used for death-burst VFX color (Enemy Instance) and thematically aligned with `drop_prana_type`. Does **not** affect damage (strong/weakness removed 2026-06-21). `null`/`NONE` = no affiliation (boss, neutral types). |
    | `base_hp` | int | Starting health pool. Read by Health & Damage on spawn. *Provisional — finalize after Health & Damage GDD.* |
-   | `base_damage` | float | Damage dealt per attack to Fayde. Read by Health & Damage on hit. *Provisional — finalize after Health & Damage GDD.* |
+   | `base_damage` | float | Damage dealt per attack to the duo. Read by Health & Damage on hit. *Provisional — finalize after Health & Damage GDD.* |
    | `base_move_speed` | float | Movement speed in pixels/second (base state). Enemy AI reads this; status effects from Prana Data (e.g., Freeze slow) apply as multipliers to this value. *Provisional.* |
    | `drop_prana_type` | int (PranaType ID) / null | Which Prana type this enemy drops on death. Read by Prana Drop / Loot. `null` = no drop (boss handled separately). |
    | `drop_rate` | float / null | Drop probability 0.0–1.0. `null` for boss. *Provisional — finalize after Prana Drop / Loot GDD.* |
@@ -52,10 +52,10 @@ Players do not engage with Enemy Data as a system. They engage with enemy types 
 
    | Constant | Behavior Intent |
    |----------|----------------|
-   | `SEEKER` | Pursues Fayde at base move speed; melee attack on contact. Standard enemy. |
+   | `SEEKER` | Pursues the active brother at base move speed; melee attack on contact. Standard enemy. |
    | `RUSHER` | Moves slowly; telegraphs a directional charge (high damage if it connects, dodgeable with wind-up read). Burst attacker. |
    | `SWARMER` | Moves in formation with other Swarmer units; individually weak; dangerous in groups. Wave / Encounter System should spawn these in sets of 3–5. |
-   | `SHOOTER` | Keeps distance from Fayde; fires projectiles at range. Slow on foot — rewards a player who closes in and prioritizes it. (Rifter) |
+   | `SHOOTER` | Keeps distance from the active brother; fires projectiles at range. Slow on foot — rewards a player who closes in and prioritizes it. (Rifter) |
    | `BOSS` | Special encounter; behavior defined in Boss Encounter GDD. Enemy Data provides base stats only. |
 
    **`EnemyStatus` enum:** `active` | `vs_scope` | `inactive`
@@ -160,7 +160,7 @@ These are not formulas — they are ratio targets to preserve during Health & Da
 | Warped Warden *(VS)* | 1800 | 36× | 25.0 | ~1.8× |
 | Vault Sentinel *(VS)* | 600 | 12× | 25.0 | ~1.8× |
 
-**Design intent (post 2026-06-20 rebalance):** Charger is the high-burst tank (hits hard, dies slowest of the regular enemies — ~3 Charger hits kill Fayde). Cluster is individually fragile but dangerous in packs of 3–5. Rifter is a slow ranged threat that rewards a player who closes distance and prioritizes it. Values reflect the rebalance goal: with no elemental shortcut, enemies must survive 1–2 well-placed hits and threaten back.
+**Design intent (post 2026-06-20 rebalance):** Charger is the high-burst tank (hits hard, dies slowest of the regular enemies — ~3 Charger hits kill the duo). Cluster is individually fragile but dangerous in packs of 3–5. Rifter is a slow ranged threat that rewards a player who closes distance and prioritizes it. Values reflect the rebalance goal: with no elemental shortcut, enemies must survive 1–2 well-placed hits and threaten back.
 
 ## Edge Cases
 

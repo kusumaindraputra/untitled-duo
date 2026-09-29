@@ -5,7 +5,7 @@
 
 ## Overview
 
-Seven sigils in the between-room reward pool that change *how* Fayde fights instead
+Seven sigils in the between-room reward pool that change *how* the duo fights instead
 of raising a number. Each hooks onto something the player already does (dash, graze,
 Perfect Dodge, Perfect Cast, Special, kills). Picking the same sigil again adds a
 stack that scales it.
@@ -25,7 +25,7 @@ should leave a run remembering the combo, not "+20 % damage".
 | Afterglow | A Special fires | Refunds `afterglow_refund` of the Special meter |
 | Unravel | An enemy dies | Cancels enemy bullets within `unravel_radius` of it |
 | Siphon | Every `siphon_kills` kills | Heals `siphon_heal` HP |
-| Riposte | A Perfect Dodge | Deals `riposte_damage` to every enemy within `riposte_radius` of Fayde |
+| Riposte | A Perfect Dodge | Deals `riposte_damage` to every enemy within `riposte_radius` of the duo |
 | Metronome | A Perfect Cast at streak ≥ `metronome_streak` | Heals `metronome_heal` HP |
 
 - Behaviour cards are tinted gold (`behaviour_card_color`) in the reward overlay.

@@ -26,7 +26,7 @@ choice: bleed a little for a better sigil, or take what is offered and stay heal
   Heirloom. Multipliers stack with sigils. The damage-taken share stacks with Assist.
 - **Reroll**: the button below the cards replaces all of them with a fresh roll. It
   does not use up the pick. A free reroll (Echo Core) is used before any paid one.
-  A paid reroll is refused when it would leave Fayde below 1 HP, and the button then
+  A paid reroll is refused when it would leave the duo below 1 HP, and the button then
   reads "too weak".
 - The pause build list starts with the run's Core.
 

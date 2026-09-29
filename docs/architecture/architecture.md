@@ -39,7 +39,7 @@
 │   ProceduralDungeon, LoadoutSlots, MetaProgression]             │
 ├─────────────────────────────────────────────────────────────────┤
 │  CORE LAYER                                                     │
-│  PlayerController (CharacterBody2D — Fayde movement/dash)       │
+│  PlayerController (CharacterBody2D — the active brother's movement/dash)       │
 │  HealthAndDamage (Autoload — HP pools + damage pipeline)        │
 │  PranaGrid (Scene node — 3×3 arrangement UI)                    │
 │  CombinationResolution (Autoload — arrangement → SpellEffect)   │
@@ -103,7 +103,7 @@
 | Module | File | Owns | Exposes | Consumes | Engine APIs |
 |--------|------|------|---------|----------|-------------|
 | **PlayerController** | `src/gameplay/player_controller.gd` | Velocity, position, state (DISABLED/ENABLED/DASHING), `_is_invincible`, `_last_facing_dir`, dash cooldown accumulator, footstep accumulator + shuffle bag | `is_invincible() -> bool`; `get_facing_direction() -> Vector2`; `get_cast_position() -> Vector2`; `get_controller_state()` | GSM: `combat_started` → enable, `preparation_started` → disable; SC&E: `cast_hit_started` → CAST_LOCKED; `Input` actions; AudioSystem.`play_event()` | `CharacterBody2D.move_and_slide()`, `Input.get_vector()`, `Input.is_action_just_pressed()`, `atan2()`, `round()` |
-| **HealthAndDamage** | `src/systems/health_and_damage.gd` | Fayde `current_hp`; all enemy HP instances (Dict[int, EnemyHPInstance]); `_iframe_active`; `_current_zone` | `apply_damage(target, base_damage: float, element, source: DamageSource)`; `apply_heal(target, heal_amount: float)`; `force_end_iframe_window()`; signals: `damage_taken`, `health_restored`, `player_died`, `enemy_killed`, `heavy_hit`, `player_hp_zone_changed` | PlayerController.`is_invincible()` (step 1a); EnemyCatalog (base_hp at spawn); GSM.`run_started` → reset | `roundi()`, `clamp()`, `instance_from_id()` |
+| **HealthAndDamage** | `src/systems/health_and_damage.gd` | The duo `current_hp`; all enemy HP instances (Dict[int, EnemyHPInstance]); `_iframe_active`; `_current_zone` | `apply_damage(target, base_damage: float, element, source: DamageSource)`; `apply_heal(target, heal_amount: float)`; `force_end_iframe_window()`; signals: `damage_taken`, `health_restored`, `player_died`, `enemy_killed`, `heavy_hit`, `player_hp_zone_changed` | PlayerController.`is_invincible()` (step 1a); EnemyCatalog (base_hp at spawn); GSM.`run_started` → reset | `roundi()`, `clamp()`, `instance_from_id()` |
 | **PranaGrid** | `src/ui/prana_grid.gd` | 9-slot arrangement array; grid state (ARRANGEMENT/LOCKED/HIDDEN); `committed_fragments` | `committed_fragments` getter; `is_loadout_valid() -> bool`; signal: `arrangement_confirmed` | GSM: `preparation_started` → clear+ARRANGEMENT, `grid_locked` → LOCKED, `grid_hidden` → HIDDEN; PranaCatalog for rendering | `CanvasLayer` parent, Control nodes, mouse drag, `Input` ⚠️ HIGH RISK: dual-focus Godot 4.6 — test mouse + gamepad paths independently |
 | **CombinationResolution** | `src/systems/combination_resolution.gd` | Resolution algorithm; effect tables (data-driven Resources) | Signal: `combo_resolved(spell_effect: SpellEffect)` | PranaGrid.`committed_fragments` (after `combat_started`); GSM.`combat_started` → trigger | `Resource` loading |
 | **SpellCastingEffects** | `src/systems/spell_casting_effects.gd` | SpellEffect cache per wave; SC&E state (IDLE/READY/CHAINING/CAST_LOCKED); combo index; timing accumulators | `get_stat_bonus(stat_id: StringName) -> float`; signals: `chain_index_changed`, `spell_hit_element`, `cast_hit_started(duration)` | CombinationResolution.`combo_resolved`; GSM.`combat_started`/`preparation_started`; PlayerController.`get_facing_direction()` + `get_cast_position()`; H&D.`apply_damage()`; StatusEffectsManager.`apply_status()`; Input.`is_action_just_pressed(&"cast")` | `PhysicsDirectSpaceState2D.intersect_ray()`, `get_world_2d().direct_space_state`, `PhysicsRayQueryParameters2D.create()` |
@@ -232,7 +232,7 @@ Physics frame N:
                                                                 then boss_defeated
                                                               [boss_defeated → call_deferred]
 
-  Fayde death: H&D → player_died (IMMEDIATE)
+  The duo death: H&D → player_died (IMMEDIATE)
      │
      ▼
   GameStateManager._on_player_died() [IMMEDIATE]
@@ -348,7 +348,7 @@ func get_spawn_markers() -> Array[Vector2]
 # Invariant: must be in "player" group. EnemyInstance must NOT be in "player" group.
 func is_invincible() -> bool
 func get_facing_direction() -> Vector2  # normalized, post-snap 8-dir unit vector
-func get_cast_position() -> Vector2     # Fayde's global_position
+func get_cast_position() -> Vector2     # the duo's global_position
 
 # ── HealthAndDamage ────────────────────────────────────────────────────────────
 func apply_damage(target: Node, base_damage: float,

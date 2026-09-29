@@ -38,7 +38,7 @@ Core Rule 6 states "the information requirement is not deferrable" but the visua
 
 ## [RECOMMENDED] Finding 5 — DEATH_SCREEN Has No Content Constraints for 7+ Audience
 
-Visual/Audio Requirements are entirely "[To be designed]." No content constraint exists for DEATH_SCREEN: no prohibition on distressing imagery, no tone guidance. The Prana bloom dissolve convention is established for enemies but Fayde's death has no equivalent specification. Implementers have no guardrails for a 7+ audience.
+Visual/Audio Requirements are entirely "[To be designed]." No content constraint exists for DEATH_SCREEN: no prohibition on distressing imagery, no tone guidance. The Prana bloom dissolve convention is established for enemies but the duo's death has no equivalent specification. Implementers have no guardrails for a 7+ audience.
 
 **Fix:** Visual/Audio Requirements must include at minimum: death state must not display blood, distressing imagery, or threatening language; failure framing must be consistent with the game's "mysterious, not threatening" tone.
 

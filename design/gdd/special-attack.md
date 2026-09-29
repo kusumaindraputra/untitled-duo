@@ -11,7 +11,7 @@ Combat gets two buttons. **Basic** (SPACE / A) is the existing chain, now judged
 rhythm: after each attack's cast lock ends a short **Perfect window** opens. A press
 inside it is **Perfect** (more damage, more Special meter, a stronger Cascade); a press
 before it is **Rushed** (weaker, no meter, no Cascade); a later press is **Normal**.
-**Special** (F / right mouse / Y) spends a full meter on one large burst around Fayde.
+**Special** (F / right mouse / Y) spends a full meter on one large burst around the active brother.
 Its **shape and signature** come from the core Prana, every **non-primary Prana** in the
 grid **infuses** its element facet, and armed **reactions** ride on it because it uses
 the same Burn / Blind / Stun / Freeze primitives. The Special is where the whole grid
@@ -66,15 +66,15 @@ is readable from the grid preview alone:
 | `non_primary_modifiers` (type + NP tier) | **Infusions** | Extra facet per supporting element, stronger at NP T2 |
 | `active_reactions` (adjacent pairs) | **Reactions ride along** | Triggered by the facets, same rules as basic hits |
 
-#### 4a. Core shapes and signatures (centred on Fayde)
+#### 4a. Core shapes and signatures (centred on the duo)
 
 | Core (verb) | Name | Reach | Status | Signature |
 |---|---|---|---|---|
 | Ashfire (IGNITE) | **Eruption** | `special_radius` | Burn `special_burn_duration` (via `_apply_burn`, so Witchfire/Wildfire fire) | Enemies already Burning take ×`eruption_burning_mult` — the Special *consumes* fire |
-| Voidblue (SUPPRESS) | **Eclipse** | `special_wide_radius` | Blind `special_blind_duration` | Pulls every enemy hit up to `eclipse_pull_distance` toward Fayde (never past her) — groups them for the next cone |
+| Voidblue (SUPPRESS) | **Eclipse** | `special_wide_radius` | Blind `special_blind_duration` | Pulls every enemy hit up to `eclipse_pull_distance` toward the active brother (never past her) — groups them for the next cone |
 | Stormgold (CHAIN) | **Thunder Chain** | nearest `special_chain_targets` within wide radius | Stun `special_stun_duration` (via `_apply_stun`, so Short Circuit fires) | Picks targets anywhere in reach, no falloff; Superconduct arcs off a Frozen first target |
 | Deepfrost (BIND) | **Glacier** | `special_radius` | Freeze `special_freeze_duration` | Freeze lands *after* the damage — it is setup, the next basics Shatter |
-| Verdant (NOURISH) | **Sanctuary** | `special_radius` | Regen on Fayde `sanctuary_regen_duration` | Heals Fayde `special_heal_ratio × special damage` once (if anything was hit) |
+| Verdant (NOURISH) | **Sanctuary** | `special_radius` | Regen on the duo `sanctuary_regen_duration` | Heals the duo `special_heal_ratio × special damage` once (if anything was hit) |
 
 #### 4b. Infusions (each non-primary entry; NP T2 multiplies by `infusion_tier2_mult`)
 
@@ -84,7 +84,7 @@ is readable from the grid preview alone:
 | Voidblue | Blind `infusion_blind_duration` on every enemy hit |
 | Stormgold | Arcs to `infusion_arc_targets` extra nearest enemies *outside* the shape (within wide radius) for 50% Special damage, Stunning them |
 | Deepfrost | Freeze `infusion_freeze_duration` on every enemy hit |
-| Verdant | Heals Fayde a flat `infusion_heal` |
+| Verdant | Heals the duo a flat `infusion_heal` |
 
 An entry whose type equals the core is ignored (defensive — CR never emits one).
 
@@ -226,7 +226,7 @@ more core = longer chain + stronger Special shape; more support = stronger infus
 | **Voidblue Eclipse** | Burn on the pulled cluster, so the group takes damage over time while it is packed. Rides Witchfire (redundant Blind) | — | Arcs + Stun on stragglers outside the pull. Rides Short Circuit. **Control** | Freeze the pulled cluster (enemies grouped *and* rooted). Rides Whiteout (**no effect yet**) | Heal. Rides Siphon: Void basics already Blind targets, so every Special hit heals 20% → **strongest sustain (risk)** |
 | **Stormgold Thunder Chain** | Burn along the chain. Rides Detonate | Blind along the chain. Rides Short Circuit (redundant — all already stunned) | — | Freeze along the chain. Rides Superconduct only if the first target was already Frozen | Heal. Rides Surge (basics only) |
 | **Deepfrost Glacier** | Burn + Freeze together (no conflict rule). Rides Thermal Shock | Blind + Freeze. Rides Whiteout (**no effect yet**) | Arcs outside the field. Rides Superconduct (Deepfrost basics Freeze the primary, so it fires reliably). **Best control** | — | Heal. Rides Permafrost (Freeze → Regen ×1.5). **Tank** |
-| **Verdant Sanctuary** | Burn around Fayde. Rides Wildfire | Blind around Fayde. Rides Siphon | Arcs + Stun, turns the defensive burst offensive | Freeze around Fayde. Rides Permafrost on the Sanctuary Regen — **self-synergy** | — |
+| **Verdant Sanctuary** | Burn around the active brother. Rides Wildfire | Blind around the active brother. Rides Siphon | Arcs + Stun, turns the defensive burst offensive | Freeze around the active brother. Rides Permafrost on the Sanctuary Regen — **self-synergy** | — |
 
 ### A3. Build archetypes the system now supports
 
@@ -245,7 +245,7 @@ rhythm, Pair wins specific enemy mixes. This is the target of Pillar 4 (Depth Ov
    ×1.5 — effectively 112 damage at T1. Ashfire may become the default core. Knob:
    `eruption_burning_mult`.
 2. **Voidblue + Verdant Siphon.** Void basics Blind; a wide Eclipse on 5 Blinded
-   enemies heals 5 × 54 × 0.20 ≈ 54 HP of Fayde's 100. Consider capping Siphon per cast.
+   enemies heals 5 × 54 × 0.20 ≈ 54 HP of the duo's 100. Consider capping Siphon per cast.
 3. **T1 Cascade frequency** (pre-existing): Cascade fires on every T1 press. The Rushed
    rule stops mashing from abusing it, and Perfect ×1.5 makes the rhythm the way to earn it.
 4. **Redundant pairings** (Witchfire + Void infusion, Short Circuit + Thunder Chain):

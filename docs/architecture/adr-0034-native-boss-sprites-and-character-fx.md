@@ -14,11 +14,11 @@ Kusuma Putra (solo dev) + Claude Code Game Studios
 
 ## Summary
 
-1. **Bosses at Fayde's pixel size**: the Vault Sentinel, Warped Warden and Cipher
+1. **Bosses at the active brother's pixel size**: the Vault Sentinel, Warped Warden and Cipher
    Keeper get their own sheets drawn at native resolution (96×96, 96×96, 144×144)
    with `sprite_pixel_scale = 1`. The Keeper no longer reuses the Sentinel sheet.
 2. **Third sheet row**: every character sheet is now 4 columns × 3 rows. Row 2 is
-   Fayde's cast pose and each enemy's attack wind-up.
+   The duo's cast pose and each enemy's attack wind-up.
 3. **Sprite effects in a shader**: a white hit flash and a death dissolve run in
    `assets/shaders/pixel_character.gdshader`, driven by `PixelCharacter`.
 
@@ -36,9 +36,9 @@ The art review found three problems with the characters:
 
 - The Cipher Keeper was the Vault Sentinel sheet tinted gold and drawn 3× (one sheet
   pixel = 3 world pixels). The Sentinel and Warden were drawn 2×. Their pixels were
-  much larger than Fayde's, and the final boss looked like a recoloured floor-1 boss.
+  much larger than the duo's, and the final boss looked like a recoloured floor-1 boss.
 - Sheets had only idle and walk rows, so casting and attacking had no pose.
-- Hits tinted the whole node with `modulate`. Fayde turned red; enemies were set to
+- Hits tinted the whole node with `modulate`. The duo turned red; enemies were set to
   `Color(3, 3, 3)`, which in the Compatibility renderer only brightens the sprite and
   never reaches white on dark pixels. Dead enemies stood still for 0.7 s and popped.
 
@@ -47,7 +47,7 @@ The art review found three problems with the characters:
 ### Sheets
 
 `tools/art-gen/generate_character_sprites.gd` writes every sheet as 4 × 3:
-idle, move, cast. Bosses and Fayde are "posed" and draw their own cast row. Standard
+idle, move, cast. Bosses and the duo are "posed" and draw their own cast row. Standard
 enemies get a generated wind-up row: their idle frames with the upper body leaning
 (stair-step shear) and the Prana marker brightened. Boss designs follow art bible
 §5.2 and each boss uses its reserved colour (§4.3): Sentinel B2 teal, Warden B1
@@ -75,7 +75,7 @@ Wiring:
 | Event | Before | After |
 |-------|--------|-------|
 | Enemy hit (`request_hit_flash`) | `modulate = (3,3,3)` | White flash on the sprite; placeholder bodies keep the old modulate |
-| Fayde hit (`SpellVFX._on_damage_taken`) | Whole node tinted red | White flash on the sprite |
+| The duo hit (`SpellVFX._on_damage_taken`) | Whole node tinted red | White flash on the sprite |
 | Cast begins (`SpellVFX._on_cast_started`) | Overbright Prana modulate | Cast row plus a 45 % Prana-colour flash |
 | Enemy volley wind-up | Pattern-colour modulate only | Same modulate, plus the wind-up row |
 | Enemy death | Body stays until freed | Sprite dissolves (Prana-colour rim; neutral for bosses) |
@@ -107,7 +107,7 @@ The dissolve must finish before `EnemyInstance.BASE_DEATH_DURATION` frees the no
 
 - `tests/unit/character-sprites/character_fx_test.gd`: flash and cast timing, dissolve
   progress and signal, lazy material, boss sheets at native size and distinct, and
-  the enemy / Fayde wiring.
+  the enemy / the duo wiring.
 - `tests/unit/character-sprites/pixel_character_test.gd`: updated for the 3-row layout.
 - Screenshots: `production/qa/evidence/art-bosses-*.png`, `art-fx-*.png`.
 

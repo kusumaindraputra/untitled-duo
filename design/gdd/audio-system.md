@@ -17,7 +17,7 @@ At MVP, no voice acting exists and no 3D spatial audio is needed (top-down 2D, a
 
 Audio System is infrastructure the player never engages with directly. Its fantasy is experienced one layer up: the moment a Stormgold strike crackles and cuts through the room, or the ambient scrapyard hum drops into something tighter when the wave begins. The system that made that possible is invisible — which is the goal.
 
-The design directive for this game's audio identity is: *"The world breathes softly; magic screams."* Audio System does not define what sounds exist — that is the audio-director's domain. It defines the scaffolding that makes the contrast possible: a Preparation cue that holds its breath before combat begins, a Combat cue that punches in fast, Prana effects that layer independently of ambient sound, combat feedback that doesn't fight with the music for headroom, and an AMB bus that carries the arena's environmental texture underneath everything. When Fayde dies, music cuts to near-silence — the moment breathes before the run-end stinger plays.
+The design directive for this game's audio identity is: *"The world breathes softly; magic screams."* Audio System does not define what sounds exist — that is the audio-director's domain. It defines the scaffolding that makes the contrast possible: a Preparation cue that holds its breath before combat begins, a Combat cue that punches in fast, Prana effects that layer independently of ambient sound, combat feedback that doesn't fight with the music for headroom, and an AMB bus that carries the arena's environmental texture underneath everything. When the duo dies, music cuts to near-silence — the moment breathes before the run-end stinger plays.
 
 A well-implemented Audio System should be unnoticeable to a player and indispensable to a developer. The test: any system author who needs to play a sound calls `AudioSystem.play_event("event_name")` and the rest is handled. No scene management. No `AudioStreamPlayer` nodes scattered across gameplay scripts.
 
@@ -62,7 +62,7 @@ A well-implemented Audio System should be unnoticeable to a player and indispens
 
 4. **SFX pool**: 24 pre-instantiated `AudioStreamPlayer` nodes created at startup in `_ready()`. Pool nodes handle only `bus = &"SFX"` events; `bus = &"UI"` events bypass the pool entirely. All pool nodes have `process_mode = PROCESS_MODE_PAUSABLE` (SFX stops when the game is paused).
 
-   **Worst-case sizing rationale:** Peak-of-peak scenario: a full 3×3 Prana combo (9 cast SFX, all NORMAL) during a Cluster swarm wave (5 Cluster enemies attacking simultaneously) produces: 9 Prana cast sounds + 5 enemy attack telegraphs + 5 hit-confirmation sounds + 1 Fayde damage received (HIGH) = 20 simultaneous events minimum. Pool of 24 provides 4 slots of headroom for dash, status effects, and other concurrent feedback without any eviction under this worst-case scenario.
+   **Worst-case sizing rationale:** Peak-of-peak scenario: a full 3×3 Prana combo (9 cast SFX, all NORMAL) during a Cluster swarm wave (5 Cluster enemies attacking simultaneously) produces: 9 Prana cast sounds + 5 enemy attack telegraphs + 5 hit-confirmation sounds + 1 the duo damage received (HIGH) = 20 simultaneous events minimum. Pool of 24 provides 4 slots of headroom for dash, status effects, and other concurrent feedback without any eviction under this worst-case scenario.
 
    **Pool timestamp initialization:** All 24 slots are initialized with timestamp `0` at startup (`_timestamps[i] = 0`). This makes all fresh (never-played) slots appear as oldest, ensuring they are evicted before any recently played slot. Tiebreaker for equal timestamps: lowest slot index wins (e.g., slot 0 is evicted before slot 1).
 
@@ -89,7 +89,7 @@ A well-implemented Audio System should be unnoticeable to a player and indispens
 
 6. **Music state machine**: 6 states — `MAIN_MENU`, `PREPARATION`, `COMBAT`, `DYING`, `END_VICTORY`, `END_DEFEAT`. Initial state at startup: `MAIN_MENU`. State transitions are driven exclusively by signals from Game State & Scene Flow — Audio System never polls or infers state from gameplay logic.
 
-   **`DYING` state:** When Fayde's death animation begins (`death_started` signal), music cuts to near-silence via `CROSSFADE_TO_DYING`. Both music players tween to −80 dB. The `DYING` state has no registered cue — it is intentional silence that lets the death moment breathe.
+   **`DYING` state:** When the duo's death animation begins (`death_started` signal), music cuts to near-silence via `CROSSFADE_TO_DYING`. Both music players tween to −80 dB. The `DYING` state has no registered cue — it is intentional silence that lets the death moment breathe.
 
    **Minimum DYING hold time (1.5s):** Audio System will not act on `run_ended(win: false)` until at least 1.5 seconds have elapsed since entering `DYING`. If `run_ended` fires before the minimum elapses, Audio System queues the transition and fires it at the 1.5s mark. This guarantees the "moment breathes" claim in the Player Fantasy regardless of animation duration. The 1.5s constant is exposed as a tuning knob (`DYING_MIN_HOLD_SEC`). After the minimum elapses (or immediately if `run_ended` already fired), transition to `END_DEFEAT` normally.
 
@@ -216,7 +216,7 @@ The following table defines canonical priority tiers for event categories. All d
 
 | Priority | Tier | Event Categories |
 |----------|------|-----------------|
-| `2` = **HIGH** | Never evicted under normal conditions | Fayde death sound, boss spawn stinger, status effect applied (Freeze / Burn), critical damage received by Fayde, wave-end sound |
+| `2` = **HIGH** | Never evicted under normal conditions | The duo death sound, boss spawn stinger, status effect applied (Freeze / Burn), critical damage received by the duo, wave-end sound |
 | `1` = **NORMAL** | Evicted only when no LOW slots remain | Prana cast sounds (`sfx_prana_cast_*`), enemy hit confirmation, enemy attack telegraph |
 | `0` = **LOW** | Evicted first | Footstep sounds, minor ambient feedback (item pickup, Prana collect), non-critical environmental sounds |
 
@@ -240,7 +240,7 @@ The following table defines canonical priority tiers for event categories. All d
 | `PREPARATION` | `END_VICTORY` | `run_ended(win: true)` signal | Crossfade (`CROSSFADE_TO_END`) |
 | `PREPARATION` | `END_DEFEAT` | `run_ended(win: false)` signal | Crossfade (`CROSSFADE_TO_END`) |
 | `COMBAT` | `END_VICTORY` | `run_ended(win: true)` signal | Crossfade (`CROSSFADE_TO_END`) |
-| `COMBAT` | `END_DEFEAT` | `run_ended(win: false)` signal | Crossfade (`CROSSFADE_TO_END`) — *defensive fallback only; by Game State contract, Fayde's death always emits `death_started` before `run_ended(win: false)`, so this path must not be reached during normal play* |
+| `COMBAT` | `END_DEFEAT` | `run_ended(win: false)` signal | Crossfade (`CROSSFADE_TO_END`) — *defensive fallback only; by Game State contract, the duo's death always emits `death_started` before `run_ended(win: false)`, so this path must not be reached during normal play* |
 | `END_VICTORY` | `MAIN_MENU` | END_VICTORY cue `finished` signal (auto) | Crossfade (`CROSSFADE_TO_MAIN_MENU`) |
 | `END_DEFEAT` | `MAIN_MENU` | END_DEFEAT cue `finished` signal (auto) | Crossfade (`CROSSFADE_TO_MAIN_MENU`) |
 
@@ -481,7 +481,7 @@ Audio System routes all `play_event()` / `play_stinger()` calls through `_valida
 | Knob | Default | Safe Range | What it affects | What breaks if wrong |
 |------|---------|------------|-----------------|----------------------|
 | `SFX_POOL_SIZE` | 24 | 12 – 24 | Maximum concurrent SFX | Below 20: sounds may drop during peak-of-peak scenario (full 3×3 combo + Cluster swarm = ~20 events); above 24: unnecessary node overhead on PC. Safe range minimum raised from 8 to 12 to reflect worst-case analysis. |
-| `DYING_MIN_HOLD_SEC` | 1.5s | 0.5 – 3.0s | Minimum silence duration in DYING state | Too short: "moment breathes" claim is lost — silence is imperceptible; too long: player waits before defeat stinger. **Must be validated against Fayde death animation total duration (crumple + bloom + dissolve) when that animation is authored — defeat stinger should fire after dissolve completes, not during it.** |
+| `DYING_MIN_HOLD_SEC` | 1.5s | 0.5 – 3.0s | Minimum silence duration in DYING state | Too short: "moment breathes" claim is lost — silence is imperceptible; too long: player waits before defeat stinger. **Must be validated against the duo death animation total duration (crumple + bloom + dissolve) when that animation is authored — defeat stinger should fire after dissolve completes, not during it.** |
 | Default master volume | 0.0 dB | −80.0 – 0.0 dB | Starting volume on first launch (before saved settings) | Too low: players think game has no audio; too high: ear shock on first launch |
 | Default music volume | −6.0 dB | −80.0 – **−3.0 dB** | Starting music mix level | Safe range maximum is −3.0 dB (not 0.0 dB) — this restriction makes the "Prana SFX must remain audible over music" constraint architecturally enforceable. At Music ≤ −3.0 dB and SFX = 0.0 dB, Prana SFX always has at least 3 dB of headroom above music. The `set_music_volume()` setter must clamp the upper bound to −3.0 dB; document this in the setter's in-code comment. |
 | Default SFX volume | 0.0 dB | −80.0 – 0.0 dB | Starting SFX mix level | SFX at 0 dB is the reference — tune music and ambient relative to this |

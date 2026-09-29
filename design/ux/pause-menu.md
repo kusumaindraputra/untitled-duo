@@ -362,7 +362,7 @@ THEN card reverts to Default state; game remains paused
 
 **AC-PM-09 [M]** — Game world visible and frozen under dim overlay
 GIVEN Pause Menu is open in either state
-THEN the game world is visible through the semi-transparent dim layer (not a fully opaque black screen); Fayde, enemies (if in COMBAT_PHASE), or Prana grid (if in PREPARATION_PHASE) are visible; no game-world entities are moving
+THEN the game world is visible through the semi-transparent dim layer (not a fully opaque black screen); the duo, enemies (if in COMBAT_PHASE), or Prana grid (if in PREPARATION_PHASE) are visible; no game-world entities are moving
 
 **AC-PM-10 [M]** — Overlay fits at 1280×720
 GIVEN Pause Menu is open at 1280×720 resolution
