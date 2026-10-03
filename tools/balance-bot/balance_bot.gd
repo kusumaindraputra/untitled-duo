@@ -6,11 +6,11 @@
 ##
 ## The bot drives the real game: it picks a core, confirms the Prana grid (placing any
 ## reward Prana first), fights with the real input actions (move, cast, dash, special),
-## takes the first card on every sigil screen, skips story cards and walks to an exit
+## takes the first card on every sigil screen and walks to an exit
 ## door once a room is clear. Time is counted in fixed 1/60 s frames, so a report says
 ## how long the same run would take a player at full speed, pauses included.
 ##
-## A human also spends time reading the grid, the sigil cards and the story cards, which
+## A human also spends time reading the grid and the sigil cards, which
 ## the bot does instantly. [member _CFG] adds that overhead per screen, so the report
 ## carries both the measured bot time and an estimated player time.
 ##
@@ -161,20 +161,13 @@ func _physics_process(_delta: float) -> void:
 
 # ── Screens ──────────────────────────────────────────────────────────────────
 
-## Any pausing screen: story cards close, everything else presses its focused button
+## Any pausing screen: presses its focused button
 ## (the first sigil card, "walk on" at a Wayshrine, Continue).
 func _handle_modal() -> void:
 	_set_move(Vector2.ZERO)
 	if _ui_cooldown > 0:
 		return
 	_ui_cooldown = int(_CFG.bot_ui_delay_sec * _FPS)
-	for card: Node in get_tree().root.find_children("*", "MemoryFragmentModal", true, false):
-		var modal := card as MemoryFragmentModal
-		if modal.can_dismiss():
-			modal.finish_typing()
-			modal.close()
-			_screens += 1
-		return
 	var focus: Control = get_viewport().gui_get_focus_owner()
 	var btn := focus as BaseButton
 	if btn == null or not btn.is_visible_in_tree() or btn.disabled:

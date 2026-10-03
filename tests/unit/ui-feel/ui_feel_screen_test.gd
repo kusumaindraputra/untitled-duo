@@ -5,7 +5,6 @@
 ##   UF-02: typewriter reveals at TYPE_CPS, clamps to the text, and is instant with reduce motion
 ##   UF-03: fade_in starts transparent; with reduce motion it shows at once and makes no tween
 ##   UF-04: the UI cues are registered on the UI bus
-##   UF-05: a press while the memory body types shows it all; the next press closes after the grace
 ##   UF-06: reduce_motion round-trips through the settings file
 ##
 ## Framework: GdUnit4 | Godot 4.6
@@ -95,40 +94,6 @@ func test_ui_feel_cues_registered_on_ui_bus() -> void:
 		var data: Resource = REGISTRY.events[id]
 		assert_str(String(data.get("bus"))).is_equal("UI")
 		assert_object(data.get("stream")).is_not_null()
-
-
-# ── UF-05 ─────────────────────────────────────────────────────────────────────
-
-func test_memory_modal_press_finishes_typing_then_closes() -> void:
-	_reduced(false)
-	var modal := MemoryFragmentModal.new()
-	modal.setup(&"")
-	add_child(modal)
-	modal.set_process(false)
-	assert_bool(modal.is_typing()).is_true()
-
-	modal._unhandled_input(_key_press())
-	assert_bool(modal.is_typing()).is_false()
-	assert_int(modal._body_label.visible_characters).is_equal(-1)
-
-	var closed: Array[bool] = [false]
-	modal.closed.connect(func() -> void: closed[0] = true)
-	modal._age = MemoryFragmentModal.INPUT_GRACE_SEC
-	modal._unhandled_input(_key_press())
-	assert_bool(closed[0]).is_true()
-	get_tree().paused = false
-
-
-func test_memory_modal_reduce_motion_shows_body_at_once() -> void:
-	_reduced(true)
-	var modal := MemoryFragmentModal.new()
-	modal.setup(&"")
-	add_child(modal)
-
-	assert_bool(modal.is_typing()).is_false()
-	remove_child(modal)
-	modal.free()
-	get_tree().paused = false
 
 
 # ── UF-06 ─────────────────────────────────────────────────────────────────────

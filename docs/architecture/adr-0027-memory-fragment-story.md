@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by ADR-0059 (story removed, 2026-10-03). Was: Accepted
 
 ## Date
 

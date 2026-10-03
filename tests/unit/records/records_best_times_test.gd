@@ -75,14 +75,15 @@ func test_records_bosses_in_floor_order() -> void:
 
 func test_records_menu_line_before_and_after() -> void:
 	var p := MetaProgress.new()
-	assert_str(Records.menu_line(p, 10)).contains(COPY.records_best_run_format % COPY.records_none)
+	assert_str(Records.menu_line(p)).contains(COPY.records_best_run_format % COPY.records_none)
 
 	p.record_win_time(754.0)
 	p.record_boss_time(SENTINEL, 48.0)
-	var line: String = Records.menu_line(p, 10)
+	var line: String = Records.menu_line(p)
 
 	assert_str(line).contains(COPY.records_best_run_format % "12:34")
 	assert_str(line).contains("0:48")
+	assert_str(line).contains(COPY.records_runs_format % 0)
 
 
 # ── RC-06 ─────────────────────────────────────────────────────────────────────
@@ -104,14 +105,14 @@ func test_records_summary_shows_new_record_lines() -> void:
 
 func test_records_menu_line_names_only_beaten_bosses() -> void:
 	var p := MetaProgress.new()
-	var fresh: String = Records.menu_line(p, 10)
+	var fresh: String = Records.menu_line(p)
 
 	for id in [SENTINEL, WARDEN, KEEPER]:
 		assert_str(fresh).not_contains(Records.boss_name(id).replace(" ", "\u00a0"))
 	assert_str(fresh).not_contains("\n")
 
 	p.record_boss_time(SENTINEL, 48.0)
-	var line: String = Records.menu_line(p, 10)
+	var line: String = Records.menu_line(p)
 
 	assert_str(line).contains(Records.boss_name(SENTINEL).replace(" ", "\u00a0"))
 	assert_str(line).not_contains(Records.boss_name(WARDEN).replace(" ", "\u00a0"))

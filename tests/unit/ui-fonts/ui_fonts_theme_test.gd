@@ -48,20 +48,6 @@ func test_pixel_font_falls_back_to_body_font() -> void:
 	assert_str(pixel.fallbacks[0].resource_path).is_equal(BODY_FONT_PATH)
 
 
-# ── F2-04 ─────────────────────────────────────────────────────────────────────
-
-func test_memory_modal_body_uses_body_text_variation() -> void:
-	var modal := MemoryFragmentModal.new()
-	modal.setup(&"")
-	add_child(modal)
-	modal.set_process(false)
-
-	assert_str(String(modal._body_label.theme_type_variation)).is_equal(String(UIFeel.BODY_TEXT))
-	remove_child(modal)
-	modal.free()
-	get_tree().paused = false
-
-
 # ── F7-03 ─────────────────────────────────────────────────────────────────────
 
 func test_settings_control_columns_line_up_at_largest_text_size() -> void:

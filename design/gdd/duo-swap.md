@@ -345,6 +345,9 @@ Safe ranges are on each export in `src/data/duo_tuning.gd`.
 
 ## 9. Lore — Ayden and Faith as two separate beings (chosen 2026-09-28)
 
+> **Removed 2026-10-03 (ADR-0059):** the story is gone. This section is history; the
+> severed link (Rule 6d) stays as a boss mechanic without its fragment.
+
 The user chose to make Ayden and Faith two separate characters instead of one android
 built from both. This changes the premise, so the story needs a rewrite pass before
 content work. Proposed default, open to change:

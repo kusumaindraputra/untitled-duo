@@ -29,9 +29,9 @@ extends Resource
 	&"wide_link", &"dash_cd", &"ember_wake", &"echo_brother", &"static_halo", &"siphon", &"riposte"]
 ## Shard cost of each Heirloom, parallel to heirloom_ids.
 @export var heirloom_costs: Array[int] = [30, 45, 50, 70, 90, 70, 60, 80, 100, 90, 110, 130]
-## Memory fragments needed before each Heirloom can be bought, parallel to heirloom_ids
-## (F4: new ones every 3 memories). 0 = available from the start.
-@export var heirloom_memory_gates: Array[int] = [0, 0, 0, 0, 0, 3, 3, 3, 6, 6, 6, 9]
+## Runs played (won or lost) before each Heirloom can be bought, parallel to heirloom_ids
+## (F4: new ones every 3 runs). 0 = available from the start.
+@export var heirloom_run_gates: Array[int] = [0, 0, 0, 0, 0, 3, 3, 3, 6, 6, 6, 9]
 
 @export_group("Hard Mode")
 
@@ -53,18 +53,18 @@ extends Resource
 @export var ascension: AscensionConfig = null
 
 
-## Memories needed before [param id] can be bought (0 when ungated or unknown).
-func memories_needed(id: StringName) -> int:
+## Runs needed before [param id] can be bought (0 when ungated or unknown).
+func runs_needed(id: StringName) -> int:
 	var i: int = heirloom_ids.find(id)
-	return heirloom_memory_gates[i] if i >= 0 and i < heirloom_memory_gates.size() else 0
+	return heirloom_run_gates[i] if i >= 0 and i < heirloom_run_gates.size() else 0
 
 
-## Heirlooms whose memory gate lies in (from, to]: the ones revealed by recovering
-## memories from [param from] up to [param to].
+## Heirlooms whose run gate lies in (from, to]: the ones revealed by the run count
+## going from [param from] up to [param to].
 func heirlooms_revealed_between(from: int, to: int) -> Array[StringName]:
 	var out: Array[StringName] = []
 	for id: StringName in heirloom_ids:
-		var gate: int = memories_needed(id)
+		var gate: int = runs_needed(id)
 		if gate > from and gate <= to:
 			out.append(id)
 	return out

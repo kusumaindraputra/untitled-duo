@@ -45,7 +45,7 @@ extends Resource
 @export_group("Human overhead")
 ## Extra seconds a player spends per room in the prep phase (reading, arranging Prana).
 @export var human_prep_sec: float = 6.0
-## Extra seconds per paused screen (story card, Wayshrine, summary).
+## Extra seconds per paused screen (sigil offer, Wayshrine, summary).
 @export var human_screen_sec: float = 4.0
 ## Extra seconds per sigil pick (reading three cards).
 @export var human_sigil_sec: float = 5.0
