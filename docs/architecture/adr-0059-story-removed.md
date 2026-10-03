@@ -54,3 +54,18 @@ recovered memories are now revealed by runs played, with the same gate numbers.
 
 - `tests/unit/meta-progression/heirloom_run_gate_test.gd` (gates, old save loads).
 - Full headless suite green: 2089 cases (was 2141; the story suites are gone).
+
+## Amendment 2026-10-03 — working title and shadow names
+
+The user named the game "Untitled" for now and asked for "Cipher" to become shadow
+themed. Player-facing text only; code identifiers (`cipher_*`, `CoreFrame`,
+`enemy_cipher_keeper.tres`) stay until the forms refactor.
+
+| Was | Now |
+|---|---|
+| The Last Cipher (title, project name, export names) | Untitled |
+| Cipher Shards | Shade Shards |
+| Cipher Core(s), floor 3 "Cipher Core" | Shadow Core(s), "Shadow Core" |
+| Cipher Keeper (final boss) | Shade Keeper |
+| Sharpened Cipher (sigil) | Sharpened Shade |
+| Keeper phase banners "SEPARATION IS THE WEAPON", "THE LAST CIPHER" | "THE LINK IS CUT", "THE LAST SHADE" |

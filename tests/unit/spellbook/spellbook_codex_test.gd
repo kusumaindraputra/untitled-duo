@@ -141,6 +141,6 @@ func test_spellbook_panel_switches_sections() -> void:
 	panel.select_entry(0)
 
 	assert_int(panel.current_section()).is_equal(Spellbook.Section.SIGILS)
-	assert_str(panel.detail_title()).is_equal("Sharpened Cipher")
+	assert_str(panel.detail_title()).is_equal("Sharpened Shade")
 	remove_child(panel)
 	panel.free()

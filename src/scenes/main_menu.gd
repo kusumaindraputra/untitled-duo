@@ -1,4 +1,4 @@
-## main_menu.gd — Front-end main menu for The Last Cipher (demo entry point).
+## main_menu.gd — Front-end main menu for Untitled (demo entry point).
 ##
 ## The game boots here (project.godot main_scene). Offers Play (loads the three-floor
 ## run), Heirlooms, Spellbook, Settings and Quit. Built entirely in code to

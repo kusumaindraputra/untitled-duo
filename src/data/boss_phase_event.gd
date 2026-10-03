@@ -12,5 +12,5 @@ extends Resource
 ## Wipes every enemy bullet on the field (a breather before a last stand).
 @export var clear_bullets: bool = false
 ## ADR-0058: cuts the Ayden / Faith link (no swaps) until the player lands
-## DuoTuning.sever_reconnect_hits hits ("Separation is the weapon", fragment 6).
+## DuoTuning.sever_reconnect_hits hits.
 @export var sever_link: bool = false

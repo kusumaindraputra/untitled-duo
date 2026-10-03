@@ -133,7 +133,7 @@ extends Resource
 @export_group("Floors (ADR-0020)")
 
 ## Floor names, in floor order (floor 1 first). Shown in the HUD and the floor intro.
-@export var floor_names: Array[String] = ["Deep Scrap Yard", "Functional Corridors", "Cipher Core"]
+@export var floor_names: Array[String] = ["Deep Scrap Yard", "Functional Corridors", "Shadow Core"]
 
 ## HUD floor label: floor number, then floor name.
 @export var floor_label_format: String = "Floor %d · %s"
@@ -154,7 +154,7 @@ extends Resource
 @export_group("Meta Progression (ADR-0025)")
 
 ## Menu progress line: shards, runs, wins, best floor.
-@export var progress_line_format: String = "Cipher Shards  %d      Runs  %d      Wins  %d      Best Floor  %d"
+@export var progress_line_format: String = "Shade Shards  %d      Runs  %d      Wins  %d      Best Floor  %d"
 
 ## Header above the Heirloom row on the main menu.
 @export var heirloom_header: String = "HEIRLOOM — a sigil you start every run with"
@@ -184,7 +184,7 @@ extends Resource
 @export var hard_mode_locked: String = "Win a run to unlock Hard Mode"
 
 ## End-of-run stat row label for the shard payout.
-@export var shards_earned_label: String = "Cipher Shards"
+@export var shards_earned_label: String = "Shade Shards"
 
 ## Line on the end screen the first time Hard Mode unlocks.
 @export var hard_mode_unlocked_banner: String = "HARD MODE UNLOCKED — switch it on from the main menu"
@@ -212,16 +212,16 @@ extends Resource
 ## Menu line under the picked level's own change (%d = highest level below it).
 @export var ascension_stacks_format: String = "· plus everything from Ascension 1–%d"
 ## Shard bonus line under the level list (%d = percent).
-@export var ascension_shard_format: String = "+%d%% Cipher Shards on top of Hard Mode"
+@export var ascension_shard_format: String = "+%d%% Shade Shards on top of Hard Mode"
 
 ## Line on the core-pick screen naming the equipped Heirloom (%s = sigil title).
 @export var heirloom_active_format: String = "Heirloom: %s"
 
-@export_group("Cipher Cores (ADR-0033)")
+@export_group("Shadow Cores (ADR-0033)")
 
 ## Core-pick screen: heading, section labels and the hint under the Prana row.
 @export var core_pick_heading: String = "CHOOSE YOUR CORE"
-@export var core_pick_core_label: String = "CIPHER CORE — a passive for the whole run"
+@export var core_pick_core_label: String = "SHADOW CORE — a passive for the whole run"
 @export var core_pick_prana_label: String = "CORE PRANA — anchors the centre slot. Pick one to begin."
 ## Core names and passives by CoreFrame id (assets/data/cores/core_roster.tres).
 @export var core_titles: Dictionary = {
@@ -288,11 +288,11 @@ extends Resource
 	"Rifts open — shells rain down",
 	"TIME COLLAPSES — the field goes quiet, then breaks",
 ]
-## Banner for each Cipher Keeper phase (1st, 2nd, 3rd HP threshold crossed).
+## Banner for each Shade Keeper phase (1st, 2nd, 3rd HP threshold crossed).
 @export var keeper_phase_banners: Array[String] = [
 	"The first lock breaks — a beam pylon rises",
-	"SEPARATION IS THE WEAPON — land hits to find each other",
-	"THE LAST CIPHER — hold on",
+	"THE LINK IS CUT — land hits to reconnect",
+	"THE LAST SHADE — hold on",
 ]
 ## Per-run boss variant names, keyed by BossVariant.id. Shown after the boss name
 ## ("Vault Sentinel · Overclocked").
@@ -551,7 +551,7 @@ extends Resource
 @export_group("Main Menu (layout)")
 
 ## Title, tagline and the main buttons, top to bottom (Settings uses settings_button).
-@export var menu_title: String = "THE LAST CIPHER"
+@export var menu_title: String = "UNTITLED"
 @export var menu_subtitle: String = "Two brothers. One link."
 @export var menu_play: String = "PLAY"
 ## ADR-0048: shown above Play when a run was saved mid-way (%d = floor, %d = room).
@@ -564,7 +564,7 @@ extends Resource
 @export var menu_feedback: String = "SEND FEEDBACK"
 ## Heirloom screen heading, shard line and back button.
 @export var heirloom_screen_title: String = "HEIRLOOMS"
-@export var heirloom_shards_format: String = "Cipher Shards  %d"
+@export var heirloom_shards_format: String = "Shade Shards  %d"
 @export var heirloom_back: String = "Back  (Esc)"
 
 @export_group("Button prompts (U8)")
@@ -717,7 +717,7 @@ extends Resource
 ## ADR-0046 corner toasts (%s = sigil title; %d = shards gained, %d = bonus shards
 ## this run).
 @export var toast_sigil_format: String = "Sigil gained · %s"
-@export var toast_shards_format: String = "+%d Cipher Shards · %d this run"
+@export var toast_shards_format: String = "+%d Shade Shards · %d this run"
 ## Colour-blind Prana palette row (ADR-0047) and its choices by GameSettings.ColorMode.
 @export var settings_color_mode: String = "Prana colours"
 @export var settings_color_modes: Array[String] = [

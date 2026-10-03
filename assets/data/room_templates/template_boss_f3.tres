@@ -14,7 +14,7 @@ ring_min_scale = 0.62
 
 [resource]
 script = ExtResource("1_script")
-display_name = "The Last Cipher"
+display_name = "The Last Shade"
 room_type = 3
 layout_style = 0
 tile_cells = Array[Vector2i]([])

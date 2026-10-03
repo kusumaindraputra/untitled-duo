@@ -13,7 +13,7 @@
 [resource]
 script = ExtResource("1_enemy_type")
 id = 11
-name = "CipherKeeper"
+name = "ShadeKeeper"
 archetype = 3
 prana_affiliation = -1
 base_hp = 2700
