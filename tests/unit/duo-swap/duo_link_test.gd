@@ -231,7 +231,7 @@ func test_duo_sigils_are_in_the_catalog_and_heirlooms() -> void:
 	assert_bool(meta.heirloom_ids.has(&"echo_brother")).is_true()
 
 
-# ── Severed link (Cipher Keeper) ─────────────────────────────────────────────
+# ── Severed link (Shade Keeper) ──────────────────────────────────────────────
 
 func test_severed_link_blocks_swaps_until_enough_hits_land() -> void:
 	var duo := DuoSwap.new()
@@ -258,7 +258,7 @@ func test_keeper_severs_the_link_in_its_second_phase() -> void:
 	assert_object(profile).is_not_null()
 	assert_bool(BossDirector.severs_link(profile, 1)).is_false()
 	assert_bool(BossDirector.severs_link(profile, 2)).is_true()
-	assert_str(BossDirector.banner_for_phase(profile, 2).to_lower()).contains("separation")
+	assert_str(BossDirector.banner_for_phase(profile, 2).to_lower()).contains("link is cut")
 
 
 func test_player_reconnects_after_the_hits_and_gets_meter() -> void:

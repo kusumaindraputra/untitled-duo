@@ -18,8 +18,7 @@ func _data(win: bool = false) -> Dictionary:
 	return {
 		"win": win, "floor": 2, "rooms": 9, "time_sec": 754.0, "enemies": 88, "best_combo": 7,
 		"bosses": 1, "ranks": ["B", "A", "B", "S"], "shards": 42,
-		"sigils": ["Swift Step", "Burning Trail"], "memories_new": 1, "memories_found": 4,
-		"memories_total": 10, "hard_unlocked": false,
+		"sigils": ["Swift Step", "Burning Trail"], "hard_unlocked": false,
 	}
 
 

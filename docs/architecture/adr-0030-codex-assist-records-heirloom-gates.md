@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted; Heirloom gates amended by ADR-0059 (gated by runs played, not memories, 2026-10-03).
 
 ## Date
 

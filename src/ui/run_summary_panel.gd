@@ -1,15 +1,13 @@
 ## RunSummaryPanel — the end-of-run screen (beta plan U5).
 ##
 ## Shows the result, floor and rooms, a stat column (time, enemies, best combo, bosses
-## beaten, room ranks, Cipher Shards), the sigils taken this run and the memories
-## recovered, with Run Again and Main Menu buttons. Built from a plain Dictionary so it
+## beaten, room ranks, Cipher Shards) and the sigils taken this run, with Run Again and Main Menu buttons. Built from a plain Dictionary so it
 ## never reads game state itself; the game loop assembles the data and wires the buttons
 ## (parent-owned wiring). All text comes from UICopy.
 ##
 ## Data keys: win (bool), floor (int), rooms (int), time_sec (float), enemies (int),
 ## best_combo (int), bosses (int), ranks (Array[String]), shards (int),
-## sigils (Array[String] titles), memories_new (int), memories_found (int),
-## memories_total (int), hard_unlocked (bool), ascension_unlocked (int: level a win just
+## sigils (Array[String] titles), hard_unlocked (bool), ascension_unlocked (int: level a win just
 ## opened, 0 = none), ascension (int: level played), assist (bool), records (Array[String]
 ## lines for records set this run), death (String: the DeathRecap line; shown on a loss),
 ## prana_color (Color: the last Prana in the fallen brother's hands; tints the crumple on
@@ -160,9 +158,6 @@ func setup(data: Dictionary) -> void:
 	list.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	list.theme_type_variation = UIFeel.BODY_TEXT
 	right.add_child(list)
-	right.add_child(_spacer(6))
-	right.add_child(_label(_COPY.summary_memories_format % [int(data.get("memories_new", 0)),
-		int(data.get("memories_found", 0)), int(data.get("memories_total", 0))], 15, UIPalette.ACCENT_DIM))
 	cards.add_child(_card(right, 280.0))
 
 	for line: Variant in data.get("records", []):

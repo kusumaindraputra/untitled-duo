@@ -67,7 +67,7 @@ static func button_text(p: MetaProgress, id: StringName) -> String:
 	if p.is_unlocked(id):
 		return _COPY.heirloom_unlocked_format % title
 	if not p.is_revealed(_META, id):
-		return _COPY.heirloom_memory_locked_format % [title, _META.memories_needed(id)]
+		return _COPY.heirloom_runs_locked_format % [title, _META.runs_needed(id)]
 	return _COPY.heirloom_locked_format % [title, _META.cost_of(id)]
 
 
@@ -77,7 +77,7 @@ static func desc_text(p: MetaProgress, id: StringName) -> String:
 	if p.is_unlocked(id):
 		hint = _COPY.heirloom_hint_unequip if p.equipped == id else _COPY.heirloom_hint_equip
 	elif not p.is_revealed(_META, id):
-		hint = _COPY.heirloom_hint_memories_format % _META.memories_needed(id)
+		hint = _COPY.heirloom_hint_runs_format % _META.runs_needed(id)
 	elif not p.can_unlock(_META, id):
 		hint = _COPY.heirloom_hint_poor
 	return _COPY.heirloom_desc_format % [str(MetaProgress.heirloom_info(id).get("desc", "")), hint]

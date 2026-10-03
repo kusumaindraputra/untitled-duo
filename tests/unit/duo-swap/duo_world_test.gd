@@ -1,13 +1,12 @@
 ## duo_world_test.gd — the world answering the duo (ADR-0058, design/gdd/duo-swap.md
-## Rules 6h–6j and Section 9): duo foes that resist one brother, the music leaning to
-## the brother in the arena, duo Cipher Cores, and the rewritten story. Expected
+## Rules 6h–6j): duo foes that resist one brother, the music leaning to the brother
+## in the arena, and duo Cipher Cores. Expected
 ## values come from the shipped tuning so the tests follow the knobs.
 extends GdUnitTestSuite
 
 const T: DuoTuning = preload("res://assets/data/duo_tuning.tres")
 const COPY: UICopy = preload("res://assets/data/ui_copy.tres")
 const CORES: CoreRoster = preload("res://assets/data/cores/core_roster.tres")
-const STORY: StoryConfig = preload("res://assets/data/story/story_config.tres")
 const EnemyScene: PackedScene = preload("res://src/gameplay/EnemyInstance.tscn")
 
 const AYDEN: int = DuoSwap.Character.AYDEN
@@ -202,17 +201,3 @@ func test_duo_core_brother_damage_resets_with_the_run() -> void:
 	assert_float(SpellCastingEffects.get_brother_damage_mult(FAITH)).is_equal(1.0)
 	SpellCastingEffects.reset_run_damage_mult()
 	assert_float(SpellCastingEffects.get_brother_damage_mult(AYDEN)).is_equal(1.0)
-
-
-# ── Story ────────────────────────────────────────────────────────────────────
-
-func test_story_speaks_as_the_two_brothers() -> void:
-	var all: Array[MemoryFragment] = []
-	all.append_array(STORY.fragments)
-	all.append(STORY.ending_partial)
-	all.append(STORY.ending_true)
-	for f: MemoryFragment in all:
-		assert_str(f.voice).override_failure_message("%s still voiced by Fayde" % f.id).is_not_equal("Fayde")
-	assert_str(STORY.ending_true.body).not_contains("You're both of them")
-	assert_str(STORY.ending_true.body).contains("Separation")
-	assert_str(STORY.fragments[7].body).contains("FAITH + AYDEN")

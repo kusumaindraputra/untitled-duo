@@ -1,7 +1,7 @@
-## main_menu.gd — Front-end main menu for The Last Cipher (demo entry point).
+## main_menu.gd — Front-end main menu for Untitled (demo entry point).
 ##
 ## The game boots here (project.godot main_scene). Offers Play (loads the three-floor
-## run), Heirlooms, Spellbook, Memories, Settings and Quit. Built entirely in code to
+## run), Heirlooms, Spellbook, Settings and Quit. Built entirely in code to
 ## match the project's programmatic-UI convention (see debug_game_loop / combat_hud).
 ##
 ## Display-only front-end: it never mutates gameplay state — it only swaps scenes and
@@ -9,7 +9,7 @@
 extends Control
 
 ## Scene loaded when the player presses Play: the full three-floor run, so the
-## Cipher Keeper and the ending are reachable (demo.tscn stops after floor 1).
+## Cipher Keeper is reachable (demo.tscn stops after floor 1).
 const _RUN_SCENE_PATH: String = "res://src/scenes/main.tscn"
 
 const _COPY: UICopy = preload("res://assets/data/ui_copy.tres")
@@ -69,7 +69,7 @@ func _fit_column() -> void:
 
 ## Builds the menu (U7): the vault backdrop with Ayden and Faith on the right; on the
 ## left the title, progress and records lines (hidden until the first run ends), buttons
-## (Play / Heirlooms / Spellbook / Memories / Settings / Feedback when a form URL is set /
+## (Play / Heirlooms / Spellbook / Settings / Feedback when a form URL is set /
 ## Quit) and the Hard Mode toggle.
 func _build_ui() -> void:
 	var backdrop := MenuBackdrop.new()
@@ -88,8 +88,8 @@ func _build_ui() -> void:
 	column.add_child(_make_label(_COPY.menu_subtitle, 18, UIPalette.TEXT_DIM))
 	_progress_label = _make_label("", 16, UIPalette.ACCENT)
 	column.add_child(_progress_label)
-	# F3: best run, fastest kill per boss, memories found.
-	_records_label = _make_label(Records.menu_line(progress, StoryRules.total()), 14, UIPalette.TEXT_DIM)
+	# F3: best run, runs played, fastest kill per boss.
+	_records_label = _make_label(Records.menu_line(progress), 14, UIPalette.TEXT_DIM)
 	_records_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_records_label.custom_minimum_size = Vector2(COLUMN_WIDTH, 0)
 	column.add_child(_records_label)
@@ -110,10 +110,6 @@ func _build_ui() -> void:
 	var book: Vector2i = Spellbook.progress(progress)
 	var spellbook := _menu_button(column, _COPY.spellbook_button_format % [book.x, book.y], 22)
 	spellbook.pressed.connect(_on_spellbook_pressed.bind(spellbook))
-	# ADR-0027: archive of recovered memory fragments and seen endings.
-	var memories := _menu_button(column, _COPY.memories_button_format % [
-		mini(progress.fragments_found, StoryRules.total()), StoryRules.total()], 22)
-	memories.pressed.connect(_on_memories_pressed.bind(memories))
 	# Volume, display, comfort and key bindings live in the Settings panel (ADR-0026).
 	var settings := _menu_button(column, _COPY.settings_button, 22)
 	settings.pressed.connect(_on_settings_pressed.bind(settings))
@@ -183,14 +179,6 @@ static func version_string() -> String:
 ## Opens the Settings panel; focus returns to [param from] when it closes.
 func _on_settings_pressed(from: Button) -> void:
 	var panel := SettingsPanel.new()
-	panel.closed.connect(from.grab_focus)
-	add_child(panel)
-
-
-## Opens the Memories archive; focus returns to [param from] when it closes.
-func _on_memories_pressed(from: Button) -> void:
-	var panel := MemoriesPanel.new()
-	panel.progress = progress
 	panel.closed.connect(from.grab_focus)
 	add_child(panel)
 

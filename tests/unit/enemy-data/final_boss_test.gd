@@ -51,7 +51,7 @@ func test_final_boss_floor3_pool_spawns_keeper() -> void:
 func test_final_boss_catalog_serves_keeper() -> void:
 	var et: EnemyType = EnemyCatalog.get_type(KEEPER_ID)
 	assert_object(et).is_not_null()
-	assert_str(et.name).is_equal("CipherKeeper")
+	assert_str(et.name).is_equal("ShadeKeeper")
 
 
 func test_final_boss_hazards_for_phase_table() -> void:

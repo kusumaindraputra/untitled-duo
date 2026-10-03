@@ -95,7 +95,7 @@ var _base_combat_cfg: EnemyPoolConfig = null
 var _room_modifier: int = RoomModifiers.NONE
 var _room_flawless: bool = true
 var _bonus_shards: int = 0
-## ADR-0046 corner toasts for sigils, memories and shards gained mid-run.
+## ADR-0046 corner toasts for sigils and shards gained mid-run.
 var _toaster: HudToaster = null
 var _room_rng := RandomNumberGenerator.new()
 
@@ -145,11 +145,11 @@ var _pause_layer: CanvasLayer = null
 
 ## Rooms entered on the current floor (1-based) — drives the HUD "Room X / Y" breadcrumb.
 var _rooms_entered: int = 1
-## U5 run summary log: room ranks, sigil titles, floors cleared, memories at run start.
+## U5 run summary log: room ranks, sigil titles, floors cleared, runs played at run start.
 var _run_ranks: Array[String] = []
 var _run_sigils: Array[Dictionary] = []
 var _floors_cleared: int = 0
-var _fragments_at_start: int = 0
+var _runs_at_start: int = 0
 ## True once any Assist option was on during this run (F2); marks the summary.
 var _assist_used: bool = false
 ## F3 records: game time since the current boss spawned, and records set this run.
@@ -171,7 +171,7 @@ func _ready() -> void:
 	_apply_assist()  # also resets Engine.time_scale from any prior slow-mo (reload via R)
 	_register_input_actions()
 	_meta = MetaProgress.load_from(progress_path)
-	_fragments_at_start = _meta.fragments_found
+	_runs_at_start = _meta.runs
 	GameSettings.active().apply_display_once()
 	_load_pool_configs()
 	HealthAndDamage.heavy_hit.connect(_on_heavy_hit)
@@ -1060,11 +1060,6 @@ func _register_input_actions() -> void:
 ## spawn rewiring + restart_preparation() when load_floor() completes.
 func _on_floor_completed() -> void:
 	await _await_boss_cinematic()
-	# ADR-0027: a cleared floor recovers the next memory before the next floor loads.
-	var card: MemoryFragmentModal = _recover_memory(StoryRules.Beat.FLOOR_CLEAR, 0)
-	if card != null:
-		_toast(_COPY.toast_memory_format % [_meta.fragments_found, StoryRules.total()], UIPalette.COOL)
-		await card.closed
 	_floors_cleared += 1
 	_current_floor += 1
 	# Reset to 0 so the entry-room transition of the new floor increments it back to 1.
@@ -1171,7 +1166,6 @@ func _on_run_ended(win: bool) -> void:
 		if win and not _assist_used and _meta.record_win_time(run_sec):
 			_new_records.push_front(Records.new_run_line(run_sec))
 		_meta.save_to(progress_path)
-		await _play_run_end_story(win, run_data)
 
 	# U5 — run summary screen, built from plain data (RunSummaryPanel owns no state).
 	var overlay := CanvasLayer.new()
@@ -1213,9 +1207,9 @@ func _crumple_fayde() -> void:
 
 
 ## U5 — the run summary's data: RunManager stats plus what this loop logged during the
-## run (room ranks, sigils, floors cleared) and memories recovered since the run began.
+## run (room ranks, sigils, floors cleared).
 func _build_summary_data(win: bool, run_data: Dictionary, shards: int, hard_unlocked: bool) -> Dictionary:
-	var found: int = _meta.fragments_found if _meta != null else 0
+	var runs: int = _meta.runs if _meta != null else 0
 	return {
 		"win": win,
 		"floor": int(run_data.get("current_floor", 1)),
@@ -1227,12 +1221,9 @@ func _build_summary_data(win: bool, run_data: Dictionary, shards: int, hard_unlo
 		"ranks": _run_ranks,
 		"shards": shards,
 		"sigils": _run_sigils.map(func(x: Dictionary) -> String: return str(x["title"])),
-		"memories_new": maxi(found - _fragments_at_start, 0),
-		"memories_found": found,
-		"memories_total": StoryRules.total(),
 		"hard_unlocked": hard_unlocked,
 		"assist": _assist_used,
-		"records": _new_records + _revealed_heirloom_lines(found),
+		"records": _new_records + _revealed_heirloom_lines(runs),
 		"death": "" if win else DeathRecap.line(HealthAndDamage.last_player_hit, _COPY),
 		"prana_color": _last_prana_color,
 		"character": _last_character,
@@ -1271,16 +1262,16 @@ func _log_sigil(sigil_id: StringName) -> void:
 
 
 ## ADR-0046 — pushes a corner toast. The toaster is pausable, so one pushed under a
-## modal (sigil offer, memory card) waits and shows once play resumes.
+## modal (sigil offer) waits and shows once play resumes.
 func _toast(text: String, color: Color) -> void:
 	if is_instance_valid(_toaster):
 		_toaster.push(text, color)
 
 
-## F4: summary lines for Heirlooms that this run's memories made available.
-func _revealed_heirloom_lines(found: int) -> Array[String]:
+## F4: summary lines for Heirlooms that finishing this run made available.
+func _revealed_heirloom_lines(runs: int) -> Array[String]:
 	var lines: Array[String] = []
-	for id: StringName in _META.heirlooms_revealed_between(_fragments_at_start, found):
+	for id: StringName in _META.heirlooms_revealed_between(_runs_at_start, runs):
 		lines.append(_COPY.heirloom_revealed_format % str(MetaProgress.heirloom_info(id).get("title", id)))
 	return lines
 
@@ -1324,43 +1315,6 @@ func _process(delta: float) -> void:
 func _save_progress() -> void:
 	if _meta != null:
 		_meta.save_to(progress_path)
-
-
-## ADR-0027: recovers the next memory fragment for [param beat], saves progress and
-## shows the card. Returns the open card, or null when nothing was recovered.
-func _recover_memory(beat: StoryRules.Beat, rooms_cleared: int) -> MemoryFragmentModal:
-	if _meta == null or not StoryRules.beat_recovers(beat, rooms_cleared):
-		return null
-	var idx: int = _meta.recover_fragment(StoryRules.total())
-	if idx < 0:
-		return null
-	_meta.save_to(progress_path)
-	var card := MemoryFragmentModal.new()
-	card.name = "MemoryFragmentModal"
-	card.setup_fragment(StoryRules.fragment_at(idx), idx, StoryRules.total())
-	add_child(card)
-	return card
-
-
-## ADR-0027: the story beats at the end of a run, shown before the summary overlay.
-## A death recovers a memory; a win recovers one and then plays an ending, which is
-## the true ending once every fragment is found.
-func _play_run_end_story(win: bool, run_data: Dictionary) -> void:
-	var beat: StoryRules.Beat = StoryRules.Beat.WIN if win else StoryRules.Beat.DEATH
-	var card: MemoryFragmentModal = _recover_memory(beat, int(run_data.get("rooms_cleared", 0)))
-	if card != null:
-		await card.closed
-	if not win or not StoryRules.plays_ending(int(run_data.get("current_floor", 1))):
-		return
-	var is_true: bool = StoryRules.is_complete(_meta.fragments_found)
-	_meta.record_ending(is_true)
-	_meta.save_to(progress_path)
-	var ending := MemoryFragmentModal.new()
-	ending.name = "EndingModal"
-	ending.setup_ending(StoryRules.ending_for(_meta.fragments_found), is_true,
-		_meta.fragments_found, StoryRules.total())
-	add_child(ending)
-	await ending.closed
 
 
 ## Room-clear warm wash overlay — gold flash on wave_ended (Art Bible §2.4).
@@ -1516,7 +1470,7 @@ func _run_snapshot() -> Dictionary:
 		"run": RunManager.snapshot(),
 		"ranks": _run_ranks.duplicate(),
 		"floors_cleared": _floors_cleared,
-		"fragments_at_start": _fragments_at_start,
+		"runs_at_start": _runs_at_start,
 		"bonus_shards": _bonus_shards,
 		"assist_used": _assist_used,
 		"new_records": _new_records.duplicate(),
@@ -1557,7 +1511,7 @@ func _resume_run(data: Dictionary) -> void:
 	GameStateManager.set_is_final_floor(_current_floor >= total_floors)
 	_apply_floor_pool_config()
 	_floors_cleared = int(data.get("floors_cleared", 0))
-	_fragments_at_start = int(data.get("fragments_at_start", _fragments_at_start))
+	_runs_at_start = int(data.get("runs_at_start", _runs_at_start))
 	_bonus_shards = int(data.get("bonus_shards", 0))
 	_assist_used = bool(data.get("assist_used", false))
 	_casts = int(data.get("casts", 0))

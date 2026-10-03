@@ -7,6 +7,11 @@
 
 ## Elevator Pitch
 
+> **Concept change (2026-10-03, ADR-0059):** all story is removed (no memory
+> fragments, endings, Memo, First King or AI Kingdom). The game is moving to a shadow
+> that shifts into many forms, two picked per run. Lore below is history until this
+> document is rewritten. Analysis: project file `shadow-concept/analisis-konsep-bayangan.md`.
+
 > **Premise (2026-09-28, ADR-0058):** Ayden and Faith are two playable android
 > brothers, one small frame each, sharing one Prana core. **Fayde** is the name of
 > their link, not a character. Story text: `design/gdd/memory-fragments.md` and

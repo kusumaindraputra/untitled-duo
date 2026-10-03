@@ -133,7 +133,7 @@ extends Resource
 @export_group("Floors (ADR-0020)")
 
 ## Floor names, in floor order (floor 1 first). Shown in the HUD and the floor intro.
-@export var floor_names: Array[String] = ["Deep Scrap Yard", "Functional Corridors", "Cipher Core"]
+@export var floor_names: Array[String] = ["Deep Scrap Yard", "Functional Corridors", "Shadow Core"]
 
 ## HUD floor label: floor number, then floor name.
 @export var floor_label_format: String = "Floor %d · %s"
@@ -154,7 +154,7 @@ extends Resource
 @export_group("Meta Progression (ADR-0025)")
 
 ## Menu progress line: shards, runs, wins, best floor.
-@export var progress_line_format: String = "Cipher Shards  %d      Runs  %d      Wins  %d      Best Floor  %d"
+@export var progress_line_format: String = "Shade Shards  %d      Runs  %d      Wins  %d      Best Floor  %d"
 
 ## Header above the Heirloom row on the main menu.
 @export var heirloom_header: String = "HEIRLOOM — a sigil you start every run with"
@@ -184,7 +184,7 @@ extends Resource
 @export var hard_mode_locked: String = "Win a run to unlock Hard Mode"
 
 ## End-of-run stat row label for the shard payout.
-@export var shards_earned_label: String = "Cipher Shards"
+@export var shards_earned_label: String = "Shade Shards"
 
 ## Line on the end screen the first time Hard Mode unlocks.
 @export var hard_mode_unlocked_banner: String = "HARD MODE UNLOCKED — switch it on from the main menu"
@@ -212,16 +212,16 @@ extends Resource
 ## Menu line under the picked level's own change (%d = highest level below it).
 @export var ascension_stacks_format: String = "· plus everything from Ascension 1–%d"
 ## Shard bonus line under the level list (%d = percent).
-@export var ascension_shard_format: String = "+%d%% Cipher Shards on top of Hard Mode"
+@export var ascension_shard_format: String = "+%d%% Shade Shards on top of Hard Mode"
 
 ## Line on the core-pick screen naming the equipped Heirloom (%s = sigil title).
 @export var heirloom_active_format: String = "Heirloom: %s"
 
-@export_group("Cipher Cores (ADR-0033)")
+@export_group("Shadow Cores (ADR-0033)")
 
 ## Core-pick screen: heading, section labels and the hint under the Prana row.
 @export var core_pick_heading: String = "CHOOSE YOUR CORE"
-@export var core_pick_core_label: String = "CIPHER CORE — a passive for the whole run"
+@export var core_pick_core_label: String = "SHADOW CORE — a passive for the whole run"
 @export var core_pick_prana_label: String = "CORE PRANA — anchors the centre slot. Pick one to begin."
 ## Core names and passives by CoreFrame id (assets/data/cores/core_roster.tres).
 @export var core_titles: Dictionary = {
@@ -288,11 +288,11 @@ extends Resource
 	"Rifts open — shells rain down",
 	"TIME COLLAPSES — the field goes quiet, then breaks",
 ]
-## Banner for each Cipher Keeper phase (1st, 2nd, 3rd HP threshold crossed).
+## Banner for each Shade Keeper phase (1st, 2nd, 3rd HP threshold crossed).
 @export var keeper_phase_banners: Array[String] = [
 	"The first lock breaks — a beam pylon rises",
-	"SEPARATION IS THE WEAPON — land hits to find each other",
-	"THE LAST CIPHER — hold on",
+	"THE LINK IS CUT — land hits to reconnect",
+	"THE LAST SHADE — hold on",
 ]
 ## Per-run boss variant names, keyed by BossVariant.id. Shown after the boss name
 ## ("Vault Sentinel · Overclocked").
@@ -438,49 +438,6 @@ extends Resource
 ## Room banner as the room's real wave arrives after the lessons.
 @export var tutorial_now_real: String = "NOW FOR REAL"
 
-@export_group("Memory Fragments")
-
-## Small header above a newly recovered fragment.
-@export var memory_header: String = "MEMORY RECOVERED"
-
-## Position of a fragment in the story (%d = number, %d = total).
-@export var memory_count_format: String = "Memory %d of %d"
-
-## Dismiss hint under a fragment or ending.
-@export var memory_continue_hint: String = "Press any key to continue"
-
-## Title and text for an anchor whose memory is not part of the story yet.
-@export var memory_unknown_title: String = "A Memory Stirs"
-@export var memory_unknown_body: String = "Something here feels familiar, but the memory slips away before it takes shape."
-
-## Header above the ending that plays with fragments still missing.
-@export var ending_header: String = "ENDING"
-
-## Header above the ending that plays once every fragment is recovered.
-@export var ending_true_header: String = "TRUE ENDING"
-
-## Line under the partial ending (%d = found, %d = total).
-@export var ending_partial_hint_format: String = "%d of %d memories recovered. Find the rest to learn the whole truth."
-
-## Main-menu button that opens the archive (%d = found, %d = total).
-@export var memories_button_format: String = "MEMORIES  %d/%d"
-
-## Archive heading.
-@export var memories_title: String = "MEMORIES"
-
-## Archive entry for a fragment not recovered yet.
-@export var memories_locked: String = "? ? ?"
-
-## Archive text for a fragment not recovered yet.
-@export var memories_locked_body: String = "Not recovered yet. Clear floors, and keep going even when you fall."
-
-## Archive entries for the two endings once seen.
-@export var memories_ending_label: String = "Ending"
-@export var memories_true_ending_label: String = "True Ending"
-
-## Archive close button.
-@export var memories_back: String = "Back  (Esc)"
-
 @export_group("Spell Preview (prep panel)")
 
 ## Preview text before the centre slot holds a Prana.
@@ -567,8 +524,6 @@ extends Resource
 ## Heading of the sigil list, and the text when none were taken.
 @export var summary_sigils_title: String = "SIGILS THIS RUN"
 @export var summary_no_sigils: String = "None this run"
-## Memories line: recovered this run, found in total, total.
-@export var summary_memories_format: String = "Memories recovered  +%d   (%d / %d)"
 ## Buttons.
 @export var summary_run_again: String = "Run Again  (R)"
 @export var summary_main_menu: String = "Main Menu"
@@ -595,9 +550,8 @@ extends Resource
 
 @export_group("Main Menu (layout)")
 
-## Title, tagline and the main buttons, top to bottom (Memories and Settings use
-## memories_button_format and settings_button).
-@export var menu_title: String = "THE LAST CIPHER"
+## Title, tagline and the main buttons, top to bottom (Settings uses settings_button).
+@export var menu_title: String = "UNTITLED"
 @export var menu_subtitle: String = "Two brothers. One link."
 @export var menu_play: String = "PLAY"
 ## ADR-0048: shown above Play when a run was saved mid-way (%d = floor, %d = room).
@@ -610,7 +564,7 @@ extends Resource
 @export var menu_feedback: String = "SEND FEEDBACK"
 ## Heirloom screen heading, shard line and back button.
 @export var heirloom_screen_title: String = "HEIRLOOMS"
-@export var heirloom_shards_format: String = "Cipher Shards  %d"
+@export var heirloom_shards_format: String = "Shade Shards  %d"
 @export var heirloom_back: String = "Back  (Esc)"
 
 @export_group("Button prompts (U8)")
@@ -689,22 +643,22 @@ extends Resource
 
 @export_group("Records (F3)")
 
-## Menu records line: best winning run, then one entry per boss, then memories.
+## Menu records line: best winning run and runs played, then one entry per boss.
 @export var records_best_run_format: String = "Best run  %s"
 @export var records_boss_format: String = "%s  %s"
-@export var records_memories_format: String = "Memories  %d/%d"
+@export var records_runs_format: String = "Runs  %d"
 @export var records_none: String = "—"
 ## Summary lines when a record falls (assisted runs never set records).
 @export var record_new_run_format: String = "New record!  Run  %s"
 @export var record_new_boss_format: String = "New record!  %s  %s"
 
-@export_group("Heirlooms by memory (F4)")
+@export_group("Heirlooms by runs played (F4)")
 
-## Heirloom button while hidden behind memories: title, memories needed.
-@export var heirloom_memory_locked_format: String = "%s\n%d memories"
-## Description hint while hidden behind memories.
-@export var heirloom_hint_memories_format: String = "recover %d memories to unlock"
-## Run summary line when recovered memories reveal an Heirloom.
+## Heirloom button while hidden behind runs played: title, runs needed.
+@export var heirloom_runs_locked_format: String = "%s\n%d runs"
+## Description hint while hidden behind runs played.
+@export var heirloom_hint_runs_format: String = "play %d runs to unlock"
+## Run summary line when the runs played reveal an Heirloom.
 @export var heirloom_revealed_format: String = "New Heirloom available:  %s"
 
 @export_group("Readability and accessibility (ADR-0032)")
@@ -760,11 +714,10 @@ extends Resource
 @export var settings_hud_scale: String = "HUD size"
 @export var settings_hud_opacity: String = "HUD card opacity"
 @export var settings_run_timer: String = "Show run timer"
-## ADR-0046 corner toasts (%s = sigil title; %d/%d = memory number and total;
-## %d = shards gained, %d = bonus shards this run).
+## ADR-0046 corner toasts (%s = sigil title; %d = shards gained, %d = bonus shards
+## this run).
 @export var toast_sigil_format: String = "Sigil gained · %s"
-@export var toast_memory_format: String = "Memory found · %d/%d"
-@export var toast_shards_format: String = "+%d Cipher Shards · %d this run"
+@export var toast_shards_format: String = "+%d Shade Shards · %d this run"
 ## Colour-blind Prana palette row (ADR-0047) and its choices by GameSettings.ColorMode.
 @export var settings_color_mode: String = "Prana colours"
 @export var settings_color_modes: Array[String] = [

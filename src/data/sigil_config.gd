@@ -117,7 +117,7 @@ extends Resource
 ## The effect is dispatched by id in SigilManager.apply_sigil(). Prana sigils are not
 ## listed here — they are generated per Prana type from PranaCatalog at runtime.
 @export var sigils: Array[Dictionary] = [
-	{"id": &"damage",     "title": "Sharpened Cipher", "desc": "+20% spell damage"},
+	{"id": &"damage",     "title": "Sharpened Shade", "desc": "+20% spell damage"},
 	{"id": &"overcharge", "title": "Overcharge",       "desc": "+35% spell damage"},
 	{"id": &"move_speed", "title": "Swift Step",        "desc": "+15% move speed"},
 	{"id": &"dash_cd",    "title": "Quick Recovery",    "desc": "-25% dash cooldown"},
